@@ -8,7 +8,10 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new PrismaExceptionFilter());
   app.enableCors({
-    origin: env.CORS_ORIGIN ? env.CORS_ORIGIN.split(',').map((o) => o.trim()) : true,
+    origin:
+      !env.CORS_ORIGIN || env.CORS_ORIGIN === '*'
+        ? true
+        : env.CORS_ORIGIN.split(',').map((o) => o.trim()),
   });
   app.enableShutdownHooks();
   await app.listen(env.PORT);
