@@ -11,6 +11,7 @@ import 'dotenv/config';
 import { AlcanceRol, PrismaClient, TipoUnidad } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { seedPlantillaOficial } from './plantilla-oficial-2026.js';
+import { seedDemo } from './seed-demo.js';
 
 const prisma = new PrismaClient();
 
@@ -197,27 +198,22 @@ async function seedRoles(permisoIds: Map<string, number>): Promise<Map<string, n
 
 /** Crea el primer Jefe de Grupo para poder ingresar al sistema. */
 async function seedAdmin(unidadIds: Map<string, number>, rolIds: Map<string, number>): Promise<void> {
-  const dni = process.env.SEED_ADMIN_DNI;
-  if (!dni) {
-    console.log('ℹ️  SEED_ADMIN_DNI no definido: se omite el usuario administrador.');
-    return;
-  }
+  const dni = process.env.SEED_ADMIN_DNI ?? '11111111';
   const cicloAnio = Number(process.env.SEED_CICLO_ANIO ?? new Date().getFullYear());
   const unidadId = unidadIds.get('Jefatura de Grupo')!;
   const rolId = rolIds.get('Jefe de Grupo')!;
 
   let usuario = await prisma.usuario.findUnique({ where: { dni } });
   if (!usuario) {
-    // Por convención la clave inicial es el DNI (requiere cambio en el primer login).
-    const password = process.env.SEED_ADMIN_PASSWORD || dni;
+    const password = process.env.SEED_ADMIN_PASSWORD || 'scout2026';
     usuario = await prisma.usuario.create({
       data: {
         dni,
         passwordHash: await bcrypt.hash(password, 10),
-        nombre: process.env.SEED_ADMIN_NOMBRE ?? 'Admin',
-        apellido: process.env.SEED_ADMIN_APELLIDO ?? 'Jefatura',
-        fechaNacimiento: new Date(process.env.SEED_ADMIN_FECHA_NACIMIENTO ?? '1990-01-01'),
-        requiereCambioClave: true,
+        nombre: process.env.SEED_ADMIN_NOMBRE ?? 'Jefe',
+        apellido: process.env.SEED_ADMIN_APELLIDO ?? 'de Grupo',
+        fechaNacimiento: new Date(process.env.SEED_ADMIN_FECHA_NACIMIENTO ?? '1980-01-01'),
+        requiereCambioClave: false,
       },
     });
   }
@@ -244,6 +240,7 @@ async function main(): Promise<void> {
   console.log(`🎖️  Roles: ${rolIds.size}`);
   await seedAdmin(unidadIds, rolIds);
   await seedPlantillaOficial(prisma);
+  await seedDemo(prisma);
 }
 
 main()

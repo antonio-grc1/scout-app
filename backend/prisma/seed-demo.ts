@@ -2,9 +2,7 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
-
-async function main() {
+export async function seedDemo(prisma: PrismaClient) {
   const lobatos = await prisma.unidadOrganizativa.findFirstOrThrow({
     where: { nombre: { in: ['Rama Lobatos', 'Lobatos'] } },
   });
@@ -128,4 +126,7 @@ async function main() {
   console.log('✅ Base de datos poblada con Educadores y Protagonistas en todas las ramas');
 }
 
-main().finally(() => prisma.$disconnect());
+if (process.argv[1]?.includes('seed-demo')) {
+  const prisma = new PrismaClient();
+  seedDemo(prisma).finally(() => prisma.$disconnect());
+}
