@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# build
+dist/
+*.tsbuildinfo
+coverage/
+
+# env (contiene credenciales de la base)
+.env
+.env.*
+!.env.example
+
+# logs / OS
+*.log
+.DS_Store
+.postgres-data/

@@ -1,0 +1,278 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TipoUnidad {
+  SECCION_RAMA
+  JEFATURA
+  SIN_RAMA_APOYO
+}
+
+enum AlcanceRol {
+  PROPIO
+  UNIDAD
+  GLOBAL
+}
+
+enum EstadoEntrega {
+  BORRADOR
+  PENDIENTE_FIRMA_FISICA
+  VALIDADO_FISICAMENTE
+  DESACTUALIZADO_REQUIERE_REIMPRESION
+}
+
+enum EstadoCargo {
+  PENDIENTE
+  PARCIAL
+  PAGADO
+  ANULADO
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TRANSFERENCIA
+  OTRO
+}
+
+model Rama {
+  id               Int                  @id @default(autoincrement())
+  nombre           String               @db.VarChar(100)
+  edadMinima       Int                  @map("edad_minima")
+  edadMaxima       Int                  @map("edad_maxima")
+  ordenProgresion  Int                  @map("orden_progresion")
+  activa           Boolean              @default(true)
+  unidades         UnidadOrganizativa[]
+
+  @@map("ramas")
+}
+
+model UnidadOrganizativa {
+  id           Int                 @id @default(autoincrement())
+  nombre       String              @db.VarChar(120)
+  tipo         TipoUnidad
+  ramaId       Int?                @map("rama_id")
+  activa       Boolean             @default(true)
+  rama         Rama?               @relation(fields: [ramaId], references: [id], onDelete: SetNull)
+  asignaciones AsignacionMiembro[]
+  conceptos    ConceptoCuota[]
+  planesCuota  PlanCuotaMensual[]
+
+  @@map("unidades_organizativas")
+}
+
+model GrupoFamiliar {
+  id                           Int       @id @default(autoincrement())
+  nombreFamilia                String    @map("nombre_familia") @db.VarChar(150)
+  porcentajeDescuentoHermanos  Decimal   @default(0.00) @map("porcentaje_descuento_hermanos") @db.Decimal(5, 2)
+  miembros                     Usuario[]
+
+  @@map("grupos_familiares")
+}
+
+model Usuario {
+  id                  Int                 @id @default(autoincrement())
+  dni                 String              @unique @db.VarChar(20)
+  passwordHash        String              @map("password_hash") @db.VarChar(255)
+  nombre              String              @db.VarChar(100)
+  apellido            String              @db.VarChar(100)
+  fechaNacimiento     DateTime            @map("fecha_nacimiento") @db.Date
+  emailContacto       String?             @map("email_contacto") @db.VarChar(150) // NO UNIQUE!
+  telefonoContacto    String?             @map("telefono_contacto") @db.VarChar(50)
+  grupoFamiliarId     Int?                @map("grupo_familiar_id")
+  datosFijosJson      Json                @default("{}") @map("datos_fijos_json")
+  requiereCambioClave Boolean             @default(true) @map("requiere_cambio_clave")
+  activo              Boolean             @default(true)
+  saldoAFavor         Decimal             @default(0.00) @map("saldo_a_favor") @db.Decimal(12, 2)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  grupoFamiliar       GrupoFamiliar?      @relation(fields: [grupoFamiliarId], references: [id], onDelete: SetNull)
+  asignaciones        AsignacionMiembro[]
+  entregas            EntregaFormulario[] @relation("EntregasPropias")
+  entregasValidadas   EntregaFormulario[] @relation("EntregasValidadas")
+  cargos              CargoMiembro[]
+  pagosRegistrados    Pago[]              @relation("PagosRegistrados")
+  pagosTitular        Pago[]              @relation("PagosTitular")
+
+  @@index([dni])
+  @@map("usuarios")
+}
+
+model Rol {
+  id                Int                 @id @default(autoincrement())
+  nombre            String              @unique @db.VarChar(80)
+  alcancePorDefecto AlcanceRol          @map("alcance_por_defecto")
+  esSistema         Boolean             @default(false) @map("es_sistema")
+  permisos          RolPermiso[]
+  asignaciones      AsignacionMiembro[]
+
+  @@map("roles")
+}
+
+model Permiso {
+  id          Int          @id @default(autoincrement())
+  clave       String       @unique @db.VarChar(100)
+  descripcion String?      @db.VarChar(255)
+  roles       RolPermiso[]
+
+  @@map("permisos")
+}
+
+model RolPermiso {
+  rolId     Int     @map("rol_id")
+  permisoId Int     @map("permiso_id")
+  rol       Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso   Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+
+  @@id([rolId, permisoId])
+  @@map("rol_permisos")
+}
+
+model AsignacionMiembro {
+  id              Int                @id @default(autoincrement())
+  usuarioId       Int                @map("usuario_id")
+  unidadId        Int                @map("unidad_id")
+  rolId           Int                @map("rol_id")
+  alcanceOverride AlcanceRol?        @map("alcance_override")
+  cicloAnio       Int                @map("ciclo_anio")
+  fechaInicio     DateTime           @default(now()) @map("fecha_inicio") @db.Date
+  fechaFin        DateTime?          @map("fecha_fin") @db.Date
+  activo          Boolean            @default(true)
+
+  usuario         Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  unidad          UnidadOrganizativa @relation(fields: [unidadId], references: [id])
+  rol             Rol                @relation(fields: [rolId], references: [id])
+
+  @@index([usuarioId, activo])
+  @@index([unidadId, activo])
+  @@map("asignaciones_miembro")
+}
+
+model PlantillaFormulario {
+  id                 Int                 @id @default(autoincrement())
+  codigo             String              @db.VarChar(50)
+  titulo             String              @db.VarChar(150)
+  version            String              @db.VarChar(20)
+  cicloAnio          Int                 @map("ciclo_anio")
+  esquemaCamposJson  Json                @map("esquema_campos_json")
+  mapeoPdfJson       Json                @map("mapeo_pdf_json")
+  activa             Boolean             @default(true)
+  entregas           EntregaFormulario[]
+
+  @@map("plantillas_formulario")
+}
+
+model EntregaFormulario {
+  id                     Int                 @id @default(autoincrement())
+  usuarioId              Int                 @map("usuario_id")
+  plantillaId            Int                 @map("plantilla_id")
+  cicloAnio              Int                 @map("ciclo_anio")
+  versionImpresion       Int                 @default(1) @map("version_impresion")
+  respuestasSnapshotJson Json                @map("respuestas_snapshot_json")
+  hashVerificacion       String              @unique @map("hash_verificacion") @db.VarChar(64)
+  estado                 EstadoEntrega       @default(BORRADOR)
+  fechaGeneracionPdf     DateTime?           @map("fecha_generacion_pdf")
+  fechaValidacionFisica  DateTime?           @map("fecha_validacion_fisica")
+  validadoPorUsuarioId   Int?                @map("validado_por_usuario_id")
+
+  usuario                Usuario             @relation("EntregasPropias", fields: [usuarioId], references: [id], onDelete: Cascade)
+  plantilla              PlantillaFormulario @relation(fields: [plantillaId], references: [id])
+  validadoPor            Usuario?            @relation("EntregasValidadas", fields: [validadoPorUsuarioId], references: [id])
+
+  @@map("entregas_formulario")
+}
+
+model ConceptoCuota {
+  id                          Int                 @id @default(autoincrement())
+  nombre                      String              @db.VarChar(120)
+  tipo                        String              @default("CUOTA_MENSUAL") @db.VarChar(50)
+  montoBase                   Decimal             @map("monto_base") @db.Decimal(12, 2)
+  cicloAnio                   Int                 @map("ciclo_anio")
+  fechaVencimiento            DateTime?           @map("fecha_vencimiento") @db.Date
+  permiteDescuentoHermanos    Boolean             @default(true) @map("permite_descuento_hermanos")
+  porcentajeDescuentoHermanos Decimal?            @map("porcentaje_descuento_hermanos") @db.Decimal(5, 2)
+  esParaEducadores            Boolean             @default(false) @map("es_para_educadores")
+  planCuotaMensualId          Int?                @map("plan_cuota_mensual_id")
+  mes                         Int?                @map("mes")
+  destinatarioTipo            String              @default("TODOS") @map("destinatario_tipo") @db.VarChar(30)
+  excepcionesJson             Json                @default("[]") @map("excepciones_json")
+  unidadId                    Int?                @map("unidad_id")
+  unidad                      UnidadOrganizativa? @relation(fields: [unidadId], references: [id])
+  planCuotaMensual            PlanCuotaMensual?   @relation(fields: [planCuotaMensualId], references: [id], onDelete: Cascade)
+  cargos                      CargoMiembro[]
+
+  @@map("conceptos_cuota")
+}
+
+model CargoMiembro {
+  id             Int              @id @default(autoincrement())
+  usuarioId      Int              @map("usuario_id")
+  conceptoId     Int              @map("concepto_id")
+  montoOriginal  Decimal          @map("monto_original") @db.Decimal(12, 2)
+  montoDescuento Decimal          @default(0.00) @map("monto_descuento") @db.Decimal(12, 2)
+  montoFinal     Decimal          @map("monto_final") @db.Decimal(12, 2)
+  montoPagado    Decimal          @default(0.00) @map("monto_pagado") @db.Decimal(12, 2)
+  estado         EstadoCargo      @default(PENDIENTE)
+
+  usuario        Usuario          @relation(fields: [usuarioId], references: [id])
+  concepto       ConceptoCuota    @relation(fields: [conceptoId], references: [id])
+  imputaciones   PagoImputacion[]
+
+  @@map("cargos_miembro")
+}
+
+model Pago {
+  id                     Int              @id @default(autoincrement())
+  fechaPago              DateTime         @default(now()) @map("fecha_pago")
+  montoTotal             Decimal          @map("monto_total") @db.Decimal(12, 2)
+  metodoPago             MetodoPago       @map("metodo_pago")
+  referenciaComprobante  String?          @map("referencia_comprobante") @db.VarChar(100)
+  registradoPorUsuarioId Int              @map("registrado_por_usuario_id")
+  usuarioId              Int?             @map("usuario_id")
+  observaciones          String?          @db.Text
+
+  registradoPor          Usuario          @relation("PagosRegistrados", fields: [registradoPorUsuarioId], references: [id])
+  usuario                Usuario?         @relation("PagosTitular", fields: [usuarioId], references: [id])
+  imputaciones           PagoImputacion[]
+
+  @@map("pagos")
+}
+
+model PagoImputacion {
+  id            Int          @id @default(autoincrement())
+  pagoId        Int          @map("pago_id")
+  cargoId       Int          @map("cargo_id")
+  montoImputado Decimal      @map("monto_imputado") @db.Decimal(12, 2)
+
+  pago          Pago         @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  cargo         CargoMiembro @relation(fields: [cargoId], references: [id])
+
+  @@map("pago_imputaciones")
+}
+
+model PlanCuotaMensual {
+  id                          Int                 @id @default(autoincrement())
+  nombre                      String              @db.VarChar(150)
+  cicloAnio                   Int                 @map("ciclo_anio")
+  montoMensual                Decimal             @map("monto_mensual") @db.Decimal(12, 2)
+  diaVencimiento              Int                 @default(10) @map("dia_vencimiento")
+  mesesHabilitadosJson        Json                @default("[]") @map("meses_habilitados_json")
+  destinatarioTipo            String              @default("PROTAGONISTAS") @map("destinatario_tipo") @db.VarChar(30)
+  unidadId                    Int?                @map("unidad_id")
+  permiteDescuentoHermanos    Boolean             @default(true) @map("permite_descuento_hermanos")
+  porcentajeDescuentoHermanos Decimal?            @map("porcentaje_descuento_hermanos") @db.Decimal(5, 2)
+  excepcionesJson             Json                @default("[]") @map("excepciones_json")
+  activa                      Boolean             @default(true)
+  createdAt                   DateTime            @default(now()) @map("created_at")
+  updatedAt                   DateTime            @updatedAt @map("updated_at")
+
+  unidad                      UnidadOrganizativa? @relation(fields: [unidadId], references: [id])
+  conceptos                   ConceptoCuota[]
+
+  @@map("planes_cuota_mensual")
+}
