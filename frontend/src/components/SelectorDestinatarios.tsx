@@ -132,12 +132,9 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
         <div className="flex items-center gap-2">
           <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           <h4 className="font-bold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">
-            Destinatarios de la Cuota / Cargo
+            Destinatarios
           </h4>
         </div>
-        <span className="text-[11px] text-slate-500 dark:text-slate-400">
-          Filtro bidimensional sin listas eternas
-        </span>
       </div>
 
       {/* Dimensión 1: Población / Rol */}
@@ -324,7 +321,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium"
                 >
                   <span>
-                    {detalle ? `${detalle.nombre} ${detalle.apellido}` : `Miembro #${id}`}
+                    {detalle ? `${detalle.nombre} ${detalle.apellido}` : 'Miembro exento'}
                   </span>
                   <button
                     type="button"

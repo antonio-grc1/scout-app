@@ -7,9 +7,21 @@ import type { AlcanceAcceso, AuthUser } from '../types/auth.types.js';
  * combinando todas sus asignaciones activas que otorgan ese permiso.
  * Devuelve `null` si ninguna asignación lo otorga.
  */
+const PERMISOS_AUTOGESTION_PROPIA = new Set([
+  'legajos.ver',
+  'legajos.completar',
+  'cuotas.ver',
+  'miembros.ver',
+]);
+
 export function resolverAlcance(user: AuthUser, permiso: string): AlcanceAcceso | null {
   const conPermiso = user.asignaciones.filter((a) => a.permisos.includes(permiso));
-  if (conPermiso.length === 0) return null;
+  if (conPermiso.length === 0) {
+    if (PERMISOS_AUTOGESTION_PROPIA.has(permiso)) {
+      return { tipo: 'PROPIO', usuarioId: user.sub };
+    }
+    return null;
+  }
 
   if (conPermiso.some((a) => a.alcance === AlcanceRol.GLOBAL)) {
     return { tipo: 'GLOBAL' };
@@ -18,12 +30,9 @@ export function resolverAlcance(user: AuthUser, permiso: string): AlcanceAcceso 
   const unidadIds = [
     ...new Set(conPermiso.filter((a) => a.alcance === AlcanceRol.UNIDAD).map((a) => a.unidadId)),
   ];
-  const tienePropio = conPermiso.some((a) => a.alcance === AlcanceRol.PROPIO);
 
   if (unidadIds.length > 0) {
-    return tienePropio
-      ? { tipo: 'UNIDAD', unidadIds, usuarioIdPropio: user.sub }
-      : { tipo: 'UNIDAD', unidadIds };
+    return { tipo: 'UNIDAD', unidadIds, usuarioIdPropio: user.sub };
   }
 
   return { tipo: 'PROPIO', usuarioId: user.sub };

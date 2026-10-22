@@ -1,0 +1,177 @@
+// Centralización de etiquetas humanas, estados semánticos y formateadores sin jerga técnica
+
+export const ESTADO_FICHA_CONFIG: Record<
+  string,
+  { label: string; shortLabel: string; badgeClass: string; dotClass: string }
+> = {
+  VALIDADO_FISICAMENTE: {
+    label: 'Ficha al día',
+    shortLabel: 'Al día',
+    badgeClass:
+      'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800',
+    dotClass: 'bg-emerald-500',
+  },
+  PENDIENTE_FIRMA_FISICA: {
+    label: 'Falta entregar papel firmado',
+    shortLabel: 'Falta papel',
+    badgeClass:
+      'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800',
+    dotClass: 'bg-amber-500',
+  },
+  DESACTUALIZADO_REQUIERE_REIMPRESION: {
+    label: 'Datos editados (Reimprimir)',
+    shortLabel: 'Reimprimir',
+    badgeClass:
+      'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800',
+    dotClass: 'bg-rose-500',
+  },
+  BORRADOR: {
+    label: 'Incompleta (Borrador)',
+    shortLabel: 'Borrador',
+    badgeClass:
+      'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    dotClass: 'bg-slate-400',
+  },
+  SIN_FICHA: {
+    label: 'Sin ficha cargada',
+    shortLabel: 'Sin ficha',
+    badgeClass:
+      'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/60',
+    dotClass: 'bg-rose-500',
+  },
+  SIN_ENTREGAR: {
+    label: 'Sin ficha cargada',
+    shortLabel: 'Sin ficha',
+    badgeClass:
+      'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800/60',
+    dotClass: 'bg-rose-500',
+  },
+};
+
+export const ESTADO_CARGO_CONFIG: Record<
+  string,
+  { label: string; badgeClass: string }
+> = {
+  PAGADO: {
+    label: 'Pagado',
+    badgeClass:
+      'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800',
+  },
+  PARCIAL: {
+    label: 'Pago parcial',
+    badgeClass:
+      'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800',
+  },
+  PENDIENTE: {
+    label: 'Pendiente',
+    badgeClass:
+      'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800',
+  },
+  ANULADO: {
+    label: 'Anulado',
+    badgeClass:
+      'bg-slate-100 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700 line-through',
+  },
+};
+
+export const METODO_PAGO_LABELS: Record<string, string> = {
+  EFECTIVO: 'Efectivo',
+  TRANSFERENCIA: 'Transferencia',
+  OTRO: 'Otro medio',
+};
+
+export const TIPO_UNIDAD_LABELS: Record<string, string> = {
+  SECCION_RAMA: 'Rama de Protagonistas',
+  JEFATURA: 'Jefatura de Grupo',
+  SIN_RAMA_APOYO: 'Equipo de Apoyo',
+};
+
+export const NOMBRES_MESES_CORTOS = [
+  '',
+  'Ene',
+  'Feb',
+  'Mar',
+  'Abr',
+  'May',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dic',
+];
+
+export const NOMBRES_MESES_LARGOS = [
+  '',
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+];
+
+export function formatearMoneda(valor: number | string | null | undefined): string {
+  const num = Number(valor ?? 0);
+  if (isNaN(num)) return '$0';
+  return num.toLocaleString('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: num % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+export function calcularEdad(fechaNacStr?: string | null): number | null {
+  if (!fechaNacStr) return null;
+  const nac = new Date(fechaNacStr);
+  if (isNaN(nac.getTime())) return null;
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nac.getFullYear();
+  const m = hoy.getMonth() - nac.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  return edad;
+}
+
+/**
+ * Traduce errores de API o de red a mensajes claros y accionables para educadores/familias
+ */
+export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos guardar los cambios. Intenta de nuevo.'): string {
+  const raw = err?.response?.data?.message || err?.message || '';
+  const texto = Array.isArray(raw) ? raw.join('. ') : String(raw);
+  const lower = texto.toLowerCase();
+
+  if (lower.includes('unique') || lower.includes('ya existe') || lower.includes('duplicad')) {
+    if (lower.includes('dni')) return 'Ya hay una persona registrada con este número de DNI.';
+    return 'Este registro ya existe en el sistema.';
+  }
+  if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('timeout')) {
+    return 'Sin conexión a internet. Verifica tu señal e intenta nuevamente.';
+  }
+  if (lower.includes('unauthorized') || lower.includes('401') || lower.includes('credenciales')) {
+    return 'El DNI o la contraseña ingresados no son correctos.';
+  }
+  if (lower.includes('forbidden') || lower.includes('403') || lower.includes('permiso')) {
+    return 'No tienes permisos para realizar esta acción.';
+  }
+  if (lower.includes('not found') || lower.includes('404')) {
+    return 'No encontramos la información solicitada.';
+  }
+  if (lower.includes('500') || lower.includes('internal server')) {
+    return 'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.';
+  }
+
+  // Si el backend ya mandó un mensaje en español legible sin jerga técnica, lo usamos
+  if (texto && !lower.includes('prisma') && !lower.includes('sql') && !lower.includes('constraint') && !lower.includes('exception')) {
+    return texto;
+  }
+
+  return mensajePorDefecto;
+}

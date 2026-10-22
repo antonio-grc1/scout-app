@@ -4,15 +4,13 @@ import { SelectorDestinatarios } from './SelectorDestinatarios';
 import {
   X,
   Tent,
-  Calendar,
-  DollarSign,
   CheckCircle2,
-  Users,
-  Sparkles,
 } from 'lucide-react';
+import { traducirErrorAmigable } from '../lib/formatters';
 
 interface Props {
   abierto: boolean;
+  conceptoAEditar?: any | null;
   unidades: Array<{ id: number; nombre: string; tipo?: string }>;
   onCerrar: () => void;
   onGenerado: (mensaje: string) => void;
@@ -20,6 +18,7 @@ interface Props {
 
 export const ModalCobroCampamento: React.FC<Props> = ({
   abierto,
+  conceptoAEditar = null,
   unidades,
   onCerrar,
   onGenerado,
@@ -37,28 +36,57 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   const [usarPorcentajePersonalizado, setUsarPorcentajePersonalizado] = useState(false);
   const [porcentajeDescuentoHermanos, setPorcentajeDescuentoHermanos] = useState<number | ''>('');
   const [excepcionesIds, setExcepcionesIds] = useState<number[]>([]);
-  const [generarCargosInmediatos, setGenerarCargosInmediatos] = useState(true);
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (abierto) {
-      setNombre('Campamento Anual ' + anioActual);
-      setTipo('CAMPAMENTO');
-      setMontoBase('');
-      setCicloAnio(anioActual);
-      setFechaVencimiento('');
-      setDestinatarioTipo('PROTAGONISTAS');
-      setUnidadId(null);
-      setPermiteDescuentoHermanos(true);
-      setUsarPorcentajePersonalizado(false);
-      setPorcentajeDescuentoHermanos('');
-      setExcepcionesIds([]);
-      setGenerarCargosInmediatos(true);
+      if (conceptoAEditar) {
+        setNombre(conceptoAEditar.nombre || '');
+        setTipo(conceptoAEditar.tipo || 'CAMPAMENTO');
+        setMontoBase(conceptoAEditar.montoBase ? Number(conceptoAEditar.montoBase) : '');
+        setCicloAnio(conceptoAEditar.cicloAnio || anioActual);
+        setFechaVencimiento(
+          conceptoAEditar.fechaVencimiento
+            ? String(conceptoAEditar.fechaVencimiento).split('T')[0]
+            : '',
+        );
+        const dest = conceptoAEditar.destinatarioTipo;
+        setDestinatarioTipo(
+          dest === 'TODOS' || dest === 'EDUCADORES' ? dest : 'PROTAGONISTAS',
+        );
+        setUnidadId(conceptoAEditar.unidadId ?? null);
+        setPermiteDescuentoHermanos(conceptoAEditar.permiteDescuentoHermanos ?? true);
+        if (
+          conceptoAEditar.porcentajeDescuentoHermanos !== null &&
+          conceptoAEditar.porcentajeDescuentoHermanos !== undefined
+        ) {
+          setUsarPorcentajePersonalizado(true);
+          setPorcentajeDescuentoHermanos(Number(conceptoAEditar.porcentajeDescuentoHermanos));
+        } else {
+          setUsarPorcentajePersonalizado(false);
+          setPorcentajeDescuentoHermanos('');
+        }
+        setExcepcionesIds(
+          Array.isArray(conceptoAEditar.excepcionesJson) ? conceptoAEditar.excepcionesJson : [],
+        );
+      } else {
+        setNombre('Campamento Anual ' + anioActual);
+        setTipo('CAMPAMENTO');
+        setMontoBase('');
+        setCicloAnio(anioActual);
+        setFechaVencimiento('');
+        setDestinatarioTipo('PROTAGONISTAS');
+        setUnidadId(null);
+        setPermiteDescuentoHermanos(true);
+        setUsarPorcentajePersonalizado(false);
+        setPorcentajeDescuentoHermanos('');
+        setExcepcionesIds([]);
+      }
       setError(null);
     }
-  }, [abierto, anioActual]);
+  }, [abierto, conceptoAEditar, anioActual]);
 
   if (!abierto) return null;
 
@@ -78,8 +106,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
 
     setGuardando(true);
     try {
-      // 1. Crear el concepto
-      const conceptoPayload = {
+      const payload = {
         nombre: nombre.trim(),
         tipo,
         montoBase: Number(montoBase),
@@ -93,30 +120,20 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             ? Number(porcentajeDescuentoHermanos)
             : null,
         excepcionesIds,
+        sincronizarCargos: true,
       };
 
-      const resConcepto = await api.post('/tesoreria/conceptos', conceptoPayload);
-      const conceptoCreado = resConcepto.data;
-
-      // 2. Si se solicitó generar cargos inmediatamente, llamar a generar cargos
-      if (generarCargosInmediatos && conceptoCreado?.id) {
-        const resCargos = await api.post('/tesoreria/cargos/generar', {
-          conceptoId: conceptoCreado.id,
-          unidadId: unidadId ?? undefined,
-          excluirUsuarioIds: excepcionesIds,
-          aplicarDescuentoFamiliar: permiteDescuentoHermanos,
-        });
-
-        const total = resCargos.data?.totalGenerados ?? 0;
-        onGenerado(`Cobro de "${nombre}" creado exitosamente y se generaron ${total} cargos.`);
+      if (conceptoAEditar?.id) {
+        await api.patch(`/tesoreria/conceptos/${conceptoAEditar.id}`, payload);
+        onGenerado(`Cobro "${nombre.trim()}" actualizado y cargos sincronizados.`);
       } else {
-        onGenerado(`Concepto de "${nombre}" creado exitosamente.`);
+        await api.post('/tesoreria/conceptos', payload);
+        onGenerado(`Cobro "${nombre.trim()}" creado y asignado automáticamente.`);
       }
 
       onCerrar();
     } catch (err: any) {
-      console.error('Error al generar cobro extraordinario', err);
-      setError(err.response?.data?.message || 'Error al generar el cobro de campamento / evento');
+      setError(traducirErrorAmigable(err, 'No se pudo guardar el cobro de campamento / evento.'));
     } finally {
       setGuardando(false);
     }
@@ -133,10 +150,12 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
-                Generar Cobro Extraordinario / Campamento
+                {conceptoAEditar
+                  ? 'Editar Campamento / Cobro Especial'
+                  : 'Nuevo Campamento / Cobro Especial'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Configure un cobro especial de evento o campamento y defina a quiénes se les cobra
+                Definí el monto, a quiénes aplica y quiénes están becados o exentos
               </p>
             </div>
           </div>
@@ -160,21 +179,21 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Nombre del Cobro / Campamento *
+                Nombre del Campamento / Cobro *
               </label>
               <input
                 type="text"
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej. Campamento de Verano 2026, Acantonamiento..."
+                placeholder="Ej. Campamento de Verano 2026, Acantonamiento, Pañuelo..."
                 className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-                Tipo de Concepto
+                Categoría
               </label>
               <select
                 value={tipo}
@@ -183,9 +202,9 @@ export const ModalCobroCampamento: React.FC<Props> = ({
               >
                 <option value="CAMPAMENTO">Campamento</option>
                 <option value="EVENTO">Evento Especial</option>
-                <option value="INSCRIPCION">Inscripción</option>
-                <option value="MATERIALES">Materiales</option>
-                <option value="OTRO">Otro</option>
+                <option value="INSCRIPCION">Inscripción / Afiliación</option>
+                <option value="MATERIALES">Materiales / Indumentaria</option>
+                <option value="OTRO">Otro Cobro</option>
               </select>
             </div>
           </div>
@@ -274,7 +293,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                     onChange={(e) => setUsarPorcentajePersonalizado(e.target.checked)}
                     className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-blue-500"
                   />
-                  <span>Fijar porcentaje de descuento específico para este campamento</span>
+                  <span>Fijar porcentaje de descuento específico para este cobro</span>
                 </label>
 
                 {usarPorcentajePersonalizado && (
@@ -299,24 +318,9 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             )}
           </div>
 
-          {/* CHECKBOX GENERACIÓN INMEDIATA */}
-          <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-900/60">
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={generarCargosInmediatos}
-                onChange={(e) => setGenerarCargosInmediatos(e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-              />
-              <div>
-                <span className="text-xs font-bold text-blue-900 dark:text-blue-200 block">
-                  Generar los cargos automáticamente ahora a todos los destinatarios
-                </span>
-                <span className="text-[11px] text-blue-700/80 dark:text-blue-300 block">
-                  Creará la deuda individual en el estado de cuenta de cada miembro seleccionado (menos los exentos).
-                </span>
-              </div>
-            </label>
+          {/* Nota informativa */}
+          <div className="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 text-[11px] text-blue-800 dark:text-blue-300">
+            Al guardar, las deudas se asignan y actualizan automáticamente en la cuenta de los miembros seleccionados. Si quitás a alguien que ya había pagado, el dinero pagado pasa automáticamente a su <strong>Saldo a Favor</strong>.
           </div>
 
           {/* Footer del Formulario */}
@@ -324,17 +328,23 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             <button
               type="button"
               onClick={onCerrar}
-              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="min-h-[42px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              className="min-h-[42px] px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{guardando ? 'Generando...' : 'Crear Cobro de Campamento'}</span>
+              <span>
+                {guardando
+                  ? 'Guardando...'
+                  : conceptoAEditar
+                    ? 'Guardar Cambios'
+                    : 'Crear y Asignar Cobro'}
+              </span>
             </button>
           </div>
         </form>

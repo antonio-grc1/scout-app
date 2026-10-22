@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   FileText,
@@ -14,13 +14,15 @@ import {
   Save,
   Download,
   AlertCircle,
-  HelpCircle,
+  Plus,
+  Check,
+  Loader2,
 } from 'lucide-react';
 
 export interface CampoSchema {
   key: string;
   label: string;
-  type: string; // 'text' | 'textarea' | 'boolean' | 'date' | 'number' | 'email' | 'tel' | 'select'
+  type: string;
   required?: boolean;
   options?: { label: string; value: string }[];
 }
@@ -42,31 +44,40 @@ interface Props {
   valoresIniciales?: Record<string, unknown>;
   onSubmit: (datos: Record<string, unknown>, finalizarParaFirma: boolean) => Promise<void>;
   cargando?: boolean;
-  edadMiembro?: number;
 }
 
 const PASO_ICONOS: Record<string, React.ReactNode> = {
-  seccion_inscripcion: <FileText className="w-5 h-5" />,
-  seccion_salud: <HeartPulse className="w-5 h-5" />,
-  seccion_autorizacion_ingreso: <ShieldCheck className="w-5 h-5" />,
-  seccion_autorizacion_salidas: <Compass className="w-5 h-5" />,
-  seccion_necesidades_especiales: <Sparkles className="w-5 h-5" />,
-  seccion_retiro_menores: <UserCheck className="w-5 h-5" />,
-  seccion_ficha_adultos: <Users className="w-5 h-5" />,
+  seccion_inscripcion: <FileText className="w-4 h-4" />,
+  seccion_salud: <HeartPulse className="w-4 h-4" />,
+  seccion_autorizacion_ingreso: <ShieldCheck className="w-4 h-4" />,
+  seccion_autorizacion_salidas: <Compass className="w-4 h-4" />,
+  seccion_necesidades_especiales: <Sparkles className="w-4 h-4" />,
+  seccion_retiro_menores: <UserCheck className="w-4 h-4" />,
+  seccion_ficha_adultos: <Users className="w-4 h-4" />,
+};
+
+const NOMBRES_CORTOS_PASO: Record<string, string> = {
+  seccion_inscripcion: 'Inscripción',
+  seccion_salud: 'Salud',
+  seccion_autorizacion_ingreso: 'Ingreso',
+  seccion_autorizacion_salidas: 'Salidas',
+  seccion_necesidades_especiales: 'Apoyos',
+  seccion_retiro_menores: 'Retiro',
+  seccion_ficha_adultos: 'Voluntariado',
 };
 
 const MATERIALES_CONSTRUCCION = [
-  { key: 'chapas', label: 'Chapas de Cinc / Zinc' },
+  { key: 'chapas', label: 'Chapas de Cinc' },
   { key: 'puntales', label: 'Puntales de Madera' },
   { key: 'tablas', label: 'Tablas Grandes' },
-  { key: 'paneles', label: 'Paneles terciados u otros' },
+  { key: 'paneles', label: 'Paneles terciados' },
   { key: 'postes', label: 'Postes de Madera' },
   { key: 'clavos', label: 'Clavos y Tornillos' },
   { key: 'alambrado', label: 'Alambrado' },
   { key: 'alambre_fardo', label: 'Alambre de Fardo' },
   { key: 'ladrillos', label: 'Ladrillos' },
   { key: 'cemento', label: 'Cemento' },
-  { key: 'pala', label: 'Pala de punta o ancha' },
+  { key: 'pala', label: 'Pala' },
   { key: 'serrucho', label: 'Serrucho o sierra' },
   { key: 'pinzas', label: 'Pinzas o tenazas' },
   { key: 'destornilladores', label: 'Destornilladores' },
@@ -79,26 +90,45 @@ const MATERIALES_CAMPAMENTO = [
   { key: 'media_sombras', label: 'Media sombras' },
   { key: 'sogas', label: 'Sogas o Soguines' },
   { key: 'estacas', label: 'Estacas' },
-  { key: 'cajones', label: 'Cajones para guardar' },
+  { key: 'cajones', label: 'Cajones' },
   { key: 'tachos', label: 'Tachos' },
   { key: 'bidones', label: 'Bidones para Agua' },
   { key: 'bancos', label: 'Bancos o sillas' },
-  { key: 'quemadores', label: 'Quemadores p/ cocina' },
+  { key: 'quemadores', label: 'Quemadores cocina' },
   { key: 'utensilios', label: 'Utensilios de cocina' },
   { key: 'otros_camp', label: 'Otros materiales' },
 ];
 
-const COMPANION_BOOLEANS: Record<string, string> = {
-  toma_medicacion_detalle: 'toma_medicacion',
-  enfermedad_cronica_detalle: 'enfermedad_cronica',
-  requiere_tratamiento_detalle: 'requiere_tratamiento',
-  sufre_alergia_detalle: 'sufre_alergia',
-  anticoagulado_droga: 'esta_anticoagulado',
-  regimen_dietario_detalle: 'regimen_dietario',
-  ataques_panico_frecuencia: 'ataques_panico_ansiedad',
-  diagnostico_salud_mental_detalle: 'diagnostico_salud_mental',
-  recibe_tratamiento_salud_mental_detalle: 'recibe_tratamiento_salud_mental',
-  miedo_fobia_detalle: 'miedo_fobia_excesivo',
+// Mapa: interruptor booleano -> campo de detalle asociado (se muestra solo cuando aplica)
+const DETALLE_POR_BOOLEAN: Record<string, string> = {
+  realiza_hobby: 'hobby_detalle',
+  toma_medicacion: 'toma_medicacion_detalle',
+  enfermedad_cronica: 'enfermedad_cronica_detalle',
+  requiere_tratamiento: 'requiere_tratamiento_detalle',
+  sufre_alergia: 'sufre_alergia_detalle',
+  esta_anticoagulado: 'anticoagulado_droga',
+  regimen_dietario: 'regimen_dietario_detalle',
+  ataques_panico_ansiedad: 'ataques_panico_frecuencia',
+  diagnostico_salud_mental: 'diagnostico_salud_mental_detalle',
+  recibe_tratamiento_salud_mental: 'recibe_tratamiento_salud_mental_detalle',
+  miedo_fobia_excesivo: 'miedo_fobia_detalle',
+  ret_autoriza_retirarse_solo: 'ret_retiro_solo_aclaracion',
+  colab_otros: 'colab_otros_detalle',
+};
+
+const CAMPOS_DETALLE_OCULTOS = new Set(Object.values(DETALLE_POR_BOOLEAN));
+
+const CHIPS_RAPIDOS: Record<string, { label: string; value: string }[]> = {
+  grupo_sanguineo: [
+    { label: '0', value: '0' },
+    { label: 'A', value: 'A' },
+    { label: 'B', value: 'B' },
+    { label: 'AB', value: 'AB' },
+  ],
+  factor_rh: [
+    { label: 'RH +', value: '+' },
+    { label: 'RH -', value: '-' },
+  ],
 };
 
 export const DynamicFormRenderer: React.FC<Props> = ({
@@ -106,644 +136,739 @@ export const DynamicFormRenderer: React.FC<Props> = ({
   valoresIniciales = {},
   onSubmit,
   cargando = false,
-  edadMiembro,
 }) => {
   const [pasoActivo, setPasoActivo] = useState(0);
+  const [familiarTab, setFamiliarTab] = useState<'madre' | 'padre' | 'tutor'>('madre');
+  const [catMateriales, setCatMateriales] = useState<'construccion' | 'campamento'>('campamento');
+  const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+  const formTopRef = useRef<HTMLDivElement>(null);
 
   const {
     register,
     handleSubmit,
     watch,
     setValue,
+    trigger,
     formState: { errors },
   } = useForm({
     defaultValues: valoresIniciales,
+    shouldFocusError: false,
   });
 
   const formData = watch();
 
-  // Prellenado inteligente del Adulto Autorizante en el Paso 3 según el tipo seleccionado
+  // Cantidad de personas autorizadas visibles en Paso 6 (Retiro)
+  const [personasRetiroVisibles, setPersonasRetiroVisibles] = useState<number>(() => {
+    if (valoresIniciales.ret_persona3_nombre) return 3;
+    if (valoresIniciales.ret_persona2_nombre) return 2;
+    return 1;
+  });
+
+  // Prellenado del Adulto Autorizante en el Paso 3 solo cuando el usuario elige quién firma (evita tipear dos veces al mismo familiar)
   const autorizanteTipo = watch('autorizante_tipo');
   useEffect(() => {
     if (!autorizanteTipo) return;
-
-    if (autorizanteTipo === 'madre') {
-      if (formData.madre_nombres) setValue('autorizante_nombre', formData.madre_nombres);
-      if (formData.madre_dni) setValue('autorizante_dni', formData.madre_dni);
-      if (formData.madre_telefono) setValue('autorizante_telefono', formData.madre_telefono);
-      if (formData.madre_domicilio) setValue('autorizante_domicilio', formData.madre_domicilio);
-      setValue('autorizante_caracter', 'Madre');
-      if (!formData.autorizante_nacionalidad) setValue('autorizante_nacionalidad', 'Argentina');
-    } else if (autorizanteTipo === 'padre') {
-      if (formData.padre_nombres) setValue('autorizante_nombre', formData.padre_nombres);
-      if (formData.padre_dni) setValue('autorizante_dni', formData.padre_dni);
-      if (formData.padre_telefono) setValue('autorizante_telefono', formData.padre_telefono);
-      if (formData.padre_domicilio) setValue('autorizante_domicilio', formData.padre_domicilio);
-      setValue('autorizante_caracter', 'Padre');
-      if (!formData.autorizante_nacionalidad) setValue('autorizante_nacionalidad', 'Argentina');
-    } else if (autorizanteTipo === 'tutor') {
-      if (formData.tutor_nombres) setValue('autorizante_nombre', formData.tutor_nombres);
-      if (formData.tutor_dni) setValue('autorizante_dni', formData.tutor_dni);
-      if (formData.tutor_telefono) setValue('autorizante_telefono', formData.tutor_telefono);
-      if (formData.tutor_domicilio) setValue('autorizante_domicilio', formData.tutor_domicilio);
-      setValue('autorizante_caracter', 'Tutor judicial');
-      if (!formData.autorizante_nacionalidad) setValue('autorizante_nacionalidad', 'Argentina');
-    }
+    const mapCaract: Record<string, string> = {
+      madre: 'Madre',
+      padre: 'Padre',
+      tutor: 'Tutor judicial',
+    };
+    const prefix = autorizanteTipo as 'madre' | 'padre' | 'tutor';
+    if (formData[`${prefix}_nombres`]) setValue('autorizante_nombre', formData[`${prefix}_nombres`]);
+    if (formData[`${prefix}_dni`]) setValue('autorizante_dni', formData[`${prefix}_dni`]);
+    if (formData[`${prefix}_telefono`]) setValue('autorizante_telefono', formData[`${prefix}_telefono`]);
+    if (formData[`${prefix}_domicilio`]) setValue('autorizante_domicilio', formData[`${prefix}_domicilio`]);
+    if (mapCaract[prefix]) setValue('autorizante_caracter', mapCaract[prefix]);
+    if (!formData.autorizante_nacionalidad) setValue('autorizante_nacionalidad', 'Argentina');
+    if (!formData.menor_nacionalidad) setValue('menor_nacionalidad', 'Argentina');
   }, [autorizanteTipo, setValue]);
 
-  // Sincronización inteligente de Domicilio y Teléfono entre protagonista y familia
-  const madreDomicilio = watch('madre_domicilio');
-  const madreConvive = watch('madre_convive');
-  const padreDomicilio = watch('padre_domicilio');
-  const padreConvive = watch('padre_convive');
+  // Solo copiar el domicilio del protagonista si el familiar marca explícitamente que convive en el mismo hogar y su domicilio está vacío
   const protagonistaDomicilio = watch('protagonista_domicilio');
-  const madreTelefono = watch('madre_telefono');
-  const padreTelefono = watch('padre_telefono');
-  const protagonistaTelefono = watch('protagonista_telefono');
+  const madreConvive = watch('madre_convive');
+  const padreConvive = watch('padre_convive');
+  const tutorConvive = watch('tutor_convive');
 
   useEffect(() => {
-    if (!protagonistaDomicilio) {
-      if (madreDomicilio && madreConvive !== false) {
-        setValue('protagonista_domicilio', madreDomicilio);
-      } else if (padreDomicilio && padreConvive !== false) {
-        setValue('protagonista_domicilio', padreDomicilio);
-      }
+    if (madreConvive === true && protagonistaDomicilio && !formData.madre_domicilio) {
+      setValue('madre_domicilio', protagonistaDomicilio);
     }
-  }, [madreDomicilio, madreConvive, padreDomicilio, padreConvive, protagonistaDomicilio, setValue]);
+  }, [madreConvive, protagonistaDomicilio, setValue]);
 
   useEffect(() => {
-    if (protagonistaDomicilio) {
-      if (!madreDomicilio && madreConvive !== false) setValue('madre_domicilio', protagonistaDomicilio);
-      if (!padreDomicilio && padreConvive !== false) setValue('padre_domicilio', protagonistaDomicilio);
+    if (padreConvive === true && protagonistaDomicilio && !formData.padre_domicilio) {
+      setValue('padre_domicilio', protagonistaDomicilio);
     }
-  }, [protagonistaDomicilio, madreDomicilio, madreConvive, padreDomicilio, padreConvive, setValue]);
+  }, [padreConvive, protagonistaDomicilio, setValue]);
 
   useEffect(() => {
-    if (!protagonistaTelefono) {
-      if (madreTelefono) setValue('protagonista_telefono', madreTelefono);
-      else if (padreTelefono) setValue('protagonista_telefono', padreTelefono);
+    if (
+      tutorConvive === true &&
+      protagonistaDomicilio &&
+      formData.tutor_nombres &&
+      !formData.tutor_domicilio
+    ) {
+      setValue('tutor_domicilio', protagonistaDomicilio);
     }
-  }, [protagonistaTelefono, madreTelefono, padreTelefono, setValue]);
-
-  useEffect(() => {
-    if (!formData.tel_emergencia_1) {
-      if (protagonistaTelefono) setValue('tel_emergencia_1', protagonistaTelefono);
-      else if (madreTelefono) setValue('tel_emergencia_1', madreTelefono);
-    }
-    if (!formData.tel_emergencia_2 && padreTelefono && padreTelefono !== formData.tel_emergencia_1) {
-      setValue('tel_emergencia_2', padreTelefono);
-    }
-  }, [protagonistaTelefono, madreTelefono, padreTelefono, formData.tel_emergencia_1, formData.tel_emergencia_2, setValue]);
-
-  const tieneCondicionEspecial = Boolean(
-    formData.condicion_salud_preexistente || formData.tiene_cud || formData.enfermedad_cronica,
-  );
+  }, [tutorConvive, protagonistaDomicilio, setValue]);
 
   const secciones = esquema.secciones || [];
   const seccionActual = secciones[pasoActivo] || secciones[0];
 
-  const [errorValidacion, setErrorValidacion] = useState<string | null>(null);
+  // Mapa rápido de campos de la sección actual por key
+  const camposPorKey = useMemo(() => {
+    const map = new Map<string, CampoSchema>();
+    seccionActual?.campos.forEach((c) => map.set(c.key, c));
+    return map;
+  }, [seccionActual]);
 
   const irAPaso = (index: number) => {
     if (index >= 0 && index < secciones.length) {
       setPasoActivo(index);
       setErrorValidacion(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  // Guardar borrador NO debe bloquearse con validaciones estrictas
   const handleGuardarBorrador = () => {
     setErrorValidacion(null);
     return onSubmit(watch(), false);
   };
 
-  // Finalizar valida y, si hay error, salta automáticamente al paso donde falta completar
   const onFinalizarValido = (data: Record<string, unknown>) => {
     setErrorValidacion(null);
     return onSubmit(data, true);
   };
 
-  const onFinalizarError = (formErrors: any) => {
+  const onFinalizarError = (formErrors: Record<string, unknown>) => {
     const errorKeys = Object.keys(formErrors);
     if (errorKeys.length === 0) return;
     const primeraClave = errorKeys[0];
+
+    // Si el error pertenece a un familiar en el Paso 1, abrimos la pestaña correspondiente
+    if (primeraClave.startsWith('madre_')) setFamiliarTab('madre');
+    else if (primeraClave.startsWith('padre_')) setFamiliarTab('padre');
+    else if (primeraClave.startsWith('tutor_')) setFamiliarTab('tutor');
 
     const pasoConError = secciones.findIndex((sec) =>
       sec.campos.some((c) => c.key === primeraClave),
     );
 
     if (pasoConError !== -1) {
-      const nombrePaso = secciones[pasoConError]?.titulo || `Paso ${pasoConError + 1}`;
-      setErrorValidacion(`Falta completar campos obligatorios en: ${nombrePaso}`);
+      const nombreCorto =
+        NOMBRES_CORTOS_PASO[secciones[pasoConError].id] || `Paso ${pasoConError + 1}`;
+      setErrorValidacion(`Completá los datos obligatorios en "${nombreCorto}"`);
       irAPaso(pasoConError);
     }
   };
 
   const handleFinalizarFirma = handleSubmit(onFinalizarValido, onFinalizarError);
 
-  const getBadgeInfo = (sec: SeccionSchema) => {
-    if (sec.id === 'seccion_necesidades_especiales') {
-      if (formData.tiene_cud) {
-        return {
-          label: 'Obligatorio (por CUD)',
-          stepperSub: '(Obligatorio)',
-          className: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300',
-        };
-      }
-      return {
-        label: 'Si aplica',
-        stepperSub: '(Si aplica)',
-        className: 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300',
-      };
+  // Validador de campos requeridos: todos los campos de madre y padre son obligatorios (excepto switch convive)
+  const esRequeridoCampo = (campo: CampoSchema) => {
+    if (campo.key === 'madre_convive' || campo.key === 'padre_convive') {
+      return false; // Switch booleano SÍ / NO, no debe forzarse a true
     }
-    if (sec.id === 'seccion_retiro_menores') {
-      return {
-        label: 'Si aplica',
-        stepperSub: '(Si aplica)',
-        className: 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300',
-      };
-    }
-    if (sec.id === 'seccion_ficha_adultos') {
-      return {
-        label: 'Voluntario',
-        stepperSub: '(Voluntario)',
-        className: 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300',
-      };
-    }
-    return {
-      label: 'Obligatorio',
-      stepperSub: '',
-      className: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300',
-    };
+    return Boolean(
+      campo.required ||
+        campo.key.startsWith('madre_') ||
+        campo.key.startsWith('padre_') ||
+        (seccionActual?.id === 'seccion_necesidades_especiales' &&
+          formData.tiene_cud &&
+          (campo.key === 'ne_diagnostico' || campo.key === 'ne_cud_vencimiento_prestacion')),
+    );
   };
 
-  const badgeActual = seccionActual ? getBadgeInfo(seccionActual) : null;
+  // Avanza al siguiente paso validando campos obligatorios de la sección actual
+  const handleSiguientePaso = async () => {
+    if (seccionActual) {
+      const camposRequeridosActuales: string[] = [];
 
-  return (
-    <div className="space-y-6">
-      {/* Barra de progreso y pestañas de pasos */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-6 border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg md:text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <span>Paso {pasoActivo + 1} de {secciones.length}:</span>
-              <span className="text-emerald-700 dark:text-emerald-400">{seccionActual?.titulo}</span>
-            </h2>
-            <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              {seccionActual?.descripcion || 'Complete los campos solicitados para el legajo oficial.'}
-            </p>
+      seccionActual.campos.forEach((campo) => {
+        if (!CAMPOS_DETALLE_OCULTOS.has(campo.key) && esRequeridoCampo(campo)) {
+          camposRequeridosActuales.push(campo.key);
+        }
+      });
+
+      if (camposRequeridosActuales.length > 0) {
+        const esValido = await trigger(camposRequeridosActuales);
+        if (!esValido) {
+          const valores = watch();
+          const primerInvalido =
+            camposRequeridosActuales.find((k) => errors[k]) ||
+            camposRequeridosActuales.find((k) => {
+              const val = valores[k];
+              return val === undefined || val === null || String(val).trim() === '';
+            });
+
+          if (primerInvalido?.startsWith('madre_')) setFamiliarTab('madre');
+          else if (primerInvalido?.startsWith('padre_')) setFamiliarTab('padre');
+          else if (primerInvalido?.startsWith('tutor_')) setFamiliarTab('tutor');
+
+          setErrorValidacion(
+            'Por favor completá los campos obligatorios marcados con * antes de continuar.',
+          );
+          formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          return;
+        }
+      }
+    }
+
+    irAPaso(pasoActivo + 1);
+  };
+
+  // Limpia prefijos repetitivos en etiquetas agrupadas
+  const limpiarLabel = (label: string) =>
+    label
+      .replace(/^(Madre|Padre|Tutor):\s*/i, '')
+      .replace(/^Persona \d+( autorizada a retirar)?:\s*/i, '');
+
+  // Renderizador individual de un campo optimizado para el pulgar
+  const renderCampo = (campo: CampoSchema) => {
+    const error = errors[campo.key]?.message as string | undefined;
+    const esRequerido = esRequeridoCampo(campo);
+    const labelLimpio = limpiarLabel(campo.label);
+
+    // 1. Selector Rápido por Chips (Reemplaza <select> y campos como Grupo Sanguíneo / Factor RH)
+    const opcionesChips = campo.options || CHIPS_RAPIDOS[campo.key];
+    if (opcionesChips) {
+      const valorActual = String(formData[campo.key] || '');
+      return (
+        <div key={campo.key} className="space-y-1.5">
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+            {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
+          </label>
+          <input
+            type="hidden"
+            {...register(campo.key, {
+              required: esRequerido ? 'Seleccioná una opción' : false,
+            })}
+          />
+          <div className="flex flex-wrap gap-2">
+            {opcionesChips.map((opt) => {
+              const activo = valorActual === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setValue(campo.key, opt.value, { shouldValidate: true })}
+                  className={`flex-1 min-w-[76px] min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                    activo
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {activo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  <span>{opt.label}</span>
+                </button>
+              );
+            })}
           </div>
-          {badgeActual && (
-            <span className={`text-xs px-3 py-1 rounded-full font-semibold ${badgeActual.className}`}>
-              {badgeActual.label}
+          {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
+        </div>
+      );
+    }
+
+    // 2. Interruptor Táctil (Switch Card) + Campo de Detalle integrado cuando está activo
+    if (campo.type === 'boolean') {
+      const isChecked = Boolean(formData[campo.key]);
+      const detalleKey = DETALLE_POR_BOOLEAN[campo.key];
+      const campoDetalle = detalleKey ? camposPorKey.get(detalleKey) : undefined;
+
+      return (
+        <div
+          key={campo.key}
+          className={`rounded-2xl border transition-all md:col-span-2 ${
+            isChecked
+              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800'
+              : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => setValue(campo.key, !isChecked, { shouldValidate: true })}
+            className="w-full min-h-[52px] px-4 py-3 flex items-center justify-between gap-3 text-left cursor-pointer"
+          >
+            <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug">
+              {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
             </span>
+
+            <span
+              className={`shrink-0 inline-flex items-center w-14 h-8 rounded-full p-1 transition-colors ${
+                isChecked ? 'bg-emerald-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+              }`}
+            >
+              <span className="w-6 h-6 rounded-full bg-white shadow-xs flex items-center justify-center text-[10px] font-extrabold text-slate-700">
+                {isChecked ? 'SÍ' : 'NO'}
+              </span>
+            </span>
+          </button>
+
+          {isChecked && campoDetalle && (
+            <div className="px-4 pb-3.5 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
+              <input
+                type="text"
+                placeholder={`${campoDetalle.label}...`}
+                {...register(campoDetalle.key)}
+                className="w-full min-h-[42px] px-3.5 py-2 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
           )}
         </div>
+      );
+    }
 
-        {/* Stepper horizontal responsivo */}
-        <div className="grid grid-cols-4 md:grid-cols-7 gap-2 pt-2">
+    // 3. Tarjetas Compactas de Materiales con Chips Táctiles (Prestar / Donar)
+    if (campo.type === 'materiales_tabla') {
+      const lista =
+        catMateriales === 'construccion' ? MATERIALES_CONSTRUCCION : MATERIALES_CAMPAMENTO;
+
+      return (
+        <div key={campo.key} className="md:col-span-2 space-y-3 pt-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
+              Materiales para Prestar o Donar
+            </span>
+            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setCatMateriales('campamento')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  catMateriales === 'campamento'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                    : 'text-slate-500'
+                }`}
+              >
+                ⛺ Campamento
+              </button>
+              <button
+                type="button"
+                onClick={() => setCatMateriales('construccion')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  catMateriales === 'construccion'
+                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                    : 'text-slate-500'
+                }`}
+              >
+                🏗️ Construcción
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {lista.map((item) => {
+              const preKey = `mat_${item.key}_prestamo`;
+              const donKey = `mat_${item.key}_donacion`;
+              const isPre = Boolean(formData[preKey]);
+              const isDon = Boolean(formData[donKey]);
+
+              return (
+                <div
+                  key={item.key}
+                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition ${
+                    isPre || isDon
+                      ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                      : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-800'
+                  }`}
+                >
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                    {item.label}
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setValue(preKey, !isPre)}
+                      className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                        isPre
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      Prestar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setValue(donKey, !isDon)}
+                      className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                        isDon
+                          ? 'bg-emerald-600 text-white border-emerald-600'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      Donar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // 4. Textarea compacto
+    if (campo.type === 'textarea') {
+      return (
+        <div key={campo.key} className="space-y-1.5 md:col-span-2">
+          <label htmlFor={campo.key} className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+            {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
+          </label>
+          <textarea
+            id={campo.key}
+            rows={2}
+            {...register(campo.key, {
+              required: esRequerido ? 'Completá este campo' : false,
+            })}
+            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
+        </div>
+      );
+    }
+
+    // 5. Input estándar con teclado móvil adecuado (numeric/tel/email/date)
+    const esDniOPeso =
+      campo.key.includes('dni') || campo.key === 'peso_kg' || campo.key === 'escolaridad_grado';
+
+    return (
+      <div key={campo.key} className="space-y-1.5">
+        <label htmlFor={campo.key} className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+          {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
+        </label>
+        <input
+          type={campo.type || 'text'}
+          id={campo.key}
+          inputMode={campo.type === 'tel' ? 'tel' : esDniOPeso ? 'numeric' : undefined}
+          {...register(campo.key, {
+            required: esRequerido ? 'Completá este campo' : false,
+          })}
+          className="w-full min-h-[44px] px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+        />
+        {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
+      </div>
+    );
+  };
+
+  // Filtrado inteligente de campos por paso para reducir scroll en móvil
+  const renderContenidoSeccion = () => {
+    if (!seccionActual) return null;
+
+    // PASO 1: Separar datos del protagonista y pestañas Madre / Padre / Tutor
+    if (seccionActual.id === 'seccion_inscripcion') {
+      const camposProtagonista = seccionActual.campos.filter(
+        (c) =>
+          !c.key.startsWith('madre_') &&
+          !c.key.startsWith('padre_') &&
+          !c.key.startsWith('tutor_') &&
+          !CAMPOS_DETALLE_OCULTOS.has(c.key),
+      );
+
+      return (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {camposProtagonista.map(renderCampo)}
+          </div>
+
+          {/* Selector de Familiares por Pestañas Táctiles (montados en DOM para validación completa) */}
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                Datos de Familiares Obligatorios
+              </span>
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
+                {(
+                  [
+                    { id: 'madre', label: 'Madre', req: true },
+                    { id: 'padre', label: 'Padre', req: true },
+                    { id: 'tutor', label: 'Tutor', req: false },
+                  ] as const
+                ).map((t) => {
+                  const tieneDatos = Boolean(formData[`${t.id}_nombres`]);
+                  const tieneErrores = Object.keys(errors).some((k) => k.startsWith(`${t.id}_`));
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setFamiliarTab(t.id)}
+                      className={`flex-1 sm:flex-initial min-h-[40px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                        familiarTab === t.id
+                          ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                          : tieneErrores
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <span>{t.label}</span>
+                      {t.req && <span className="text-rose-500 font-extrabold">*</span>}
+                      {tieneDatos && !tieneErrores && (
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      )}
+                      {tieneErrores && (
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {(['madre', 'padre', 'tutor'] as const).map((tabId) => {
+                const campos = seccionActual.campos.filter((c) => c.key.startsWith(`${tabId}_`));
+                const esActivo = familiarTab === tabId;
+                return (
+                  <div
+                    key={tabId}
+                    className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-800 ${
+                      esActivo ? '' : 'hidden'
+                    }`}
+                  >
+                    {campos.map(renderCampo)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // PASO 6: Retiro de Menores con despliegue progresivo (Persona 1 -> + Agregar otra)
+    if (seccionActual.id === 'seccion_retiro_menores') {
+      const camposRetiro = seccionActual.campos.filter((c) => {
+        if (CAMPOS_DETALLE_OCULTOS.has(c.key)) return false;
+        if (c.key.startsWith('ret_persona2_') && personasRetiroVisibles < 2) return false;
+        if (c.key.startsWith('ret_persona3_') && personasRetiroVisibles < 3) return false;
+        return true;
+      });
+
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {camposRetiro.map(renderCampo)}
+          </div>
+
+          {personasRetiroVisibles < 3 && (
+            <button
+              type="button"
+              onClick={() => setPersonasRetiroVisibles((n) => Math.min(3, n + 1))}
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Agregar otra persona autorizada ({personasRetiroVisibles}/3)</span>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    // PASO 7: Voluntariado y Materiales (Oculta los 25 campos si el switch principal está apagado)
+    if (seccionActual.id === 'seccion_ficha_adultos') {
+      const switchPrincipal = seccionActual.campos.find((c) => c.key === 'completar_ficha_adultos');
+      const deseaColaborar = Boolean(formData.completar_ficha_adultos);
+      const restoCampos = seccionActual.campos.filter(
+        (c) => c.key !== 'completar_ficha_adultos' && !CAMPOS_DETALLE_OCULTOS.has(c.key),
+      );
+
+      return (
+        <div className="space-y-4">
+          {switchPrincipal && renderCampo(switchPrincipal)}
+
+          {deseaColaborar && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+              {restoCampos.map(renderCampo)}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // RESTO DE PASOS (Salud, Ingreso, Salidas, Apoyos)
+    const camposVisibles = seccionActual.campos.filter((c) => {
+      if (CAMPOS_DETALLE_OCULTOS.has(c.key)) return false;
+      // Solo pedir aclaración de restricción física si marcó que NO puede hacer cualquier actividad
+      if (
+        c.key === 'sit_actividad_fisica_no_especifique' &&
+        formData.sit_cualquier_actividad_fisica
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    return (
+      <div className="space-y-4">
+        {seccionActual.id === 'seccion_autorizacion_salidas' && (
+          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1">
+            <p className="font-bold text-slate-800 dark:text-slate-100">
+              Salidas por el día sin pernocte (Ciclo 2026)
+            </p>
+            <p>
+              Habilita paseos barriales, visitas a parques, actividades comunitarias y traslados del
+              Grupo Scout.
+            </p>
+            {Boolean(formData.autorizante_nombre) && (
+              <p className="pt-1 text-emerald-700 dark:text-emerald-400 font-bold">
+                Firma: {String(formData.autorizante_nombre)} (
+                {String(formData.autorizante_caracter || 'Familiar')})
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {camposVisibles.map(renderCampo)}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div ref={formTopRef} className="space-y-4 scroll-mt-20">
+      {/* Navegador de Pasos Compacto (1 fila deslizable con el pulgar) */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs flex items-center justify-center shrink-0">
+              {pasoActivo + 1}/{secciones.length}
+            </span>
+            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
+              {NOMBRES_CORTOS_PASO[seccionActual?.id] || seccionActual?.titulo}
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGuardarBorrador}
+            disabled={cargando}
+            className="min-h-[36px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 disabled:opacity-50"
+          >
+            <Save className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Guardar avance</span>
+          </button>
+        </div>
+
+        {/* Chips Horizontales de Pasos */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
           {secciones.map((sec, idx) => {
             const esActivo = idx === pasoActivo;
             const esPasado = idx < pasoActivo;
-            const badge = getBadgeInfo(sec);
+            const nombreCorto = NOMBRES_CORTOS_PASO[sec.id] || `Paso ${idx + 1}`;
 
             return (
               <button
                 key={sec.id}
                 type="button"
                 onClick={() => irAPaso(idx)}
-                className={`flex flex-col items-center p-2 rounded-xl text-center transition-all ${
+                className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer shrink-0 border ${
                   esActivo
-                    ? 'bg-emerald-700 text-white shadow-md shadow-emerald-700/20 ring-2 ring-emerald-500'
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
                     : esPasado
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                    : 'bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800'
                 }`}
               >
-                <div className="mb-1">
-                  {esPasado ? <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" /> : (PASO_ICONOS[sec.id] || <FileText className="w-5 h-5" />)}
-                </div>
-                <span className="text-[11px] font-medium line-clamp-1 leading-tight">
-                  {idx + 1}. {sec.titulo.split('.')[1] ? sec.titulo.split('.')[1].trim() : sec.titulo}
-                </span>
-                {badge.stepperSub && (
-                  <span className={`text-[9px] mt-0.5 ${esActivo ? 'text-emerald-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                    {badge.stepperSub}
-                  </span>
+                {esPasado ? (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                ) : (
+                  PASO_ICONOS[sec.id] || <FileText className="w-3.5 h-3.5" />
                 )}
+                <span>
+                  {idx + 1}. {nombreCorto}
+                </span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Sugerencia inteligente si marcó condición especial */}
-      {tieneCondicionEspecial && pasoActivo < 4 && (
-        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl p-4 flex items-start gap-3 text-amber-900 dark:text-amber-200 text-sm">
-          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <span className="font-semibold">Atención pedagógica:</span> Notamos que indicaste alguna condición médica preexistente, CUD o enfermedad crónica. Recuerda que en el <strong>Paso 5 (Ficha de Necesidades Especiales)</strong> podrás detallar los cuidados, gustos y apoyos para que los educadores adapten las actividades de la mejor forma.
-          </div>
-          <button
-            type="button"
-            onClick={() => irAPaso(4)}
-            className="text-xs bg-amber-200 dark:bg-amber-900/60 hover:bg-amber-300 dark:hover:bg-amber-800 px-3 py-1.5 rounded-lg font-medium text-amber-900 dark:text-amber-100 shrink-0"
-          >
-            Ir al Paso 5
-          </button>
-        </div>
-      )}
-
+      {/* Alerta de Validación Directa */}
       {errorValidacion && (
-        <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 rounded-xl p-4 flex items-center gap-3 text-red-800 dark:text-red-200 text-sm animate-pulse">
-          <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0" />
-          <span className="font-semibold">{errorValidacion}</span>
+        <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-2xl p-3.5 flex items-center gap-2.5 text-rose-800 dark:text-rose-200 text-xs font-bold">
+          <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+          <span>{errorValidacion}</span>
         </div>
       )}
 
-      {/* Contenido del paso actual */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-        <div className="border-b border-slate-100 dark:border-slate-800 pb-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2.5">
-              <span className="p-2 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 rounded-xl">
-                {PASO_ICONOS[seccionActual?.id] || <FileText className="w-5 h-5" />}
-              </span>
-              {seccionActual?.titulo}
-            </h3>
-            {seccionActual?.permiteCopiarHermano && (
-              <span className="inline-block text-xs bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-medium">
-                👨‍👩‍👧‍👦 Datos compartidos con hermanos
-              </span>
-            )}
-          </div>
-          {seccionActual?.descripcion && (
-            <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-100 dark:border-slate-800">
-              {seccionActual.descripcion}
-            </p>
-          )}
-        </div>
-
-        {/* Banner informativo y términos oficiales para Salidas Cercanas */}
-        {Boolean(seccionActual?.id === 'seccion_autorizacion_salidas') && (
-          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-xl p-5 space-y-3 text-slate-700 dark:text-slate-300 text-xs md:text-sm">
-            <div className="flex items-start gap-3 text-emerald-800 dark:text-emerald-300 font-semibold text-sm md:text-base border-b border-slate-200 dark:border-slate-700 pb-2">
-              <Compass className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Condiciones Oficiales de la Autorización Anual para Salidas Cercanas (SAAC 07-21)</span>
-            </div>
-            <p className="leading-relaxed">
-              De conformidad con las normas de <strong>Scouts de Argentina Asociación Civil (Capítulo 4 del Manual General de Normas)</strong>, esta autorización habilita al menor a realizar actividades planificadas por los Educadores Scout fuera de la sede del Grupo durante el <strong>ciclo 2026</strong>, <em>siempre y cuando la salida no requiera pernocte</em>:
-            </p>
-            <ul className="list-disc list-inside space-y-1 pl-1 text-slate-600 dark:text-slate-300">
-              <li>Juegos por el barrio o localidad, y visitas a plazas o parques cercanos.</li>
-              <li>Actividades comunitarias, religiosas, servicios, recolección o eventos barriales.</li>
-              <li>Traslado oficial por parte de la Institución por los medios de transporte dispuestos por la misma.</li>
-            </ul>
-            <p className="text-[11px] md:text-xs text-slate-500 dark:text-slate-400 italic bg-white dark:bg-slate-900/60 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800">
-              📌 <strong>Nota:</strong> Para campamentos, salidas con pernocte o actividades especiales fuera de este marco, la jefatura solicitará la autorización individual correspondiente previa al evento.
-            </p>
-            <div className="flex flex-wrap gap-4 pt-1 text-xs text-slate-600 dark:text-slate-300">
-              <span><strong>Autorizante:</strong> {String(formData.autorizante_nombre || 'Madre / Padre / Tutor asignado en Paso 3')}</span>
-              <span><strong>DNI:</strong> {String(formData.autorizante_dni || '---')}</span>
-              <span><strong>Carácter:</strong> {String(formData.autorizante_caracter || 'Madre / Padre / Tutor')}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Banner especial para Retiro de Menores */}
-        {Boolean(seccionActual?.id === 'seccion_retiro_menores') && (
-          <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 rounded-xl p-4 flex items-start gap-3 text-blue-900 dark:text-blue-200 text-xs md:text-sm">
-            <UserCheck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold block mb-1">Personas Autorizadas a Retirar al Protagonista:</span>
-              Indique a continuación a las personas mayores autorizadas expresamente por la familia para retirar al menor de las actividades scout (abuelos, tíos, vecinos, etc.). Si autoriza a que el menor se retire solo/a por sus propios medios, indíquelo al pie en la casilla correspondiente.
-            </div>
-          </div>
-        )}
-
-        {/* Banner especial para CUD en Necesidades Especiales */}
-        {Boolean(seccionActual?.id === 'seccion_necesidades_especiales' && formData.tiene_cud) && (
-          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 rounded-xl p-4 flex items-start gap-3 text-emerald-900 dark:text-emerald-200 text-xs md:text-sm">
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold block mb-0.5">Sección obligatoria por CUD:</span>
-              Al haber indicado que el protagonista cuenta con CUD en la Declaración Jurada de Salud, es obligatorio completar el diagnóstico y vencimiento/orientación prestacional para su correcta integración scout.
-            </div>
-          </div>
-        )}
-
-        {/* Formulario de campos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {seccionActual?.campos.map((campo) => {
-            const error = errors[campo.key]?.message as string | undefined;
-
-            // Obligatoriedad condicional para CUD en Necesidades Especiales
-            const esRequerido = Boolean(
-              campo.required ||
-              (seccionActual?.id === 'seccion_necesidades_especiales' &&
-                formData.tiene_cud &&
-                (campo.key === 'ne_diagnostico' || campo.key === 'ne_cud_vencimiento_prestacion'))
-            );
-
-            // Tipo Boolean (Checkbox)
-            if (campo.type === 'boolean') {
-              const isChecked = Boolean(formData[campo.key]);
-              return (
-                <div
-                  key={campo.key}
-                  className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all md:col-span-2 ${
-                    isChecked
-                      ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800'
-                      : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    id={campo.key}
-                    {...register(campo.key)}
-                    className="h-5 w-5 rounded border-slate-300 dark:border-slate-700 text-emerald-700 focus:ring-emerald-500 bg-white dark:bg-slate-800 mt-0.5 cursor-pointer"
-                  />
-                  <label htmlFor={campo.key} className="text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer flex-1">
-                    {campo.label} {esRequerido && <span className="text-red-500">*</span>}
-                  </label>
-                </div>
-              );
-            }
-
-            // Tipo Select (Dropdown)
-            if (campo.type === 'select' && campo.options) {
-              return (
-                <div key={campo.key} className="space-y-1.5 md:col-span-2">
-                  <label htmlFor={campo.key} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {campo.label} {esRequerido && <span className="text-red-500">*</span>}
-                  </label>
-                  <select
-                    id={campo.key}
-                    {...register(campo.key, {
-                      required: esRequerido ? 'Este campo es obligatorio' : false,
-                    })}
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors cursor-pointer"
-                  >
-                    <option value="">-- Seleccionar opción --</option>
-                    {campo.options.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  {error && <p className="text-xs text-red-500">{error}</p>}
-                </div>
-              );
-            }
-
-            // Tipo Textarea
-            if (campo.type === 'textarea') {
-              return (
-                <div key={campo.key} className="space-y-1.5 md:col-span-2">
-                  <label htmlFor={campo.key} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {campo.label} {esRequerido && <span className="text-red-500">*</span>}
-                  </label>
-                  <textarea
-                    id={campo.key}
-                    rows={3}
-                    {...register(campo.key, {
-                      required: esRequerido ? 'Este campo es obligatorio' : false,
-                    })}
-                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
-                  />
-                  {error && <p className="text-xs text-red-500">{error}</p>}
-                </div>
-              );
-            }
-
-            // Tipo Tabla de Materiales (Préstamo y Donación)
-            if (campo.type === 'materiales_tabla') {
-              return (
-                <div key={campo.key} className="md:col-span-2 space-y-4 pt-2">
-                  <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 md:p-6">
-                    <div className="flex items-center gap-2.5 mb-2">
-                      <span className="p-1.5 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 rounded-lg">
-                        <Sparkles className="w-4 h-4" />
-                      </span>
-                      <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm md:text-base">
-                        Relevamiento de Materiales y Herramientas (Préstamo o Donación)
-                      </h4>
-                    </div>
-                    <p className="text-xs md:text-sm text-slate-600 dark:text-slate-300 mb-5 leading-relaxed">
-                      Marque con una tilde en la casilla correspondiente si su familia puede <strong>prestar</strong> (para uso durante actividades o campamentos y luego devolver) o <strong>donar</strong> al Grupo Scout:
-                    </p>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Columna Materiales de Construcción */}
-                      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-                        <div className="bg-slate-100 dark:bg-slate-800/90 px-3.5 py-2.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                          <span className="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                            <span>🏗️</span> Material de Construcción
-                          </span>
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                            <span className="w-16 text-center text-blue-700 dark:text-blue-400">Préstamo</span>
-                            <span className="w-16 text-center text-emerald-700 dark:text-emerald-400">Donación</span>
-                          </div>
-                        </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                          {MATERIALES_CONSTRUCCION.map((item) => {
-                            const preKey = `mat_${item.key}_prestamo`;
-                            const donKey = `mat_${item.key}_donacion`;
-                            const isPre = Boolean(formData[preKey]);
-                            const isDon = Boolean(formData[donKey]);
-
-                            return (
-                              <div
-                                key={item.key}
-                                className={`flex items-center justify-between px-3.5 py-2 text-xs transition-colors ${
-                                  isPre || isDon
-                                    ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
-                                    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
-                                }`}
-                              >
-                                <span className="font-medium text-slate-700 dark:text-slate-300 pr-2">
-                                  {item.label}
-                                </span>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <label
-                                    title={`Prestar ${item.label}`}
-                                    className="w-16 flex items-center justify-center py-1 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 rounded"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      {...register(preKey)}
-                                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                    />
-                                  </label>
-                                  <label
-                                    title={`Donar ${item.label}`}
-                                    className="w-16 flex items-center justify-center py-1 cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 rounded"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      {...register(donKey)}
-                                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                    />
-                                  </label>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Columna Materiales de Campamento */}
-                      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-xs">
-                        <div className="bg-slate-100 dark:bg-slate-800/90 px-3.5 py-2.5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                          <span className="font-bold text-xs md:text-sm text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                            <span>⛺</span> Material de Campamento
-                          </span>
-                          <div className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-slate-400">
-                            <span className="w-16 text-center text-blue-700 dark:text-blue-400">Préstamo</span>
-                            <span className="w-16 text-center text-emerald-700 dark:text-emerald-400">Donación</span>
-                          </div>
-                        </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                          {MATERIALES_CAMPAMENTO.map((item) => {
-                            const preKey = `mat_${item.key}_prestamo`;
-                            const donKey = `mat_${item.key}_donacion`;
-                            const isPre = Boolean(formData[preKey]);
-                            const isDon = Boolean(formData[donKey]);
-
-                            return (
-                              <div
-                                key={item.key}
-                                className={`flex items-center justify-between px-3.5 py-2 text-xs transition-colors ${
-                                  isPre || isDon
-                                    ? 'bg-emerald-50/50 dark:bg-emerald-950/20'
-                                    : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
-                                }`}
-                              >
-                                <span className="font-medium text-slate-700 dark:text-slate-300 pr-2">
-                                  {item.label}
-                                </span>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <label
-                                    title={`Prestar ${item.label}`}
-                                    className="w-16 flex items-center justify-center py-1 cursor-pointer hover:bg-blue-50/50 dark:hover:bg-blue-950/20 rounded"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      {...register(preKey)}
-                                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                    />
-                                  </label>
-                                  <label
-                                    title={`Donar ${item.label}`}
-                                    className="w-16 flex items-center justify-center py-1 cursor-pointer hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 rounded"
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      {...register(donKey)}
-                                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                    />
-                                  </label>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-
-            // Tipos de Input común (text, date, email, tel, number)
-            const esMiedoFobia = campo.key === 'miedo_fobia_detalle';
-            const companionBoolKey = COMPANION_BOOLEANS[campo.key];
-
-            return (
-              <div key={campo.key} className={`space-y-1.5 ${esMiedoFobia ? 'md:col-span-2' : ''}`}>
-                <label htmlFor={campo.key} className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {campo.label} {esRequerido && <span className="text-red-500">*</span>}
-                </label>
-                <input
-                  type={campo.type || 'text'}
-                  id={campo.key}
-                  placeholder={
-                    esMiedoFobia
-                      ? 'Especifique el miedo o fobia (ej. alturas, oscuridad, perros, encierro, etc.)'
-                      : undefined
-                  }
-                  {...register(campo.key, {
-                    required: esRequerido ? 'Este campo es obligatorio' : false,
-                    onChange: (e) => {
-                      if (companionBoolKey && e.target.value && e.target.value.trim().length > 0) {
-                        setValue(companionBoolKey, true);
-                      }
-                    },
-                  })}
-                  className={`w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors ${
-                    esMiedoFobia && formData.miedo_fobia_excesivo
-                      ? 'border-emerald-400 dark:border-emerald-700 ring-1 ring-emerald-400/30'
-                      : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                />
-                {esMiedoFobia && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    💡 Si el protagonista padece algún miedo excesivo o fobia, descríbalo aquí para que los educadores tomen los recaudos pedagógicos necesarios durante las actividades y campamentos.
-                  </p>
-                )}
-                {error && <p className="text-xs text-red-500">{error}</p>}
-              </div>
-            );
-          })}
-        </div>
+      {/* Cuerpo de Campos del Paso Actual */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xs">
+        {renderContenidoSeccion()}
       </div>
 
-      {/* Barra de navegación inferior y acciones */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 md:p-6 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={pasoActivo === 0}
-            onClick={() => irAPaso(pasoActivo - 1)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm transition-all cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Anterior
-          </button>
+      {/* Barra de Acción Inferior Optimizada para el Pulgar */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+        {pasoActivo < secciones.length - 1 ? (
+          <div className="space-y-3">
+            {/* Fila Principal: Botón Siguiente Destacado y Botón Anterior */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={pasoActivo === 0}
+                onClick={() => irAPaso(pasoActivo - 1)}
+                className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-30 cursor-pointer shrink-0"
+                aria-label="Paso anterior"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Anterior</span>
+              </button>
 
-          <button
-            type="button"
-            disabled={pasoActivo === secciones.length - 1}
-            onClick={() => irAPaso(pasoActivo + 1)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-900 dark:hover:bg-slate-600 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-sm transition-all cursor-pointer"
-          >
-            Siguiente
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+              <button
+                type="button"
+                onClick={handleSiguientePaso}
+                className="flex-1 min-h-[52px] sm:min-h-[56px] px-5 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <span>
+                  Siguiente:{' '}
+                  {NOMBRES_CORTOS_PASO[secciones[pasoActivo + 1]?.id] ||
+                    `Paso ${pasoActivo + 2}`}
+                </span>
+                <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            </div>
 
-        <div className="flex items-center gap-3 ml-auto">
-          <button
-            type="button"
-            onClick={handleGuardarBorrador}
-            disabled={cargando}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm transition-all cursor-pointer"
-          >
-            <Save className="w-4 h-4 text-slate-500" />
-            Guardar Borrador
-          </button>
+            {/* Acción Secundaria: Finalizar y Descargar PDF (discreto para no confundir al usuario) */}
+            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
+              <span className="text-[11px] font-semibold text-slate-400">
+                Paso {pasoActivo + 1} de {secciones.length}
+              </span>
+              <button
+                type="button"
+                onClick={handleFinalizarFirma}
+                disabled={cargando}
+                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition py-1.5 px-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+              >
+                <Download className="w-3.5 h-3.5 text-slate-400" />
+                <span>Finalizar y Descargar PDF</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* Último Paso (Paso 7): Aquí Finalizar y Descargar es el CTA Principal Gigante */
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => irAPaso(pasoActivo - 1)}
+              className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Paso anterior</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={handleFinalizarFirma}
-            disabled={cargando}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-sm shadow-md shadow-emerald-700/20 transition-all cursor-pointer"
-          >
-            <Download className="w-4 h-4" />
-            Finalizar y Generar PDF Oficial
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={handleFinalizarFirma}
+              disabled={cargando}
+              className="flex-1 min-h-[54px] sm:min-h-[58px] px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2.5 transition cursor-pointer disabled:opacity-50"
+            >
+              {cargando ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Download className="w-5 h-5 stroke-[2.5]" />
+              )}
+              <span>Finalizar y Descargar PDF Oficial</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

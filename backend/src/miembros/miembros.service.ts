@@ -4,8 +4,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
-import { AlcanceRol, type Prisma } from '@prisma/client';
+import { AlcanceRol, EstadoCargo, type Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import {
   alcanceEfectivo,
@@ -17,6 +18,7 @@ import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
 import { clavesCopiablesEntreHermanos, filtrarClaves } from '../common/utils/plantillas.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { TesoreriaService } from '../tesoreria/tesoreria.service.js';
 import {
   CAMPOS_EDITABLES_PROPIOS,
   type CrearAsignacionDto,
@@ -40,8 +42,18 @@ export const MIEMBRO_SELECT = {
   datosFijosJson: true,
   requiereCambioClave: true,
   activo: true,
+  saldoAFavor: true,
   createdAt: true,
   updatedAt: true,
+  cargos: {
+    where: { estado: { not: EstadoCargo.ANULADO } },
+    select: {
+      id: true,
+      montoFinal: true,
+      montoPagado: true,
+      estado: true,
+    },
+  },
   grupoFamiliar: {
     select: {
       id: true,
@@ -91,7 +103,10 @@ export const MIEMBRO_SELECT = {
 
 @Injectable()
 export class MiembrosService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly tesoreria?: TesoreriaService,
+  ) {}
 
   // ---------------- Padrón ----------------
   async listar(alcance: AlcanceAcceso, q: ListarMiembrosDto) {
@@ -195,7 +210,7 @@ export class MiembrosService {
 
         grupoFamiliarId = hermano.grupoFamiliarId;
         if (grupoFamiliarId === null) {
-          const grupo = await tx.grupoFamiliar.create({ data: { nombreFamilia: hermano.apellido } });
+          const grupo = await tx.grupoFamiliar.create({ data: { nombreFamilia: `Familia ${hermano.apellido}` } });
           grupoFamiliarId = grupo.id;
           await tx.usuario.update({ where: { id: hermano.id }, data: { grupoFamiliarId } });
         }
@@ -206,6 +221,7 @@ export class MiembrosService {
         }
       }
 
+      const ciclo = dto.cicloAnio ?? anioActual();
       const usuario = await tx.usuario.create({
         data: {
           dni: dto.dni,
@@ -219,10 +235,16 @@ export class MiembrosService {
           datosFijosJson: datosFijos as Prisma.InputJsonObject,
           requiereCambioClave: true,
           asignaciones: {
-            create: { unidadId: dto.unidadId, rolId: dto.rolId, cicloAnio: dto.cicloAnio ?? anioActual() },
+            create: { unidadId: dto.unidadId, rolId: dto.rolId, cicloAnio: ciclo },
           },
         },
       });
+
+      if (this.tesoreria) {
+        const mesActual = new Date().getMonth() + 1;
+        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, usuario.id, mesActual, ciclo);
+      }
+
       return usuario.id;
     });
     return this.prisma.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
@@ -256,6 +278,30 @@ export class MiembrosService {
       const merged = { ...actual, ...dto.datosFijosJson };
       for (const [k, v] of Object.entries(dto.datosFijosJson)) if (v === null) delete merged[k];
       datosFijosJson = merged as Prisma.InputJsonObject;
+    }
+
+    const cambioEstadoActivo = dto.activo !== undefined && dto.activo !== objetivo.activo;
+
+    if (cambioEstadoActivo && this.tesoreria && this.prisma.$transaction) {
+      return this.prisma.$transaction(async (tx) => {
+        await tx.usuario.update({
+          where: { id },
+          data: {
+            ...dto,
+            fechaNacimiento: dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : undefined,
+            datosFijosJson,
+          },
+        });
+
+        if (dto.activo === false) {
+          await this.tesoreria!.anularCargosImpagosDeMiembroEnTx(tx, id);
+        } else if (dto.activo === true) {
+          const mesActual = new Date().getMonth() + 1;
+          await this.tesoreria!.sincronizarCuotasMiembroActivoEnTx(tx, id, mesActual, anioActual());
+        }
+
+        return tx.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+      });
     }
 
     return this.prisma.usuario.update({

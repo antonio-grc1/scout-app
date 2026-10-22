@@ -20,6 +20,17 @@ async function main() {
   if (isInitial) {
     console.log('Inicializando cluster PostgreSQL local...');
     await pg.initialise();
+  } else {
+    // Si quedó un lockfile postmaster.pid huérfano de un apagado forzado, lo eliminamos
+    const pidFile = path.join(dataDir, 'postmaster.pid');
+    if (fs.existsSync(pidFile)) {
+      try {
+        fs.unlinkSync(pidFile);
+        console.log('Se limpió el archivo postmaster.pid huérfano de una sesión anterior.');
+      } catch (e) {
+        console.warn('No se pudo borrar postmaster.pid:', e);
+      }
+    }
   }
 
   console.log('Iniciando PostgreSQL local en puerto 5432...');

@@ -21,24 +21,24 @@ export const ESQUEMA_CAMPOS_2026 = {
         { key: 'condicion_salud_preexistente', label: '¿Tiene alguna condición de salud o discapacidad preexistente?', type: 'boolean', required: false },
 
         // Madre
-        { key: 'madre_nombres', label: 'Madre: Apellido y Nombres', type: 'text', required: false },
-        { key: 'madre_dni', label: 'Madre: DNI', type: 'text', required: false },
-        { key: 'madre_domicilio', label: 'Madre: Domicilio', type: 'text', required: false },
+        { key: 'madre_nombres', label: 'Madre: Apellido y Nombres', type: 'text', required: true },
+        { key: 'madre_dni', label: 'Madre: DNI', type: 'text', required: true },
+        { key: 'madre_domicilio', label: 'Madre: Domicilio', type: 'text', required: true },
         { key: 'madre_convive', label: 'Madre: ¿Vive en el mismo hogar que el protagonista?', type: 'boolean', required: false },
-        { key: 'madre_email', label: 'Madre: E-mail', type: 'email', required: false },
-        { key: 'madre_telefono', label: 'Madre: Teléfono', type: 'tel', required: false },
-        { key: 'madre_profesion', label: 'Madre: Profesión / Ocupación', type: 'text', required: false },
-        { key: 'madre_estado_civil', label: 'Madre: Estado Civil', type: 'text', required: false },
+        { key: 'madre_email', label: 'Madre: E-mail', type: 'email', required: true },
+        { key: 'madre_telefono', label: 'Madre: Teléfono', type: 'tel', required: true },
+        { key: 'madre_profesion', label: 'Madre: Profesión / Ocupación', type: 'text', required: true },
+        { key: 'madre_estado_civil', label: 'Madre: Estado Civil', type: 'text', required: true },
 
         // Padre
-        { key: 'padre_nombres', label: 'Padre: Apellido y Nombres', type: 'text', required: false },
-        { key: 'padre_dni', label: 'Padre: DNI', type: 'text', required: false },
-        { key: 'padre_domicilio', label: 'Padre: Domicilio', type: 'text', required: false },
+        { key: 'padre_nombres', label: 'Padre: Apellido y Nombres', type: 'text', required: true },
+        { key: 'padre_dni', label: 'Padre: DNI', type: 'text', required: true },
+        { key: 'padre_domicilio', label: 'Padre: Domicilio', type: 'text', required: true },
         { key: 'padre_convive', label: 'Padre: ¿Vive en el mismo hogar que el protagonista?', type: 'boolean', required: false },
-        { key: 'padre_email', label: 'Padre: E-mail', type: 'email', required: false },
-        { key: 'padre_telefono', label: 'Padre: Teléfono', type: 'tel', required: false },
-        { key: 'padre_profesion', label: 'Padre: Profesión / Ocupación', type: 'text', required: false },
-        { key: 'padre_estado_civil', label: 'Padre: Estado Civil', type: 'text', required: false },
+        { key: 'padre_email', label: 'Padre: E-mail', type: 'email', required: true },
+        { key: 'padre_telefono', label: 'Padre: Teléfono', type: 'tel', required: true },
+        { key: 'padre_profesion', label: 'Padre: Profesión / Ocupación', type: 'text', required: true },
+        { key: 'padre_estado_civil', label: 'Padre: Estado Civil', type: 'text', required: true },
 
         // Tutor
         { key: 'tutor_nombres', label: 'Tutor: Apellido y Nombres (si aplica)', type: 'text', required: false },

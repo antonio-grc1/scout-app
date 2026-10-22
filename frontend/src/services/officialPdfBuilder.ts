@@ -132,17 +132,14 @@ export async function buildOfficialPdf(
   data.protagonista_telefono = telProtagonista;
   data.telefono_contacto = telProtagonista;
 
-  // Si madre / padre / tutor convive y su domicilio está vacío, heredar domicilio del protagonista
-  if (!data.madre_domicilio && data.madre_convive !== false) data.madre_domicilio = domProtagonista;
-  if (!data.padre_domicilio && data.padre_convive !== false) data.padre_domicilio = domProtagonista;
-  if (!data.tutor_domicilio && data.tutor_convive !== false && data.tutor_nombres) data.tutor_domicilio = domProtagonista;
+  // Si madre / padre / tutor convive explícitamente y su domicilio está vacío, heredar domicilio del protagonista
+  if (!data.madre_domicilio && data.madre_convive === true && data.madre_nombres) data.madre_domicilio = domProtagonista;
+  if (!data.padre_domicilio && data.padre_convive === true && data.padre_nombres) data.padre_domicilio = domProtagonista;
+  if (!data.tutor_domicilio && data.tutor_convive === true && data.tutor_nombres) data.tutor_domicilio = domProtagonista;
 
-  // Teléfonos de emergencia para salud
+  // Teléfono de emergencia principal para salud
   if (!data.tel_emergencia_1) {
     data.tel_emergencia_1 = data.madre_telefono || data.padre_telefono || telProtagonista;
-  }
-  if (!data.tel_emergencia_2 && data.padre_telefono && data.padre_telefono !== data.tel_emergencia_1) {
-    data.tel_emergencia_2 = data.padre_telefono;
   }
 
   // Prellenado de autorizante si se seleccionó madre/padre/tutor
@@ -463,7 +460,7 @@ export async function buildOfficialPdf(
 
     drawRow(currentY, 20, [
       { label: 'Teléfono: ', value: data.protagonista_telefono || data.telefono_contacto || '', width: 330 },
-      { label: 'Religión: ', value: data.religion || 'Católica', width: 202 },
+      { label: 'Religión: ', value: data.religion || '', width: 202 },
     ]);
     currentY -= 20;
 
@@ -479,7 +476,7 @@ export async function buildOfficialPdf(
     ]);
     currentY -= 20;
 
-    const hobbyStr = data.realiza_hobby ? `SÍ (${data.hobby_detalle || 'Actividad regular'})` : 'NO';
+    const hobbyStr = data.realiza_hobby ? (data.hobby_detalle ? `SÍ (${data.hobby_detalle})` : 'SÍ') : 'NO';
     drawRow(currentY, 20, [
       { label: '¿Tiene hermanos?: ', value: data.tiene_hermanos === false ? 'NO' : (data.tiene_hermanos ? 'SÍ' : 'NO'), width: 140 },
       { label: '¿Realiza alguna actividad o hobby?: ', value: hobbyStr, width: 392 },
@@ -522,7 +519,9 @@ export async function buildOfficialPdf(
       page1.drawLine({ start: { x: rightX, y: rowY - 19 }, end: { x: startX + tableW, y: rowY - 19 }, thickness: 1, color: black });
       page1.drawText('Domicilio: ', { x: rightX + 4, y: rowY - 13, size: 8, font: fontRegular, color: labelColor });
       if (data[`${prefix}_domicilio`]) page1.drawText(String(data[`${prefix}_domicilio`]), { x: rightX + 50, y: rowY - 13, size: 8.5, font: fontBold, color: memberDataColor });
-      const viveStr = data[`${prefix}_convive`] === false || data[`${prefix}_mismo_hogar`] === false ? 'NO' : 'SÍ';
+      const viveStr = fNombre
+        ? (data[`${prefix}_convive`] === false || data[`${prefix}_mismo_hogar`] === false ? 'NO' : (data[`${prefix}_convive`] === true || data[`${prefix}_mismo_hogar`] === true ? 'SÍ' : ''))
+        : '';
       page1.drawText(`¿Vive en el mismo hogar que el protagonista?: ${viveStr}`, { x: rightX + 240, y: rowY - 13, size: 8, font: fontRegular, color: labelColor });
       rowY -= 19;
 
@@ -599,7 +598,7 @@ export async function buildOfficialPdf(
     leftY -= 14;
     drawFieldLeft('Domicilio: ', data.salud_domicilio || data.protagonista_domicilio);
     drawFieldLeft('Teléfono para Emergencia 1: ', data.tel_emergencia_1 || data.salud_tel_emergencia1 || data.madre_telefono || data.telefono_contacto);
-    drawFieldLeft('Teléfono para Emergencia 2: ', data.tel_emergencia_2 || data.salud_tel_emergencia2 || data.padre_telefono);
+    drawFieldLeft('Teléfono para Emergencia 2: ', data.tel_emergencia_2 || data.salud_tel_emergencia2 || '');
 
     page2.drawRectangle({ x: 35, y: leftY - 32, width: 255, height: 32, color: lightGray, borderColor: black, borderWidth: 0.5 });
     drawWrappedText(
@@ -616,15 +615,17 @@ export async function buildOfficialPdf(
     page2.drawText('Última Dosis', { x: 190, y: leftY - 10, size: 7.5, font: fontBold });
 
     const vacunas = [
-      ['Quíntuple', data.vacuna_quintuple || 'Al día'],
-      ['Triple Bacteriana Celular', data.vacuna_triple_celular || 'Al día'],
-      ['Triple Bacteriana Acelular', data.vacuna_triple_acelular || 'Al día'],
-      ['Doble Bacteriana', data.vacuna_doble_bacteriana || 'Al día'],
+      ['Quíntuple', data.vacuna_quintuple || ''],
+      ['Triple Bacteriana Celular', data.vacuna_triple_celular || ''],
+      ['Triple Bacteriana Acelular', data.vacuna_triple_acelular || ''],
+      ['Doble Bacteriana', data.vacuna_doble_bacteriana || ''],
     ];
     let vacY = leftY - 24;
     vacunas.forEach(([vName, vDosis]) => {
       page2.drawText(String(vName), { x: 40, y: vacY, size: 7, font: fontRegular, color: labelColor });
-      page2.drawText(String(vDosis), { x: 190, y: vacY, size: 7, font: fontBold, color: memberDataColor });
+      if (vDosis) {
+        page2.drawText(String(vDosis), { x: 190, y: vacY, size: 7, font: fontBold, color: memberDataColor });
+      }
       vacY -= 11;
     });
     leftY -= 68;
@@ -653,9 +654,11 @@ export async function buildOfficialPdf(
 
     // Right Column
     let rightY = height - 120;
-    const ctrlMed = data.fecha_control_medico ? normalizeDate(data.fecha_control_medico) : 'Al día';
+    const ctrlMed = data.fecha_control_medico ? normalizeDate(data.fecha_control_medico) : '';
     page2.drawText(`De haber realizado un control médico indique fecha: `, { x: 305, y: rightY, size: 7.5, font: fontRegular, color: labelColor });
-    page2.drawText(ctrlMed, { x: 485, y: rightY, size: 8, font: fontBold, color: memberDataColor });
+    if (ctrlMed) {
+      page2.drawText(ctrlMed, { x: 485, y: rightY, size: 8, font: fontBold, color: memberDataColor });
+    }
     page2.drawLine({ start: { x: 480, y: rightY - 2 }, end: { x: 560, y: rightY - 2 }, thickness: 0.5, color: labelColor });
     rightY -= 16;
 
@@ -691,15 +694,15 @@ export async function buildOfficialPdf(
     rightY -= 150;
 
     page2.drawText(`Grupo Sanguíneo: `, { x: 305, y: rightY, size: 7.5, font: fontRegular, color: labelColor });
-    page2.drawText(String(data.grupo_sanguineo || '0'), { x: 375, y: rightY, size: 8, font: fontBold, color: memberDataColor });
+    if (data.grupo_sanguineo) page2.drawText(String(data.grupo_sanguineo), { x: 375, y: rightY, size: 8, font: fontBold, color: memberDataColor });
     page2.drawText(`- Factor RH: `, { x: 420, y: rightY, size: 7.5, font: fontRegular, color: labelColor });
-    page2.drawText(String(data.factor_rh || '+ (Positivo)'), { x: 470, y: rightY, size: 8, font: fontBold, color: memberDataColor });
+    if (data.factor_rh) page2.drawText(String(data.factor_rh), { x: 470, y: rightY, size: 8, font: fontBold, color: memberDataColor });
     rightY -= 14;
 
     page2.drawText(`Peso: `, { x: 305, y: rightY, size: 7.5, font: fontRegular, color: labelColor });
-    page2.drawText(`${data.peso_kg || '42'} Kg.`, { x: 335, y: rightY, size: 8, font: fontBold, color: memberDataColor });
+    if (data.peso_kg) page2.drawText(`${data.peso_kg} Kg.`, { x: 335, y: rightY, size: 8, font: fontBold, color: memberDataColor });
     page2.drawText(`– Talla: `, { x: 420, y: rightY, size: 7.5, font: fontRegular, color: labelColor });
-    page2.drawText(`${data.talla_m || '1.50'} m.`, { x: 460, y: rightY, size: 8, font: fontBold, color: memberDataColor });
+    if (data.talla_m) page2.drawText(`${data.talla_m} m.`, { x: 460, y: rightY, size: 8, font: fontBold, color: memberDataColor });
     rightY -= 18;
 
     page2.drawRectangle({ x: 305, y: rightY - 34, width: 255, height: 34, borderColor: black, borderWidth: 0.5 });
@@ -754,8 +757,8 @@ export async function buildOfficialPdf(
     page3.drawText('AUTORIZACIÓN DE INGRESO DE', { x: width / 2 - 110, y: height - 105, size: 12, font: fontBold });
     page3.drawText('NIÑOS, NIÑAS Y JÓVENES MENORES DE 18 AÑOS', { x: width / 2 - 160, y: height - 120, size: 12, font: fontBold });
 
-    const autDate = parseDateParts(data.autorizante_fecha_nac || '1982-05-10');
-    const minDate = parseDateParts(data.protagonista_fecha_nac || '2014-08-14');
+    const autDate = parseDateParts(data.autorizante_fecha_nac);
+    const minDate = parseDateParts(data.protagonista_fecha_nac);
     const todayDate = parseDateParts(new Date().toISOString().slice(0, 10));
 
     const pNombre = [data.protagonista_nombre, data.protagonista_apellido].filter(Boolean).join(' ') || String(data.nombre_completo || '');
@@ -822,10 +825,12 @@ export async function buildOfficialPdf(
     page3.drawText('Firma: ............................................................................', { x: 220, y: curY, size: 9, font: fontRegular });
     curY -= 20;
 
-    const aclaracionGuarda = String(data.aclaraciones_tenencia_guarda || 'Sin aclaraciones especiales sobre tenencia o guarda judicial.');
+    const aclaracionGuarda = String(data.aclaraciones_tenencia_guarda || '');
     page3.drawText(`Formula aclaraciones sobre la situación de tenencia o guarda del menor (4):`, { x: 40, y: curY, size: 8, font: fontBold, color: black });
     curY -= 12;
-    page3.drawText(aclaracionGuarda, { x: 40, y: curY, size: 8, font: fontBold, color: memberDataColor });
+    if (aclaracionGuarda) {
+      page3.drawText(aclaracionGuarda, { x: 40, y: curY, size: 8, font: fontBold, color: memberDataColor });
+    }
     curY -= 20;
     page3.drawText('Firma: ............................................................................', { x: 220, y: curY, size: 9, font: fontRegular });
 
@@ -871,8 +876,8 @@ export async function buildOfficialPdf(
 
     page4.drawText('AUTORIZACIÓN ANUAL PARA SALIDAS CERCANAS', { x: width / 2 - 150, y: height - 105, size: 12, font: fontBold });
 
-    const autDate = parseDateParts(data.autorizante_fecha_nac || '1982-05-10');
-    const minDate = parseDateParts(data.protagonista_fecha_nac || '2014-08-14');
+    const autDate = parseDateParts(data.autorizante_fecha_nac);
+    const minDate = parseDateParts(data.protagonista_fecha_nac);
     const todayDate = parseDateParts(new Date().toISOString().slice(0, 10));
 
     const pNombre = [data.protagonista_nombre, data.protagonista_apellido].filter(Boolean).join(' ') || String(data.nombre_completo || '');
@@ -1071,8 +1076,8 @@ export async function buildOfficialPdf(
     const { width, height } = page6.getSize();
     drawGroupHeader(page6, 'AUTORIZACIÓN RETIRO DE MENORES - 2026');
 
-    const autDate = parseDateParts(data.autorizante_fecha_nac || '1982-05-10');
-    const minDate = parseDateParts(data.protagonista_fecha_nac || '2014-08-14');
+    const autDate = parseDateParts(data.autorizante_fecha_nac);
+    const minDate = parseDateParts(data.protagonista_fecha_nac);
     const pNombre = [data.protagonista_nombre, data.protagonista_apellido].filter(Boolean).join(' ') || String(data.nombre_completo || '');
     const aNombre = String(data.autorizante_nombre || data.madre_nombres || '');
 
@@ -1172,8 +1177,6 @@ export async function buildOfficialPdf(
   );
   const shouldIncludePage7 = Boolean(
     data.completar_ficha_adultos ||
-    data.adulto_nombre ||
-    data.adulto_profesion ||
     hasAnyColab ||
     options.blank
   );
@@ -1199,12 +1202,19 @@ export async function buildOfficialPdf(
       curY -= 15;
     };
 
-    drawAdultField('Nombre/s: ', data.adulto_nombre || data.madre_nombres);
+    drawAdultField('Nombre/s: ', data.adulto_nombre || '');
     drawAdultField('Nombre de su hijo/a: ', [data.protagonista_nombre, data.protagonista_apellido].filter(Boolean).join(' '));
-    drawAdultField('Dirección: ', data.madre_domicilio || data.protagonista_domicilio);
+    drawAdultField('Dirección: ', data.adulto_direccion || '');
     drawAdultField('Localidad: ', 'Córdoba   Código Postal: 5000');
-    drawAdultField('Profesión/Oficio: ', data.adulto_profesion || data.madre_profesion);
-    drawAdultField('Teléfono: ', (data.adulto_telefono || data.madre_telefono) + '   Prefiero trabajar con: ' + (data.adulto_preferencia_trabajo || 'JÓVENES'));
+    drawAdultField('Profesión/Oficio: ', data.adulto_profesion || '');
+    const telAdulto = String(data.adulto_telefono || '');
+    const prefMap: Record<string, string> = {
+      JOVENES: 'Con Jóvenes',
+      ADULTOS: 'Con Adultos',
+      AMBOS: 'Indistinto',
+    };
+    const prefTexto = prefMap[String(data.adulto_preferencia_trabajo || '')] || '';
+    drawAdultField('Teléfono: ', prefTexto ? `${telAdulto}   Prefiero trabajar: ${prefTexto}` : telAdulto);
 
     curY -= 5;
     page7.drawText('Puedo colaborar:', { x: 40, y: curY, size: 9, font: fontBold });
@@ -1360,12 +1370,11 @@ export async function buildOfficialPdf(
   const totalPaginas = pdfDoc.getPageCount();
   const shortHash = qrHash ? qrHash.substring(0, 16).toUpperCase() : 'BORRADOR';
   const dniProtagonista = String(data.protagonista_dni || (options.usuario?.dni) || '');
-  const vImp = options.versionImpresion ?? 1;
 
   for (let i = 0; i < totalPaginas; i++) {
     const page = pdfDoc.getPage(i);
     const { width } = page.getSize();
-    const textoSeguridad = `GS Juan XXIII • Legajo 2026 • DNI: ${dniProtagonista} • Ver: V${vImp} • Hash: ${shortHash}... • Hoja ${i + 1} de ${totalPaginas}`;
+    const textoSeguridad = `Grupo Scout Juan XXIII • Ciclo 2026 • DNI ${dniProtagonista} • Código: ${shortHash} • Hoja ${i + 1} de ${totalPaginas}`;
 
     const textWidth = fontRegular.widthOfTextAtSize(textoSeguridad, 7);
     const xCentrado = Math.max(20, (width - textWidth) / 2);

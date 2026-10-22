@@ -53,8 +53,7 @@ export function App() {
   const rutaDefault = () => {
     if (!token) return '/login';
     if (requiereCambioClave) return '/cambiar-clave';
-    if (tieneGlobal()) return '/global';
-    if (tieneUnidad()) return '/rama';
+    if (tieneGlobal() || tieneUnidad()) return '/rama';
     return '/autogestion';
   };
 

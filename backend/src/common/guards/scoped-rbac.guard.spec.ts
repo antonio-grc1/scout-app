@@ -32,7 +32,11 @@ describe('resolverAlcance', () => {
 
   it('GLOBAL sin el permiso no habilita (Educador Sin Rama acotado)', () => {
     const u = user(asig(7, AlcanceRol.GLOBAL, ['miembros.ver']), asig(2, AlcanceRol.UNIDAD, ['cuotas.cobrar']));
-    expect(resolverAlcance(u, 'cuotas.cobrar')).toEqual({ tipo: 'UNIDAD', unidadIds: [2] });
+    expect(resolverAlcance(u, 'cuotas.cobrar')).toEqual({
+      tipo: 'UNIDAD',
+      unidadIds: [2],
+      usuarioIdPropio: 104,
+    });
   });
 
   it('UNIDAD junta las unidades sin duplicar', () => {
@@ -41,7 +45,11 @@ describe('resolverAlcance', () => {
       asig(3, AlcanceRol.UNIDAD, ['miembros.ver']),
       asig(2, AlcanceRol.UNIDAD, ['miembros.ver']),
     );
-    expect(resolverAlcance(u, 'miembros.ver')).toEqual({ tipo: 'UNIDAD', unidadIds: [2, 3] });
+    expect(resolverAlcance(u, 'miembros.ver')).toEqual({
+      tipo: 'UNIDAD',
+      unidadIds: [2, 3],
+      usuarioIdPropio: 104,
+    });
   });
 
   it('UNIDAD + PROPIO incluye al propio usuario', () => {
@@ -95,6 +103,6 @@ describe('ScopedRbacGuard', () => {
   it('carga req.alcance cuando tiene el permiso', () => {
     const req: Partial<AuthenticatedRequest> = { user: user(asig(2, AlcanceRol.UNIDAD, ['miembros.ver'])) };
     expect(guard.canActivate(ctxCon(req, 'miembros.ver'))).toBe(true);
-    expect(req.alcance).toEqual({ tipo: 'UNIDAD', unidadIds: [2] });
+    expect(req.alcance).toEqual({ tipo: 'UNIDAD', unidadIds: [2], usuarioIdPropio: 104 });
   });
 });

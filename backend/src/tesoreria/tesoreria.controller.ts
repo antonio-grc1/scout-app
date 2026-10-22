@@ -14,10 +14,14 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import {
   ActualizarDescuentoFamiliaSchema,
+  AjustarSaldoAFavorSchema,
   AplicarSaldoAFavorSchema,
   CrearConceptoSchema,
   CrearPlanCuotaMensualSchema,
+  DesvincularHermanoSchema,
+  EditarCargoIndividualSchema,
   EditarConceptoSchema,
+  EditarPagoSchema,
   EditarPlanCuotaMensualSchema,
   GenerarCargoIndividualSchema,
   GenerarCargosSchema,
@@ -26,10 +30,14 @@ import {
   SincronizarMesesPlanSchema,
   VincularHermanoSchema,
   type ActualizarDescuentoFamiliaDto,
+  type AjustarSaldoAFavorDto,
   type AplicarSaldoAFavorDto,
   type CrearConceptoDto,
   type CrearPlanCuotaMensualDto,
+  type DesvincularHermanoDto,
+  type EditarCargoIndividualDto,
   type EditarConceptoDto,
+  type EditarPagoDto,
   type EditarPlanCuotaMensualDto,
   type GenerarCargoIndividualDto,
   type GenerarCargosDto,
@@ -102,12 +110,26 @@ export class TesoreriaController {
     return this.tesoreria.actualizarDescuentoFamilia(id, dto);
   }
 
+  @RequirePermission(TESORERIA_GESTIONAR)
+  @Delete('familias/:id')
+  eliminarGrupoFamiliar(@Param('id', ParseIntPipe) id: number) {
+    return this.tesoreria.eliminarGrupoFamiliar(id);
+  }
+
   @RequirePermission('miembros.editar')
   @Post('familias/vincular-hermano')
   vincularHermano(
     @Body(new ZodValidationPipe(VincularHermanoSchema)) dto: VincularHermanoDto,
   ) {
     return this.tesoreria.vincularHermano(dto);
+  }
+
+  @RequirePermission('miembros.editar')
+  @Post('familias/desvincular-hermano')
+  desvincularHermano(
+    @Body(new ZodValidationPipe(DesvincularHermanoSchema)) dto: DesvincularHermanoDto,
+  ) {
+    return this.tesoreria.desvincularHermano(dto);
   }
 
   // ---------------- Cargos ----------------
@@ -121,9 +143,41 @@ export class TesoreriaController {
   }
 
   @RequirePermission(CUOTAS_COBRAR)
+  @Post('cargos/individual')
+  generarCargoIndividual(
+    @CurrentUser() u: AuthUser,
+    @Alcance() a: AlcanceAcceso,
+    @Body(new ZodValidationPipe(GenerarCargoIndividualSchema)) dto: GenerarCargoIndividualDto,
+  ) {
+    return this.tesoreria.generarCargoIndividual(u, a, dto);
+  }
+
+  @RequirePermission(CUOTAS_COBRAR)
+  @Patch('cargos/:id')
+  editarCargoIndividual(
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(EditarCargoIndividualSchema)) dto: EditarCargoIndividualDto,
+  ) {
+    return this.tesoreria.editarCargoIndividual(a, id, dto);
+  }
+
+  @RequirePermission(CUOTAS_COBRAR)
   @Post('cargos/:id/anular')
   anularCargo(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
     return this.tesoreria.anularCargo(a, id);
+  }
+
+  @RequirePermission(CUOTAS_COBRAR)
+  @Post('cargos/:id/reactivar')
+  reactivarCargo(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.tesoreria.reactivarCargo(a, id);
+  }
+
+  @RequirePermission(CUOTAS_COBRAR)
+  @Delete('cargos/:id')
+  eliminarCargo(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.tesoreria.eliminarCargo(a, id);
   }
 
   @RequirePermission(CUOTAS_VER)
@@ -153,6 +207,22 @@ export class TesoreriaController {
     @Body(new ZodValidationPipe(RegistrarPagoSchema)) dto: RegistrarPagoDto,
   ) {
     return this.tesoreria.registrarPago(u, a, dto);
+  }
+
+  @RequirePermission(CUOTAS_COBRAR)
+  @Patch('pagos/:id')
+  editarPago(
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(EditarPagoSchema)) dto: EditarPagoDto,
+  ) {
+    return this.tesoreria.editarPago(a, id, dto);
+  }
+
+  @RequirePermission(CUOTAS_COBRAR)
+  @Delete('pagos/:id')
+  revertirPago(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.tesoreria.revertirPago(a, id);
   }
 
   @RequirePermission(CUOTAS_VER)
@@ -212,18 +282,7 @@ export class TesoreriaController {
     return this.tesoreria.sincronizarMesesPlan(a, id, dto);
   }
 
-  // ---------------- Cargo Individual (Deuda Manual) ----------------
-  @RequirePermission(CUOTAS_COBRAR)
-  @Post('cargos/individual')
-  generarCargoIndividual(
-    @CurrentUser() u: AuthUser,
-    @Alcance() a: AlcanceAcceso,
-    @Body(new ZodValidationPipe(GenerarCargoIndividualSchema)) dto: GenerarCargoIndividualDto,
-  ) {
-    return this.tesoreria.generarCargoIndividual(u, a, dto);
-  }
-
-  // ---------------- Aplicar Saldo a Favor ----------------
+  // ---------------- Saldo a Favor ----------------
   @RequirePermission(CUOTAS_COBRAR)
   @Post('saldo-a-favor/aplicar')
   aplicarSaldoAFavor(
@@ -233,5 +292,14 @@ export class TesoreriaController {
   ) {
     return this.tesoreria.aplicarSaldoAFavor(u, a, dto);
   }
-}
 
+  @RequirePermission(CUOTAS_COBRAR)
+  @Post('saldo-a-favor/ajustar')
+  ajustarSaldoAFavor(
+    @CurrentUser() u: AuthUser,
+    @Alcance() a: AlcanceAcceso,
+    @Body(new ZodValidationPipe(AjustarSaldoAFavorSchema)) dto: AjustarSaldoAFavorDto,
+  ) {
+    return this.tesoreria.ajustarSaldoAFavor(u, a, dto);
+  }
+}

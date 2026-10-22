@@ -32,14 +32,12 @@ export const Login: React.FC = () => {
         return;
       }
 
-      // Redirección inteligente según el alcance de sus asignaciones
+      // Redirección inteligente según el alcance de sus asignaciones (pestaña por defecto: Padrón)
       const asignaciones = res.data.asignaciones || [];
       const esGlobal = asignaciones.some((a: any) => a.alcance === 'GLOBAL');
       const esUnidad = asignaciones.some((a: any) => a.alcance === 'UNIDAD');
 
-      if (esGlobal) {
-        navigate('/global');
-      } else if (esUnidad) {
+      if (esGlobal || esUnidad) {
         navigate('/rama');
       } else {
         navigate('/autogestion');
@@ -88,16 +86,15 @@ export const Login: React.FC = () => {
                 <input
                   id="dni"
                   type="text"
+                  inputMode="numeric"
+                  autoComplete="username"
                   required
                   value={dni}
-                  onChange={(e) => setDni(e.target.value)}
-                  placeholder="Ej: 45123456"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
+                  onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Sin puntos ni espacios"
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
                 />
               </div>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                Ingresa el DNI del miembro o educador sin puntos ni espacios.
-              </p>
             </div>
 
             <div>
@@ -108,15 +105,16 @@ export const Login: React.FC = () => {
                 <input
                   id="clave"
                   type="password"
+                  autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
                 />
               </div>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                La clave inicial asignada por tu educador es tu propio DNI.
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+                Si ingresas por primera vez, tu clave inicial es tu DNI.
               </p>
             </div>
 
@@ -124,19 +122,12 @@ export const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={cargando}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-xs text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer disabled:opacity-50"
+                className="w-full min-h-[48px] flex items-center justify-center py-3 px-4 rounded-xl shadow-xs text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer disabled:opacity-50"
               >
-                {cargando ? 'Ingresando...' : 'Iniciar Sesión'}
+                {cargando ? 'Ingresando...' : 'Ingresar'}
               </button>
             </div>
           </form>
-
-          <div className="mt-6 border-t border-slate-100 dark:border-slate-800 pt-4 text-center">
-            <span className="inline-flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Acceso seguro con token encriptado
-            </span>
-          </div>
         </div>
       </div>
     </div>

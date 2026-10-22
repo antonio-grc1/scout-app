@@ -92,10 +92,10 @@ const ROLES: { nombre: string; alcancePorDefecto: AlcanceRol; permisos: string[]
     permisos: 'TODOS',
   },
   {
-    // GLOBAL pero con permisos acotados (solo lectura + validación física)
+    // GLOBAL pero con permisos acotados (solo lectura + validación física + completar su propio legajo)
     nombre: 'Educador Sin Rama',
     alcancePorDefecto: AlcanceRol.GLOBAL,
-    permisos: ['organizacion.ver', 'miembros.ver', 'legajos.ver', 'legajos.validar_fisico', 'cuotas.ver'],
+    permisos: ['organizacion.ver', 'miembros.ver', 'legajos.ver', 'legajos.completar', 'legajos.validar_fisico', 'cuotas.ver'],
   },
 ];
 

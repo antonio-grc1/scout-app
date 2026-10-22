@@ -1,5 +1,3 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import QRCode from 'qrcode';
 import { buildOfficialPdf, generarMoldeEnBlancoPdf } from './officialPdfBuilder';
 
 export { buildOfficialPdf, generarMoldeEnBlancoPdf };
@@ -32,7 +30,6 @@ export interface MapeoPdf {
 export function prepararRespuestasParaImpresion(
   rawResp: Record<string, unknown>,
   usuario?: { nombre: string; apellido: string; dni: string; fechaNacimiento?: string | Date; ramaNombre?: string; telefonoContacto?: string },
-  versionImpresion = 1,
 ): Record<string, unknown> {
   const resp: Record<string, unknown> = { ...rawResp };
 
@@ -135,14 +132,14 @@ export function prepararRespuestasParaImpresion(
   resp.telefono_contacto = telProtagonista;
   if (!resp.tel_emergencia_1) resp.tel_emergencia_1 = telProtagonista;
 
-  // Domicilio adulto
-  if (domProtagonista && !resp.madre_domicilio && resp.madre_convive !== false) {
+  // Domicilio adulto (solo heredar del protagonista si explícitamente convive y la persona está cargada)
+  if (domProtagonista && !resp.madre_domicilio && resp.madre_convive === true && resp.madre_nombres) {
     resp.madre_domicilio = domProtagonista;
   }
-  if (domProtagonista && !resp.padre_domicilio && resp.padre_convive !== false) {
+  if (domProtagonista && !resp.padre_domicilio && resp.padre_convive === true && resp.padre_nombres) {
     resp.padre_domicilio = domProtagonista;
   }
-  if (domProtagonista && !resp.tutor_domicilio && resp.tutor_convive !== false) {
+  if (domProtagonista && !resp.tutor_domicilio && resp.tutor_convive === true && resp.tutor_nombres) {
     resp.tutor_domicilio = domProtagonista;
   }
 
@@ -150,11 +147,11 @@ export function prepararRespuestasParaImpresion(
   const formatBool = (val: unknown): string => (val ? 'SÍ' : 'NO');
 
   resp.tiene_hermanos_texto = formatBool(resp.tiene_hermanos);
-  resp.hobby_texto = resp.realiza_hobby ? `SÍ: ${resp.hobby_detalle || ''}` : 'NO';
+  resp.hobby_texto = resp.realiza_hobby ? (resp.hobby_detalle ? `SÍ: ${resp.hobby_detalle}` : 'SÍ') : 'NO';
   resp.condicion_salud_preexistente_texto = formatBool(resp.condicion_salud_preexistente);
-  resp.madre_convive_texto = formatBool(resp.madre_convive);
-  resp.padre_convive_texto = formatBool(resp.padre_convive);
-  resp.tutor_convive_texto = formatBool(resp.tutor_convive);
+  resp.madre_convive_texto = resp.madre_nombres ? formatBool(resp.madre_convive) : '';
+  resp.padre_convive_texto = resp.padre_nombres ? formatBool(resp.padre_convive) : '';
+  resp.tutor_convive_texto = resp.tutor_nombres ? formatBool(resp.tutor_convive) : '';
 
   // Salud booleans y textos
   resp.salud_toma_medicacion = formatBool(resp.toma_medicacion);
@@ -344,106 +341,70 @@ export function prepararRespuestasParaImpresion(
     resp.ret_retiro_solo_texto = 'NO (Solo con personas autorizadas)';
   }
 
-  // Ficha de adultos
-  if (!resp.adulto_nombre) {
-    resp.adulto_nombre = autNombre;
-  }
-  if (!resp.adulto_telefono) {
-    resp.adulto_telefono = autTel;
-  }
-  if (!resp.adulto_direccion) {
-    resp.adulto_direccion = autDom;
-  }
-  if (!resp.adulto_localidad) {
-    resp.adulto_localidad = 'Córdoba';
-  }
-  if (!resp.adulto_codigo_postal) {
-    resp.adulto_codigo_postal = '5000';
+  // Ficha de adultos (solo prellenar si el usuario activó completar_ficha_adultos)
+  if (resp.completar_ficha_adultos) {
+    if (!resp.adulto_nombre) {
+      resp.adulto_nombre = autNombre;
+    }
+    if (!resp.adulto_telefono) {
+      resp.adulto_telefono = autTel;
+    }
+    if (!resp.adulto_direccion) {
+      resp.adulto_direccion = autDom;
+    }
   }
 
   return resp;
 }
 
 /**
- * Genera el documento PDF final estampando las respuestas y el código QR de verificación
+ * Genera el documento PDF final con las respuestas y el código QR de verificación
  * directamente en el navegador del cliente (Zero-File architecture).
- *
- * Construye un documento dinámico:
- * - Siempre incluye las Páginas 1 a 4 (Inscripción, Salud, Ingreso Menores, Salidas Cercanas).
- * - Anexa Página 5 si se completó / activó Ficha de Necesidades Especiales.
- * - Anexa Página 6 si se completó / activó Retiro de Menores.
- * - Anexa Página 7 si se completó / activó Ficha de Adultos.
- * - Estampa QR en Página 1 y pie de seguridad en cada hoja.
  */
 export async function generarFichaPdf(
-  mapeo: MapeoPdf,
+  _mapeo: MapeoPdf,
   respuestas: Record<string, unknown>,
   hashVerificacion: string,
-  usuario?: { nombre: string; apellido: string; dni: string; fechaNacimiento?: string | Date; ramaNombre?: string; telefonoContacto?: string },
+  usuario?: {
+    nombre: string;
+    apellido: string;
+    dni: string;
+    fechaNacimiento?: string | Date;
+    ramaNombre?: string;
+    telefonoContacto?: string;
+  },
   versionImpresion = 1,
 ): Promise<Uint8Array> {
-  // 1. Preparar datos formateados
-  const respuestasFormateadas = prepararRespuestasParaImpresion(respuestas, usuario, versionImpresion);
+  const respuestasFormateadas = prepararRespuestasParaImpresion(respuestas, usuario);
 
-  // 2. Generar el PDF oficial con los datos integrados directamente en el documento (sin estampados por encima)
-  try {
-    return await buildOfficialPdf(respuestasFormateadas, {
-      hashVerificacion,
-      usuario,
-      versionImpresion,
-    });
-  } catch (err) {
-    console.warn('Error al generar PDF oficial vectorial directo, utilizando fallback con molde base:', err);
+  return await buildOfficialPdf(respuestasFormateadas, {
+    hashVerificacion,
+    usuario,
+    versionImpresion,
+  });
+}
 
-    // Fallback de contingencia: cargar molde base si buildOfficialPdf falla
-    const response = await fetch(mapeo.pdfBaseUrl);
-    if (!response.ok) {
-      throw new Error(`No se pudo cargar el molde base PDF desde ${mapeo.pdfBaseUrl}`);
-    }
-    const moldePdfBytes = await response.arrayBuffer();
-    const moldeDoc = await PDFDocument.load(moldePdfBytes);
+/**
+ * Crea una URL temporal en memoria (Blob URL) para visualizar el PDF en pantalla sin descargarlo.
+ */
+export function crearUrlPdfBlob(bytes: Uint8Array): string {
+  const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
+  return URL.createObjectURL(blob);
+}
 
-    const indicesMolde: number[] = [0, 1, 2, 3];
-    if (respuestas.tiene_cud || respuestas.condicion_salud_preexistente || respuestas.ne_diagnostico) indicesMolde.push(4);
-    if (respuestas.ret_persona1_nombre || respuestas.ret_autoriza_retirarse_solo) indicesMolde.push(5);
-    if (respuestas.completar_ficha_adultos || respuestas.adulto_profesion) indicesMolde.push(6);
-
-    const pdfDoc = await PDFDocument.create();
-    const paginasCopiadas = await pdfDoc.copyPages(moldeDoc, indicesMolde);
-    const paginaPorIndiceMolde = new Map<number, any>();
-    indicesMolde.forEach((moldeIdx, targetIdx) => {
-      const page = paginasCopiadas[targetIdx];
-      pdfDoc.addPage(page);
-      paginaPorIndiceMolde.set(moldeIdx, page);
-    });
-
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-    for (const [key, config] of Object.entries(mapeo.campos)) {
-      const valor = respuestasFormateadas[key];
-      if (valor === undefined || valor === null || valor === '') continue;
-      const page = paginaPorIndiceMolde.get(config.page ?? 0);
-      if (!page) continue;
-
-      if (config.type === 'checkbox_x') {
-        const coords = valor ? config.trueCoords : config.falseCoords;
-        if (coords) page.drawText('X', { x: coords.x, y: coords.y, size: config.size ?? 10, font: fontBold, color: rgb(0.1, 0.1, 0.7) });
-      } else {
-        page.drawText(String(valor), { x: config.x, y: config.y, size: config.size ?? 9, font, color: rgb(0.05, 0.05, 0.3) });
-      }
-    }
-
-    return await pdfDoc.save();
-  }
+/**
+ * Abre el PDF directamente en una nueva pestaña del navegador para lectura sin descarga forzada.
+ */
+export function abrirPdfEnPestana(bytes: Uint8Array): void {
+  const url = crearUrlPdfBlob(bytes);
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 /**
  * Descarga directamente el PDF generado en el navegador del usuario.
  */
 export function descargarPdfBlob(bytes: Uint8Array, nombreArchivo: string): void {
-  const blob = new Blob([bytes as BlobPart], { type: 'application/pdf' });
-  const url = URL.createObjectURL(blob);
+  const url = crearUrlPdfBlob(bytes);
   const a = document.createElement('a');
   a.href = url;
   a.download = nombreArchivo;

@@ -2,23 +2,26 @@ import { EstadoCargo, MetodoPago } from '@prisma/client';
 import { z } from 'zod';
 
 const montoDecimal = z.number().positive().max(99999999.99);
+const montoNoNegativo = z.number().min(0).max(99999999.99);
 
 // ---------------- Conceptos de Cuota ----------------
 export const CrearConceptoSchema = z.object({
   nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(120),
-  tipo: z.string().trim().min(1).max(50).default('CUOTA_MENSUAL'),
+  tipo: z.string().trim().min(1).max(50).default('CAMPAMENTO'),
   montoBase: montoDecimal,
   cicloAnio: z.number().int().min(2000).max(2100),
   fechaVencimiento: z.iso.date().nullable().optional(),
   permiteDescuentoHermanos: z.boolean().default(true).optional(),
   porcentajeDescuentoHermanos: z.number().min(0).max(100).nullable().optional(),
   esParaEducadores: z.boolean().default(false).optional(),
-  destinatarioTipo: z.enum(['TODOS', 'PROTAGONISTAS', 'EDUCADORES']).default('TODOS').optional(),
+  destinatarioTipo: z.enum(['TODOS', 'PROTAGONISTAS', 'EDUCADORES', 'INDIVIDUAL']).default('TODOS').optional(),
   excepcionesIds: z.array(z.number().int().positive()).default([]).optional(),
   mes: z.number().int().min(1).max(12).nullable().optional(),
   planCuotaMensualId: z.number().int().positive().nullable().optional(),
   /** Si se especifica, el concepto es exclusivo para miembros de esa unidad; si no, es para todo el grupo */
   unidadId: z.number().int().positive().nullable().optional(),
+  /** Si es true, genera automáticamente los cargos a los destinatarios al crear el concepto */
+  generarCargosInmediatos: z.boolean().default(true).optional(),
 });
 export type CrearConceptoDto = z.infer<typeof CrearConceptoSchema>;
 
@@ -31,11 +34,12 @@ export const EditarConceptoSchema = z.object({
   permiteDescuentoHermanos: z.boolean().optional(),
   porcentajeDescuentoHermanos: z.number().min(0).max(100).nullable().optional(),
   esParaEducadores: z.boolean().optional(),
-  destinatarioTipo: z.enum(['TODOS', 'PROTAGONISTAS', 'EDUCADORES']).optional(),
+  destinatarioTipo: z.enum(['TODOS', 'PROTAGONISTAS', 'EDUCADORES', 'INDIVIDUAL']).optional(),
   excepcionesIds: z.array(z.number().int().positive()).optional(),
   mes: z.number().int().min(1).max(12).nullable().optional(),
   planCuotaMensualId: z.number().int().positive().nullable().optional(),
   unidadId: z.number().int().positive().nullable().optional(),
+  sincronizarCargos: z.boolean().default(true).optional(),
 });
 export type EditarConceptoDto = z.infer<typeof EditarConceptoSchema>;
 
@@ -76,7 +80,7 @@ export const GenerarCargosSchema = z.object({
 });
 export type GenerarCargosDto = z.infer<typeof GenerarCargosSchema>;
 
-// ---------------- Generación de Cargo Individual (Deuda Manual) ----------------
+// ---------------- Generación y Edición de Cargo Individual ----------------
 export const GenerarCargoIndividualSchema = z.object({
   usuarioId: z.number().int().positive(),
   conceptoId: z.number().int().positive().optional(),
@@ -84,11 +88,19 @@ export const GenerarCargoIndividualSchema = z.object({
   tipo: z.string().trim().min(1).max(50).default('OTRO').optional(),
   cicloAnio: z.number().int().min(2000).max(2100).default(new Date().getFullYear()).optional(),
   monto: montoDecimal,
-  montoDescuento: z.number().min(0).max(99999999.99).default(0).optional(),
+  montoDescuento: montoNoNegativo.default(0).optional(),
   fechaVencimiento: z.iso.date().nullable().optional(),
   observaciones: z.string().trim().max(300).optional(),
 });
 export type GenerarCargoIndividualDto = z.infer<typeof GenerarCargoIndividualSchema>;
+
+export const EditarCargoIndividualSchema = z.object({
+  nombreConcepto: z.string().trim().min(2).max(120).optional(),
+  montoOriginal: montoDecimal,
+  montoDescuento: montoNoNegativo.default(0),
+  fechaVencimiento: z.iso.date().nullable().optional(),
+});
+export type EditarCargoIndividualDto = z.infer<typeof EditarCargoIndividualSchema>;
 
 // ---------------- Consultas de Cargos ----------------
 export const ListarCargosQuerySchema = z.object({
@@ -101,7 +113,7 @@ export const ListarCargosQuerySchema = z.object({
 });
 export type ListarCargosQueryDto = z.infer<typeof ListarCargosQuerySchema>;
 
-// ---------------- Registro de Pagos e Imputaciones ----------------
+// ---------------- Registro y Edición de Pagos e Imputaciones ----------------
 export const ImputacionItemSchema = z.object({
   cargoId: z.number().int().positive(),
   monto: montoDecimal,
@@ -109,7 +121,9 @@ export const ImputacionItemSchema = z.object({
 
 export const RegistrarPagoSchema = z.object({
   usuarioId: z.number().int().positive().optional(),
-  montoTotal: montoDecimal,
+  montoTotal: montoNoNegativo,
+  usarSaldoAFavor: z.boolean().default(false).optional(),
+  montoSaldoAFavor: montoNoNegativo.optional(),
   metodoPago: z.enum(MetodoPago),
   referenciaComprobante: z.string().trim().max(100).optional(),
   observaciones: z.string().trim().max(500).optional(),
@@ -117,12 +131,28 @@ export const RegistrarPagoSchema = z.object({
 });
 export type RegistrarPagoDto = z.infer<typeof RegistrarPagoSchema>;
 
-// ---------------- Aplicar Saldo a Favor ----------------
+export const EditarPagoSchema = z.object({
+  metodoPago: z.enum(MetodoPago).optional(),
+  referenciaComprobante: z.string().trim().max(100).nullable().optional(),
+  observaciones: z.string().trim().max(500).nullable().optional(),
+  fechaPago: z.iso.date().optional(),
+});
+export type EditarPagoDto = z.infer<typeof EditarPagoSchema>;
+
+// ---------------- Saldo a Favor ----------------
 export const AplicarSaldoAFavorSchema = z.object({
   usuarioId: z.number().int().positive(),
   imputaciones: z.array(ImputacionItemSchema).min(1, 'Debe seleccionar al menos un cargo para imputar saldo'),
 });
 export type AplicarSaldoAFavorDto = z.infer<typeof AplicarSaldoAFavorSchema>;
+
+export const AjustarSaldoAFavorSchema = z.object({
+  usuarioId: z.number().int().positive(),
+  tipoAjuste: z.enum(['CARGAR', 'DESCONTAR', 'FIJAR']),
+  monto: montoNoNegativo,
+  motivo: z.string().trim().max(300).optional(),
+});
+export type AjustarSaldoAFavorDto = z.infer<typeof AjustarSaldoAFavorSchema>;
 
 // ---------------- Grupo Familiar (Descuento) ----------------
 export const ActualizarDescuentoFamiliaSchema = z.object({
@@ -136,4 +166,10 @@ export const VincularHermanoSchema = z.object({
   hermanoDni: z.string().trim().min(5).max(20),
 });
 export type VincularHermanoDto = z.infer<typeof VincularHermanoSchema>;
+
+export const DesvincularHermanoSchema = z.object({
+  usuarioId: z.number().int().positive(),
+});
+export type DesvincularHermanoDto = z.infer<typeof DesvincularHermanoSchema>;
+
 

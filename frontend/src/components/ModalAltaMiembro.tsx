@@ -201,21 +201,24 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl my-6 flex flex-col transition-colors">
-        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-xs">
+      <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col transition-colors">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80 shrink-0">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Dar de Alta Miembro</h3>
+            <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Nuevo Miembro</h3>
           </div>
-          <button onClick={onCerrar} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+          <button
+            onClick={onCerrar}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 text-xs overflow-y-auto max-h-[80vh]">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1">
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-xl flex items-center gap-2 text-xs">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-center gap-2 text-xs font-medium">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -224,46 +227,49 @@ export const ModalAltaMiembro: React.FC<Props> = ({
           {/* Autocompletado de hermano */}
           <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 rounded-xl space-y-2">
             <span className="font-semibold text-emerald-900 dark:text-emerald-200 block text-xs">
-              ¿Tiene un hermano/a ya registrado en el Grupo Scout?
+              ¿Tiene un hermano/a ya inscripto? Copiar datos familiares:
             </span>
             <div className="flex gap-2">
               <input
                 type="text"
-                placeholder="Ingresar DNI del hermano..."
+                inputMode="numeric"
+                placeholder="DNI del hermano/a..."
                 value={dniHermano}
-                onChange={(e) => setDniHermano(e.target.value)}
-                className="flex-1 px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-emerald-500"
+                onChange={(e) => setDniHermano(e.target.value.replace(/\D/g, ''))}
+                className="flex-1 min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-500"
               />
               <button
                 type="button"
                 onClick={handleBuscarHermano}
                 disabled={buscandoHermano || !dniHermano.trim()}
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                className="min-h-[42px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
-                <Search className="w-3.5 h-3.5" />
-                <span>{buscandoHermano ? 'Buscando...' : 'Buscar'}</span>
+                <Search className="w-4 h-4" />
+                <span>{buscandoHermano ? 'Buscando...' : 'Copiar'}</span>
               </button>
             </div>
 
             {hermanoEncontrado && (
-              <div className="p-2.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 rounded-lg text-emerald-900 dark:text-emerald-200 flex items-center gap-2 text-[11px]">
+              <div className="p-2.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 flex items-center gap-2 text-xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>
-                  Hermano encontrado: <strong>{hermanoEncontrado.nombre} {hermanoEncontrado.apellido}</strong>. Se vincularán al mismo Grupo Familiar y se autocompletaron domicilio y contacto.
+                  Datos copiados de <strong>{hermanoEncontrado.nombre} {hermanoEncontrado.apellido}</strong>.
                 </span>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">DNI del nuevo miembro *</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">DNI *</label>
               <input
                 type="text"
+                inputMode="numeric"
                 required
+                placeholder="Sin puntos"
                 value={dni}
-                onChange={(e) => setDni(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:border-emerald-500 outline-none"
+                onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -273,7 +279,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 required
                 value={fechaNacimiento}
                 onChange={(e) => setFechaNacimiento(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:border-emerald-500 outline-none"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -283,7 +289,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:border-emerald-500 outline-none"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -293,21 +299,21 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 required
                 value={apellido}
                 onChange={(e) => setApellido(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:border-emerald-500 outline-none"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Rama / Sección *</label>
               <select
                 value={unidadId}
                 onChange={(e) => handleCambioUnidad(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs focus:border-emerald-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm focus:border-emerald-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 {unidadesFiltradas.some(esUnidadRama) && (
-                  <optgroup label="Ramas / Secciones Pedagógicas">
+                  <optgroup label="Ramas del Grupo">
                     {unidadesFiltradas.filter(esUnidadRama).map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.nombre}
@@ -316,7 +322,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                   </optgroup>
                 )}
                 {unidadesFiltradas.some((u) => !esUnidadRama(u)) && (
-                  <optgroup label="Institucional / Sin Rama">
+                  <optgroup label="Adultos y Equipo">
                     {unidadesFiltradas.filter((u) => !esUnidadRama(u)).map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.nombre}
@@ -327,53 +333,54 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Rol a Asignar *</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Función en el Grupo *</label>
               <select
                 value={rolId}
                 onChange={(e) => handleCambioRol(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-xs focus:border-emerald-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm focus:border-emerald-500 outline-none bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               >
                 {rolesFiltrados.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.nombre} ({r.alcancePorDefecto})
+                    {r.nombre}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Familiar de Contacto</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono de Contacto</label>
               <input
                 type="tel"
+                inputMode="tel"
                 value={telefonoContacto}
                 onChange={(e) => setTelefonoContacto(e.target.value)}
-                placeholder="11-XXXX-XXXX"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:border-emerald-500 outline-none"
+                placeholder="Ej. 11 4567 8901"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email de Contacto</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Familiar</label>
               <input
                 type="email"
                 value={emailContacto}
                 onChange={(e) => setEmailContacto(e.target.value)}
                 placeholder="familia@email.com"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:border-emerald-500 outline-none"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Domicilio Real</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Domicilio</label>
               <input
                 type="text"
                 value={domicilio}
                 onChange={(e) => setDomicilio(e.target.value)}
-                placeholder="Calle, número, localidad"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:border-emerald-500 outline-none"
+                placeholder="Calle y número"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
@@ -382,26 +389,26 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 type="text"
                 value={obraSocial}
                 onChange={(e) => setObraSocial(e.target.value)}
-                placeholder="OSDE, Swiss Medical, etc."
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xs focus:border-emerald-500 outline-none"
+                placeholder="Opcional"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button
               type="button"
               onClick={onCerrar}
-              className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={cargando}
-              className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer disabled:opacity-50"
             >
-              {cargando ? 'Guardando...' : 'Crear Miembro'}
+              {cargando ? 'Guardando...' : 'Guardar Miembro'}
             </button>
           </div>
         </form>
