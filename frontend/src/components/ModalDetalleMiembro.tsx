@@ -13,11 +13,16 @@ import {
   METODO_PAGO_LABELS,
   NOMBRES_MESES_CORTOS,
   calcularEdad,
+  esRolAlcanceGlobal,
+  esRolDeEducador,
+  esRolDeProtagonista,
   formatearMoneda,
+  rolRequiereRama,
   seleccionarPlantillaPorMiembro,
   traducirErrorAmigable,
 } from '../lib/formatters';
 import { BotonLlamarMiembro } from './BotonLlamarMiembro';
+import { usePermisosUI } from '../lib/permisos';
 import {
   X,
   User,
@@ -61,21 +66,12 @@ interface Props {
 }
 
 const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null;
-const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA' || u?.nombre?.toLowerCase().includes('jefatura');
-const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO' || u?.nombre?.toLowerCase().includes('sin rama');
+const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA';
+const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO';
 
-const esRolJefe = (r: any) =>
-  r?.nombre?.toLowerCase().includes('jefe') ||
-  (r?.esSistema === false && r?.alcancePorDefecto === 'GLOBAL');
-const esRolSinRama = (r: any) =>
-  r?.nombre?.toLowerCase().includes('sin rama') ||
-  (r?.esSistema === false && r?.alcancePorDefecto !== 'PROPIO');
-const esRolRama = (r: any) =>
-  (!r?.nombre?.toLowerCase().includes('jefe') &&
-    !r?.nombre?.toLowerCase().includes('sin rama') &&
-    r?.esSistema !== false) ||
-  (r?.esSistema === false &&
-    (r?.alcancePorDefecto === 'UNIDAD' || r?.alcancePorDefecto === 'PROPIO'));
+const esRolJefe = (r: any) => !rolRequiereRama(r) && esRolAlcanceGlobal(r);
+const esRolSinRama = (r: any) => !rolRequiereRama(r) && !esRolAlcanceGlobal(r);
+const esRolRama = (r: any) => rolRequiereRama(r);
 
 const getRamaColorConfig = (nombreRama: string) => {
   const n = (nombreRama || '').toLowerCase();
@@ -94,7 +90,22 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   onClaveReseteada,
   tabInicial = 'datos',
 }) => {
-  const { tieneGlobal } = useAuthStore();
+  const { tieneGlobal, tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
+  const { canEdit, canView } = usePermisosUI();
+  const puedeEditarIdentidad = canEdit('miembro', 'identidad');
+  const puedeEditarContacto = canEdit('miembro', 'contacto');
+  const puedeDarBaja = canEdit('miembro', 'estado');
+  const puedeEditarFamilia = canEdit('miembro', 'familia');
+  const puedeEditarDescuento = canEdit('miembro', 'descuentoFamiliar');
+  const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
+  const puedeVerCuotas = canView('cuotas');
+  const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
+  const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
+  const puedeVerFicha = canView('ficha');
+  const puedeCompletarFicha = canEdit('ficha', 'completar');
+  const puedeValidarFisico = canEdit('ficha', 'validarFisico');
+  const puedeHacerPases = canEdit('miembro', 'pase');
+  const puedeResetearClave = canEdit('miembro', 'clave');
   const [tab, setTab] = useState<'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'>(tabInicial);
   const [miembro, setMiembro] = useState<any | null>(null);
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
@@ -186,6 +197,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   );
 
   const rolesRama = useMemo(() => roles.filter(esRolRama), [roles]);
+  const rolesSinRama = useMemo(() => {
+    const sr = roles.filter((r) => !rolRequiereRama(r) && (!esRolAlcanceGlobal(r) || tieneGlobal()));
+    return sr.length > 0 ? sr : roles.filter((r) => !rolRequiereRama(r));
+  }, [roles, tieneGlobal]);
+  const rolesJefatura = useMemo(() => {
+    const jf = roles.filter((r) => !rolRequiereRama(r) && esRolAlcanceGlobal(r));
+    return jf.length > 0 ? jf : roles.filter((r) => !rolRequiereRama(r));
+  }, [roles]);
 
   const asignacionPrincipal = miembro?.asignaciones?.[0];
 
@@ -198,9 +217,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     );
   }, [asignacionPrincipal, unidadDestinoId, rolDestinoId]);
 
-  const esEducador =
-    asignacionPrincipal?.rol?.nombre?.toLowerCase().includes('educador') ||
-    asignacionPrincipal?.rol?.nombre?.toLowerCase().includes('jefe');
+  const esEducador = esRolDeEducador(asignacionPrincipal?.rol);
 
   const candidatoPase = candidatosPase.find((c) => c.usuario?.id === miembro?.id);
 
@@ -277,7 +294,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         if (candidato.tipo === 'EGRESO' || candidato.tipo === 'EGRESO_SIN_RAMA') {
           catIni = 'SIN_RAMA';
           const uSin = (resUnidades.data || []).find(esUnidadSinRama);
-          const rSin = (resRoles.data || []).find(esRolSinRama);
+          const rSin =
+            (resRoles.data || []).find(esRolSinRama) ||
+            (resRoles.data || []).find((r: any) => !rolRequiereRama(r));
           if (uSin) unidadIni = String(uSin.id);
           if (rSin) rolIni = String(rSin.id);
         } else if (candidato.ramaSugerida) {
@@ -290,9 +309,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             if (uRama) unidadIni = String(uRama.id);
           }
           const rProt = (resRoles.data || []).find(
-            (r: any) =>
-              r.nombre.toLowerCase() === 'protagonista' ||
-              (esRolRama(r) && !r.nombre.toLowerCase().includes('educador')),
+            (r: any) => esRolDeProtagonista(r) && esRolRama(r),
           );
           if (rProt) rolIni = String(rProt.id);
         }
@@ -301,13 +318,19 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         if (uActual && esUnidadSinRama(uActual)) {
           catIni = 'SIN_RAMA';
           unidadIni = String(uActual.id);
-          const rSin = (resRoles.data || []).find(esRolSinRama);
-          if (rSin) rolIni = String(rSin.id);
+          const rSin =
+            asig?.rol?.id ||
+            (resRoles.data || []).find(esRolSinRama)?.id ||
+            (resRoles.data || []).find((r: any) => !rolRequiereRama(r))?.id;
+          if (rSin) rolIni = String(rSin);
         } else if (uActual && esUnidadJefatura(uActual)) {
           catIni = 'JEFATURA';
           unidadIni = String(uActual.id);
-          const rJefe = (resRoles.data || []).find(esRolJefe);
-          if (rJefe) rolIni = String(rJefe.id);
+          const rJefe =
+            asig?.rol?.id ||
+            (resRoles.data || []).find(esRolJefe)?.id ||
+            (resRoles.data || []).find((r: any) => !rolRequiereRama(r))?.id;
+          if (rJefe) rolIni = String(rJefe);
         } else {
           catIni = 'RAMA';
           const allRamas = resRamas.data || [];
@@ -328,16 +351,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             const uDest = (resUnidades.data || []).find((u: any) => u.ramaId === ramaTarget.id);
             if (uDest) unidadIni = String(uDest.id);
           }
-          const eraEdu = asig?.rol?.nombre?.toLowerCase().includes('educador');
+          const eraEdu = esRolDeEducador(asig?.rol);
           const rolDef = eraEdu
-            ? (resRoles.data || []).find(
-                (r: any) => r.nombre.toLowerCase().includes('educador') && esRolRama(r),
-              )
-            : (resRoles.data || []).find(
-                (r: any) =>
-                  r.nombre.toLowerCase() === 'protagonista' ||
-                  (esRolRama(r) && !r.nombre.toLowerCase().includes('educador')),
-              );
+            ? (resRoles.data || []).find((r: any) => esRolDeEducador(r) && esRolRama(r))
+            : (resRoles.data || []).find((r: any) => esRolDeProtagonista(r) && esRolRama(r));
           if (rolDef) rolIni = String(rolDef.id);
         }
       }
@@ -363,16 +380,19 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     setAlerta(null);
 
     try {
-      await api.patch(`/miembros/${miembro.id}`, {
-        nombre: formData.nombre.trim(),
-        apellido: formData.apellido.trim(),
-        dni: formData.dni.trim(),
-        fechaNacimiento: formData.fechaNacimiento || undefined,
-        emailContacto: formData.emailContacto.trim() || null,
-        telefonoContacto: formData.telefonoContacto.trim() || null,
-        activo: formData.activo,
-        datosFijosJson: {
-          ...(miembro.datosFijosJson || {}),
+      // Actualización parcial: solo se envían los grupos de campos que el usuario puede modificar
+      const payload: Record<string, unknown> = {};
+      if (puedeEditarIdentidad) {
+        payload.nombre = formData.nombre.trim();
+        payload.apellido = formData.apellido.trim();
+        payload.dni = formData.dni.trim();
+        payload.fechaNacimiento = formData.fechaNacimiento || undefined;
+      }
+      if (puedeDarBaja) payload.activo = formData.activo;
+      if (puedeEditarContacto) {
+        payload.emailContacto = formData.emailContacto.trim() || null;
+        payload.telefonoContacto = formData.telefonoContacto.trim() || null;
+        payload.datosFijosJson = {
           protagonista_telefono: formData.telefonoContacto.trim(),
           madre_nombres: formData.madreNombres.trim(),
           madre_telefono: formData.madreTelefono.trim(),
@@ -384,8 +404,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           obra_social: formData.obraSocial.trim(),
           telefono_urgencias: formData.telefonoUrgencias.trim(),
           alergias: formData.alergias.trim(),
-        },
-      });
+        };
+      }
+      await api.patch(`/miembros/${miembro.id}`, payload);
 
       setAlerta({ tipo: 'exito', texto: 'Datos guardados.' });
       if (onActualizado) onActualizado();
@@ -427,14 +448,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
     if (cat === 'SIN_RAMA') {
       setRamaSeleccionadaId(null);
-      const u = unidades.find(esUnidadSinRama);
-      const r = roles.find(esRolSinRama);
+      const u = unidades.find(esUnidadSinRama) || unidades.find((x) => !esUnidadRama(x));
+      const r = roles.find(esRolSinRama) || roles.find((x) => !rolRequiereRama(x));
       if (u) setUnidadDestinoId(String(u.id));
       if (r) setRolDestinoId(String(r.id));
     } else if (cat === 'JEFATURA') {
       setRamaSeleccionadaId(null);
-      const u = unidades.find(esUnidadJefatura);
-      const r = roles.find(esRolJefe);
+      const u = unidades.find(esUnidadJefatura) || unidades.find((x) => !esUnidadRama(x));
+      const r = roles.find(esRolJefe) || roles.find((x) => !rolRequiereRama(x));
       if (u) setUnidadDestinoId(String(u.id));
       if (r) setRolDestinoId(String(r.id));
     } else if (cat === 'RAMA') {
@@ -463,14 +484,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       const currentRol = roles.find((r) => r.id === Number(rolDestinoId));
       if (!currentRol || !esRolRama(currentRol)) {
         const asig = miembro?.asignaciones?.[0];
-        const eraEdu = asig?.rol?.nombre?.toLowerCase().includes('educador');
+        const eraEdu = esRolDeEducador(asig?.rol);
         const rolDefecto = eraEdu
-          ? roles.find((r) => r.nombre.toLowerCase().includes('educador') && esRolRama(r))
-          : roles.find(
-              (r) =>
-                r.nombre.toLowerCase() === 'protagonista' ||
-                (esRolRama(r) && !r.nombre.toLowerCase().includes('educador')),
-            );
+          ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
+          : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
         if (rolDefecto) {
           setRolDestinoId(String(rolDefecto.id));
         }
@@ -493,14 +510,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     const currentRol = roles.find((r) => r.id === Number(rolDestinoId));
     if (!currentRol || !esRolRama(currentRol)) {
       const asig = miembro?.asignaciones?.[0];
-      const eraEdu = asig?.rol?.nombre?.toLowerCase().includes('educador');
+      const eraEdu = esRolDeEducador(asig?.rol);
       const rolDefecto = eraEdu
-        ? roles.find((r) => r.nombre.toLowerCase().includes('educador') && esRolRama(r))
-        : roles.find(
-            (r) =>
-              r.nombre.toLowerCase() === 'protagonista' ||
-              (esRolRama(r) && !r.nombre.toLowerCase().includes('educador')),
-          );
+        ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
+        : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
       if (rolDefecto) {
         setRolDestinoId(String(rolDefecto.id));
       }
@@ -508,23 +521,25 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleEjecutarPase = async () => {
-    if (!asignacionPrincipal || !unidadDestinoId) return;
+    if (!asignacionPrincipal || (!unidadDestinoId && !rolDestinoId)) return;
     const destinoUnidad = unidades.find((u) => u.id === Number(unidadDestinoId));
-    const nombreDestino = destinoUnidad?.nombre || 'la nueva sección';
+    const destinoRol = roles.find((r) => r.id === Number(rolDestinoId));
+    const nombreDestino = destinoUnidad?.nombre || destinoRol?.nombre || 'la nueva función';
 
     setEjecutandoPase(true);
     setAlerta(null);
     try {
       await api.post('/pases', {
         asignacionOrigenId: asignacionPrincipal.id,
-        unidadDestinoId: Number(unidadDestinoId),
+        unidadDestinoId: unidadDestinoId ? Number(unidadDestinoId) : undefined,
         rolDestinoId: rolDestinoId ? Number(rolDestinoId) : undefined,
       });
 
       setAlerta({
         tipo: 'exito',
-        texto: `Pase a ${nombreDestino} realizado.`,
+        texto: `Pase / cambio de rol a ${nombreDestino} realizado.`,
       });
+      await refrescarSesionDesdeServidor();
       if (onActualizado) onActualizado();
       cargarDatos(miembro.id);
     } catch (err: any) {
@@ -1049,61 +1064,69 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             <span>Datos</span>
           </button>
 
-          <button
-            onClick={() => setTab('cuotas')}
-            className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-              tab === 'cuotas'
-                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <CreditCard className="w-4 h-4" />
-            <span>Cuotas</span>
-            {saldoPendiente > 0 && (
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-                {formatearMoneda(saldoPendiente)}
-              </span>
-            )}
-          </button>
+          {puedeVerCuotas && (
+            <button
+              onClick={() => setTab('cuotas')}
+              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+                tab === 'cuotas'
+                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>Cuotas</span>
+              {saldoPendiente > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
+                  {formatearMoneda(saldoPendiente)}
+                </span>
+              )}
+            </button>
+          )}
 
-          <button
-            onClick={() => setTab('ficha')}
-            className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-              tab === 'ficha'
-                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <FileCheck2 className="w-4 h-4" />
-            <span>Ficha</span>
-          </button>
+          {puedeVerFicha && (
+            <button
+              onClick={() => setTab('ficha')}
+              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+                tab === 'ficha'
+                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <FileCheck2 className="w-4 h-4" />
+              <span>Ficha</span>
+            </button>
+          )}
 
-          <button
-            onClick={() => setTab('pase')}
-            className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-              tab === 'pase'
-                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <ArrowRightLeft className="w-4 h-4" />
-            <span>Pase</span>
-            {candidatoPase && (
-              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse" />
-            )}
-          </button>
+          {puedeHacerPases && (
+            <button
+              onClick={() => setTab('pase')}
+              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+                tab === 'pase'
+                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <ArrowRightLeft className="w-4 h-4" />
+              <span>Pase</span>
+              {candidatoPase && (
+                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse" />
+              )}
+            </button>
+          )}
 
-          <button
-            onClick={() => setTab('seguridad')}
-            className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-              tab === 'seguridad'
-                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
-            }`}
-          >
-            <KeyRound className="w-4 h-4" />
-            <span>Clave</span>
-          </button>
+          {puedeResetearClave && (
+            <button
+              onClick={() => setTab('seguridad')}
+              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+                tab === 'seguridad'
+                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
+                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+              }`}
+            >
+              <KeyRound className="w-4 h-4" />
+              <span>Clave</span>
+            </button>
+          )}
         </div>
 
         {/* Alerta interna */}
@@ -1136,231 +1159,86 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               {/* ======================================================== */}
               {tab === 'datos' && (
                 <form onSubmit={handleGuardarDatos} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.nombre}
-                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Apellido *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.apellido}
-                        onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        DNI *
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        required
-                        value={formData.dni}
-                        onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Fecha de Nacimiento *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={formData.fechaNacimiento}
-                        onChange={(e) =>
-                          setFormData({ ...formData, fechaNacimiento: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Contacto */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono del Miembro
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Ej: 3511234567"
-                        value={formData.telefonoContacto}
-                        onChange={(e) =>
-                          setFormData({ ...formData, telefonoContacto: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="correo@ejemplo.com"
-                        value={formData.emailContacto}
-                        onChange={(e) =>
-                          setFormData({ ...formData, emailContacto: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre y Apellido Madre
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nombre y apellido de la madre"
-                        value={formData.madreNombres}
-                        onChange={(e) =>
-                          setFormData({ ...formData, madreNombres: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Madre
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Celular madre"
-                        value={formData.madreTelefono}
-                        onChange={(e) =>
-                          setFormData({ ...formData, madreTelefono: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre y Apellido Padre
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nombre y apellido del padre"
-                        value={formData.padreNombres}
-                        onChange={(e) =>
-                          setFormData({ ...formData, padreNombres: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Padre
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Celular padre"
-                        value={formData.padreTelefono}
-                        onChange={(e) =>
-                          setFormData({ ...formData, padreTelefono: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre y Apellido Tutor/a
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nombre y apellido del tutor/a"
-                        value={formData.tutorNombres}
-                        onChange={(e) =>
-                          setFormData({ ...formData, tutorNombres: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Tutor/a
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Celular tutor/a"
-                        value={formData.tutorTelefono}
-                        onChange={(e) =>
-                          setFormData({ ...formData, tutorTelefono: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono de Urgencias
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Alternativo para emergencias"
-                        value={formData.telefonoUrgencias}
-                        onChange={(e) =>
-                          setFormData({ ...formData, telefonoUrgencias: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Domicilio
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Calle y número"
-                        value={formData.domicilio}
-                        onChange={(e) => setFormData({ ...formData, domicilio: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Obra Social / Prepaga
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="OSDE, Apross, etc."
-                        value={formData.obraSocial}
-                        onChange={(e) => setFormData({ ...formData, obraSocial: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                      Alergias o Cuidados Médicos
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Alergias, medicación habitual o dieta especial"
-                      value={formData.alergias}
-                      onChange={(e) => setFormData({ ...formData, alergias: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                    />
-                  </div>
+                  {(() => {
+                    type Campo = {
+                      key: keyof typeof formData;
+                      label: string;
+                      editable: boolean;
+                      type?: string;
+                      placeholder?: string;
+                      full?: boolean;
+                      multiline?: boolean;
+                      required?: boolean;
+                    };
+                    const campos: Campo[] = [
+                      { key: 'nombre', label: 'Nombre', editable: puedeEditarIdentidad, required: true },
+                      { key: 'apellido', label: 'Apellido', editable: puedeEditarIdentidad, required: true },
+                      { key: 'dni', label: 'DNI', editable: puedeEditarIdentidad, required: true },
+                      { key: 'fechaNacimiento', label: 'Fecha de Nacimiento', editable: puedeEditarIdentidad, type: 'date', required: true },
+                      { key: 'telefonoContacto', label: 'Teléfono del Miembro', editable: puedeEditarContacto, type: 'tel', placeholder: 'Ej: 3511234567' },
+                      { key: 'emailContacto', label: 'Email', editable: puedeEditarContacto, type: 'email', placeholder: 'correo@ejemplo.com' },
+                      { key: 'madreNombres', label: 'Nombre y Apellido Madre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido de la madre' },
+                      { key: 'madreTelefono', label: 'Teléfono Madre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular madre' },
+                      { key: 'padreNombres', label: 'Nombre y Apellido Padre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del padre' },
+                      { key: 'padreTelefono', label: 'Teléfono Padre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular padre' },
+                      { key: 'tutorNombres', label: 'Nombre y Apellido Tutor/a', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del tutor/a' },
+                      { key: 'tutorTelefono', label: 'Teléfono Tutor/a', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular tutor/a' },
+                      { key: 'telefonoUrgencias', label: 'Teléfono de Urgencias', editable: puedeEditarContacto, type: 'tel', placeholder: 'Alternativo para emergencias' },
+                      { key: 'domicilio', label: 'Domicilio', editable: puedeEditarContacto, placeholder: 'Calle y número' },
+                      { key: 'obraSocial', label: 'Obra Social / Prepaga', editable: puedeEditarContacto, placeholder: 'OSDE, Apross, etc.', full: true },
+                      { key: 'alergias', label: 'Alergias o Cuidados Médicos', editable: puedeEditarContacto, placeholder: 'Alergias, medicación habitual o dieta especial', full: true, multiline: true },
+                    ];
+                    const claseInput =
+                      'w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none';
+                    const mostrarValor = (c: Campo) => {
+                      const v = String(formData[c.key] ?? '');
+                      if (!v) return null;
+                      if (c.type === 'date') return new Date(`${v}T00:00:00`).toLocaleDateString('es-AR');
+                      return v;
+                    };
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {campos.map((c) => {
+                          const valor = mostrarValor(c);
+                          // Solo lectura limpio: si no puede editar y no hay dato, no mostrar el campo
+                          if (!c.editable && !valor) return null;
+                          return (
+                            <div key={c.key} className={c.full ? 'sm:col-span-2' : ''}>
+                              <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                                {c.label}
+                                {c.editable && c.required ? ' *' : ''}
+                              </label>
+                              {c.editable ? (
+                                c.multiline ? (
+                                  <textarea
+                                    rows={2}
+                                    placeholder={c.placeholder}
+                                    value={String(formData[c.key] ?? '')}
+                                    onChange={(e) => setFormData({ ...formData, [c.key]: e.target.value })}
+                                    className={claseInput}
+                                  />
+                                ) : (
+                                  <input
+                                    type={c.type || 'text'}
+                                    inputMode={c.type === 'tel' ? 'tel' : c.key === 'dni' ? 'numeric' : undefined}
+                                    required={c.required}
+                                    placeholder={c.placeholder}
+                                    value={String(formData[c.key] ?? '')}
+                                    onChange={(e) => setFormData({ ...formData, [c.key]: e.target.value })}
+                                    className={`${claseInput} ${c.key === 'dni' ? 'font-mono' : ''}`}
+                                  />
+                                )
+                              ) : (
+                                <p className="min-h-[42px] px-1 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap break-words">
+                                  {valor}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
 
                   {/* Grupo Familiar */}
                   {(() => {
@@ -1436,28 +1314,30 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   })()}
 
                   {/* Estado Activo / Baja y Botón Guardar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <label className="flex items-center gap-2.5 cursor-pointer min-h-[42px]">
-                      <input
-                        type="checkbox"
-                        checked={formData.activo}
-                        onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                        className="w-5 h-5 text-emerald-600 rounded border-slate-300 cursor-pointer"
-                      />
-                      <span className="font-bold text-slate-700 dark:text-slate-200">
-                        {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
-                      </span>
-                    </label>
+                  {puedeEditarMiembro && (
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <label className="flex items-center gap-2.5 cursor-pointer min-h-[42px]">
+                        <input
+                          type="checkbox"
+                          checked={formData.activo}
+                          onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                          className="w-5 h-5 text-emerald-600 rounded border-slate-300 cursor-pointer"
+                        />
+                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                          {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
+                        </span>
+                      </label>
 
-                    <button
-                      type="submit"
-                      disabled={guardando}
-                      className="min-h-[44px] px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      <Save className="w-4 h-4" />
-                      <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
-                    </button>
-                  </div>
+                      <button
+                        type="submit"
+                        disabled={guardando}
+                        className="min-h-[44px] px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
+                      </button>
+                    </div>
+                  )}
                 </form>
               )}
 
@@ -1489,17 +1369,19 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                           <span className="text-[10px] font-bold uppercase text-teal-600 dark:text-teal-400">
                             Saldo a Favor
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAjustandoSaldo(!ajustandoSaldo);
-                              setMontoAjusteSaldo('');
-                              setMotivoAjusteSaldo('');
-                            }}
-                            className="text-[10px] font-bold text-teal-700 dark:text-teal-300 underline hover:opacity-80 cursor-pointer"
-                          >
-                            {ajustandoSaldo ? 'Cerrar' : 'Ajustar'}
-                          </button>
+                          {puedeGestionarTesoreria && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAjustandoSaldo(!ajustandoSaldo);
+                                setMontoAjusteSaldo('');
+                                setMotivoAjusteSaldo('');
+                              }}
+                              className="text-[10px] font-bold text-teal-700 dark:text-teal-300 underline hover:opacity-80 cursor-pointer"
+                            >
+                              {ajustandoSaldo ? 'Cerrar' : 'Ajustar'}
+                            </button>
+                          )}
                         </div>
                         <span className="text-xl font-black text-teal-600 dark:text-teal-400">
                           {formatearMoneda(saldoAFavor)}
@@ -1508,26 +1390,30 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setModalGenerarDeudaAbierto(true)}
-                        className="min-h-[42px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <PlusCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        <span>+ Cargo</span>
-                      </button>
+                      {puedeGestionarTesoreria && (
+                        <button
+                          type="button"
+                          onClick={() => setModalGenerarDeudaAbierto(true)}
+                          className="min-h-[42px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <PlusCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                          <span>+ Cargo</span>
+                        </button>
+                      )}
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCargoIdACobrar(null);
-                          setModalCobrarAbierto(true);
-                        }}
-                        className="min-h-[42px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        <span>{saldoPendiente > 0 ? 'Cobrar / Pagar' : 'Registrar Adelanto'}</span>
-                      </button>
+                      {puedeCobrarCuotas && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCargoIdACobrar(null);
+                            setModalCobrarAbierto(true);
+                          }}
+                          className="min-h-[42px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>{saldoPendiente > 0 ? 'Cobrar / Pagar' : 'Registrar Adelanto'}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -2161,7 +2047,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                             {/* Acciones Táctiles 1-Tap */}
                             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                              {esPendiente && (
+                              {esPendiente && puedeValidarFisico && (
                                 <button
                                   type="button"
                                   disabled={validandoFichaId === ent.id}
@@ -2205,19 +2091,21 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                 <span>Descargar PDF</span>
                               </button>
 
-                              <button
-                                type="button"
-                                disabled={cargandoFichaEditor}
-                                onClick={handleAbrirEditorFicha}
-                                className="col-span-2 sm:col-span-1 min-h-[44px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-                              >
-                                {cargandoFichaEditor ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Pencil className="w-4 h-4 text-emerald-600" />
-                                )}
-                                <span>{ent ? 'Editar Ficha' : 'Rellenar Ficha'}</span>
-                              </button>
+                              {puedeCompletarFicha && (
+                                <button
+                                  type="button"
+                                  disabled={cargandoFichaEditor}
+                                  onClick={handleAbrirEditorFicha}
+                                  className="col-span-2 sm:col-span-1 min-h-[44px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                                >
+                                  {cargandoFichaEditor ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Pencil className="w-4 h-4 text-emerald-600" />
+                                  )}
+                                  <span>{ent ? 'Editar Ficha' : 'Rellenar Ficha'}</span>
+                                </button>
+                              )}
                             </div>
                           </div>
 
@@ -2282,7 +2170,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                           : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                       }`}
                     >
-                      Apoyo
+                      Sin Rama / Apoyo
                     </button>
                     {tieneGlobal() && (
                       <button
@@ -2294,7 +2182,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                         }`}
                       >
-                        Jefatura
+                        Jefatura / Global
                       </button>
                     )}
                   </div>
@@ -2356,37 +2244,43 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                           </div>
                         </div>
                       )}
-
-                      <div className="space-y-1.5">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                          Rol:
-                        </span>
-                        <div className="grid grid-cols-2 gap-2">
-                          {rolesRama.map((r) => {
-                            const activo = Number(rolDestinoId) === r.id;
-                            return (
-                              <button
-                                key={r.id}
-                                type="button"
-                                onClick={() => setRolDestinoId(String(r.id))}
-                                className={`min-h-[42px] px-3 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                                  activo
-                                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200'
-                                    : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
-                                }`}
-                              >
-                                {r.nombre}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
                     </div>
                   )}
 
+                  {/* Selector de Rol Dinámico para la categoría seleccionada */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                      Función / Rol:
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(categoriaDestino === 'RAMA'
+                        ? rolesRama
+                        : categoriaDestino === 'SIN_RAMA'
+                          ? rolesSinRama
+                          : rolesJefatura
+                      ).map((r) => {
+                        const activo = Number(rolDestinoId) === r.id;
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => setRolDestinoId(String(r.id))}
+                            className={`min-h-[42px] px-3 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                              activo
+                                ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200'
+                                : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                            }`}
+                          >
+                            {r.nombre}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <button
                     type="button"
-                    disabled={ejecutandoPase || !unidadDestinoId || esMismoDestino}
+                    disabled={ejecutandoPase || (!unidadDestinoId && !rolDestinoId) || esMismoDestino}
                     onClick={handleEjecutarPase}
                     className="w-full min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs disabled:opacity-40"
                   >
@@ -2396,7 +2290,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         ? 'Procesando pase...'
                         : esMismoDestino
                           ? 'Ya pertenece a esta sección y rol'
-                          : 'Confirmar Pase ahora'}
+                          : 'Confirmar Pase / Cambio de Rol'}
                     </span>
                   </button>
                 </div>

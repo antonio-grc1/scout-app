@@ -37,14 +37,20 @@ export type EditarUnidadDto = z.infer<typeof EditarUnidadSchema>;
 
 // ---------------- Roles ----------------
 const permisosClaves = z.array(z.string().trim().min(1)).max(200);
+export const TipoMiembroRolSchema = z.enum(['PROTAGONISTA', 'EDUCADOR']);
+
 export const CrearRolSchema = z.object({
   nombre: nombre(80),
   alcancePorDefecto: z.enum(AlcanceRol),
+  tipoMiembro: TipoMiembroRolSchema.optional(),
+  requiereRama: z.boolean().optional(),
   permisos: permisosClaves.default([]),
 });
 export const EditarRolSchema = z.object({
   nombre: nombre(80).optional(),
   alcancePorDefecto: z.enum(AlcanceRol).optional(),
+  tipoMiembro: TipoMiembroRolSchema.optional(),
+  requiereRama: z.boolean().optional(),
   permisos: permisosClaves.optional(),
 });
 export type CrearRolDto = z.infer<typeof CrearRolSchema>;

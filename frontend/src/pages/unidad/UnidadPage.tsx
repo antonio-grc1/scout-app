@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
 import { Navbar } from '../../components/Navbar';
 import { QrScannerModal } from '../../components/QrScannerModal';
 import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
@@ -11,6 +12,7 @@ import {
   ESTADO_FICHA_CONFIG,
   calcularCamada,
   calcularEdad,
+  esRolDeEducador,
   formatearMoneda,
   formatearNombreFamilia,
   normalizarTextoBusqueda,
@@ -59,6 +61,13 @@ const calcularDeudaMiembro = (m: any): number =>
   ) / 100;
 
 export const UnidadPage: React.FC = () => {
+  const { tienePermiso } = useAuthStore();
+  const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
+  const puedeEjecutarPases = tienePermiso('pases.ejecutar');
+  const puedeVerCuotas = tienePermiso('cuotas.ver') || tienePermiso('tesoreria.gestionar');
+  const puedeVerFichas = tienePermiso('legajos.ver');
+  const puedeValidarFisico = tienePermiso('legajos.validar_fisico');
+
   const [miembros, setMiembros] = useState<any[]>([]);
   const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
   const [entregas, setEntregas] = useState<any[]>([]);
@@ -108,8 +117,8 @@ export const UnidadPage: React.FC = () => {
       const [resMiembros, resCandidatos, resEntregas, resUnidades, resRoles, resRamas] =
         await Promise.all([
           api.get('/miembros?porPagina=200&incluirInactivos=true'),
-          api.get('/pases/candidatos').catch(() => ({ data: [] })),
-          api.get('/legajos/entregas?cicloAnio=2026').catch(() => ({ data: [] })),
+          puedeVerPases ? api.get('/pases/candidatos').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          puedeVerFichas ? api.get('/legajos/entregas?cicloAnio=2026').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/organizacion/unidades').catch(() => ({ data: [] })),
           api.get('/organizacion/roles').catch(() => ({ data: [] })),
           api.get('/organizacion/ramas').catch(() => ({ data: [] })),
@@ -191,9 +200,7 @@ export const UnidadPage: React.FC = () => {
       }
 
       const asig = m.asignaciones?.[0];
-      const esEdu =
-        asig?.rol?.nombre?.toLowerCase().includes('educador') ||
-        asig?.rol?.nombre?.toLowerCase().includes('jefe');
+      const esEdu = esRolDeEducador(asig?.rol);
       const cfg = obtenerConfigRama(m, unidades);
       const entrega = entregasPorUsuario.get(m.id);
 
@@ -298,9 +305,7 @@ export const UnidadPage: React.FC = () => {
     for (const m of miembros) {
       if (!m.activo) continue;
       const asig = m.asignaciones?.[0];
-      const esEdu =
-        asig?.rol?.nombre?.toLowerCase().includes('educador') ||
-        asig?.rol?.nombre?.toLowerCase().includes('jefe');
+      const esEdu = esRolDeEducador(asig?.rol);
       if (esEdu) continue;
       const cfg = obtenerConfigRama(m, unidades);
       if (
@@ -413,11 +418,7 @@ export const UnidadPage: React.FC = () => {
       caminantes: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'caminantes').length,
       rover: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'rover').length,
       educadores: activos.filter((m) =>
-        m.asignaciones?.some(
-          (a: any) =>
-            a.rol?.nombre?.toLowerCase().includes('educador') ||
-            a.rol?.nombre?.toLowerCase().includes('jefe'),
-        ),
+        m.asignaciones?.some((a: any) => esRolDeEducador(a.rol)),
       ).length,
       faltaFicha: activos.filter(
         (m) => entregasPorUsuario.get(m.id)?.estado !== 'VALIDADO_FISICAMENTE',
@@ -474,23 +475,27 @@ export const UnidadPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Botones de Acción Principal (Touch target >= 44px) */}
-          <div className="grid grid-cols-2 sm:flex items-center gap-2">
-            <button
-              onClick={() => setScannerAbierto(true)}
-              className="min-h-[44px] px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
-            >
-              <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Escanear QR</span>
-            </button>
+          {/* Botones de Acción Principal según capacidades del rol (Touch target >= 44px) */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            {tienePermiso('legajos.validar_fisico') && (
+              <button
+                onClick={() => setScannerAbierto(true)}
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+              >
+                <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Escanear QR</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setModalAltaAbierto(true)}
-              className="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4 shrink-0" />
-              <span>Nuevo Miembro</span>
-            </button>
+            {tienePermiso('miembros.crear') && (
+              <button
+                onClick={() => setModalAltaAbierto(true)}
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 shrink-0" />
+                <span>Nuevo Miembro</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -616,7 +621,7 @@ export const UnidadPage: React.FC = () => {
             </button>
           )}
 
-          {candidatosPase.length > 0 && (
+          {puedeVerPases && candidatosPase.length > 0 && (
             <button
               onClick={() =>
                 setChipActivo(chipActivo === 'PASE_SUGERIDO' ? 'TODOS' : 'PASE_SUGERIDO')
@@ -682,7 +687,7 @@ export const UnidadPage: React.FC = () => {
         )}
 
         {/* Panel de Pase en Lote por Camada cuando se activa el filtro PASE_SUGERIDO */}
-        {chipActivo === 'PASE_SUGERIDO' && gruposCamadaPase.length > 0 && (
+        {puedeVerPases && chipActivo === 'PASE_SUGERIDO' && gruposCamadaPase.length > 0 && (
           <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
@@ -742,21 +747,27 @@ export const UnidadPage: React.FC = () => {
                         </select>
                       )}
 
-                      <button
-                        type="button"
-                        disabled={ejecutando}
-                        onClick={() => handleEjecutarPaseCamada(g)}
-                        className="min-h-[38px] px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-                      >
-                        {ejecutando ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <ArrowRightLeft className="w-3.5 h-3.5" />
-                        )}
-                        <span>
-                          Pasar Camada {g.camada} ({g.miembros.length})
+                      {puedeEjecutarPases ? (
+                        <button
+                          type="button"
+                          disabled={ejecutando}
+                          onClick={() => handleEjecutarPaseCamada(g)}
+                          className="min-h-[38px] px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                        >
+                          {ejecutando ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                          )}
+                          <span>
+                            Pasar Camada {g.camada} ({g.miembros.length})
+                          </span>
+                        </button>
+                      ) : (
+                        <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold px-2">
+                          Sugerencia de pase por edad
                         </span>
-                      </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -811,7 +822,7 @@ export const UnidadPage: React.FC = () => {
                   miembro={m}
                   unidades={unidades}
                   entrega={entregasPorUsuario.get(m.id)}
-                  tienePaseSugerido={candidatosIds.has(m.id)}
+                  tienePaseSugerido={puedeVerPases && candidatosIds.has(m.id)}
                   validandoDirecto={validandoId === entregasPorUsuario.get(m.id)?.id}
                   onAbrirDetalle={(tab) => abrirMiembro(m.id, tab)}
                   onValidarFichaDirecto={handleValidarFichaDirecto}
@@ -956,13 +967,17 @@ export const UnidadPage: React.FC = () => {
                         <td
                           className="py-3.5 px-4"
                           onClick={(e) => {
+                            if (!puedeVerFichas) return;
                             e.stopPropagation();
                             abrirMiembro(m.id, 'ficha');
                           }}
                         >
                           <button
                             type="button"
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border cursor-pointer ${cfgFicha.badgeClass}`}
+                            disabled={!puedeVerFichas}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                              puedeVerFichas ? 'cursor-pointer' : 'cursor-default'
+                            } ${cfgFicha.badgeClass}`}
                           >
                             {entrega?.estado === 'VALIDADO_FISICAMENTE' ? (
                               <CheckCircle2 className="w-3 h-3" />
@@ -981,7 +996,7 @@ export const UnidadPage: React.FC = () => {
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="inline-flex items-center justify-end gap-1.5">
-                            {esPendienteFirma && (
+                            {esPendienteFirma && puedeValidarFisico && (
                               <button
                                 type="button"
                                 disabled={validandoId === entrega.id}
@@ -998,7 +1013,7 @@ export const UnidadPage: React.FC = () => {
                               </button>
                             )}
 
-                            {tienePase && (
+                            {tienePase && puedeEjecutarPases && (
                               <button
                                 type="button"
                                 onClick={() => abrirMiembro(m.id, 'pase')}
@@ -1009,28 +1024,30 @@ export const UnidadPage: React.FC = () => {
                               </button>
                             )}
 
-                            <button
-                              type="button"
-                              onClick={() => abrirMiembro(m.id, 'cuotas')}
-                              className={`min-h-[36px] px-3 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer ${
-                                deudaMiembro > 0
-                                  ? 'bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60'
-                                  : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-                              }`}
-                            >
-                              <CreditCard
-                                className={`w-3.5 h-3.5 ${
+                            {puedeVerCuotas && (
+                              <button
+                                type="button"
+                                onClick={() => abrirMiembro(m.id, 'cuotas')}
+                                className={`min-h-[36px] px-3 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer ${
                                   deudaMiembro > 0
-                                    ? 'text-rose-600 dark:text-rose-400'
-                                    : 'text-emerald-600 dark:text-emerald-400'
+                                    ? 'bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60'
+                                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
                                 }`}
-                              />
-                              <span>
-                                {deudaMiembro > 0
-                                  ? `Debe $${deudaMiembro.toLocaleString('es-AR')}`
-                                  : 'Cuotas al día'}
-                              </span>
-                            </button>
+                              >
+                                <CreditCard
+                                  className={`w-3.5 h-3.5 ${
+                                    deudaMiembro > 0
+                                      ? 'text-rose-600 dark:text-rose-400'
+                                      : 'text-emerald-600 dark:text-emerald-400'
+                                  }`}
+                                />
+                                <span>
+                                  {deudaMiembro > 0
+                                    ? `Debe $${deudaMiembro.toLocaleString('es-AR')}`
+                                    : 'Cuotas al día'}
+                                </span>
+                              </button>
+                            )}
 
                             <BotonLlamarMiembro
                               miembro={m}

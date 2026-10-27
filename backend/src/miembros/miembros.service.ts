@@ -6,7 +6,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { AlcanceRol, EstadoCargo, type Prisma } from '@prisma/client';
+import { AlcanceRol, EstadoCargo, TipoUnidad, type Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import {
   alcanceEfectivo,
@@ -105,7 +105,15 @@ export const MIEMBRO_SELECT = {
           rama: { select: { id: true, nombre: true, ordenProgresion: true, edadMinima: true, edadMaxima: true } },
         },
       },
-      rol: { select: { id: true, nombre: true, alcancePorDefecto: true } },
+      rol: {
+        select: {
+          id: true,
+          nombre: true,
+          alcancePorDefecto: true,
+          tipoMiembro: true,
+          requiereRama: true,
+        },
+      },
     },
   },
 } satisfies Prisma.UsuarioSelect;
@@ -354,8 +362,8 @@ export class MiembrosService {
 
   // ---------------- Alta ----------------
   async crear(alcance: AlcanceAcceso, dto: CrearMiembroDto) {
-    assertUnidadEnAlcance(alcance, dto.unidadId);
-    await this.validarUnidadYRol(alcance, dto.unidadId, dto.rolId);
+    const unidadIdResuelta = await this.resolverYValidarUnidadYRol(alcance, dto.unidadId, dto.rolId);
+    assertUnidadEnAlcance(alcance, unidadIdResuelta);
     // La clave inicial es el DNI; se fuerza el cambio en el primer login.
     const passwordHash = await bcrypt.hash(dto.dni, BCRYPT_ROUNDS);
 
@@ -397,7 +405,7 @@ export class MiembrosService {
           datosFijosJson: datosFijos as Prisma.InputJsonObject,
           requiereCambioClave: true,
           asignaciones: {
-            create: { unidadId: dto.unidadId, rolId: dto.rolId, cicloAnio: ciclo },
+            create: { unidadId: unidadIdResuelta, rolId: dto.rolId, cicloAnio: ciclo },
           },
         },
       });
@@ -446,6 +454,33 @@ export class MiembrosService {
     if (alcance.tipo !== 'GLOBAL' && !esPropio) {
       if (objetivo.asignaciones.some((a) => alcanceEfectivo(a) === AlcanceRol.GLOBAL)) {
         throw new ForbiddenException('No puede modificar a un usuario con alcance global');
+      }
+    }
+
+    // Permisos por campo: cada grupo de campos exige su propio permiso (actualización parcial).
+    if (!esPropio) {
+      const permisosActor = new Set(actor.asignaciones.flatMap((a) => a.permisos));
+      const PERMISO_POR_CAMPO: Record<string, string> = {
+        nombre: 'miembros.editar_identidad',
+        apellido: 'miembros.editar_identidad',
+        dni: 'miembros.editar_identidad',
+        fechaNacimiento: 'miembros.editar_identidad',
+        activo: 'miembros.baja',
+      };
+      const sinPermiso = Object.keys(dto).filter((k) => {
+        const req = PERMISO_POR_CAMPO[k];
+        if (!req) return false;
+        // Enviar el mismo valor no cuenta como modificación
+        const actual = (objetivo as Record<string, unknown>)[k];
+        const nuevo = (dto as Record<string, unknown>)[k];
+        const igual =
+          k === 'fechaNacimiento'
+            ? actual instanceof Date && String(nuevo) === actual.toISOString().slice(0, 10)
+            : actual === nuevo;
+        return !igual && !permisosActor.has(req);
+      });
+      if (sinPermiso.length) {
+        throw new ForbiddenException(`No tiene permiso para modificar: ${sinPermiso.join(', ')}`);
       }
     }
 
@@ -541,18 +576,44 @@ export class MiembrosService {
   }
 
   // ---------------- Helpers ----------------
+  private async resolverYValidarUnidadYRol(
+    alcance: AlcanceAcceso,
+    unidadId: number | undefined,
+    rolId: number,
+    alcanceOverride?: AlcanceRol | null,
+  ): Promise<number> {
+    const rol = await this.prisma.rol.findUnique({ where: { id: rolId } });
+    if (!rol) throw new BadRequestException('Rol inexistente');
+    assertPuedeOtorgar(alcance, rol, alcanceOverride);
+
+    let unidad = unidadId
+      ? await this.prisma.unidadOrganizativa.findUnique({ where: { id: unidadId } })
+      : null;
+
+    if (!unidad && rol.requiereRama === false && this.prisma.unidadOrganizativa.findFirst) {
+      const tipoPreferido =
+        rol.alcancePorDefecto === AlcanceRol.GLOBAL ? TipoUnidad.JEFATURA : TipoUnidad.SIN_RAMA_APOYO;
+      unidad =
+        (await this.prisma.unidadOrganizativa.findFirst({
+          where: { activa: true, tipo: tipoPreferido },
+        })) ??
+        (await this.prisma.unidadOrganizativa.findFirst({
+          where: { activa: true, tipo: { in: [TipoUnidad.SIN_RAMA_APOYO, TipoUnidad.JEFATURA] } },
+        }));
+    }
+
+    if (!unidad || !unidad.activa) {
+      throw new BadRequestException('Rama o sección inexistente o inactiva');
+    }
+    return unidad.id;
+  }
+
   private async validarUnidadYRol(
     alcance: AlcanceAcceso,
     unidadId: number,
     rolId: number,
     alcanceOverride?: AlcanceRol | null,
   ) {
-    const [unidad, rol] = await Promise.all([
-      this.prisma.unidadOrganizativa.findUnique({ where: { id: unidadId } }),
-      this.prisma.rol.findUnique({ where: { id: rolId } }),
-    ]);
-    if (!unidad || !unidad.activa) throw new BadRequestException('Rama o sección inexistente o inactiva');
-    if (!rol) throw new BadRequestException('Rol inexistente');
-    assertPuedeOtorgar(alcance, rol, alcanceOverride);
+    await this.resolverYValidarUnidadYRol(alcance, unidadId, rolId, alcanceOverride);
   }
 }

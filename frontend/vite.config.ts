@@ -9,6 +9,7 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      selfDestroying: true,
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'pwa-icon.svg', 'pdf-templates/*.pdf'],
       manifest: {
@@ -18,50 +19,28 @@ export default defineConfig({
         theme_color: '#047857',
         background_color: '#f8fafc',
         display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
         icons: [
           {
             src: '/pwa-icon.svg',
             sizes: '192x192 512x512',
             type: 'image/svg+xml',
-            purpose: 'any maskable',
-          },
-        ],
-      },
-      workbox: {
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        // Cache offline de padrón y legajos para campamento sin señal (AGENTS.md §2)
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/miembros') || url.pathname.startsWith('/api/legajos'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'scout-offline-data',
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 días en campamento
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/pdf-templates/'),
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'scout-pdf-templates',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 días
-              },
-            },
           },
         ],
       },
     }),
   ],
+  css: {
+    transformer: 'lightningcss',
+    lightningcss: {
+      targets: {
+        chrome: 99 << 16,
+        safari: (15 << 16) | (4 << 8),
+      },
+    },
+  },
+  build: {
+    cssTarget: ['chrome99', 'safari15.4'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),

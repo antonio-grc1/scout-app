@@ -1,9 +1,13 @@
 import { create } from 'zustand';
+import { api } from '../api/client';
 
 export interface AsignacionUsuario {
   unidadId: number;
   unidadNombre: string;
+  rolId?: number;
   rol: string;
+  tipoMiembro?: string;
+  requiereRama?: boolean;
   alcance: 'PROPIO' | 'UNIDAD' | 'GLOBAL';
   permisos: string[];
 }
@@ -27,13 +31,16 @@ interface AuthState {
     asignaciones: AsignacionUsuario[];
   }) => void;
   setRequiereCambioClave: (val: boolean) => void;
+  refrescarSesionDesdeServidor: () => Promise<void>;
   logout: () => void;
-  // Helpers de alcance
+  // Helpers de alcance y capacidades
   tieneGlobal: () => boolean;
   tieneRama: () => boolean;
   tieneUnidad: () => boolean;
   tienePropio: () => boolean;
   tienePermiso: (permiso: string) => boolean;
+  puedeVerPadron: () => boolean;
+  puedeAccederPanelGestion: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
@@ -64,6 +71,26 @@ export const useAuthStore = create<AuthState>((set, get) => {
     setRequiereCambioClave: (val) => {
       localStorage.setItem('scout_cambio_clave', String(val));
       set({ requiereCambioClave: val });
+    },
+
+    refrescarSesionDesdeServidor: async () => {
+      const currentToken = get().token;
+      if (!currentToken) return;
+      try {
+        const res = await api.get('/auth/perfil');
+        const data = res.data;
+        if (data?.usuario && Array.isArray(data?.asignaciones)) {
+          const nuevoToken = data.accessToken || currentToken;
+          get().setSesion({
+            accessToken: nuevoToken,
+            usuario: data.usuario,
+            requiereCambioClave: Boolean(data.requiereCambioClave),
+            asignaciones: data.asignaciones,
+          });
+        }
+      } catch {
+        // Ignorar errores transitorios de red
+      }
     },
 
     logout: () => {
@@ -97,6 +124,27 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     tienePermiso: (permiso: string) => {
       return get().asignaciones.some((a) => a.permisos.includes(permiso));
+    },
+
+    puedeVerPadron: () => {
+      const { tieneUnidad, tieneGlobal, tienePermiso } = get();
+      return (tieneUnidad() || tieneGlobal()) && tienePermiso('miembros.ver');
+    },
+
+    puedeAccederPanelGestion: () => {
+      const { tieneGlobal, tienePermiso } = get();
+      if (!tieneGlobal()) return false;
+      const permisosPanel = [
+        'tesoreria.gestionar',
+        'cuotas.ver',
+        'organizacion.ver',
+        'organizacion.gestionar',
+        'pases.ver',
+        'pases.ejecutar',
+        'legajos.ver',
+        'legajos.plantillas_gestionar',
+      ];
+      return permisosPanel.some((p) => tienePermiso(p));
     },
   };
 });

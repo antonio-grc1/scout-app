@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TipoUnidad, type Prisma } from '@prisma/client';
+import { AlcanceRol, TipoUnidad, type Prisma } from '@prisma/client';
 import type { AlcanceAcceso } from '../common/types/auth.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
@@ -81,8 +81,8 @@ export class OrganizacionService {
             _count: {
               select: {
                 asignaciones: true,
-                conceptosPago: true,
-                planesCuotaMensual: true,
+                conceptos: true,
+                planesCuota: true,
               },
             },
           },
@@ -92,7 +92,7 @@ export class OrganizacionService {
     if (!rama) throw new NotFoundException('Rama no encontrada');
 
     const asignacionesActivas = await this.prisma.asignacionMiembro.count({
-      where: { activo: true, unidad: { ramaId: id } },
+      where: { activo: true, usuario: { activo: true }, unidad: { ramaId: id } },
     });
     if (asignacionesActivas > 0) {
       throw new ConflictException(
@@ -100,26 +100,22 @@ export class OrganizacionService {
       );
     }
 
-    const tieneHistorial = rama.unidades.some(
-      (u) => u._count.asignaciones > 0 || u._count.conceptosPago > 0 || u._count.planesCuotaMensual > 0,
-    );
-
-    if (tieneHistorial) {
-      await this.prisma.$transaction([
-        this.prisma.unidadOrganizativa.updateMany({ where: { ramaId: id }, data: { activa: false } }),
-        this.prisma.rama.update({ where: { id }, data: { activa: false } }),
-      ]);
-      return {
-        eliminada: false,
-        desactivada: true,
-        mensaje: `Rama "${rama.nombre}" desactivada (conserva historial de miembros y cuotas).`,
-      };
-    }
+    const idsUnidades = rama.unidades.map((u) => u.id);
 
     await this.prisma.$transaction([
-      this.prisma.unidadOrganizativa.deleteMany({ where: { ramaId: id } }),
+      ...(idsUnidades.length > 0
+        ? [
+            this.prisma.asignacionMiembro.deleteMany({
+              where: { unidadId: { in: idsUnidades } },
+            }),
+            this.prisma.unidadOrganizativa.deleteMany({
+              where: { id: { in: idsUnidades } },
+            }),
+          ]
+        : []),
       this.prisma.rama.delete({ where: { id } }),
     ]);
+
     return {
       eliminada: true,
       desactivada: false,
@@ -134,7 +130,7 @@ export class OrganizacionService {
       orderBy: [{ rama: { ordenProgresion: 'asc' } }, { nombre: 'asc' }],
       include: {
         rama: { select: { id: true, nombre: true, edadMinima: true, edadMaxima: true } },
-        _count: { select: { asignaciones: { where: { activo: true } } } },
+        _count: { select: { asignaciones: { where: { activo: true, usuario: { activo: true } } } } },
       },
     });
   }
@@ -173,8 +169,8 @@ export class OrganizacionService {
         _count: {
           select: {
             asignaciones: true,
-            conceptosPago: true,
-            planesCuotaMensual: true,
+            conceptos: true,
+            planesCuota: true,
           },
         },
       },
@@ -182,7 +178,7 @@ export class OrganizacionService {
     if (!unidad) throw new NotFoundException('Sección no encontrada');
 
     const activas = await this.prisma.asignacionMiembro.count({
-      where: { unidadId: id, activo: true },
+      where: { unidadId: id, activo: true, usuario: { activo: true } },
     });
     if (activas > 0) {
       throw new ConflictException(
@@ -190,21 +186,11 @@ export class OrganizacionService {
       );
     }
 
-    const tieneHistorial =
-      unidad._count.asignaciones > 0 ||
-      unidad._count.conceptosPago > 0 ||
-      unidad._count.planesCuotaMensual > 0;
+    await this.prisma.$transaction([
+      this.prisma.asignacionMiembro.deleteMany({ where: { unidadId: id } }),
+      this.prisma.unidadOrganizativa.delete({ where: { id } }),
+    ]);
 
-    if (tieneHistorial) {
-      await this.prisma.unidadOrganizativa.update({ where: { id }, data: { activa: false } });
-      return {
-        eliminada: false,
-        desactivada: true,
-        mensaje: `Sección "${unidad.nombre}" desactivada.`,
-      };
-    }
-
-    await this.prisma.unidadOrganizativa.delete({ where: { id } });
     return {
       eliminada: true,
       desactivada: false,
@@ -226,13 +212,52 @@ export class OrganizacionService {
     return permisos.map((p) => p.id);
   }
 
+  /**
+   * Verifica que el sistema nunca se quede sin al menos un rol administrador (con alcance GLOBAL
+   * y permiso `organizacion.gestionar`). Valida por capacidades dinámicas, nunca por nombre fijo.
+   */
+  private async asegurarNoBloquearUltimoAdmin(rolId: number): Promise<void> {
+    if (!this.prisma.rol.findMany) return;
+    const todosRoles = await this.prisma.rol.findMany({ include: ROL_INCLUDE });
+    if (!Array.isArray(todosRoles) || todosRoles.length === 0) return;
+
+    const esRolAdmin = (r: Prisma.RolGetPayload<{ include: typeof ROL_INCLUDE }>) =>
+      r.alcancePorDefecto === AlcanceRol.GLOBAL &&
+      r.permisos?.some((rp) => rp.permiso?.clave === 'organizacion.gestionar');
+
+    const actual = todosRoles.find((r) => r.id === rolId);
+    if (!actual || !esRolAdmin(actual)) return;
+
+    const otrosAdmins = todosRoles.filter((r) => r.id !== rolId && esRolAdmin(r));
+    if (otrosAdmins.length === 0) {
+      throw new BadRequestException(
+        'No se puede quitar el permiso de administrar roles ni eliminar el último rol administrador del sistema, para evitar que el grupo quede bloqueado.',
+      );
+    }
+
+    const actualTieneMiembros = (actual._count?.asignaciones ?? 0) > 0;
+    const otrosTienenMiembros = otrosAdmins.some((r) => (r._count?.asignaciones ?? 0) > 0);
+    if (actualTieneMiembros && !otrosTienenMiembros) {
+      throw new BadRequestException(
+        'Este es el único rol administrador con personas activas asignadas. Asigná otro rol administrador a al menos una persona antes de quitarle estos permisos.',
+      );
+    }
+  }
+
   async crearRol(alcance: AlcanceAcceso, dto: CrearRolDto) {
     this.assertGlobal(alcance);
     const permisoIds = await this.idsDePermisos(dto.permisos);
+    const tipoMiembro =
+      dto.tipoMiembro ?? (dto.alcancePorDefecto === AlcanceRol.PROPIO ? 'PROTAGONISTA' : 'EDUCADOR');
+    const requiereRama =
+      dto.requiereRama ?? (dto.alcancePorDefecto !== AlcanceRol.GLOBAL);
+
     const rol = await this.prisma.rol.create({
       data: {
         nombre: dto.nombre,
         alcancePorDefecto: dto.alcancePorDefecto,
+        tipoMiembro,
+        requiereRama,
         esSistema: false,
         permisos: { create: permisoIds.map((permisoId) => ({ permisoId })) },
       },
@@ -243,19 +268,18 @@ export class OrganizacionService {
 
   async editarRol(alcance: AlcanceAcceso, id: number, dto: EditarRolDto) {
     this.assertGlobal(alcance);
-    const actual = await this.prisma.rol.findUnique({ where: { id } });
+    const actual = await this.prisma.rol.findUnique({ where: { id }, include: ROL_INCLUDE });
     if (!actual) throw new NotFoundException('Rol no encontrado');
-    if (actual.esSistema && dto.nombre !== undefined && dto.nombre !== actual.nombre) {
-      throw new ForbiddenException('No se puede renombrar un rol base del sistema');
-    }
 
-    // Protección anti-bloqueo para Jefe de Grupo
-    if (actual.nombre.toLowerCase().includes('jefe') && dto.permisos) {
-      if (!dto.permisos.includes('organizacion.gestionar') || !dto.permisos.includes('organizacion.ver')) {
-        throw new BadRequestException(
-          'El rol Jefe de Grupo debe conservar los permisos de administración organizacional para no bloquear el sistema',
-        );
-      }
+    const nuevoAlcance = dto.alcancePorDefecto ?? actual.alcancePorDefecto;
+    const nuevosPermisos = dto.permisos ?? actual.permisos?.map((rp) => rp.permiso.clave) ?? [];
+    const pierdeCapacidadAdmin =
+      nuevoAlcance !== AlcanceRol.GLOBAL ||
+      !nuevosPermisos.includes('organizacion.gestionar') ||
+      !nuevosPermisos.includes('organizacion.ver');
+
+    if (pierdeCapacidadAdmin) {
+      await this.asegurarNoBloquearUltimoAdmin(id);
     }
 
     const permisoIds = dto.permisos ? await this.idsDePermisos(dto.permisos) : null;
@@ -267,7 +291,12 @@ export class OrganizacionService {
       }
       return tx.rol.update({
         where: { id },
-        data: { nombre: dto.nombre, alcancePorDefecto: dto.alcancePorDefecto },
+        data: {
+          nombre: dto.nombre,
+          alcancePorDefecto: dto.alcancePorDefecto,
+          tipoMiembro: dto.tipoMiembro,
+          requiereRama: dto.requiereRama,
+        },
         include: ROL_INCLUDE,
       });
     });
@@ -279,35 +308,56 @@ export class OrganizacionService {
     const rol = await this.prisma.rol.findUnique({
       where: { id },
       include: {
-        _count: {
-          select: {
-            asignaciones: { where: { activo: true } },
+        ...ROL_INCLUDE,
+        asignaciones: {
+          where: { activo: true },
+          take: 5,
+          include: {
+            usuario: { select: { nombre: true, apellido: true } },
           },
         },
       },
     });
     if (!rol) throw new NotFoundException('Rol no encontrado');
-    if (rol.esSistema) throw new ForbiddenException('No se puede eliminar un rol base del sistema');
+
     if (rol._count.asignaciones > 0) {
+      const nombres = (rol.asignaciones || [])
+        .map((a) => `${a.usuario?.nombre || ''} ${a.usuario?.apellido || ''}`.trim())
+        .filter(Boolean);
+      const detalleNombres = nombres.length > 0 ? ` (${nombres.join(', ')})` : '';
       throw new ConflictException(
-        `El rol "${rol.nombre}" tiene ${rol._count.asignaciones} miembro(s) activo(s); cambiá su rol antes de eliminarlo`,
+        `No se puede eliminar el rol "${rol.nombre}" porque hay ${rol._count.asignaciones} persona(s) activa(s) usándolo actualmente${detalleNombres}. Cambiales el rol antes de eliminarlo.`,
       );
     }
+
+    await this.asegurarNoBloquearUltimoAdmin(id);
+
     await this.prisma.$transaction([
       this.prisma.asignacionMiembro.deleteMany({ where: { rolId: id, activo: false } }),
       this.prisma.rol.delete({ where: { id } }),
     ]);
-    return { mensaje: `Rol "${rol.nombre}" eliminado` };
+    return { mensaje: `Rol "${rol.nombre}" eliminado correctamente` };
   }
 
   private mapRol(r: Prisma.RolGetPayload<{ include: typeof ROL_INCLUDE }>) {
+    const permisos = r.permisos.map((rp) => rp.permiso.clave).sort();
+    const tipoMiembro =
+      r.tipoMiembro || (r.alcancePorDefecto === AlcanceRol.PROPIO ? 'PROTAGONISTA' : 'EDUCADOR');
+    const requiereRama =
+      r.requiereRama !== undefined && r.requiereRama !== null
+        ? r.requiereRama
+        : r.alcancePorDefecto !== AlcanceRol.GLOBAL;
     return {
       id: r.id,
       nombre: r.nombre,
       alcancePorDefecto: r.alcancePorDefecto,
+      tipoMiembro,
+      requiereRama,
       esSistema: r.esSistema,
+      esRolAdministrador:
+        r.alcancePorDefecto === AlcanceRol.GLOBAL && permisos.includes('organizacion.gestionar'),
       asignacionesActivas: r._count.asignaciones,
-      permisos: r.permisos.map((rp) => rp.permiso.clave).sort(),
+      permisos,
     };
   }
 

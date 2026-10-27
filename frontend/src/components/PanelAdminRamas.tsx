@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { TIPO_UNIDAD_LABELS, traducirErrorAmigable } from '../lib/formatters';
 import {
   PlusCircle,
@@ -32,6 +33,8 @@ export const PanelAdminRamas: React.FC<Props> = ({
   onRecargar,
   onToast,
 }) => {
+  const puedeGestionar = useAuthStore((s) => s.tienePermiso('organizacion.gestionar'));
+
   // Estado formulario de Rama (Crear / Editar)
   const [editandoRama, setEditandoRama] = useState<any | null>(null);
   const [creandoRama, setCreandoRama] = useState(false);
@@ -277,17 +280,19 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 Ramas y Edades de Pase
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={abrirCrearRama}
-              className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Agregar Rama</span>
-            </button>
+            {puedeGestionar && (
+              <button
+                type="button"
+                onClick={abrirCrearRama}
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Agregar Rama</span>
+              </button>
+            )}
           </div>
 
-          {(creandoRama || editandoRama) && (
+          {puedeGestionar && (creandoRama || editandoRama) && (
             <form
               onSubmit={handleGuardarRama}
               className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 space-y-3"
@@ -445,40 +450,42 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => abrirEditarRama(r)}
-                      title="Modificar nombre o edades"
-                      className="min-h-[34px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Editar</span>
-                    </button>
+                  {puedeGestionar && (
+                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => abrirEditarRama(r)}
+                        title="Modificar nombre o edades"
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Editar</span>
+                      </button>
 
-                    {inactiva ? (
-                      <button
-                        type="button"
-                        disabled={enProceso}
-                        onClick={() => handleReactivarRama(r)}
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                        <span>Activar</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={enProceso}
-                        onClick={() => handleQuitarRama(r)}
-                        title="Quitar o desactivar rama"
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        <span>Quitar</span>
-                      </button>
-                    )}
-                  </div>
+                      {inactiva ? (
+                        <button
+                          type="button"
+                          disabled={enProceso}
+                          onClick={() => handleReactivarRama(r)}
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                          <span>Activar</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={enProceso}
+                          onClick={() => handleQuitarRama(r)}
+                          title="Quitar o desactivar rama"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          <span>Quitar</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -494,17 +501,19 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 Secciones Operativas del Grupo
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={abrirCrearUnidad}
-              className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Agregar Sección</span>
-            </button>
+            {puedeGestionar && (
+              <button
+                type="button"
+                onClick={abrirCrearUnidad}
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Agregar Sección</span>
+              </button>
+            )}
           </div>
 
-          {(creandoUnidad || editandoUnidad) && (
+          {puedeGestionar && (creandoUnidad || editandoUnidad) && (
             <form
               onSubmit={handleGuardarUnidad}
               className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 space-y-3"
@@ -646,38 +655,40 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => abrirEditarUnidad(u)}
-                      className="min-h-[34px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Editar</span>
-                    </button>
+                  {puedeGestionar && (
+                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => abrirEditarUnidad(u)}
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                        <span>Editar</span>
+                      </button>
 
-                    {inactiva ? (
-                      <button
-                        type="button"
-                        disabled={enProceso}
-                        onClick={() => handleReactivarUnidad(u)}
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                        <span>Activar</span>
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={enProceso}
-                        onClick={() => handleQuitarUnidad(u)}
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                        <span>Quitar</span>
-                      </button>
-                    )}
-                  </div>
+                      {inactiva ? (
+                        <button
+                          type="button"
+                          disabled={enProceso}
+                          onClick={() => handleReactivarUnidad(u)}
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                          <span>Activar</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={enProceso}
+                          onClick={() => handleQuitarUnidad(u)}
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          <span>Quitar</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
