@@ -277,7 +277,7 @@ export class MiembrosService {
         ],
       },
       orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
-      take: 10,
+      take: 15,
       select: {
         id: true,
         dni: true,
@@ -286,7 +286,26 @@ export class MiembrosService {
         emailContacto: true,
         telefonoContacto: true,
         datosFijosJson: true,
-        grupoFamiliar: { select: { id: true, nombreFamilia: true } },
+        grupoFamiliar: {
+          select: {
+            id: true,
+            nombreFamilia: true,
+            porcentajeDescuentoHermanos: true,
+            miembros: {
+              where: { activo: true },
+              select: {
+                id: true,
+                dni: true,
+                nombre: true,
+                apellido: true,
+                asignaciones: {
+                  where: { activo: true },
+                  select: { unidad: { select: { id: true, nombre: true } } },
+                },
+              },
+            },
+          },
+        },
         asignaciones: {
           where: { activo: true },
           select: { unidad: { select: { id: true, nombre: true } } },

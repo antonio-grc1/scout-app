@@ -41,8 +41,11 @@ export const PerfilPage: React.FC = () => {
   const [formContacto, setFormContacto] = useState({
     emailContacto: '',
     telefonoContacto: '',
+    madreNombres: '',
     madreTelefono: '',
+    padreNombres: '',
     padreTelefono: '',
+    tutorNombres: '',
     tutorTelefono: '',
     telefonoUrgencias: '',
     domicilio: '',
@@ -67,8 +70,11 @@ export const PerfilPage: React.FC = () => {
       setFormContacto({
         emailContacto: m.emailContacto || '',
         telefonoContacto: m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
+        madreNombres: m.datosFijosJson?.madre_nombres || '',
         madreTelefono: m.datosFijosJson?.madre_telefono || '',
+        padreNombres: m.datosFijosJson?.padre_nombres || '',
         padreTelefono: m.datosFijosJson?.padre_telefono || '',
+        tutorNombres: m.datosFijosJson?.tutor_nombres || '',
         tutorTelefono: m.datosFijosJson?.tutor_telefono || '',
         telefonoUrgencias: m.datosFijosJson?.telefono_urgencias || '',
         domicilio: m.datosFijosJson?.domicilio || '',
@@ -98,8 +104,11 @@ export const PerfilPage: React.FC = () => {
         telefonoContacto: formContacto.telefonoContacto.trim() || null,
         datosFijosJson: {
           protagonista_telefono: formContacto.telefonoContacto.trim(),
+          madre_nombres: formContacto.madreNombres.trim(),
           madre_telefono: formContacto.madreTelefono.trim(),
+          padre_nombres: formContacto.padreNombres.trim(),
           padre_telefono: formContacto.padreTelefono.trim(),
+          tutor_nombres: formContacto.tutorNombres.trim(),
           tutor_telefono: formContacto.tutorTelefono.trim(),
           telefono_urgencias: formContacto.telefonoUrgencias.trim(),
           domicilio: formContacto.domicilio.trim(),
@@ -293,7 +302,7 @@ export const PerfilPage: React.FC = () => {
 
                 <div>
                   <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Email de Contacto
+                    Email
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -307,6 +316,21 @@ export const PerfilPage: React.FC = () => {
                       className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                    Nombre y Apellido Madre
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nombre y apellido de la madre"
+                    value={formContacto.madreNombres}
+                    onChange={(e) =>
+                      setFormContacto({ ...formContacto, madreNombres: e.target.value })
+                    }
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                  />
                 </div>
 
                 <div>
@@ -327,6 +351,21 @@ export const PerfilPage: React.FC = () => {
 
                 <div>
                   <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                    Nombre y Apellido Padre
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nombre y apellido del padre"
+                    value={formContacto.padreNombres}
+                    onChange={(e) =>
+                      setFormContacto({ ...formContacto, padreNombres: e.target.value })
+                    }
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
                     Teléfono Padre
                   </label>
                   <input
@@ -336,6 +375,21 @@ export const PerfilPage: React.FC = () => {
                     value={formContacto.padreTelefono}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, padreTelefono: e.target.value })
+                    }
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                    Nombre y Apellido Tutor/a
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Nombre y apellido del tutor/a"
+                    value={formContacto.tutorNombres}
+                    onChange={(e) =>
+                      setFormContacto({ ...formContacto, tutorNombres: e.target.value })
                     }
                     className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
                   />
