@@ -1066,6 +1066,9 @@ export class TesoreriaService {
     });
     if (!hermano) throw new NotFoundException(`No existe un miembro registrado con el DNI ${dto.hermanoDni}`);
     if (hermano.id === usuario.id) throw new BadRequestException('No puede vincular a un miembro consigo mismo');
+    if (usuario.grupoFamiliarId && usuario.grupoFamiliarId === hermano.grupoFamiliarId) {
+      throw new BadRequestException('Este miembro ya pertenece a ese grupo familiar');
+    }
 
     const CLAVES_FAMILIARES_COMPARTIDAS = [
       'domicilio',
