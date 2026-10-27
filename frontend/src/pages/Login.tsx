@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { ShieldCheck, AlertCircle } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [dni, setDni] = useState('');
   const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const setSesion = useAuthStore((state) => state.setSesion);
@@ -101,17 +102,25 @@ export const Login: React.FC = () => {
               <label htmlFor="clave" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Contraseña
               </label>
-              <div className="mt-1.5">
+              <div className="mt-1.5 relative">
                 <input
                   id="clave"
-                  type="password"
+                  type={mostrarPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
+                  className="w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
                 />
+                <button
+                  type="button"
+                  onClick={() => setMostrarPassword((prev) => !prev)}
+                  aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                  className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                >
+                  {mostrarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
               <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
                 Si ingresas por primera vez, tu clave inicial es tu DNI.
