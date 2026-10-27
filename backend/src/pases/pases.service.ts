@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Injectable,
 import { AlcanceRol, TipoUnidad, type Prisma } from '@prisma/client';
 import { alcanceEfectivo, assertPuedeOtorgar, assertUnidadEnAlcance } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso } from '../common/types/auth.types.js';
-import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
+import { anioActual, calcularEdad, fechaCorteCicloEscolar, hoyUtc } from '../common/utils/fechas.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CandidatosQueryDto, PaseDto, PasesLoteDto } from './pases.dto.js';
 import { sugerirPase } from './pases.logic.js';
@@ -12,12 +12,13 @@ export class PasesService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Protagonistas (asignaciones con alcance PROPIO en secciones de rama) cuya edad
-   * supera la edad máxima de su rama, con la rama y unidades destino sugeridas.
+   * Protagonistas (asignaciones con alcance PROPIO en secciones de rama) cuya edad al corte
+   * del ciclo escolar (30/06 inclusive) supera la edad máxima de su rama, agrupables por Camada.
    */
   async candidatos(alcance: AlcanceAcceso, q: CandidatosQueryDto) {
     if (alcance.tipo === 'PROPIO') return [];
-    const fechaRef = q.fechaReferencia ? new Date(q.fechaReferencia) : hoyUtc();
+    const hoy = hoyUtc();
+    const fechaRef = q.fechaReferencia ? new Date(q.fechaReferencia) : fechaCorteCicloEscolar(anioActual());
 
     const unidadFiltro: Prisma.IntFilter | undefined =
       alcance.tipo === 'UNIDAD' ? { in: alcance.unidadIds } : undefined;
@@ -56,6 +57,8 @@ export class PasesService {
             asignacionId: a.id,
             usuario: a.usuario,
             edad: r.edad,
+            edadActual: calcularEdad(a.usuario.fechaNacimiento, hoy),
+            camada: r.camada,
             rolActual: { id: a.rol.id, nombre: a.rol.nombre },
             unidadActual: { id: a.unidad.id, nombre: a.unidad.nombre },
             ramaActual: { id: a.unidad.rama!.id, nombre: a.unidad.rama!.nombre, edadMaxima: a.unidad.rama!.edadMaxima },
@@ -72,6 +75,7 @@ export class PasesService {
       .sort(
         (x, y) =>
           x.unidadActual.nombre.localeCompare(y.unidadActual.nombre) ||
+          x.camada - y.camada ||
           x.usuario.apellido.localeCompare(y.usuario.apellido),
       );
   }
@@ -132,9 +136,9 @@ export class PasesService {
       if (!rolDestino) throw new BadRequestException('Rol destino inexistente');
       const alcanceOverride = p.alcanceOverride !== undefined ? p.alcanceOverride : null;
 
-      // Validación de privilegios: solo GLOBAL puede otorgar Jefe de Grupo
+      // Validación de privilegios: solo GLOBAL puede otorgar Jefe de Grupo o rol con alcance GLOBAL
       if (alcance.tipo !== 'GLOBAL') {
-        const esJefe = rolDestino.nombre.toLowerCase().includes('jefe');
+        const esJefe = rolDestino.nombre.toLowerCase().includes('jefe') || rolDestino.alcancePorDefecto === AlcanceRol.GLOBAL;
         if (esJefe || alcanceOverride === AlcanceRol.GLOBAL) {
           throw new ForbiddenException('Solo un usuario con alcance global puede otorgar el rol de Jefe de Grupo o alcance global');
         }
@@ -145,17 +149,18 @@ export class PasesService {
       const rolNombre = rolDestino.nombre.toLowerCase();
       const esRolSinRama = rolNombre.includes('sin rama');
       const esRolJefe = rolNombre.includes('jefe');
+      const esRolPersonalizado = rolDestino.esSistema === false;
 
       if (esRama && (esRolSinRama || esRolJefe)) {
         throw new BadRequestException('Una rama o sección no puede tener asignado el rol de Educador Sin Rama ni Jefe de Grupo');
       }
 
-      if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && !esRolSinRama) {
-        throw new BadRequestException('La sección de Educadores Sin Rama solo admite el rol de Educador Sin Rama');
+      if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && !esRolSinRama && !esRolPersonalizado) {
+        throw new BadRequestException('La sección de Educadores Sin Rama solo admite el rol de Educador Sin Rama o un rol personalizado');
       }
 
-      if (unidadDestino.tipo === TipoUnidad.JEFATURA && !esRolJefe) {
-        throw new BadRequestException('La unidad de Jefatura de Grupo solo admite el rol de Jefe de Grupo');
+      if (unidadDestino.tipo === TipoUnidad.JEFATURA && !esRolJefe && (!esRolPersonalizado || rolDestino.alcancePorDefecto !== AlcanceRol.GLOBAL)) {
+        throw new BadRequestException('La unidad de Jefatura de Grupo solo admite el rol de Jefe de Grupo o un rol personalizado con alcance global');
       }
 
       if (unidadDestino.id === origen.unidadId && rolDestino.id === origen.rolId) {

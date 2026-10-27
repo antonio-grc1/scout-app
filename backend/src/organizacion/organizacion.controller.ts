@@ -64,6 +64,12 @@ export class OrganizacionController {
     return this.org.editarRama(a, id, dto);
   }
 
+  @RequirePermission(GESTIONAR)
+  @Delete('ramas/:id')
+  eliminarRama(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.org.eliminarRama(a, id);
+  }
+
   // ---------------- Unidades ----------------
   @RequirePermission(VER)
   @Get('unidades')
@@ -85,6 +91,12 @@ export class OrganizacionController {
     @Body(new ZodValidationPipe(EditarUnidadSchema)) dto: EditarUnidadDto,
   ) {
     return this.org.editarUnidad(a, id, dto);
+  }
+
+  @RequirePermission(GESTIONAR)
+  @Delete('unidades/:id')
+  eliminarUnidad(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.org.eliminarUnidad(a, id);
   }
 
   // ---------------- Roles ----------------

@@ -9,6 +9,7 @@ import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
 import { obtenerConfigRama, obtenerOrdenRama, RAMA_COLORS } from '../../lib/ramaColors';
 import {
   ESTADO_FICHA_CONFIG,
+  calcularCamada,
   calcularEdad,
   formatearMoneda,
   formatearNombreFamilia,
@@ -32,6 +33,7 @@ import {
   CreditCard,
   FileCheck2,
   Loader2,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 type CampoOrden = 'miembro' | 'edad' | 'rama' | 'ficha';
@@ -78,6 +80,9 @@ export const UnidadPage: React.FC = () => {
   // Filtros rápidos (1-Tap)
   const [busqueda, setBusqueda] = useState('');
   const [chipActivo, setChipActivo] = useState<ChipFiltro>('TODOS');
+  const [camadaFiltro, setCamadaFiltro] = useState<number | null>(null);
+  const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
+  const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
 
   // Ordenamiento
   const [campoOrden, setCampoOrden] = useState<CampoOrden>('rama');
@@ -212,6 +217,11 @@ export const UnidadPage: React.FC = () => {
         return false;
       }
 
+      const camadaMiembro = calcularCamada(m.fechaNacimiento);
+      if (camadaFiltro !== null && (esEdu || camadaMiembro !== camadaFiltro)) {
+        return false;
+      }
+
       if (q) {
         const asig = m.asignaciones?.[0];
         const cfg = obtenerConfigRama(m, unidades);
@@ -224,7 +234,8 @@ export const UnidadPage: React.FC = () => {
           normalizarTextoBusqueda(m.telefonoContacto).includes(q) ||
           normalizarTextoBusqueda(m.grupoFamiliar?.nombreFamilia).includes(q) ||
           normalizarTextoBusqueda(asig?.unidad?.nombre).includes(q) ||
-          normalizarTextoBusqueda(cfg.nombre).includes(q);
+          normalizarTextoBusqueda(cfg.nombre).includes(q) ||
+          (camadaMiembro !== null && normalizarTextoBusqueda(`camada ${camadaMiembro}`).includes(q));
         if (!coincide) return false;
       }
 
@@ -271,6 +282,7 @@ export const UnidadPage: React.FC = () => {
   }, [
     miembros,
     chipActivo,
+    camadaFiltro,
     busqueda,
     entregasPorUsuario,
     candidatosIds,
@@ -279,6 +291,117 @@ export const UnidadPage: React.FC = () => {
     unidades,
     ramas,
   ]);
+
+  // Camadas disponibles de protagonistas según el chip de rama actual
+  const camadasDisponibles = useMemo(() => {
+    const mapa = new Map<number, number>();
+    for (const m of miembros) {
+      if (!m.activo) continue;
+      const asig = m.asignaciones?.[0];
+      const esEdu =
+        asig?.rol?.nombre?.toLowerCase().includes('educador') ||
+        asig?.rol?.nombre?.toLowerCase().includes('jefe');
+      if (esEdu) continue;
+      const cfg = obtenerConfigRama(m, unidades);
+      if (
+        (chipActivo === 'lobatos' ||
+          chipActivo === 'scout' ||
+          chipActivo === 'caminantes' ||
+          chipActivo === 'rover') &&
+        cfg.key !== chipActivo
+      ) {
+        continue;
+      }
+      if (chipActivo === 'PASE_SUGERIDO' && !candidatosIds.has(m.id)) continue;
+      const cam = calcularCamada(m.fechaNacimiento);
+      if (cam !== null) {
+        mapa.set(cam, (mapa.get(cam) || 0) + 1);
+      }
+    }
+    return Array.from(mapa.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([anio, total]) => ({ anio, total }));
+  }, [miembros, unidades, chipActivo, candidatosIds]);
+
+  // Agrupación de candidatos a pase por Camada y Rama actual
+  const gruposCamadaPase = useMemo(() => {
+    const grupos = new Map<
+      string,
+      {
+        key: string;
+        camada: number;
+        edadAlCorte: number;
+        unidadActual: string;
+        ramaSugeridaNombre: string;
+        unidadesDestino: Array<{ id: number; nombre: string }>;
+        miembros: any[];
+      }
+    >();
+
+    for (const c of candidatosPase) {
+      const cam = c.camada ?? calcularCamada(c.usuario?.fechaNacimiento) ?? 0;
+      const key = `${c.unidadActual?.id || 0}-${cam}`;
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          key,
+          camada: cam,
+          edadAlCorte: c.edad,
+          unidadActual: c.unidadActual?.nombre || 'Rama',
+          ramaSugeridaNombre:
+            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Educador / Apoyo',
+          unidadesDestino: c.unidadesDestino || [],
+          miembros: [],
+        });
+      }
+      grupos.get(key)!.miembros.push(c);
+    }
+
+    return Array.from(grupos.values()).sort((a, b) => a.camada - b.camada);
+  }, [candidatosPase]);
+
+  const handleEjecutarPaseCamada = async (grupo: {
+    key: string;
+    camada: number;
+    ramaSugeridaNombre: string;
+    unidadesDestino: Array<{ id: number; nombre: string }>;
+    miembros: any[];
+  }) => {
+    const destinoId =
+      destinoPorCamada[grupo.key] ||
+      grupo.unidadesDestino?.[0]?.id ||
+      unidades.find(
+        (u) =>
+          u.tipo === 'SIN_RAMA_APOYO' ||
+          u.nombre?.toLowerCase().includes('sin rama') ||
+          u.nombre?.toLowerCase().includes('apoyo'),
+      )?.id;
+
+    if (!destinoId) {
+      mostrarToast('Seleccioná una sección de destino para ejecutar el pase.', 'error');
+      return;
+    }
+
+    setEjecutandoCamadaKey(grupo.key);
+    try {
+      await api.post('/pases/lote', {
+        pases: grupo.miembros.map((c) => ({
+          asignacionOrigenId: c.asignacionId,
+          unidadDestinoId: Number(destinoId),
+        })),
+      });
+      const destNombre =
+        grupo.unidadesDestino.find((u) => u.id === Number(destinoId))?.nombre ||
+        grupo.ramaSugeridaNombre;
+      mostrarToast(
+        `Camada ${grupo.camada} (${grupo.miembros.length} miembro${grupo.miembros.length === 1 ? '' : 's'}) pasó a ${destNombre}.`,
+      );
+      await cargarDatos();
+    } catch (err) {
+      mostrarToast(traducirErrorAmigable(err, 'No se pudo ejecutar el pase de la camada.'), 'error');
+    } finally {
+      setEjecutandoCamadaKey(null);
+    }
+  };
 
   // Contadores rápidos para los chips
   const conteos = useMemo(() => {
@@ -505,7 +628,7 @@ export const UnidadPage: React.FC = () => {
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Pases por edad ({candidatosPase.length})</span>
+              <span>Pases por Camada ({candidatosPase.length})</span>
             </button>
           )}
 
@@ -523,6 +646,124 @@ export const UnidadPage: React.FC = () => {
             </button>
           )}
         </div>
+
+        {/* Filtro Rápido por Camada (Corte 30/06) */}
+        {camadasDisponibles.length > 0 && chipActivo !== 'EDUCADORES' && chipActivo !== 'BAJAS' && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
+            <span className="text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1 shrink-0">
+              Camadas (30/06):
+            </span>
+            <button
+              type="button"
+              onClick={() => setCamadaFiltro(null)}
+              className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border shrink-0 ${
+                camadaFiltro === null
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+              }`}
+            >
+              Todas
+            </button>
+            {camadasDisponibles.map((cam) => (
+              <button
+                key={cam.anio}
+                type="button"
+                onClick={() => setCamadaFiltro(camadaFiltro === cam.anio ? null : cam.anio)}
+                className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border shrink-0 ${
+                  camadaFiltro === cam.anio
+                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
+                }`}
+              >
+                Camada {cam.anio} ({cam.total})
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Panel de Pase en Lote por Camada cuando se activa el filtro PASE_SUGERIDO */}
+        {chipActivo === 'PASE_SUGERIDO' && gruposCamadaPase.length > 0 && (
+          <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <h2 className="text-sm font-extrabold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>Sugerencias de Pase por Camada (Corte al 30 de Junio inclusive)</span>
+                </h2>
+                <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                  Podés pasar a toda una camada junta eligiendo la sección de destino, o revisar miembro por miembro abajo.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {gruposCamadaPase.map((g) => {
+                const destinoActual =
+                  destinoPorCamada[g.key] ?? g.unidadesDestino?.[0]?.id ?? '';
+                const ejecutando = ejecutandoCamadaKey === g.key;
+                return (
+                  <div
+                    key={g.key}
+                    className="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-amber-200/80 dark:border-slate-800 flex flex-col justify-between gap-3 shadow-2xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-black text-xs">
+                            Camada {g.camada}
+                          </span>
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            {g.unidadActual} → {g.ramaSugeridaNombre}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                          {g.miembros.length} {g.miembros.length === 1 ? 'integrante' : 'integrantes'} • Cumplen {g.edadAlCorte} años hasta el 30/06
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      {g.unidadesDestino.length > 1 && (
+                        <select
+                          value={destinoActual}
+                          onChange={(e) =>
+                            setDestinoPorCamada((prev) => ({
+                              ...prev,
+                              [g.key]: Number(e.target.value),
+                            }))
+                          }
+                          className="min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none flex-1"
+                        >
+                          {g.unidadesDestino.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              Destino: {u.nombre}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={ejecutando}
+                        onClick={() => handleEjecutarPaseCamada(g)}
+                        className="min-h-[38px] px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                      >
+                        {ejecutando ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ArrowRightLeft className="w-3.5 h-3.5" />
+                        )}
+                        <span>
+                          Pasar Camada {g.camada} ({g.miembros.length})
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Estado de Carga (Skeleton) */}
         {cargando ? (
@@ -608,7 +849,7 @@ export const UnidadPage: React.FC = () => {
                       className="py-3.5 px-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
                     >
                       <div className="flex items-center">
-                        <span>Edad</span>
+                        <span>Edad / Camada</span>
                         {renderIconoOrden('edad')}
                       </div>
                     </th>
@@ -697,9 +938,18 @@ export const UnidadPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Edad */}
-                        <td className="py-3.5 px-4 font-semibold text-slate-700 dark:text-slate-300">
-                          {edad !== null ? `${edad} años` : '—'}
+                        {/* Edad y Camada */}
+                        <td className="py-3.5 px-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              {edad !== null ? `${edad} años` : '—'}
+                            </span>
+                            {cfg.key !== 'adultos' && calcularCamada(m.fechaNacimiento) !== null && (
+                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                                Camada {calcularCamada(m.fechaNacimiento)}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Estado Semántico de Ficha (1-Tap a pestaña Ficha) */}

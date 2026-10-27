@@ -2,6 +2,7 @@ import React from 'react';
 import { obtenerConfigRama } from '../lib/ramaColors';
 import {
   ESTADO_FICHA_CONFIG,
+  calcularCamada,
   calcularEdad,
   extraerTelefonosMiembro,
   formatearMoneda,
@@ -41,6 +42,11 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
   const asig = miembro.asignaciones?.[0];
   const cfgRama = obtenerConfigRama(miembro, unidades);
   const edad = calcularEdad(miembro.fechaNacimiento);
+  const camada = calcularCamada(miembro.fechaNacimiento);
+  const esEducador =
+    asig?.rol?.nombre?.toLowerCase().includes('educador') ||
+    asig?.rol?.nombre?.toLowerCase().includes('jefe') ||
+    cfgRama.key === 'adultos';
   const estadoKey = entrega?.estado || 'SIN_FICHA';
   const cfgFicha = ESTADO_FICHA_CONFIG[estadoKey] || ESTADO_FICHA_CONFIG.SIN_FICHA;
 
@@ -100,6 +106,12 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
               {edad !== null && (
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                   • {edad} años
+                </span>
+              )}
+
+              {!esEducador && camada !== null && (
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                  Camada {camada}
                 </span>
               )}
             </div>

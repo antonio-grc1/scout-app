@@ -40,13 +40,21 @@ export class OrganizacionService {
     return this.prisma.rama.findMany({
       where: incluirInactivas ? {} : { activa: true },
       orderBy: { ordenProgresion: 'asc' },
-      include: { unidades: { where: { activa: true }, select: { id: true, nombre: true } } },
+      include: {
+        unidades: {
+          where: incluirInactivas ? {} : { activa: true },
+          select: { id: true, nombre: true, activa: true },
+        },
+      },
     });
   }
 
   async crearRama(alcance: AlcanceAcceso, dto: CrearRamaDto) {
     this.assertGlobal(alcance);
-    return this.prisma.rama.create({ data: dto });
+    return this.prisma.rama.create({
+      data: dto,
+      include: { unidades: { select: { id: true, nombre: true, activa: true } } },
+    });
   }
 
   async editarRama(alcance: AlcanceAcceso, id: number, dto: EditarRamaDto) {
@@ -56,7 +64,67 @@ export class OrganizacionService {
     const min = dto.edadMinima ?? actual.edadMinima;
     const max = dto.edadMaxima ?? actual.edadMaxima;
     if (min > max) throw new BadRequestException('edadMaxima debe ser >= edadMinima');
-    return this.prisma.rama.update({ where: { id }, data: dto });
+    return this.prisma.rama.update({
+      where: { id },
+      data: dto,
+      include: { unidades: { select: { id: true, nombre: true, activa: true } } },
+    });
+  }
+
+  async eliminarRama(alcance: AlcanceAcceso, id: number) {
+    this.assertGlobal(alcance);
+    const rama = await this.prisma.rama.findUnique({
+      where: { id },
+      include: {
+        unidades: {
+          include: {
+            _count: {
+              select: {
+                asignaciones: true,
+                conceptosPago: true,
+                planesCuotaMensual: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!rama) throw new NotFoundException('Rama no encontrada');
+
+    const asignacionesActivas = await this.prisma.asignacionMiembro.count({
+      where: { activo: true, unidad: { ramaId: id } },
+    });
+    if (asignacionesActivas > 0) {
+      throw new ConflictException(
+        `La rama "${rama.nombre}" tiene ${asignacionesActivas} miembro(s) activo(s). Pasalos a otra rama antes de quitarla.`,
+      );
+    }
+
+    const tieneHistorial = rama.unidades.some(
+      (u) => u._count.asignaciones > 0 || u._count.conceptosPago > 0 || u._count.planesCuotaMensual > 0,
+    );
+
+    if (tieneHistorial) {
+      await this.prisma.$transaction([
+        this.prisma.unidadOrganizativa.updateMany({ where: { ramaId: id }, data: { activa: false } }),
+        this.prisma.rama.update({ where: { id }, data: { activa: false } }),
+      ]);
+      return {
+        eliminada: false,
+        desactivada: true,
+        mensaje: `Rama "${rama.nombre}" desactivada (conserva historial de miembros y cuotas).`,
+      };
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.unidadOrganizativa.deleteMany({ where: { ramaId: id } }),
+      this.prisma.rama.delete({ where: { id } }),
+    ]);
+    return {
+      eliminada: true,
+      desactivada: false,
+      mensaje: `Rama "${rama.nombre}" eliminada definitivamente.`,
+    };
   }
 
   // ---------------- Unidades ----------------
@@ -97,9 +165,56 @@ export class OrganizacionService {
     return this.prisma.unidadOrganizativa.update({ where: { id }, data: { ...dto, ramaId } });
   }
 
+  async eliminarUnidad(alcance: AlcanceAcceso, id: number) {
+    this.assertGlobal(alcance);
+    const unidad = await this.prisma.unidadOrganizativa.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            asignaciones: true,
+            conceptosPago: true,
+            planesCuotaMensual: true,
+          },
+        },
+      },
+    });
+    if (!unidad) throw new NotFoundException('Sección no encontrada');
+
+    const activas = await this.prisma.asignacionMiembro.count({
+      where: { unidadId: id, activo: true },
+    });
+    if (activas > 0) {
+      throw new ConflictException(
+        `La sección "${unidad.nombre}" tiene ${activas} miembro(s) activo(s). Movelos a otra sección antes de quitarla.`,
+      );
+    }
+
+    const tieneHistorial =
+      unidad._count.asignaciones > 0 ||
+      unidad._count.conceptosPago > 0 ||
+      unidad._count.planesCuotaMensual > 0;
+
+    if (tieneHistorial) {
+      await this.prisma.unidadOrganizativa.update({ where: { id }, data: { activa: false } });
+      return {
+        eliminada: false,
+        desactivada: true,
+        mensaje: `Sección "${unidad.nombre}" desactivada.`,
+      };
+    }
+
+    await this.prisma.unidadOrganizativa.delete({ where: { id } });
+    return {
+      eliminada: true,
+      desactivada: false,
+      mensaje: `Sección "${unidad.nombre}" eliminada.`,
+    };
+  }
+
   // ---------------- Roles ----------------
   async listarRoles() {
-    const roles = await this.prisma.rol.findMany({ orderBy: { nombre: 'asc' }, include: ROL_INCLUDE });
+    const roles = await this.prisma.rol.findMany({ orderBy: { id: 'asc' }, include: ROL_INCLUDE });
     return roles.map((r) => this.mapRol(r));
   }
 
@@ -131,8 +246,18 @@ export class OrganizacionService {
     const actual = await this.prisma.rol.findUnique({ where: { id } });
     if (!actual) throw new NotFoundException('Rol no encontrado');
     if (actual.esSistema && dto.nombre !== undefined && dto.nombre !== actual.nombre) {
-      throw new ForbiddenException('No se puede renombrar un rol de sistema');
+      throw new ForbiddenException('No se puede renombrar un rol base del sistema');
     }
+
+    // Protección anti-bloqueo para Jefe de Grupo
+    if (actual.nombre.toLowerCase().includes('jefe') && dto.permisos) {
+      if (!dto.permisos.includes('organizacion.gestionar') || !dto.permisos.includes('organizacion.ver')) {
+        throw new BadRequestException(
+          'El rol Jefe de Grupo debe conservar los permisos de administración organizacional para no bloquear el sistema',
+        );
+      }
+    }
+
     const permisoIds = dto.permisos ? await this.idsDePermisos(dto.permisos) : null;
 
     const rol = await this.prisma.$transaction(async (tx) => {
@@ -153,14 +278,25 @@ export class OrganizacionService {
     this.assertGlobal(alcance);
     const rol = await this.prisma.rol.findUnique({
       where: { id },
-      include: { _count: { select: { asignaciones: true } } },
+      include: {
+        _count: {
+          select: {
+            asignaciones: { where: { activo: true } },
+          },
+        },
+      },
     });
     if (!rol) throw new NotFoundException('Rol no encontrado');
-    if (rol.esSistema) throw new ForbiddenException('No se puede eliminar un rol de sistema');
+    if (rol.esSistema) throw new ForbiddenException('No se puede eliminar un rol base del sistema');
     if (rol._count.asignaciones > 0) {
-      throw new ConflictException('El rol tiene asignaciones (incluido el historial); no puede eliminarse');
+      throw new ConflictException(
+        `El rol "${rol.nombre}" tiene ${rol._count.asignaciones} miembro(s) activo(s); cambiá su rol antes de eliminarlo`,
+      );
     }
-    await this.prisma.rol.delete({ where: { id } });
+    await this.prisma.$transaction([
+      this.prisma.asignacionMiembro.deleteMany({ where: { rolId: id, activo: false } }),
+      this.prisma.rol.delete({ where: { id } }),
+    ]);
     return { mensaje: `Rol "${rol.nombre}" eliminado` };
   }
 
