@@ -269,53 +269,53 @@ export const GlobalPage: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
         {/* Cabecera Compacta con Pestañas Táctiles */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 sm:p-5 border-2 border-zinc-200 dark:border-zinc-800 border-t-4 border-t-amber-400 shadow-xs space-y-3 transition-colors">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 transition-colors">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-amber-500 shrink-0" />
-              <h1 className="text-lg sm:text-xl font-black text-zinc-900 dark:text-zinc-100">
+              <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-slate-100">
                 Jefatura y Tesorería
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
             <button
               onClick={() => setTab('tesoreria')}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 tab === 'tesoreria'
-                  ? 'bg-amber-400 text-zinc-950 shadow-xs'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
               Tesorería
             </button>
             <button
               onClick={() => setTab('colaboradores')}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 tab === 'colaboradores'
-                  ? 'bg-amber-400 text-zinc-950 shadow-xs'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
               Familias Voluntarias
             </button>
             <button
               onClick={() => setTab('organizacion')}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 tab === 'organizacion'
-                  ? 'bg-amber-400 text-zinc-950 shadow-xs'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
               Ramas y Edades
             </button>
             <button
               onClick={() => setTab('pases')}
-              className={`min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap transition cursor-pointer shrink-0 ${
+              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 tab === 'pases'
-                  ? 'bg-amber-400 text-zinc-950 shadow-xs'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
               Pases Sugeridos
