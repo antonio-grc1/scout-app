@@ -1,13 +1,8 @@
 @import "tailwindcss";
 
-@custom-variant dark (.dark &);
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
-  html {
-    font-size: 16.5px;
-    -webkit-tap-highlight-color: transparent;
-  }
-
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased font-sans selection:bg-emerald-200 selection:text-emerald-900 dark:selection:bg-emerald-900 dark:selection:text-emerald-200;
     margin: 0;
