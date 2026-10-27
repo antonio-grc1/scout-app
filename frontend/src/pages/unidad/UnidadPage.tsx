@@ -11,6 +11,8 @@ import {
   ESTADO_FICHA_CONFIG,
   calcularEdad,
   formatearMoneda,
+  formatearNombreFamilia,
+  normalizarTextoBusqueda,
   traducirErrorAmigable,
 } from '../../lib/formatters';
 import {
@@ -173,7 +175,7 @@ export const UnidadPage: React.FC = () => {
 
   // Filtrado y Ordenamiento reactivo
   const miembrosFiltrados = useMemo(() => {
-    const q = busqueda.toLowerCase().trim();
+    const q = normalizarTextoBusqueda(busqueda);
 
     const filtrados = miembros.filter((m) => {
       // Estado activo/baja según chip
@@ -214,13 +216,15 @@ export const UnidadPage: React.FC = () => {
         const asig = m.asignaciones?.[0];
         const cfg = obtenerConfigRama(m, unidades);
         const coincide =
-          m.nombre?.toLowerCase().includes(q) ||
-          m.apellido?.toLowerCase().includes(q) ||
-          m.dni?.includes(q) ||
-          m.telefonoContacto?.includes(q) ||
-          m.grupoFamiliar?.nombreFamilia?.toLowerCase().includes(q) ||
-          asig?.unidad?.nombre?.toLowerCase().includes(q) ||
-          cfg.nombre?.toLowerCase().includes(q);
+          normalizarTextoBusqueda(m.nombre).includes(q) ||
+          normalizarTextoBusqueda(m.apellido).includes(q) ||
+          normalizarTextoBusqueda(`${m.nombre} ${m.apellido}`).includes(q) ||
+          normalizarTextoBusqueda(`${m.apellido} ${m.nombre}`).includes(q) ||
+          normalizarTextoBusqueda(m.dni).includes(q) ||
+          normalizarTextoBusqueda(m.telefonoContacto).includes(q) ||
+          normalizarTextoBusqueda(m.grupoFamiliar?.nombreFamilia).includes(q) ||
+          normalizarTextoBusqueda(asig?.unidad?.nombre).includes(q) ||
+          normalizarTextoBusqueda(cfg.nombre).includes(q);
         if (!coincide) return false;
       }
 
@@ -669,7 +673,7 @@ export const UnidadPage: React.FC = () => {
                               <div className="text-[11px] text-slate-400 flex items-center gap-2">
                                 <span>DNI {m.dni}</span>
                                 {m.grupoFamiliar && (
-                                  <span>• Fam. {m.grupoFamiliar.nombreFamilia}</span>
+                                  <span>• {formatearNombreFamilia(m.grupoFamiliar.nombreFamilia)}</span>
                                 )}
                               </div>
                             </div>

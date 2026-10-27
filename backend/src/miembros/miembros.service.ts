@@ -30,6 +30,14 @@ import {
 
 const BCRYPT_ROUNDS = 10;
 
+function normalizarSinTildes(valor: unknown): string {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 /** Proyección segura: NUNCA incluye passwordHash. */
 export const MIEMBRO_SELECT = {
   id: true,
@@ -112,27 +120,40 @@ export class MiembrosService {
 
   // ---------------- Padrón ----------------
   async listar(alcance: AlcanceAcceso, q: ListarMiembrosDto) {
-    const where: Prisma.UsuarioWhereInput = {
+    const whereBase: Prisma.UsuarioWhereInput = {
       AND: [
         filtroUsuariosPorAlcance(alcance),
         q.incluirInactivos ? {} : { activo: true },
         q.unidadId ? { asignaciones: { some: { activo: true, unidadId: q.unidadId } } } : {},
         q.rolId ? { asignaciones: { some: { activo: true, rolId: q.rolId } } } : {},
-        q.q
-          ? {
-              OR: [
-                { nombre: { contains: q.q, mode: 'insensitive' } },
-                { apellido: { contains: q.q, mode: 'insensitive' } },
-                { dni: { contains: q.q, mode: 'insensitive' } },
-              ],
-            }
-          : {},
       ],
     };
+
+    if (q.q) {
+      const qNorm = normalizarSinTildes(q.q);
+      const todos = await this.prisma.usuario.findMany({
+        where: whereBase,
+        select: MIEMBRO_SELECT,
+        orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
+      });
+      const filtrados = todos.filter(
+        (m) =>
+          normalizarSinTildes(m.nombre).includes(qNorm) ||
+          normalizarSinTildes(m.apellido).includes(qNorm) ||
+          normalizarSinTildes(`${m.nombre} ${m.apellido}`).includes(qNorm) ||
+          normalizarSinTildes(`${m.apellido} ${m.nombre}`).includes(qNorm) ||
+          normalizarSinTildes(m.dni).includes(qNorm) ||
+          normalizarSinTildes(m.grupoFamiliar?.nombreFamilia).includes(qNorm),
+      );
+      const total = filtrados.length;
+      const items = filtrados.slice((q.pagina - 1) * q.porPagina, q.pagina * q.porPagina);
+      return { total, pagina: q.pagina, porPagina: q.porPagina, items };
+    }
+
     const [total, items] = await this.prisma.$transaction([
-      this.prisma.usuario.count({ where }),
+      this.prisma.usuario.count({ where: whereBase }),
       this.prisma.usuario.findMany({
-        where,
+        where: whereBase,
         select: MIEMBRO_SELECT,
         orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
         skip: (q.pagina - 1) * q.porPagina,
@@ -264,20 +285,12 @@ export class MiembrosService {
    * (sin restricción de rama para permitir vincular hermanos de distintas secciones).
    */
   async buscarHermanosPorCriterio(criterioRaw: string) {
-    const q = criterioRaw.trim();
-    if (!q) return [];
+    const qNorm = normalizarSinTildes(criterioRaw);
+    if (!qNorm) return [];
 
-    const candidatos = await this.prisma.usuario.findMany({
-      where: {
-        activo: true,
-        OR: [
-          { dni: { contains: q, mode: 'insensitive' } },
-          { apellido: { contains: q, mode: 'insensitive' } },
-          { nombre: { contains: q, mode: 'insensitive' } },
-        ],
-      },
+    const todosActivos = await this.prisma.usuario.findMany({
+      where: { activo: true },
       orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
-      take: 15,
       select: {
         id: true,
         dni: true,
@@ -312,6 +325,18 @@ export class MiembrosService {
         },
       },
     });
+
+    const candidatos = todosActivos
+      .filter(
+        (h) =>
+          normalizarSinTildes(h.dni).includes(qNorm) ||
+          normalizarSinTildes(h.apellido).includes(qNorm) ||
+          normalizarSinTildes(h.nombre).includes(qNorm) ||
+          normalizarSinTildes(`${h.nombre} ${h.apellido}`).includes(qNorm) ||
+          normalizarSinTildes(`${h.apellido} ${h.nombre}`).includes(qNorm) ||
+          normalizarSinTildes(h.grupoFamiliar?.nombreFamilia).includes(qNorm),
+      )
+      .slice(0, 15);
 
     const claves = await this.clavesCopiables();
     return candidatos.map((h) => ({

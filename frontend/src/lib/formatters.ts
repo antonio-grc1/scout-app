@@ -141,6 +141,30 @@ export function calcularEdad(fechaNacStr?: string | null): number | null {
 }
 
 /**
+ * Normaliza un texto para búsquedas sin distinción de mayúsculas/minúsculas ni tildes/acentos.
+ */
+export function normalizarTextoBusqueda(valor: unknown): string {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Formatea el nombre del grupo familiar asegurando que diga "Familia X" sin duplicar el prefijo.
+ */
+export function formatearNombreFamilia(nombre?: string | null): string {
+  const n = String(nombre ?? '').trim();
+  if (!n) return '';
+  if (normalizarTextoBusqueda(n).startsWith('familia ')) return n;
+  if (normalizarTextoBusqueda(n).startsWith('fam. ')) {
+    return `Familia ${n.slice(5).trim()}`;
+  }
+  return `Familia ${n}`;
+}
+
+/**
  * Traduce errores de API o de red a mensajes claros y accionables para educadores/familias
  */
 export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos guardar los cambios. Intenta de nuevo.'): string {
@@ -271,6 +295,15 @@ export function agruparCandidatosPorFamilia(
     if (excluirUsuarioId && c.id === excluirUsuarioId) continue;
 
     const gf = c.grupoFamiliar;
+    // Excluir el grupo familiar si el usuario actual ya pertenece a ese grupo
+    if (
+      excluirUsuarioId &&
+      Array.isArray(gf?.miembros) &&
+      gf.miembros.some((m: any) => m.id === excluirUsuarioId)
+    ) {
+      continue;
+    }
+
     const key = gf?.id ? `gf-${gf.id}` : `user-${c.id}`;
     if (gruposMap.has(key)) continue;
 
@@ -289,7 +322,7 @@ export function agruparCandidatosPorFamilia(
       key,
       esGrupoExistente: Boolean(gf?.id && integrantes.length > 1),
       grupoFamiliarId: gf?.id,
-      nombreFamilia: gf?.nombreFamilia || `Familia ${c.apellido}`,
+      nombreFamilia: formatearNombreFamilia(gf?.nombreFamilia || `Familia ${c.apellido}`),
       representante: c,
       integrantes,
       madreNombre: datos.madre_nombres || undefined,
