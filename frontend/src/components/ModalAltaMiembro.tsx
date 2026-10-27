@@ -63,9 +63,18 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA' || u?.nombre?.toLowerCase().includes('jefatura');
   const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO' || u?.nombre?.toLowerCase().includes('sin rama');
 
-  const esRolJefe = (r: any) => r?.nombre?.toLowerCase().includes('jefe');
-  const esRolSinRama = (r: any) => r?.nombre?.toLowerCase().includes('sin rama');
-  const esRolRama = (r: any) => !esRolJefe(r) && !esRolSinRama(r);
+  const esRolJefe = (r: any) =>
+    r?.nombre?.toLowerCase().includes('jefe') ||
+    (r?.esSistema === false && r?.alcancePorDefecto === 'GLOBAL');
+  const esRolSinRama = (r: any) =>
+    r?.nombre?.toLowerCase().includes('sin rama') ||
+    (r?.esSistema === false && r?.alcancePorDefecto !== 'PROPIO');
+  const esRolRama = (r: any) =>
+    (!r?.nombre?.toLowerCase().includes('jefe') &&
+      !r?.nombre?.toLowerCase().includes('sin rama') &&
+      r?.esSistema !== false) ||
+    (r?.esSistema === false &&
+      (r?.alcancePorDefecto === 'UNIDAD' || r?.alcancePorDefecto === 'PROPIO'));
 
   const unidadSeleccionada = useMemo(
     () => unidadesDisponibles.find((u) => u.id === Number(unidadId)),
