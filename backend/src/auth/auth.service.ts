@@ -64,7 +64,7 @@ export class AuthService {
     if (!(await bcrypt.compare(dto.claveActual, usuario.passwordHash))) {
       throw new BadRequestException('La clave actual es incorrecta');
     }
-    if (dto.claveNueva === usuario.dni) {
+    if (dto.claveNueva.trim() === usuario.dni.trim()) {
       throw new BadRequestException('La nueva clave no puede ser igual al DNI');
     }
 

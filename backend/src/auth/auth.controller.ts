@@ -30,6 +30,13 @@ export class AuthController {
   }
 
   @PermitirClavePendiente()
+  @Post('cambiar-password')
+  @HttpCode(200)
+  cambiarPassword(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(CambiarClaveSchema)) dto: CambiarClaveDto) {
+    return this.auth.cambiarClave(user, dto);
+  }
+
+  @PermitirClavePendiente()
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.auth.perfil(user);
