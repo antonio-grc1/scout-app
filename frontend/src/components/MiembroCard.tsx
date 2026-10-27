@@ -1,13 +1,18 @@
 import React from 'react';
 import { obtenerConfigRama } from '../lib/ramaColors';
-import { ESTADO_FICHA_CONFIG, calcularEdad, formatearMoneda } from '../lib/formatters';
+import {
+  ESTADO_FICHA_CONFIG,
+  calcularEdad,
+  extraerTelefonosMiembro,
+  formatearMoneda,
+} from '../lib/formatters';
+import { BotonLlamarMiembro } from './BotonLlamarMiembro';
 import {
   CheckCircle2,
   Clock,
   AlertTriangle,
   ArrowRightLeft,
   CreditCard,
-  Phone,
   Sparkles,
   FileCheck2,
   FileText,
@@ -185,18 +190,10 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
           <span>{deudaTotal > 0 ? `Debe ${formatearMoneda(deudaTotal)}` : 'Cuotas al día'}</span>
         </button>
 
-        {/* 1-Tap: Llamar si tiene teléfono */}
-        {miembro.telefonoContacto && (
-          <a
-            href={`tel:${miembro.telefonoContacto}`}
-            title={`Llamar a ${miembro.telefonoContacto}`}
-            className="min-h-[42px] min-w-[42px] px-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center justify-center transition ml-auto"
-          >
-            <Phone className="w-4 h-4" />
-          </a>
-        )}
+        {/* 1-Tap: Selector para llamar (Miembro, Madre, Padre, Tutor) */}
+        <BotonLlamarMiembro miembro={miembro} entrega={entrega} />
 
-        {!miembro.telefonoContacto && !tienePaseSugerido && (
+        {extraerTelefonosMiembro(miembro, entrega).length === 0 && !tienePaseSugerido && (
           <button
             type="button"
             onClick={() => onAbrirDetalle('pase')}

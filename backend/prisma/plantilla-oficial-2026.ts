@@ -577,32 +577,141 @@ export const MAPEO_PDF_2026 = {
   },
 };
 
-export async function seedPlantillaOficial(prisma: PrismaClient) {
-  const codigo = 'LEGAJO_MENORES_2026';
-  const data = {
-    codigo,
+export const ESQUEMA_CAMPOS_ROVERS_2026 = {
+  secciones: [
+    {
+      id: 'seccion_inscripcion_rover',
+      titulo: '1. Ficha Personal de Protagonista Rover (Mayor de Edad)',
+      descripcion: 'Datos personales, estudios/ocupación y contactos de emergencia para integrantes de la Rama Rover.',
+      permiteCopiarHermano: true,
+      campos: [
+        { key: 'protagonista_domicilio', label: 'Domicilio real (Calle, N°, Barrio, Localidad)', type: 'text', required: true },
+        { key: 'protagonista_telefono', label: 'Teléfono celular personal', type: 'tel', required: true },
+        { key: 'ocupacion_estudios', label: 'Carrera / Estudios / Ocupación actual', type: 'text', required: true },
+        { key: 'obra_social', label: 'Obra Social / Prepaga', type: 'text', required: true },
+        { key: 'obra_social_afiliado', label: 'N° de Afiliado (Obra Social)', type: 'text', required: false },
+        { key: 'religion', label: 'Religión', type: 'text', required: false },
+        { key: 'emergencia_nombre', label: 'Contacto de Emergencia: Nombre y Apellido', type: 'text', required: true },
+        { key: 'emergencia_vinculo', label: 'Contacto de Emergencia: Vínculo (Madre, Padre, Pareja, Familiar)', type: 'text', required: true },
+        { key: 'emergencia_telefono', label: 'Contacto de Emergencia: Teléfono principal', type: 'tel', required: true },
+        { key: 'madre_nombres', label: 'Madre: Nombre y Apellido (opcional)', type: 'text', required: false },
+        { key: 'madre_telefono', label: 'Madre: Teléfono (opcional)', type: 'tel', required: false },
+        { key: 'padre_nombres', label: 'Padre: Nombre y Apellido (opcional)', type: 'text', required: false },
+        { key: 'padre_telefono', label: 'Padre: Teléfono (opcional)', type: 'tel', required: false },
+      ],
+    },
+    ESQUEMA_CAMPOS_2026.secciones[1],
+    {
+      id: 'seccion_consentimiento_rover',
+      titulo: '3. Consentimiento Propio de Mayor de Edad (Rama Rover)',
+      descripcion: 'Declaración jurada de participación voluntaria en actividades, acampadas y proyectos de servicio de la Comunidad Rover.',
+      campos: [
+        { key: 'menor_nacionalidad', label: 'Nacionalidad', type: 'text', required: true },
+        {
+          key: 'confirma_autorizacion_salidas',
+          label: 'Declaro bajo juramento ser mayor de edad y prestar mi consentimiento personal para participar en actividades, campamentos y traslados del Grupo Scout Juan XXIII N° 196',
+          type: 'boolean',
+          required: true,
+        },
+        {
+          key: 'ret_autoriza_retirarse_solo',
+          label: 'Como mayor de edad, me retiro por mis propios medios al finalizar las actividades',
+          type: 'boolean',
+          required: false,
+        },
+      ],
+    },
+  ],
+};
+
+export const ESQUEMA_CAMPOS_EDUCADORES_2026 = {
+  secciones: [
+    {
+      id: 'seccion_datos_educador',
+      titulo: '1. Datos Personales y Función del Educador / Dirigente',
+      descripcion: 'Información personal, laboral, formación scout y contactos en caso de emergencia para adultos responsables del grupo.',
+      permiteCopiarHermano: false,
+      campos: [
+        { key: 'protagonista_domicilio', label: 'Domicilio real (Calle, N°, Barrio, Localidad)', type: 'text', required: true },
+        { key: 'protagonista_telefono', label: 'Teléfono celular personal', type: 'tel', required: true },
+        { key: 'profesion_ocupacion', label: 'Profesión / Ocupación laboral', type: 'text', required: true },
+        { key: 'nivel_formacion_scout', label: 'Nivel de Formación / Cursos / Insignia de Madera', type: 'text', required: false },
+        { key: 'obra_social', label: 'Obra Social / Prepaga / ART', type: 'text', required: true },
+        { key: 'obra_social_afiliado', label: 'N° de Afiliado', type: 'text', required: false },
+        { key: 'emergencia_nombre', label: 'Contacto de Emergencia: Nombre y Apellido', type: 'text', required: true },
+        { key: 'emergencia_vinculo', label: 'Contacto de Emergencia: Vínculo o Parentesco', type: 'text', required: true },
+        { key: 'emergencia_telefono', label: 'Contacto de Emergencia: Teléfono directo', type: 'tel', required: true },
+        { key: 'posee_licencia_conducir', label: '¿Posee licencia de conducir vigente y vehículo para apoyo en campamentos?', type: 'boolean', required: false },
+      ],
+    },
+    ESQUEMA_CAMPOS_2026.secciones[1],
+    {
+      id: 'seccion_compromiso_educador',
+      titulo: '3. Declaración Jurada y Compromiso del Educador Adulto',
+      descripcion: 'Confirmación de veracidad de los antecedentes médicos y compromiso con las normas de convivencia y seguridad de SAAC.',
+      campos: [
+        {
+          key: 'confirma_autorizacion_salidas',
+          label: 'Declaro bajo juramento que los datos médicos consignados son exactos y asumo las responsabilidades propias de mi rol como Educador/Adulto en el Grupo Scout Juan XXIII N° 196',
+          type: 'boolean',
+          required: true,
+        },
+      ],
+    },
+  ],
+};
+
+export const PLANTILLAS_OFICIALES_2026 = [
+  {
+    codigo: 'LEGAJO_MENORES_2026',
     titulo: 'Inscripción y Legajo Anual 2026 (Menores de 18 años)',
     version: '2026.1',
     cicloAnio: 2026,
     esquemaCamposJson: ESQUEMA_CAMPOS_2026,
     mapeoPdfJson: MAPEO_PDF_2026,
     activa: true,
-  };
+  },
+  {
+    codigo: 'LEGAJO_ROVERS_2026',
+    titulo: 'Inscripción y Legajo Anual 2026 (Rama Rover / Jóvenes Adultos)',
+    version: '2026.1',
+    cicloAnio: 2026,
+    esquemaCamposJson: ESQUEMA_CAMPOS_ROVERS_2026,
+    mapeoPdfJson: MAPEO_PDF_2026,
+    activa: true,
+  },
+  {
+    codigo: 'LEGAJO_EDUCADORES_2026',
+    titulo: 'Ficha Médica y Legajo Anual 2026 (Educadores y Dirigentes)',
+    version: '2026.1',
+    cicloAnio: 2026,
+    esquemaCamposJson: ESQUEMA_CAMPOS_EDUCADORES_2026,
+    mapeoPdfJson: MAPEO_PDF_2026,
+    activa: true,
+  },
+] as const;
 
-  const existente = await prisma.plantillaFormulario.findFirst({
-    where: { codigo, cicloAnio: 2026 },
-  });
+export async function seedPlantillaOficial(prisma: PrismaClient) {
+  let firstId = 0;
 
-  if (existente) {
-    await prisma.plantillaFormulario.update({
-      where: { id: existente.id },
-      data,
+  for (const data of PLANTILLAS_OFICIALES_2026) {
+    const existente = await prisma.plantillaFormulario.findFirst({
+      where: { codigo: data.codigo, cicloAnio: data.cicloAnio },
     });
-    console.log(`📄 Plantilla "${data.titulo}" actualizada (ID: ${existente.id})`);
-    return existente.id;
-  } else {
-    const creada = await prisma.plantillaFormulario.create({ data });
-    console.log(`📄 Plantilla "${data.titulo}" creada (ID: ${creada.id})`);
-    return creada.id;
+
+    if (existente) {
+      await prisma.plantillaFormulario.update({
+        where: { id: existente.id },
+        data,
+      });
+      console.log(`📄 Plantilla "${data.titulo}" actualizada (ID: ${existente.id})`);
+      if (!firstId) firstId = existente.id;
+    } else {
+      const creada = await prisma.plantillaFormulario.create({ data });
+      console.log(`📄 Plantilla "${data.titulo}" creada (ID: ${creada.id})`);
+      if (!firstId) firstId = creada.id;
+    }
   }
+
+  return firstId;
 }

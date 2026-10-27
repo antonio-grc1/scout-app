@@ -39,14 +39,153 @@ export function calcularHashVerificacion(
 export class LegajosService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private plantillasMayoresVerificadas = false;
+
+  private async asegurarPlantillasMayores() {
+    if (this.plantillasMayoresVerificadas || !this.prisma?.plantillaFormulario?.findFirst) return;
+    this.plantillasMayoresVerificadas = true;
+
+    try {
+      const base = await this.prisma.plantillaFormulario.findFirst({
+        where: { codigo: 'LEGAJO_MENORES_2026', cicloAnio: 2026 },
+      });
+      if (!base) return;
+
+      const esquemaBase = (base.esquemaCamposJson as any) || {};
+      const seccionSalud = Array.isArray(esquemaBase.secciones)
+        ? esquemaBase.secciones.find((s: any) => s.id === 'seccion_salud') || esquemaBase.secciones[1]
+        : null;
+
+      const existentes = await this.prisma.plantillaFormulario.findMany({
+        where: {
+          codigo: { in: ['LEGAJO_ROVERS_2026', 'LEGAJO_EDUCADORES_2026'] },
+          cicloAnio: 2026,
+        },
+        select: { codigo: true },
+      });
+      const codigosExistentes = new Set(existentes.map((e) => e.codigo));
+
+      if (!codigosExistentes.has('LEGAJO_ROVERS_2026')) {
+        await this.prisma.plantillaFormulario.create({
+          data: {
+            codigo: 'LEGAJO_ROVERS_2026',
+            titulo: 'Inscripción y Legajo Anual 2026 (Rama Rover / Jóvenes Adultos)',
+            version: '2026.1',
+            cicloAnio: 2026,
+            activa: true,
+            mapeoPdfJson: base.mapeoPdfJson ?? {},
+            esquemaCamposJson: {
+              secciones: [
+                {
+                  id: 'seccion_inscripcion_rover',
+                  titulo: '1. Ficha Personal de Protagonista Rover (Mayor de Edad)',
+                  descripcion: 'Datos personales, estudios/ocupación y contactos de emergencia para integrantes de la Rama Rover.',
+                  permiteCopiarHermano: true,
+                  campos: [
+                    { key: 'protagonista_domicilio', label: 'Domicilio real (Calle, N°, Barrio, Localidad)', type: 'text', required: true },
+                    { key: 'protagonista_telefono', label: 'Teléfono celular personal', type: 'tel', required: true },
+                    { key: 'ocupacion_estudios', label: 'Carrera / Estudios / Ocupación actual', type: 'text', required: true },
+                    { key: 'obra_social', label: 'Obra Social / Prepaga', type: 'text', required: true },
+                    { key: 'obra_social_afiliado', label: 'N° de Afiliado (Obra Social)', type: 'text', required: false },
+                    { key: 'religion', label: 'Religión', type: 'text', required: false },
+                    { key: 'emergencia_nombre', label: 'Contacto de Emergencia: Nombre y Apellido', type: 'text', required: true },
+                    { key: 'emergencia_vinculo', label: 'Contacto de Emergencia: Vínculo (Madre, Padre, Pareja, Familiar)', type: 'text', required: true },
+                    { key: 'emergencia_telefono', label: 'Contacto de Emergencia: Teléfono principal', type: 'tel', required: true },
+                    { key: 'madre_nombres', label: 'Madre: Nombre y Apellido (opcional)', type: 'text', required: false },
+                    { key: 'madre_telefono', label: 'Madre: Teléfono (opcional)', type: 'tel', required: false },
+                    { key: 'padre_nombres', label: 'Padre: Nombre y Apellido (opcional)', type: 'text', required: false },
+                    { key: 'padre_telefono', label: 'Padre: Teléfono (opcional)', type: 'tel', required: false },
+                  ],
+                },
+                ...(seccionSalud ? [seccionSalud] : []),
+                {
+                  id: 'seccion_consentimiento_rover',
+                  titulo: '3. Consentimiento Propio de Mayor de Edad (Rama Rover)',
+                  descripcion: 'Declaración jurada de participación voluntaria en actividades, acampadas y proyectos de servicio de la Comunidad Rover.',
+                  campos: [
+                    { key: 'menor_nacionalidad', label: 'Nacionalidad', type: 'text', required: true },
+                    {
+                      key: 'confirma_autorizacion_salidas',
+                      label: 'Declaro bajo juramento ser mayor de edad y prestar mi consentimiento personal para participar en actividades, campamentos y traslados del Grupo Scout Juan XXIII N° 196',
+                      type: 'boolean',
+                      required: true,
+                    },
+                    {
+                      key: 'ret_autoriza_retirarse_solo',
+                      label: 'Como mayor de edad, me retiro por mis propios medios al finalizar las actividades',
+                      type: 'boolean',
+                      required: false,
+                    },
+                  ],
+                },
+              ],
+            } as Prisma.InputJsonObject,
+          },
+        });
+      }
+
+      if (!codigosExistentes.has('LEGAJO_EDUCADORES_2026')) {
+        await this.prisma.plantillaFormulario.create({
+          data: {
+            codigo: 'LEGAJO_EDUCADORES_2026',
+            titulo: 'Ficha Médica y Legajo Anual 2026 (Educadores y Dirigentes)',
+            version: '2026.1',
+            cicloAnio: 2026,
+            activa: true,
+            mapeoPdfJson: base.mapeoPdfJson ?? {},
+            esquemaCamposJson: {
+              secciones: [
+                {
+                  id: 'seccion_datos_educador',
+                  titulo: '1. Datos Personales y Función del Educador / Dirigente',
+                  descripcion: 'Información personal, laboral, formación scout y contactos en caso de emergencia para adultos responsables del grupo.',
+                  permiteCopiarHermano: false,
+                  campos: [
+                    { key: 'protagonista_domicilio', label: 'Domicilio real (Calle, N°, Barrio, Localidad)', type: 'text', required: true },
+                    { key: 'protagonista_telefono', label: 'Teléfono celular personal', type: 'tel', required: true },
+                    { key: 'profesion_ocupacion', label: 'Profesión / Ocupación laboral', type: 'text', required: true },
+                    { key: 'nivel_formacion_scout', label: 'Nivel de Formación / Cursos / Insignia de Madera', type: 'text', required: false },
+                    { key: 'obra_social', label: 'Obra Social / Prepaga / ART', type: 'text', required: true },
+                    { key: 'obra_social_afiliado', label: 'N° de Afiliado', type: 'text', required: false },
+                    { key: 'emergencia_nombre', label: 'Contacto de Emergencia: Nombre y Apellido', type: 'text', required: true },
+                    { key: 'emergencia_vinculo', label: 'Contacto de Emergencia: Vínculo o Parentesco', type: 'text', required: true },
+                    { key: 'emergencia_telefono', label: 'Contacto de Emergencia: Teléfono directo', type: 'tel', required: true },
+                    { key: 'posee_licencia_conducir', label: '¿Posee licencia de conducir vigente y vehículo para apoyo en campamentos?', type: 'boolean', required: false },
+                  ],
+                },
+                ...(seccionSalud ? [seccionSalud] : []),
+                {
+                  id: 'seccion_compromiso_educador',
+                  titulo: '3. Declaración Jurada y Compromiso del Educador Adulto',
+                  descripcion: 'Confirmación de veracidad de los antecedentes médicos y compromiso con las normas de convivencia y seguridad de SAAC.',
+                  campos: [
+                    {
+                      key: 'confirma_autorizacion_salidas',
+                      label: 'Declaro bajo juramento que los datos médicos consignados son exactos y asumo las responsabilidades propias de mi rol como Educador/Adulto en el Grupo Scout Juan XXIII N° 196',
+                      type: 'boolean',
+                      required: true,
+                    },
+                  ],
+                },
+              ],
+            } as Prisma.InputJsonObject,
+          },
+        });
+      }
+    } catch {
+      // No bloquear listado si la tabla está en test mockeado
+    }
+  }
+
   // ---------------- Plantillas ----------------
   async listarPlantillas(incluirInactivas = false, cicloAnio?: number) {
+    await this.asegurarPlantillasMayores();
     return this.prisma.plantillaFormulario.findMany({
       where: {
         ...(incluirInactivas ? {} : { activa: true }),
         ...(cicloAnio ? { cicloAnio } : {}),
       },
-      orderBy: [{ cicloAnio: 'desc' }, { titulo: 'asc' }],
+      orderBy: [{ cicloAnio: 'desc' }, { id: 'asc' }],
     });
   }
 

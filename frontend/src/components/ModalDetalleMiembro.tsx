@@ -14,8 +14,10 @@ import {
   NOMBRES_MESES_CORTOS,
   calcularEdad,
   formatearMoneda,
+  seleccionarPlantillaPorMiembro,
   traducirErrorAmigable,
 } from '../lib/formatters';
+import { BotonLlamarMiembro } from './BotonLlamarMiembro';
 import {
   X,
   User,
@@ -144,6 +146,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     fechaNacimiento: '',
     emailContacto: '',
     telefonoContacto: '',
+    madreTelefono: '',
+    padreTelefono: '',
+    tutorTelefono: '',
     domicilio: '',
     obraSocial: '',
     telefonoUrgencias: '',
@@ -196,6 +201,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     setTab(tabInicial);
     setAlerta(null);
     setEditandoFicha(false);
+    setPlantillaActiva(null);
     cargarDatos(usuarioId);
   }, [usuarioId, tabInicial]);
 
@@ -231,7 +237,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         dni: m.dni || '',
         fechaNacimiento: fechaNac,
         emailContacto: m.emailContacto || '',
-        telefonoContacto: m.telefonoContacto || '',
+        telefonoContacto: m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
+        madreTelefono: m.datosFijosJson?.madre_telefono || '',
+        padreTelefono: m.datosFijosJson?.padre_telefono || '',
+        tutorTelefono: m.datosFijosJson?.tutor_telefono || '',
         domicilio: m.datosFijosJson?.domicilio || '',
         obraSocial: m.datosFijosJson?.obra_social || '',
         telefonoUrgencias: m.datosFijosJson?.telefono_urgencias || '',
@@ -348,6 +357,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         activo: formData.activo,
         datosFijosJson: {
           ...(miembro.datosFijosJson || {}),
+          protagonista_telefono: formData.telefonoContacto.trim(),
+          madre_telefono: formData.madreTelefono.trim(),
+          padre_telefono: formData.padreTelefono.trim(),
+          tutor_telefono: formData.tutorTelefono.trim(),
           domicilio: formData.domicilio.trim(),
           obra_social: formData.obraSocial.trim(),
           telefono_urgencias: formData.telefonoUrgencias.trim(),
@@ -765,7 +778,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       const resTodas = await api.get('/legajos/plantillas');
       lista = Array.isArray(resTodas.data) ? resTodas.data : [];
     }
-    const p = lista[0] || null;
+    const p = seleccionarPlantillaPorMiembro(lista, miembro) || lista[0] || null;
     setPlantillaActiva(p);
     return p;
   };
@@ -968,14 +981,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {miembro?.telefonoContacto && (
-              <a
-                href={`tel:${miembro.telefonoContacto}`}
-                title="Llamar"
-                className="min-w-[40px] min-h-[40px] rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center"
-              >
-                <Phone className="w-4 h-4" />
-              </a>
+            {miembro && (
+              <BotonLlamarMiembro miembro={miembro} entrega={entregas?.[0]} />
             )}
             <button
               onClick={onCerrar}
@@ -1146,7 +1153,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
                       <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Familiar
+                        Teléfono del Miembro
                       </label>
                       <input
                         type="tel"
@@ -1155,6 +1162,51 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         value={formData.telefonoContacto}
                         onChange={(e) =>
                           setFormData({ ...formData, telefonoContacto: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Teléfono Madre
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Celular madre"
+                        value={formData.madreTelefono}
+                        onChange={(e) =>
+                          setFormData({ ...formData, madreTelefono: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Teléfono Padre
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Celular padre"
+                        value={formData.padreTelefono}
+                        onChange={(e) =>
+                          setFormData({ ...formData, padreTelefono: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Teléfono Tutor/a
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Celular tutor/a"
+                        value={formData.tutorTelefono}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tutorTelefono: e.target.value })
                         }
                         className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
                       />
@@ -1170,6 +1222,20 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         value={formData.telefonoUrgencias}
                         onChange={(e) =>
                           setFormData({ ...formData, telefonoUrgencias: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Email de Contacto
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="correo@ejemplo.com"
+                        value={formData.emailContacto}
+                        onChange={(e) =>
+                          setFormData({ ...formData, emailContacto: e.target.value })
                         }
                         className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
                       />

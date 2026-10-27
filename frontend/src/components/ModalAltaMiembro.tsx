@@ -25,13 +25,17 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [emailContacto, setEmailContacto] = useState('');
   const [telefonoContacto, setTelefonoContacto] = useState('');
+  const [madreTelefono, setMadreTelefono] = useState('');
+  const [padreTelefono, setPadreTelefono] = useState('');
+  const [tutorTelefono, setTutorTelefono] = useState('');
   const [unidadId, setUnidadId] = useState<number | ''>('');
   const [rolId, setRolId] = useState<number | ''>('');
   const [domicilio, setDomicilio] = useState('');
   const [obraSocial, setObraSocial] = useState('');
 
-  // Hermano
+  // Hermano (por DNI o Apellido)
   const [dniHermano, setDniHermano] = useState('');
+  const [resultadosHermano, setResultadosHermano] = useState<any[]>([]);
   const [buscandoHermano, setBuscandoHermano] = useState(false);
   const [hermanoEncontrado, setHermanoEncontrado] = useState<any | null>(null);
 
@@ -142,21 +146,38 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   if (!abierto) return null;
 
+  const aplicarDatosHermano = (hermano: any) => {
+    setHermanoEncontrado(hermano);
+    if (hermano.emailContacto) setEmailContacto(hermano.emailContacto);
+    if (hermano.datosCompartidos?.domicilio) setDomicilio(hermano.datosCompartidos.domicilio);
+    if (hermano.datosCompartidos?.obra_social) setObraSocial(hermano.datosCompartidos.obra_social);
+    if (hermano.datosCompartidos?.madre_telefono) setMadreTelefono(hermano.datosCompartidos.madre_telefono);
+    if (hermano.datosCompartidos?.padre_telefono) setPadreTelefono(hermano.datosCompartidos.padre_telefono);
+    if (hermano.datosCompartidos?.tutor_telefono) setTutorTelefono(hermano.datosCompartidos.tutor_telefono);
+    if (hermano.apellido && !apellido) setApellido(hermano.apellido);
+  };
+
   const handleBuscarHermano = async () => {
-    if (!dniHermano.trim()) return;
+    const q = dniHermano.trim();
+    if (!q) return;
     setBuscandoHermano(true);
     setError(null);
+    setResultadosHermano([]);
     try {
-      const res = await api.get(`/miembros/hermano/${dniHermano.trim()}`);
-      setHermanoEncontrado(res.data);
-      // Prellenar automáticamente datos compartidos
-      if (res.data.emailContacto) setEmailContacto(res.data.emailContacto);
-      if (res.data.telefonoContacto) setTelefonoContacto(res.data.telefonoContacto);
-      if (res.data.datosCompartidos?.domicilio) setDomicilio(res.data.datosCompartidos.domicilio);
-      if (res.data.datosCompartidos?.obra_social) setObraSocial(res.data.datosCompartidos.obra_social);
-      if (res.data.apellido && !apellido) setApellido(res.data.apellido);
+      const res = await api.get(`/miembros/hermanos/buscar?q=${encodeURIComponent(q)}`);
+      const lista = Array.isArray(res.data) ? res.data : [];
+      if (lista.length === 0) {
+        setError('No se encontró ningún miembro activo con ese DNI o Apellido.');
+        setHermanoEncontrado(null);
+      } else if (lista.length === 1) {
+        setResultadosHermano(lista);
+        aplicarDatosHermano(lista[0]);
+      } else {
+        setResultadosHermano(lista);
+        setHermanoEncontrado(null);
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'No se encontró ningún miembro activo con ese DNI.');
+      setError(err.response?.data?.message || 'No se encontró ningún miembro activo.');
       setHermanoEncontrado(null);
     } finally {
       setBuscandoHermano(false);
@@ -183,11 +204,15 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         telefonoContacto: telefonoContacto.trim() || undefined,
         unidadId: Number(unidadId),
         rolId: Number(rolId),
-        hermanoDni: hermanoEncontrado ? dniHermano.trim() : undefined,
+        hermanoDni: hermanoEncontrado?.dni || undefined,
         copiarDatosHermano: Boolean(hermanoEncontrado),
         datosFijosJson: {
           domicilio: domicilio.trim() || undefined,
           obra_social: obraSocial.trim() || undefined,
+          protagonista_telefono: telefonoContacto.trim() || undefined,
+          madre_telefono: madreTelefono.trim() || undefined,
+          padre_telefono: padreTelefono.trim() || undefined,
+          tutor_telefono: tutorTelefono.trim() || undefined,
         },
       });
 
@@ -224,18 +249,23 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Autocompletado de hermano */}
+          {/* Autocompletado de hermano por DNI o Apellido */}
           <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 rounded-xl space-y-2">
             <span className="font-semibold text-emerald-900 dark:text-emerald-200 block text-xs">
-              ¿Tiene un hermano/a ya inscripto? Copiar datos familiares:
+              ¿Tiene un hermano/a ya inscripto? Buscar por DNI o Apellido para copiar datos:
             </span>
             <div className="flex gap-2">
               <input
                 type="text"
-                inputMode="numeric"
-                placeholder="DNI del hermano/a..."
+                placeholder="DNI o Apellido del hermano/a..."
                 value={dniHermano}
-                onChange={(e) => setDniHermano(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setDniHermano(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    void handleBuscarHermano();
+                  }
+                }}
                 className="flex-1 min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-500"
               />
               <button
@@ -245,15 +275,39 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 className="min-h-[42px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Search className="w-4 h-4" />
-                <span>{buscandoHermano ? 'Buscando...' : 'Copiar'}</span>
+                <span>{buscandoHermano ? 'Buscando...' : 'Buscar'}</span>
               </button>
             </div>
+
+            {resultadosHermano.length > 1 && (
+              <div className="space-y-1 max-h-36 overflow-y-auto pt-1">
+                {resultadosHermano.map((h) => (
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() => aplicarDatosHermano(h)}
+                    className={`w-full text-left p-2 rounded-lg border text-xs flex items-center justify-between transition cursor-pointer ${
+                      hermanoEncontrado?.id === h.id
+                        ? 'bg-emerald-100 dark:bg-emerald-950/80 border-emerald-400 font-bold'
+                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
+                    }`}
+                  >
+                    <span>
+                      {h.apellido}, {h.nombre} (DNI {h.dni})
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {h.asignaciones?.[0]?.unidad?.nombre || ''}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {hermanoEncontrado && (
               <div className="p-2.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 flex items-center gap-2 text-xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>
-                  Datos copiados de <strong>{hermanoEncontrado.nombre} {hermanoEncontrado.apellido}</strong>.
+                  Datos familiares copiados de <strong>{hermanoEncontrado.nombre} {hermanoEncontrado.apellido}</strong>.
                 </span>
               </div>
             )}
@@ -350,23 +404,56 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono de Contacto</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono del Miembro</label>
               <input
                 type="tel"
                 inputMode="tel"
                 value={telefonoContacto}
                 onChange={(e) => setTelefonoContacto(e.target.value)}
-                placeholder="Ej. 11 4567 8901"
+                placeholder="Ej. 351 456 7890"
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email Familiar</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email (Recibe aviso de alta)</label>
               <input
                 type="email"
                 value={emailContacto}
                 onChange={(e) => setEmailContacto(e.target.value)}
                 placeholder="familia@email.com"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Madre</label>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={madreTelefono}
+                onChange={(e) => setMadreTelefono(e.target.value)}
+                placeholder="Opcional"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Padre</label>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={padreTelefono}
+                onChange={(e) => setPadreTelefono(e.target.value)}
+                placeholder="Opcional"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Tutor/a</label>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={tutorTelefono}
+                onChange={(e) => setTutorTelefono(e.target.value)}
+                placeholder="Opcional (si aplica)"
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>

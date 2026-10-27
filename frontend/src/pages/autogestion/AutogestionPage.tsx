@@ -14,6 +14,7 @@ import {
   ESTADO_FICHA_CONFIG,
   METODO_PAGO_LABELS,
   formatearMoneda,
+  seleccionarPlantillaPorMiembro,
   traducirErrorAmigable,
 } from '../../lib/formatters';
 import {
@@ -58,12 +59,16 @@ export const AutogestionPage: React.FC = () => {
 
     try {
       let targetUserId = usuario?.id;
+      let usuarioMe = usuario;
+      let asignacionesMe = asignaciones;
       try {
         const resMe = await api.get('/auth/me');
         if (resMe.data?.usuario?.id) {
           targetUserId = resMe.data.usuario.id;
+          usuarioMe = resMe.data.usuario;
           localStorage.setItem('scout_user', JSON.stringify(resMe.data.usuario));
           if (Array.isArray(resMe.data.asignaciones)) {
+            asignacionesMe = resMe.data.asignaciones;
             localStorage.setItem('scout_asignaciones', JSON.stringify(resMe.data.asignaciones));
           }
         }
@@ -82,7 +87,10 @@ export const AutogestionPage: React.FC = () => {
         .then((res) => setEstadoCuenta(res.data))
         .catch(() => {});
 
-      const resPlantillas = await api.get('/legajos/plantillas?cicloAnio=2026');
+      const [resPlantillas, resMiembro] = await Promise.all([
+        api.get('/legajos/plantillas?cicloAnio=2026'),
+        api.get(`/miembros/${targetUserId}`).catch(() => ({ data: null })),
+      ]);
       let listaPlantillas: any[] = Array.isArray(resPlantillas.data) ? resPlantillas.data : [];
 
       if (listaPlantillas.length === 0) {
@@ -96,7 +104,10 @@ export const AutogestionPage: React.FC = () => {
         return;
       }
 
-      const plantilla = listaPlantillas[0];
+      const perfilMiembro = resMiembro.data || usuarioMe;
+      const plantilla =
+        seleccionarPlantillaPorMiembro(listaPlantillas, perfilMiembro, asignacionesMe) ||
+        listaPlantillas[0];
       setPlantillaSeleccionada(plantilla);
 
       const ciclo = plantilla.cicloAnio || 2026;
@@ -253,7 +264,7 @@ export const AutogestionPage: React.FC = () => {
       <PdfViewerModal
         url={pdfPreviewUrl}
         titulo={`Vista Previa: ${apellidoVisible}, ${nombreVisible}`}
-        subtitulo="Planilla Oficial 2026"
+        subtitulo={plantillaSeleccionada?.nombre || 'Planilla Oficial 2026'}
         onCerrar={cerrarVistaPreviaPdf}
         onDescargar={handleDescargarCopiaPdf}
       />

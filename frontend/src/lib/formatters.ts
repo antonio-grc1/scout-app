@@ -175,3 +175,98 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
 
   return mensajePorDefecto;
 }
+
+export interface OpcionTelefonoContacto {
+  etiqueta: string;
+  nombre?: string;
+  telefono: string;
+}
+
+/**
+ * Extrae todos los teléfonos registrados del miembro (propio, madre, padre, tutor y urgencias)
+ * para mostrarlos en el selector rápido de llamada.
+ */
+export function extraerTelefonosMiembro(
+  miembro: any,
+  entrega?: any,
+): OpcionTelefonoContacto[] {
+  if (!miembro) return [];
+  const datos: Record<string, any> = {
+    ...(miembro.datosFijosJson || {}),
+    ...(entrega?.respuestasSnapshotJson || {}),
+  };
+
+  const resultado: OpcionTelefonoContacto[] = [];
+  const agregar = (etiqueta: string, telRaw: unknown, nombreRaw?: unknown) => {
+    const tel = String(telRaw ?? '').trim();
+    if (!tel) return;
+    const nombre = String(nombreRaw ?? '').trim() || undefined;
+    // Evitar duplicar exactamente la misma etiqueta y número
+    if (resultado.some((r) => r.etiqueta === etiqueta && r.telefono === tel)) return;
+    resultado.push({ etiqueta, nombre, telefono: tel });
+  };
+
+  agregar(
+    'Miembro',
+    miembro.telefonoContacto || datos.protagonista_telefono,
+    `${miembro.nombre || ''} ${miembro.apellido || ''}`.trim(),
+  );
+  agregar('Madre', datos.madre_telefono, datos.madre_nombres);
+  agregar('Padre', datos.padre_telefono, datos.padre_nombres);
+  agregar('Tutor/a', datos.tutor_telefono, datos.tutor_nombres);
+  agregar(
+    'Emergencia',
+    datos.emergencia_telefono || datos.telefono_urgencias || datos.tel_emergencia_1,
+    datos.emergencia_nombre,
+  );
+
+  return resultado;
+}
+
+/**
+ * Selecciona automáticamente la plantilla de legajo adecuada según rol, rama y edad:
+ * - Educadores / Dirigentes -> LEGAJO_EDUCADORES_2026
+ * - Rama Rover o mayores de 18 años -> LEGAJO_ROVERS_2026
+ * - Menores de 18 años (Lobatos, Scouts, Caminantes) -> LEGAJO_MENORES_2026
+ */
+export function seleccionarPlantillaPorMiembro(
+  plantillas: any[],
+  miembro: any,
+  asignacionesFallback?: any[],
+): any | null {
+  if (!Array.isArray(plantillas) || plantillas.length === 0) return null;
+
+  const asig = miembro?.asignaciones?.[0] || asignacionesFallback?.[0];
+  const rolNombre = String(asig?.rol?.nombre || asig?.rol || '').toLowerCase();
+  const alcance = String(asig?.alcanceOverride || asig?.rol?.alcancePorDefecto || asig?.alcance || '').toUpperCase();
+  const unidadNombre = String(
+    asig?.unidad?.nombre || asig?.unidadNombre || asig?.unidad?.rama?.nombre || '',
+  ).toLowerCase();
+  const unidadTipo = String(asig?.unidad?.tipo || '').toUpperCase();
+
+  const esEducador =
+    rolNombre.includes('educador') ||
+    rolNombre.includes('jefe') ||
+    unidadTipo === 'JEFATURA' ||
+    unidadTipo === 'SIN_RAMA_APOYO' ||
+    alcance === 'GLOBAL' ||
+    alcance === 'UNIDAD';
+
+  if (esEducador) {
+    const pEdu = plantillas.find((p) => p.codigo === 'LEGAJO_EDUCADORES_2026');
+    if (pEdu) return pEdu;
+  }
+
+  const edad = calcularEdad(miembro?.fechaNacimiento);
+  const esRoverOMayor = unidadNombre.includes('rover') || (edad !== null && edad >= 18);
+
+  if (esRoverOMayor) {
+    const pRov = plantillas.find((p) => p.codigo === 'LEGAJO_ROVERS_2026');
+    if (pRov) return pRov;
+  }
+
+  return (
+    plantillas.find((p) => p.codigo === 'LEGAJO_MENORES_2026') ||
+    plantillas[0]
+  );
+}
