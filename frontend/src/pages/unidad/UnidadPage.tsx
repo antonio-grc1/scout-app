@@ -342,28 +342,28 @@ export const UnidadPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+              <h1 className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-zinc-100">
                 Padrón del Grupo
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300">
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-400 text-zinc-950">
                 {miembrosFiltrados.length}
               </span>
             </div>
           </div>
 
-          {/* Botones de Acción Principal (Touch target >= 44px) */}
-          <div className="grid grid-cols-2 sm:flex items-center gap-2">
+          {/* Botones de Acción Principal (Touch target >= 46px) */}
+          <div className="grid grid-cols-2 sm:flex items-center gap-2.5">
             <button
               onClick={() => setScannerAbierto(true)}
-              className="min-h-[44px] px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+              className="min-h-[46px] px-4 rounded-xl bg-zinc-950 hover:bg-zinc-900 text-amber-400 border border-amber-400/50 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
             >
-              <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <QrCode className="w-4 h-4 text-amber-400 shrink-0" />
               <span>Escanear QR</span>
             </button>
 
             <button
               onClick={() => setModalAltaAbierto(true)}
-              className="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
+              className="min-h-[46px] px-4 rounded-xl bg-amber-400 hover:bg-amber-500 text-zinc-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-xs cursor-pointer"
             >
               <UserPlus className="w-4 h-4 shrink-0" />
               <span>Nuevo Miembro</span>
@@ -398,9 +398,9 @@ export const UnidadPage: React.FC = () => {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap">
           <button
             onClick={() => setChipActivo('TODOS')}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer border ${
+            className={`min-h-[42px] px-4 py-1.5 rounded-full text-xs font-black whitespace-nowrap transition cursor-pointer border ${
               chipActivo === 'TODOS'
-                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-2xs'
+                ? 'bg-amber-400 text-zinc-950 border-amber-500 shadow-2xs'
                 : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
             }`}
           >
