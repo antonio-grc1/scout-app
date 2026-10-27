@@ -21,7 +21,12 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
         createMany: vi.fn(),
       },
       asignacionMiembro: {
+        count: vi.fn(),
         deleteMany: vi.fn(),
+      },
+      unidadOrganizativa: {
+        findUnique: vi.fn(),
+        delete: vi.fn(),
       },
       $transaction: vi.fn(async (arg: any) => {
         if (typeof arg === 'function') return arg(mock);
@@ -111,5 +116,23 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
     });
 
     await expect(service.eliminarRol({ tipo: 'GLOBAL' }, 5)).rejects.toThrow(ConflictException);
+  });
+
+  it('elimina una sección operativa sin miembros activos limpiando historial huérfano', async () => {
+    const prisma = crearMockPrisma();
+    const service = new OrganizacionService(prisma);
+
+    prisma.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 10,
+      nombre: 'Manada Impeesa',
+      _count: { asignaciones: 1, conceptos: 0, planesCuota: 0 },
+    });
+    prisma.asignacionMiembro.count.mockResolvedValueOnce(0);
+    prisma.asignacionMiembro.deleteMany.mockResolvedValueOnce({ count: 1 });
+    prisma.unidadOrganizativa.delete.mockResolvedValueOnce({ id: 10 });
+
+    const res = await service.eliminarUnidad({ tipo: 'GLOBAL' }, 10);
+    expect(res.eliminada).toBe(true);
+    expect(prisma.unidadOrganizativa.delete).toHaveBeenCalledWith({ where: { id: 10 } });
   });
 });
