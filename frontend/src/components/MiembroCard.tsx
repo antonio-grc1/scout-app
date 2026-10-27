@@ -108,6 +108,12 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
                 {asig?.unidad?.nombre || cfgRama.nombre}
               </span>
 
+              {asig?.rol?.nombre && (
+                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                  {asig.rol.nombre}
+                </span>
+              )}
+
               {edad !== null && (
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
                   • {edad} años
