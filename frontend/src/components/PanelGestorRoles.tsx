@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { ModalConfirmacion, type ModalConfirmacionProps } from './ModalConfirmacion';
 import {
@@ -76,8 +77,18 @@ const ETIQUETAS_PERMISOS_HUMANAS: Record<
     categoria: 'Personas y Padrón',
   },
   'miembros.editar': {
-    titulo: 'Puede modificar datos personales y familiares',
-    detalle: 'Permite actualizar teléfonos, direcciones, vincular hermanos y dar de baja o reactivar personas.',
+    titulo: 'Puede modificar datos de contacto y salud',
+    detalle: 'Permite actualizar teléfonos, emails, domicilio, obra social, alergias y vincular hermanos.',
+    categoria: 'Personas y Padrón',
+  },
+  'miembros.editar_identidad': {
+    titulo: 'Puede modificar identidad (Nombre, DNI, Nacimiento)',
+    detalle: 'Permite modificar nombre, apellido, documento y fecha de nacimiento de un miembro.',
+    categoria: 'Personas y Padrón',
+  },
+  'miembros.baja': {
+    titulo: 'Puede dar de baja o reactivar miembros',
+    detalle: 'Permite cambiar el estado de un integrante entre Activo y Dado de baja.',
     categoria: 'Personas y Padrón',
   },
   'auth.resetear_clave': {
@@ -148,6 +159,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
   onRecargar,
   onToast,
 }) => {
+  const puedeGestionarRoles = useAuthStore((s) => s.tienePermiso('organizacion.gestionar'));
   const [rolEditando, setRolEditando] = useState<any | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
 
@@ -389,14 +401,16 @@ export const PanelGestorRoles: React.FC<Props> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={abrirNuevoRol}
-          className="min-h-[44px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0 shadow-xs"
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>Crear Nuevo Rol</span>
-        </button>
+        {puedeGestionarRoles && (
+          <button
+            type="button"
+            onClick={abrirNuevoRol}
+            className="min-h-[44px] px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0 shadow-xs"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Crear Nuevo Rol</span>
+          </button>
+        )}
       </div>
 
       {/* Tarjetas de Roles Actuales */}
@@ -485,42 +499,44 @@ export const PanelGestorRoles: React.FC<Props> = ({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
-                <button
-                  type="button"
-                  disabled={eliminando}
-                  onClick={() => solicitarEliminarRol(r)}
-                  title={
-                    esUltimoAdmin
-                      ? 'Protegido: único rol administrador del sistema'
-                      : 'Eliminar este rol'
-                  }
-                  className="min-h-[42px] px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-                >
-                  {eliminando ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                  <span>Eliminar</span>
-                </button>
+              {puedeGestionarRoles && (
+                <div className="flex items-center justify-between gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    disabled={eliminando}
+                    onClick={() => solicitarEliminarRol(r)}
+                    title={
+                      esUltimoAdmin
+                        ? 'Protegido: único rol administrador del sistema'
+                        : 'Eliminar este rol'
+                    }
+                    className="min-h-[42px] px-3.5 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  >
+                    {eliminando ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                    <span>Eliminar</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => abrirEditarRol(r)}
-                  className="flex-1 sm:flex-initial min-h-[42px] px-4 py-2 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                  <span>Editar Rol y Permisos</span>
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => abrirEditarRol(r)}
+                    className="flex-1 sm:flex-initial min-h-[42px] px-4 py-2 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Editar Rol y Permisos</span>
+                  </button>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
       {/* Bottom Sheet (Móvil) / Modal (Escritorio) para Crear o Editar Rol */}
-      {modalAbierto && (
+      {puedeGestionarRoles && modalAbierto && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150">
             {/* Cabecera del Bottom Sheet */}

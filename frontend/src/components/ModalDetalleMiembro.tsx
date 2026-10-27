@@ -22,6 +22,7 @@ import {
   traducirErrorAmigable,
 } from '../lib/formatters';
 import { BotonLlamarMiembro } from './BotonLlamarMiembro';
+import { usePermisosUI } from '../lib/permisos';
 import {
   X,
   User,
@@ -90,17 +91,21 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   tabInicial = 'datos',
 }) => {
   const { tieneGlobal, tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
-  const puedeEditarMiembro = tienePermiso('miembros.editar');
-  const puedeVerCuotas =
-    tienePermiso('cuotas.ver') || tienePermiso('cuotas.cobrar') || tienePermiso('tesoreria.gestionar');
-  const puedeCobrarCuotas = tienePermiso('cuotas.cobrar') || tienePermiso('tesoreria.gestionar');
+  const { canEdit, canView } = usePermisosUI();
+  const puedeEditarIdentidad = canEdit('miembro', 'identidad');
+  const puedeEditarContacto = canEdit('miembro', 'contacto');
+  const puedeDarBaja = canEdit('miembro', 'estado');
+  const puedeEditarFamilia = canEdit('miembro', 'familia');
+  const puedeEditarDescuento = canEdit('miembro', 'descuentoFamiliar');
+  const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
+  const puedeVerCuotas = canView('cuotas');
+  const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
   const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
-  const puedeVerFicha =
-    tienePermiso('legajos.ver') || tienePermiso('legajos.completar') || tienePermiso('legajos.validar_fisico');
-  const puedeCompletarFicha = tienePermiso('legajos.completar');
-  const puedeValidarFisico = tienePermiso('legajos.validar_fisico');
-  const puedeHacerPases = tienePermiso('pases.ejecutar');
-  const puedeResetearClave = tienePermiso('auth.resetear_clave');
+  const puedeVerFicha = canView('ficha');
+  const puedeCompletarFicha = canEdit('ficha', 'completar');
+  const puedeValidarFisico = canEdit('ficha', 'validarFisico');
+  const puedeHacerPases = canEdit('miembro', 'pase');
+  const puedeResetearClave = canEdit('miembro', 'clave');
   const [tab, setTab] = useState<'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'>(tabInicial);
   const [miembro, setMiembro] = useState<any | null>(null);
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
@@ -375,16 +380,19 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     setAlerta(null);
 
     try {
-      await api.patch(`/miembros/${miembro.id}`, {
-        nombre: formData.nombre.trim(),
-        apellido: formData.apellido.trim(),
-        dni: formData.dni.trim(),
-        fechaNacimiento: formData.fechaNacimiento || undefined,
-        emailContacto: formData.emailContacto.trim() || null,
-        telefonoContacto: formData.telefonoContacto.trim() || null,
-        activo: formData.activo,
-        datosFijosJson: {
-          ...(miembro.datosFijosJson || {}),
+      // Actualización parcial: solo se envían los grupos de campos que el usuario puede modificar
+      const payload: Record<string, unknown> = {};
+      if (puedeEditarIdentidad) {
+        payload.nombre = formData.nombre.trim();
+        payload.apellido = formData.apellido.trim();
+        payload.dni = formData.dni.trim();
+        payload.fechaNacimiento = formData.fechaNacimiento || undefined;
+      }
+      if (puedeDarBaja) payload.activo = formData.activo;
+      if (puedeEditarContacto) {
+        payload.emailContacto = formData.emailContacto.trim() || null;
+        payload.telefonoContacto = formData.telefonoContacto.trim() || null;
+        payload.datosFijosJson = {
           protagonista_telefono: formData.telefonoContacto.trim(),
           madre_nombres: formData.madreNombres.trim(),
           madre_telefono: formData.madreTelefono.trim(),
@@ -396,8 +404,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           obra_social: formData.obraSocial.trim(),
           telefono_urgencias: formData.telefonoUrgencias.trim(),
           alergias: formData.alergias.trim(),
-        },
-      });
+        };
+      }
+      await api.patch(`/miembros/${miembro.id}`, payload);
 
       setAlerta({ tipo: 'exito', texto: 'Datos guardados.' });
       if (onActualizado) onActualizado();
@@ -1150,231 +1159,86 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               {/* ======================================================== */}
               {tab === 'datos' && (
                 <form onSubmit={handleGuardarDatos} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.nombre}
-                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Apellido *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.apellido}
-                        onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        DNI *
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        required
-                        value={formData.dni}
-                        onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Fecha de Nacimiento *
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={formData.fechaNacimiento}
-                        onChange={(e) =>
-                          setFormData({ ...formData, fechaNacimiento: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Contacto */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono del Miembro
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Ej: 3511234567"
-                        value={formData.telefonoContacto}
-                        onChange={(e) =>
-                          setFormData({ ...formData, telefonoContacto: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        placeholder="correo@ejemplo.com"
-                        value={formData.emailContacto}
-                        onChange={(e) =>
-                          setFormData({ ...formData, emailContacto: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre y Apellido Madre
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nombre y apellido de la madre"
-                        value={formData.madreNombres}
-                        onChange={(e) =>
-                          setFormData({ ...formData, madreNombres: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Madre
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Celular madre"
-                        value={formData.madreTelefono}
-                        onChange={(e) =>
-                          setFormData({ ...formData, madreTelefono: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre y Apellido Padre
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nombre y apellido del padre"
-                        value={formData.padreNombres}
-                        onChange={(e) =>
-                          setFormData({ ...formData, padreNombres: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Padre
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Celular padre"
-                        value={formData.padreTelefono}
-                        onChange={(e) =>
-                          setFormData({ ...formData, padreTelefono: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Nombre y Apellido Tutor/a
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Nombre y apellido del tutor/a"
-                        value={formData.tutorNombres}
-                        onChange={(e) =>
-                          setFormData({ ...formData, tutorNombres: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Tutor/a
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Celular tutor/a"
-                        value={formData.tutorTelefono}
-                        onChange={(e) =>
-                          setFormData({ ...formData, tutorTelefono: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono de Urgencias
-                      </label>
-                      <input
-                        type="tel"
-                        inputMode="tel"
-                        placeholder="Alternativo para emergencias"
-                        value={formData.telefonoUrgencias}
-                        onChange={(e) =>
-                          setFormData({ ...formData, telefonoUrgencias: e.target.value })
-                        }
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Domicilio
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Calle y número"
-                        value={formData.domicilio}
-                        onChange={(e) => setFormData({ ...formData, domicilio: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Obra Social / Prepaga
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="OSDE, Apross, etc."
-                        value={formData.obraSocial}
-                        onChange={(e) => setFormData({ ...formData, obraSocial: e.target.value })}
-                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                      Alergias o Cuidados Médicos
-                    </label>
-                    <textarea
-                      rows={2}
-                      placeholder="Alergias, medicación habitual o dieta especial"
-                      value={formData.alergias}
-                      onChange={(e) => setFormData({ ...formData, alergias: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                    />
-                  </div>
+                  {(() => {
+                    type Campo = {
+                      key: keyof typeof formData;
+                      label: string;
+                      editable: boolean;
+                      type?: string;
+                      placeholder?: string;
+                      full?: boolean;
+                      multiline?: boolean;
+                      required?: boolean;
+                    };
+                    const campos: Campo[] = [
+                      { key: 'nombre', label: 'Nombre', editable: puedeEditarIdentidad, required: true },
+                      { key: 'apellido', label: 'Apellido', editable: puedeEditarIdentidad, required: true },
+                      { key: 'dni', label: 'DNI', editable: puedeEditarIdentidad, required: true },
+                      { key: 'fechaNacimiento', label: 'Fecha de Nacimiento', editable: puedeEditarIdentidad, type: 'date', required: true },
+                      { key: 'telefonoContacto', label: 'Teléfono del Miembro', editable: puedeEditarContacto, type: 'tel', placeholder: 'Ej: 3511234567' },
+                      { key: 'emailContacto', label: 'Email', editable: puedeEditarContacto, type: 'email', placeholder: 'correo@ejemplo.com' },
+                      { key: 'madreNombres', label: 'Nombre y Apellido Madre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido de la madre' },
+                      { key: 'madreTelefono', label: 'Teléfono Madre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular madre' },
+                      { key: 'padreNombres', label: 'Nombre y Apellido Padre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del padre' },
+                      { key: 'padreTelefono', label: 'Teléfono Padre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular padre' },
+                      { key: 'tutorNombres', label: 'Nombre y Apellido Tutor/a', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del tutor/a' },
+                      { key: 'tutorTelefono', label: 'Teléfono Tutor/a', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular tutor/a' },
+                      { key: 'telefonoUrgencias', label: 'Teléfono de Urgencias', editable: puedeEditarContacto, type: 'tel', placeholder: 'Alternativo para emergencias' },
+                      { key: 'domicilio', label: 'Domicilio', editable: puedeEditarContacto, placeholder: 'Calle y número' },
+                      { key: 'obraSocial', label: 'Obra Social / Prepaga', editable: puedeEditarContacto, placeholder: 'OSDE, Apross, etc.', full: true },
+                      { key: 'alergias', label: 'Alergias o Cuidados Médicos', editable: puedeEditarContacto, placeholder: 'Alergias, medicación habitual o dieta especial', full: true, multiline: true },
+                    ];
+                    const claseInput =
+                      'w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none';
+                    const mostrarValor = (c: Campo) => {
+                      const v = String(formData[c.key] ?? '');
+                      if (!v) return null;
+                      if (c.type === 'date') return new Date(`${v}T00:00:00`).toLocaleDateString('es-AR');
+                      return v;
+                    };
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {campos.map((c) => {
+                          const valor = mostrarValor(c);
+                          // Solo lectura limpio: si no puede editar y no hay dato, no mostrar el campo
+                          if (!c.editable && !valor) return null;
+                          return (
+                            <div key={c.key} className={c.full ? 'sm:col-span-2' : ''}>
+                              <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                                {c.label}
+                                {c.editable && c.required ? ' *' : ''}
+                              </label>
+                              {c.editable ? (
+                                c.multiline ? (
+                                  <textarea
+                                    rows={2}
+                                    placeholder={c.placeholder}
+                                    value={String(formData[c.key] ?? '')}
+                                    onChange={(e) => setFormData({ ...formData, [c.key]: e.target.value })}
+                                    className={claseInput}
+                                  />
+                                ) : (
+                                  <input
+                                    type={c.type || 'text'}
+                                    inputMode={c.type === 'tel' ? 'tel' : c.key === 'dni' ? 'numeric' : undefined}
+                                    required={c.required}
+                                    placeholder={c.placeholder}
+                                    value={String(formData[c.key] ?? '')}
+                                    onChange={(e) => setFormData({ ...formData, [c.key]: e.target.value })}
+                                    className={`${claseInput} ${c.key === 'dni' ? 'font-mono' : ''}`}
+                                  />
+                                )
+                              ) : (
+                                <p className="min-h-[42px] px-1 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap break-words">
+                                  {valor}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
 
                   {/* Grupo Familiar */}
                   {(() => {

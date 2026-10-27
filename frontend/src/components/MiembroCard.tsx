@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuthStore } from '../store/authStore';
 import { obtenerConfigRama } from '../lib/ramaColors';
 import {
   ESTADO_FICHA_CONFIG,
@@ -40,6 +41,12 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
   onAbrirDetalle,
   onValidarFichaDirecto,
 }) => {
+  const { tienePermiso } = useAuthStore();
+  const puedeVerFicha = tienePermiso('legajos.ver');
+  const puedeValidarFisico = tienePermiso('legajos.validar_fisico');
+  const puedeEjecutarPases = tienePermiso('pases.ejecutar');
+  const puedeVerCuotas = tienePermiso('cuotas.ver') || tienePermiso('tesoreria.gestionar');
+
   const asig = miembro.asignaciones?.[0];
   const cfgRama = obtenerConfigRama(miembro, unidades);
   const edad = calcularEdad(miembro.fechaNacimiento);
@@ -117,23 +124,38 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
         </div>
 
         {/* Badge Semántico de Ficha (1-Tap a pestaña Ficha) */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onAbrirDetalle('ficha');
-          }}
-          className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold border cursor-pointer ${cfgFicha.badgeClass}`}
-        >
-          {esValidada ? (
-            <CheckCircle2 className="w-3 h-3" />
-          ) : esPendienteFirma ? (
-            <Clock className="w-3 h-3" />
-          ) : (
-            <AlertTriangle className="w-3 h-3" />
-          )}
-          <span>{cfgFicha.shortLabel}</span>
-        </button>
+        {puedeVerFicha ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAbrirDetalle('ficha');
+            }}
+            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold border cursor-pointer ${cfgFicha.badgeClass}`}
+          >
+            {esValidada ? (
+              <CheckCircle2 className="w-3 h-3" />
+            ) : esPendienteFirma ? (
+              <Clock className="w-3 h-3" />
+            ) : (
+              <AlertTriangle className="w-3 h-3" />
+            )}
+            <span>{cfgFicha.shortLabel}</span>
+          </button>
+        ) : (
+          <div
+            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[10px] font-bold border ${cfgFicha.badgeClass}`}
+          >
+            {esValidada ? (
+              <CheckCircle2 className="w-3 h-3" />
+            ) : esPendienteFirma ? (
+              <Clock className="w-3 h-3" />
+            ) : (
+              <AlertTriangle className="w-3 h-3" />
+            )}
+            <span>{cfgFicha.shortLabel}</span>
+          </div>
+        )}
       </div>
 
       {/* Acciones Rápidas (1-Tap) con área táctil >= 44px */}
@@ -142,7 +164,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* 1-Tap: Validar Ficha Física si está pendiente de firma */}
-        {esPendienteFirma && onValidarFichaDirecto && (
+        {esPendienteFirma && puedeValidarFisico && onValidarFichaDirecto && (
           <button
             type="button"
             disabled={validandoDirecto}
@@ -159,7 +181,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
         )}
 
         {/* 1-Tap: Pase sugerido */}
-        {tienePaseSugerido && (
+        {tienePaseSugerido && puedeEjecutarPases && (
           <button
             type="button"
             onClick={() => onAbrirDetalle('pase')}
@@ -171,39 +193,43 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
         )}
 
         {/* 1-Tap: Ver Ficha del Miembro sin descargar */}
-        <button
-          type="button"
-          onClick={() => onAbrirDetalle('ficha')}
-          className="min-h-[42px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
-        >
-          <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-          <span>Ver Ficha</span>
-        </button>
+        {puedeVerFicha && (
+          <button
+            type="button"
+            onClick={() => onAbrirDetalle('ficha')}
+            className="min-h-[42px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Ver Ficha</span>
+          </button>
+        )}
 
         {/* 1-Tap: Ir directo a Cuotas con indicador de deuda */}
-        <button
-          type="button"
-          onClick={() => onAbrirDetalle('cuotas')}
-          className={`min-h-[42px] px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition cursor-pointer ${
-            deudaTotal > 0
-              ? 'bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60'
-              : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
-          }`}
-        >
-          <CreditCard
-            className={`w-3.5 h-3.5 ${
+        {puedeVerCuotas && (
+          <button
+            type="button"
+            onClick={() => onAbrirDetalle('cuotas')}
+            className={`min-h-[42px] px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition cursor-pointer ${
               deudaTotal > 0
-                ? 'text-rose-600 dark:text-rose-400'
-                : 'text-emerald-600 dark:text-emerald-400'
+                ? 'bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60'
+                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
             }`}
-          />
-          <span>{deudaTotal > 0 ? `Debe ${formatearMoneda(deudaTotal)}` : 'Cuotas al día'}</span>
-        </button>
+          >
+            <CreditCard
+              className={`w-3.5 h-3.5 ${
+                deudaTotal > 0
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-emerald-600 dark:text-emerald-400'
+              }`}
+            />
+            <span>{deudaTotal > 0 ? `Debe ${formatearMoneda(deudaTotal)}` : 'Cuotas al día'}</span>
+          </button>
+        )}
 
         {/* 1-Tap: Selector para llamar (Miembro, Madre, Padre, Tutor) */}
         <BotonLlamarMiembro miembro={miembro} entrega={entrega} />
 
-        {extraerTelefonosMiembro(miembro, entrega).length === 0 && !tienePaseSugerido && (
+        {extraerTelefonosMiembro(miembro, entrega).length === 0 && !tienePaseSugerido && puedeEjecutarPases && (
           <button
             type="button"
             onClick={() => onAbrirDetalle('pase')}

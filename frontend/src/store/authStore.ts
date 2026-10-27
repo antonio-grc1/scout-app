@@ -142,6 +142,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         'pases.ver',
         'pases.ejecutar',
         'legajos.ver',
+        'legajos.plantillas_gestionar',
       ];
       return permisosPanel.some((p) => tienePermiso(p));
     },
