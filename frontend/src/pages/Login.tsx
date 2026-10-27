@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { BotonInstalarPwa } from '../components/BotonInstalarPwa';
 import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -53,7 +54,8 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 flex items-center gap-2">
+        <BotonInstalarPwa variante="navbar" />
         <ThemeToggle variant="segmented" />
       </div>
 

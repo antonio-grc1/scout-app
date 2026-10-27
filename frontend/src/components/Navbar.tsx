@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from './ThemeToggle';
+import { BotonInstalarPwa } from './BotonInstalarPwa';
 import { Compass, Users, Shield, LogOut, KeyRound, Contact, UserCircle2 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -123,6 +124,8 @@ export const Navbar: React.FC = () => {
                   <span>Mi Perfil</span>
                 </Link>
               </div>
+
+              <BotonInstalarPwa variante="navbar" />
 
               <ThemeToggle variant="dropdown" />
 

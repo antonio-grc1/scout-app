@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
+import { normalizarTextoBusqueda } from '../lib/formatters';
 import { Users, UserX, Search, X, ShieldAlert, Check } from 'lucide-react';
 
 export interface SelectorDestinatariosProps {
@@ -70,7 +71,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
 
   // Debounced search de miembros para excepciones
   useEffect(() => {
-    const termino = busqueda.trim().toLowerCase();
+    const termino = normalizarTextoBusqueda(busqueda);
     if (!termino || termino.length < 2) {
       setResultadosBusqueda([]);
       setBuscando(false);
@@ -81,17 +82,17 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
       setBuscando(true);
       try {
         const res = await api.get('/miembros', {
-          params: { q: termino, busqueda: termino, porPagina: 20 },
+          params: { q: busqueda.trim(), busqueda: busqueda.trim(), porPagina: 20 },
         });
         const items: MiembroResumen[] = res.data?.items || res.data || [];
 
-        // Filtro estricto en memoria: solo incluir si coincide con nombre, apellido o DNI
+        // Filtro estricto sin tildes en memoria: solo incluir si coincide con nombre, apellido o DNI
         const filtrados = items.filter((m) => {
-          const nom = (m.nombre || '').toLowerCase();
-          const ape = (m.apellido || '').toLowerCase();
+          const nom = normalizarTextoBusqueda(m.nombre);
+          const ape = normalizarTextoBusqueda(m.apellido);
           const completo1 = `${nom} ${ape}`;
           const completo2 = `${ape} ${nom}`;
-          const d = (m.dni || '').toLowerCase();
+          const d = normalizarTextoBusqueda(m.dni);
           return (
             nom.includes(termino) ||
             ape.includes(termino) ||

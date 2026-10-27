@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navbar } from '../../components/Navbar';
+import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { obtenerConfigRama } from '../../lib/ramaColors';
@@ -604,6 +605,9 @@ export const PerfilPage: React.FC = () => {
                 </button>
               </div>
             </form>
+
+            {/* Banner descarga App Celular (PWA) */}
+            <BotonInstalarPwa variante="card" />
           </>
         )}
       </main>
