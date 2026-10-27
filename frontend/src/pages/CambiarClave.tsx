@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
+import { traducirErrorAmigable } from '../lib/formatters';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Navbar } from '../components/Navbar';
 import { KeyRound, AlertCircle, Eye, EyeOff, CheckCircle2, ArrowLeft } from 'lucide-react';
@@ -16,12 +17,18 @@ export const CambiarClave: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
-  const { requiereCambioClave, setRequiereCambioClave, setSesion, tieneGlobal, tieneUnidad } =
-    useAuthStore();
+  const {
+    requiereCambioClave,
+    setRequiereCambioClave,
+    setSesion,
+    puedeVerPadron,
+    puedeAccederPanelGestion,
+  } = useAuthStore();
   const navigate = useNavigate();
 
   const rutaDestino = () => {
-    if (tieneGlobal() || tieneUnidad()) return '/rama';
+    if (puedeVerPadron()) return '/rama';
+    if (puedeAccederPanelGestion()) return '/global';
     return '/autogestion';
   };
 
@@ -30,20 +37,28 @@ export const CambiarClave: React.FC = () => {
     setError(null);
     setExito(null);
 
-    if (claveNueva.length < 8) {
+    const actual = claveActual.trim();
+    const nueva = claveNueva.trim();
+    const repetir = claveRepetir.trim();
+
+    if (nueva.length < 8) {
       setError('La nueva contraseña debe tener al menos 8 caracteres.');
       return;
     }
-    if (claveNueva !== claveRepetir) {
+    if (nueva !== repetir) {
       setError('Las contraseñas nuevas no coinciden.');
+      return;
+    }
+    if (nueva === actual) {
+      setError('La nueva contraseña debe ser distinta de la actual.');
       return;
     }
 
     setCargando(true);
     try {
       const res = await api.post('/auth/cambiar-clave', {
-        claveActual,
-        claveNueva,
+        claveActual: actual,
+        claveNueva: nueva,
       });
 
       setSesion(res.data);
@@ -57,8 +72,7 @@ export const CambiarClave: React.FC = () => {
         navigate(rutaDestino());
       }, 1000);
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Error al actualizar la contraseña.';
-      setError(msg);
+      setError(traducirErrorAmigable(err, 'Error al actualizar la contraseña.'));
     } finally {
       setCargando(false);
     }

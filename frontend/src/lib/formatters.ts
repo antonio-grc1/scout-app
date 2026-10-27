@@ -194,6 +194,9 @@ export function formatearNombreFamilia(nombre?: string | null): string {
  * Traduce errores de API o de red a mensajes claros y accionables para educadores/familias
  */
 export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos guardar los cambios. Intenta de nuevo.'): string {
+  if (err?.response?.data?.errores && Array.isArray(err.response.data.errores) && err.response.data.errores.length > 0) {
+    return err.response.data.errores.map((e: any) => e.mensaje).join('. ');
+  }
   const raw = err?.response?.data?.message || err?.message || '';
   const texto = Array.isArray(raw) ? raw.join('. ') : String(raw);
   const lower = texto.toLowerCase();

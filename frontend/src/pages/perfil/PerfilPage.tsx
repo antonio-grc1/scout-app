@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 export const PerfilPage: React.FC = () => {
-  const { usuario } = useAuthStore();
+  const { usuario, setSesion } = useAuthStore();
   const [perfil, setPerfil] = useState<any | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
@@ -149,10 +149,13 @@ export const PerfilPage: React.FC = () => {
 
     setGuardandoClave(true);
     try {
-      await api.post('/auth/cambiar-password', {
-        passwordActual: formClave.passwordActual,
-        passwordNueva: formClave.passwordNueva,
+      const res = await api.post('/auth/cambiar-clave', {
+        claveActual: formClave.passwordActual.trim(),
+        claveNueva: formClave.passwordNueva.trim(),
       });
+      if (res.data?.accessToken) {
+        setSesion(res.data);
+      }
       setFormClave({ passwordActual: '', passwordNueva: '', confirmar: '' });
       setAlertaClave({
         tipo: 'exito',
