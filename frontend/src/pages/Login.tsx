@@ -53,26 +53,26 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-100 dark:bg-zinc-950 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 relative transition-colors">
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <BotonInstalarPwa variante="navbar" />
         <ThemeToggle variant="segmented" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-18 h-18 bg-zinc-950 text-amber-400 border-2 border-amber-400 text-4xl font-black rounded-2xl flex items-center justify-center mx-auto shadow-lg">
+        <div className="w-16 h-16 bg-emerald-600 text-white text-3xl font-bold rounded-2xl flex items-center justify-center mx-auto shadow-md">
           ⚜
         </div>
-        <h2 className="mt-4 text-2xl sm:text-3xl font-black text-zinc-950 dark:text-amber-400 tracking-tight">
+        <h2 className="mt-4 text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
           Grupo Scout Juan XXIII
         </h2>
-        <p className="mt-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Ingreso exclusivo para Protagonistas, Familias y Educadores
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white dark:bg-zinc-900 py-8 px-6 shadow-md border-2 border-zinc-200 dark:border-zinc-800 border-t-4 border-t-amber-400 rounded-2xl sm:px-10 transition-colors">
+        <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-sm border border-slate-200 dark:border-slate-800 rounded-2xl sm:px-10 transition-colors">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-xl text-sm flex items-center gap-2">
@@ -82,7 +82,7 @@ export const Login: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="dni" className="block text-sm font-bold text-zinc-800 dark:text-zinc-200">
+              <label htmlFor="dni" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Número de DNI
               </label>
               <div className="mt-1.5">
@@ -95,13 +95,13 @@ export const Login: React.FC = () => {
                   value={dni}
                   onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
                   placeholder="Sin puntos ni espacios"
-                  className="w-full min-h-[48px] px-4 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-base focus:border-amber-500 focus:ring-2 focus:ring-amber-200 dark:focus:ring-amber-950/40 outline-none transition"
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="clave" className="block text-sm font-bold text-zinc-800 dark:text-zinc-200">
+              <label htmlFor="clave" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
                 Contraseña
               </label>
               <div className="mt-1.5 relative">
@@ -113,18 +113,18 @@ export const Login: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full min-h-[48px] pl-4 pr-12 py-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-base focus:border-amber-500 focus:ring-2 focus:ring-amber-200 dark:focus:ring-amber-950/40 outline-none transition"
+                  className="w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
                 />
                 <button
                   type="button"
                   onClick={() => setMostrarPassword((prev) => !prev)}
                   aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                  className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition cursor-pointer"
+                  className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
                 >
                   {mostrarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
                 Si ingresas por primera vez, tu clave inicial es tu DNI.
               </p>
             </div>
@@ -133,7 +133,7 @@ export const Login: React.FC = () => {
               <button
                 type="submit"
                 disabled={cargando}
-                className="w-full min-h-[50px] flex items-center justify-center py-3 px-4 rounded-xl shadow-sm text-base font-black text-zinc-950 bg-amber-400 hover:bg-amber-500 transition cursor-pointer disabled:opacity-50"
+                className="w-full min-h-[48px] flex items-center justify-center py-3 px-4 rounded-xl shadow-xs text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer disabled:opacity-50"
               >
                 {cargando ? 'Ingresando...' : 'Ingresar'}
               </button>

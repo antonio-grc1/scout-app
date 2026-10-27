@@ -179,17 +179,15 @@ export const PerfilPage: React.FC = () => {
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
-        <BotonInstalarPwa variante="card" />
-
         {cargando ? (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl p-10 border border-zinc-200 dark:border-zinc-800 flex flex-col items-center justify-center gap-3 text-zinc-500">
-            <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-3 text-slate-500">
+            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
             <span className="text-xs font-bold">Cargando tu perfil...</span>
           </div>
         ) : (
           <>
             {/* Tarjeta de Identidad Institucional */}
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 border-2 border-zinc-200 dark:border-zinc-800 border-t-4 border-t-amber-400 shadow-2xs">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
                   <div
@@ -258,7 +256,7 @@ export const PerfilPage: React.FC = () => {
               className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
             >
               <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <Phone className="w-4 h-4 text-amber-500" />
+                <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <div>
                   <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                     Datos de Contacto y Teléfonos
@@ -471,7 +469,7 @@ export const PerfilPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={guardandoContacto}
-                  className="min-h-[46px] px-5 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-zinc-950 text-xs font-black flex items-center gap-2 transition cursor-pointer disabled:opacity-50 shadow-2xs"
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
                 >
                   {guardandoContacto ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -489,7 +487,7 @@ export const PerfilPage: React.FC = () => {
               className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
             >
               <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <KeyRound className="w-4 h-4 text-amber-500" />
+                <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 <div>
                   <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
                     Seguridad y Contraseña
@@ -596,7 +594,7 @@ export const PerfilPage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={guardandoClave}
-                  className="min-h-[46px] px-5 py-2.5 rounded-xl bg-zinc-950 dark:bg-amber-400 hover:bg-zinc-800 dark:hover:bg-amber-500 text-amber-400 dark:text-zinc-950 text-xs font-black flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
                 >
                   {guardandoClave ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -607,6 +605,9 @@ export const PerfilPage: React.FC = () => {
                 </button>
               </div>
             </form>
+
+            {/* Banner descarga App Celular (PWA) */}
+            <BotonInstalarPwa variante="card" />
           </>
         )}
       </main>
