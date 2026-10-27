@@ -254,7 +254,7 @@ export class LegajosService {
           where: { activo: true },
           select: {
             unidad: { select: { id: true, nombre: true } },
-            rol: { select: { id: true, nombre: true } },
+            rol: { select: { id: true, nombre: true, tipoMiembro: true, alcancePorDefecto: true } },
           },
         },
       },
@@ -282,9 +282,8 @@ export class LegajosService {
     const esMenor = edad < 18;
     const esEducador = usuario.asignaciones.some(
       (a) =>
-        a.rol.nombre.includes('Educador') ||
-        a.rol.nombre.includes('Jefe') ||
-        a.rol.nombre.includes('Apoyo'),
+        a.rol.tipoMiembro === 'EDUCADOR' ||
+        (a.rol.tipoMiembro == null && a.rol.alcancePorDefecto !== 'PROPIO'),
     );
 
     let datosFamiliaresSugeridos: Record<string, unknown> = {};

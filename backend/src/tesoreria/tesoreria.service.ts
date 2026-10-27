@@ -64,17 +64,16 @@ export class TesoreriaService {
     if (tipo === 'EDUCADORES') {
       return {
         OR: [
+          { tipoMiembro: 'EDUCADOR' },
           { alcancePorDefecto: { not: AlcanceRol.PROPIO } },
-          { nombre: { contains: 'Educador', mode: 'insensitive' as const } },
-          { nombre: { contains: 'Jefe', mode: 'insensitive' as const } },
         ],
       };
     }
     if (tipo === 'PROTAGONISTAS') {
       return {
         OR: [
+          { tipoMiembro: 'PROTAGONISTA' },
           { alcancePorDefecto: AlcanceRol.PROPIO },
-          { nombre: { equals: 'Protagonista', mode: 'insensitive' as const } },
         ],
       };
     }

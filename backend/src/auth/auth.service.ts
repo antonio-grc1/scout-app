@@ -119,11 +119,7 @@ export class AuthService {
       include: INCLUDE_ASIGNACIONES,
     });
     if (!usuario || !usuario.activo) throw new UnauthorizedException();
-    return {
-      usuario: this.datosPublicos(usuario),
-      requiereCambioClave: usuario.requiereCambioClave,
-      asignaciones: this.mapearAsignaciones(usuario),
-    };
+    return this.emitirSesion(usuario);
   }
 
   private async emitirSesion(usuario: UsuarioConAsignaciones): Promise<SesionResponse> {
@@ -148,7 +144,10 @@ export class AuthService {
       .map((a) => ({
         unidadId: a.unidadId,
         unidadNombre: a.unidad.nombre,
+        rolId: a.rol.id,
         rol: a.rol.nombre,
+        tipoMiembro: a.rol.tipoMiembro ?? 'EDUCADOR',
+        requiereRama: a.rol.requiereRama ?? true,
         alcance: a.alcanceOverride ?? a.rol.alcancePorDefecto,
         permisos: a.rol.permisos.map((rp) => rp.permiso.clave),
       }));

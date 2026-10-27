@@ -5,7 +5,10 @@ import type { Request } from 'express';
 export interface AsignacionToken {
   unidadId: number;
   unidadNombre: string;
+  rolId?: number;
   rol: string;
+  tipoMiembro?: string;
+  requiereRama?: boolean;
   alcance: AlcanceRol;
   permisos: string[];
 }

@@ -107,6 +107,8 @@ model Rol {
   id                Int                 @id @default(autoincrement())
   nombre            String              @unique @db.VarChar(80)
   alcancePorDefecto AlcanceRol          @map("alcance_por_defecto")
+  tipoMiembro       String              @default("EDUCADOR") @map("tipo_miembro") @db.VarChar(30)
+  requiereRama      Boolean             @default(true) @map("requiere_rama")
   esSistema         Boolean             @default(false) @map("es_sistema")
   permisos          RolPermiso[]
   asignaciones      AsignacionMiembro[]

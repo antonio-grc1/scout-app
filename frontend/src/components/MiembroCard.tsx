@@ -4,6 +4,7 @@ import {
   ESTADO_FICHA_CONFIG,
   calcularCamada,
   calcularEdad,
+  esRolDeEducador,
   extraerTelefonosMiembro,
   formatearMoneda,
 } from '../lib/formatters';
@@ -43,10 +44,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
   const cfgRama = obtenerConfigRama(miembro, unidades);
   const edad = calcularEdad(miembro.fechaNacimiento);
   const camada = calcularCamada(miembro.fechaNacimiento);
-  const esEducador =
-    asig?.rol?.nombre?.toLowerCase().includes('educador') ||
-    asig?.rol?.nombre?.toLowerCase().includes('jefe') ||
-    cfgRama.key === 'adultos';
+  const esEducador = esRolDeEducador(asig?.rol) || cfgRama.key === 'adultos';
   const estadoKey = entrega?.estado || 'SIN_FICHA';
   const cfgFicha = ESTADO_FICHA_CONFIG[estadoKey] || ESTADO_FICHA_CONFIG.SIN_FICHA;
 

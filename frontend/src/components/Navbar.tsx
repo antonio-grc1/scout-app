@@ -6,7 +6,14 @@ import { BotonInstalarPwa } from './BotonInstalarPwa';
 import { Compass, Users, Shield, LogOut, KeyRound, Contact, UserCircle2 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { usuario, logout, tieneGlobal, tieneUnidad, requiereCambioClave } = useAuthStore();
+  const {
+    usuario,
+    logout,
+    tieneGlobal,
+    puedeVerPadron,
+    puedeAccederPanelGestion,
+    requiereCambioClave,
+  } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -58,46 +65,32 @@ export const Navbar: React.FC = () => {
             {/* Navegación Desktop (sm/md+) y Acciones Rápidas */}
             <nav className="flex items-center gap-1.5 sm:gap-2">
               <div className="hidden sm:flex items-center gap-1">
-                {tieneUnidad() && !tieneGlobal() && (
+                {puedeVerPadron() && (
                   <Link
                     to="/rama"
                     className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
-                      esRama
+                      esRama || esPadron
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Users className="w-4 h-4" />
-                    <span>Mi Rama</span>
+                    {tieneGlobal() ? <Contact className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                    <span>{tieneGlobal() ? 'Padrón' : 'Mi Rama'}</span>
                   </Link>
                 )}
 
-                {tieneGlobal() && (
-                  <>
-                    <Link
-                      to="/rama"
-                      className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
-                        esRama || esPadron
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <Contact className="w-4 h-4" />
-                      <span>Padrón</span>
-                    </Link>
-
-                    <Link
-                      to="/global"
-                      className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
-                        esGlobal
-                          ? 'bg-emerald-600 text-white shadow-xs'
-                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                      }`}
-                    >
-                      <Shield className="w-4 h-4" />
-                      <span>Jefatura y Cuotas</span>
-                    </Link>
-                  </>
+                {puedeAccederPanelGestion() && (
+                  <Link
+                    to="/global"
+                    className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
+                      esGlobal
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>Gestión y Config.</span>
+                  </Link>
                 )}
 
                 <Link
@@ -147,7 +140,7 @@ export const Navbar: React.FC = () => {
         aria-label="Navegación principal móvil"
         className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1 flex items-center justify-around shadow-lg"
       >
-        {(tieneUnidad() || tieneGlobal()) && (
+        {puedeVerPadron() && (
           <Link
             to="/rama"
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
@@ -161,7 +154,7 @@ export const Navbar: React.FC = () => {
           </Link>
         )}
 
-        {tieneGlobal() && (
+        {puedeAccederPanelGestion() && (
           <Link
             to="/global"
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
@@ -171,7 +164,7 @@ export const Navbar: React.FC = () => {
             }`}
           >
             <Shield className="w-5 h-5 mb-0.5" />
-            <span>Jefatura</span>
+            <span>Gestión</span>
           </Link>
         )}
 

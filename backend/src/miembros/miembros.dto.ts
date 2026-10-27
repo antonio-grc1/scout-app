@@ -14,7 +14,7 @@ export const CrearMiembroSchema = z.object({
   emailContacto: email.nullish(),
   telefonoContacto: z.string().trim().max(50).nullish(),
   datosFijosJson: datosJson.optional(),
-  unidadId: z.number().int().positive(),
+  unidadId: z.number().int().positive().optional(),
   rolId: z.number().int().positive(),
   cicloAnio: z.number().int().min(2000).max(2100).optional(),
   /** DNI de un hermano ya registrado: vincula el grupo familiar y copia datos compartidos. */

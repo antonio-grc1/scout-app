@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
 import { Navbar } from '../../components/Navbar';
 import { ModalPlanCuotaMensual } from '../../components/ModalPlanCuotaMensual';
 import { ModalCobroCampamento } from '../../components/ModalCobroCampamento';
@@ -35,7 +36,22 @@ import {
 } from 'lucide-react';
 
 export const GlobalPage: React.FC = () => {
-  const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases'>('tesoreria');
+  const { tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
+  const puedeVerTesoreria = tienePermiso('tesoreria.gestionar') || tienePermiso('cuotas.ver');
+  const puedeVerColaboradores = tienePermiso('legajos.ver');
+  const puedeVerOrganizacion = tienePermiso('organizacion.ver') || tienePermiso('organizacion.gestionar');
+  const puedeVerRoles = tienePermiso('organizacion.gestionar') || tienePermiso('organizacion.ver');
+  const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
+
+  const tabPorDefecto = (): 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' => {
+    if (puedeVerTesoreria) return 'tesoreria';
+    if (puedeVerRoles) return 'roles';
+    if (puedeVerOrganizacion) return 'organizacion';
+    if (puedeVerPases) return 'pases';
+    return 'colaboradores';
+  };
+
+  const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases'>(tabPorDefecto);
   const [candidatos, setCandidatos] = useState<any[]>([]);
   const [conceptos, setConceptos] = useState<any[]>([]);
   const [planesMensuales, setPlanesMensuales] = useState<any[]>([]);
@@ -259,56 +275,66 @@ export const GlobalPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
-            <button
-              onClick={() => setTab('tesoreria')}
-              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                tab === 'tesoreria'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              Tesorería
-            </button>
-            <button
-              onClick={() => setTab('colaboradores')}
-              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                tab === 'colaboradores'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              Familias Voluntarias
-            </button>
-            <button
-              onClick={() => setTab('organizacion')}
-              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                tab === 'organizacion'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              Ramas y Edades
-            </button>
-            <button
-              onClick={() => setTab('roles')}
-              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                tab === 'roles'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              Roles y Permisos
-            </button>
-            <button
-              onClick={() => setTab('pases')}
-              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                tab === 'pases'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
-              }`}
-            >
-              Pases por Camada
-            </button>
+            {puedeVerTesoreria && (
+              <button
+                onClick={() => setTab('tesoreria')}
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  tab === 'tesoreria'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Tesorería
+              </button>
+            )}
+            {puedeVerColaboradores && (
+              <button
+                onClick={() => setTab('colaboradores')}
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  tab === 'colaboradores'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Familias Voluntarias
+              </button>
+            )}
+            {puedeVerOrganizacion && (
+              <button
+                onClick={() => setTab('organizacion')}
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  tab === 'organizacion'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Ramas y Edades
+              </button>
+            )}
+            {puedeVerRoles && (
+              <button
+                onClick={() => setTab('roles')}
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  tab === 'roles'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Roles y Permisos
+              </button>
+            )}
+            {puedeVerPases && (
+              <button
+                onClick={() => setTab('pases')}
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  tab === 'pases'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Pases por Camada
+              </button>
+            )}
           </div>
         </div>
 
@@ -748,7 +774,10 @@ export const GlobalPage: React.FC = () => {
           <PanelGestorRoles
             roles={roles}
             permisosCatalogo={permisosCatalogo}
-            onRecargar={cargarDatos}
+            onRecargar={async () => {
+              await cargarDatos();
+              await refrescarSesionDesdeServidor();
+            }}
             onToast={mostrarToast}
           />
         )}
