@@ -830,8 +830,9 @@ export const UnidadPage: React.FC = () => {
         abierto={scannerAbierto}
         onCerrar={() => setScannerAbierto(false)}
         onValidadoExitoso={(detalle) => {
+          const nombre = `${detalle?.usuario?.nombre || ''} ${detalle?.usuario?.apellido || ''}`.trim();
           mostrarToast(
-            `Ficha de ${detalle.usuario.nombre} ${detalle.usuario.apellido} validada con éxito.`,
+            `Ficha${nombre ? ` de ${nombre}` : ''} validada con éxito.`,
           );
           cargarDatos();
         }}
