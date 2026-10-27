@@ -10,6 +10,7 @@ import { ModalConfirmacion, type ModalConfirmacionProps } from '../../components
 import { PanelAdminRamas } from '../../components/PanelAdminRamas';
 import { PanelGestorRoles } from '../../components/PanelGestorRoles';
 import { PanelPasesPorCamada } from '../../components/PanelPasesPorCamada';
+import { PanelAdminPlantillas } from '../../components/PanelAdminPlantillas';
 import {
   NOMBRES_MESES_CORTOS,
   NOMBRES_MESES_LARGOS,
@@ -33,25 +34,29 @@ import {
   Check,
   Loader2,
   X,
+  FileText,
 } from 'lucide-react';
 
 export const GlobalPage: React.FC = () => {
   const { tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
   const puedeVerTesoreria = tienePermiso('tesoreria.gestionar') || tienePermiso('cuotas.ver');
+  const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
   const puedeVerColaboradores = tienePermiso('legajos.ver');
   const puedeVerOrganizacion = tienePermiso('organizacion.ver') || tienePermiso('organizacion.gestionar');
   const puedeVerRoles = tienePermiso('organizacion.gestionar') || tienePermiso('organizacion.ver');
   const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
+  const puedeVerPlantillas = tienePermiso('legajos.plantillas_gestionar') || tienePermiso('legajos.ver');
 
-  const tabPorDefecto = (): 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' => {
+  const tabPorDefecto = (): 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas' => {
     if (puedeVerTesoreria) return 'tesoreria';
     if (puedeVerRoles) return 'roles';
     if (puedeVerOrganizacion) return 'organizacion';
+    if (puedeVerPlantillas) return 'plantillas';
     if (puedeVerPases) return 'pases';
     return 'colaboradores';
   };
 
-  const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases'>(tabPorDefecto);
+  const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas'>(tabPorDefecto);
   const [candidatos, setCandidatos] = useState<any[]>([]);
   const [conceptos, setConceptos] = useState<any[]>([]);
   const [planesMensuales, setPlanesMensuales] = useState<any[]>([]);
@@ -335,6 +340,18 @@ export const GlobalPage: React.FC = () => {
                 Pases por Camada
               </button>
             )}
+            {puedeVerPlantillas && (
+              <button
+                onClick={() => setTab('plantillas')}
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  tab === 'plantillas'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}
+              >
+                Formularios y Fichas
+              </button>
+            )}
           </div>
         </div>
 
@@ -390,13 +407,15 @@ export const GlobalPage: React.FC = () => {
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Toca un mes para habilitar o desactivar su cobro en el grupo.
                   </p>
-                  <button
-                    onClick={handleCrearPlan}
-                    className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer transition shadow-xs shrink-0"
-                  >
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Nueva Cuota</span>
-                  </button>
+                  {puedeGestionarTesoreria && (
+                    <button
+                      onClick={handleCrearPlan}
+                      className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer transition shadow-xs shrink-0"
+                    >
+                      <PlusCircle className="w-4 h-4" />
+                      <span>Nueva Cuota</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -445,9 +464,11 @@ export const GlobalPage: React.FC = () => {
                                 <button
                                   key={num}
                                   type="button"
-                                  disabled={cargandoMes}
-                                  onClick={() => handleToggleMesPlan(plan, num)}
-                                  className={`min-h-[42px] py-1.5 px-1 rounded-xl text-center font-bold text-[11px] transition flex flex-col items-center justify-center gap-0.5 cursor-pointer border ${
+                                  disabled={!puedeGestionarTesoreria || cargandoMes}
+                                  onClick={() => puedeGestionarTesoreria && handleToggleMesPlan(plan, num)}
+                                  className={`min-h-[42px] py-1.5 px-1 rounded-xl text-center font-bold text-[11px] transition flex flex-col items-center justify-center gap-0.5 border ${
+                                    !puedeGestionarTesoreria ? 'cursor-default' : 'cursor-pointer'
+                                  } ${
                                     activo
                                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs hover:bg-emerald-700'
                                       : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
@@ -508,24 +529,26 @@ export const GlobalPage: React.FC = () => {
                             {excepciones.length > 0 && ` • ${excepciones.length} becados`}
                           </span>
 
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleEditarPlan(plan)}
-                              className="min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-slate-500" />
-                              <span>Editar</span>
-                            </button>
+                          {puedeGestionarTesoreria && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditarPlan(plan)}
+                                className="min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Editar</span>
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleSolicitarEliminarPlan(plan)}
-                              className="min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                              <button
+                                type="button"
+                                onClick={() => handleSolicitarEliminarPlan(plan)}
+                                className="min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -547,13 +570,15 @@ export const GlobalPage: React.FC = () => {
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Creá o editá campamentos, eventos, inscripciones o indumentaria para el grupo o una sección.
                   </p>
-                  <button
-                    onClick={handleCrearCobroEspecial}
-                    className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition shadow-xs"
-                  >
-                    <Tent className="w-4 h-4" />
-                    <span>Nuevo Campamento / Cobro</span>
-                  </button>
+                  {puedeGestionarTesoreria && (
+                    <button
+                      onClick={handleCrearCobroEspecial}
+                      className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition shadow-xs"
+                    >
+                      <Tent className="w-4 h-4" />
+                      <span>Nuevo Campamento / Cobro</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -645,25 +670,27 @@ export const GlobalPage: React.FC = () => {
                             )}
                           </div>
 
-                          <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleEditarConcepto(con)}
-                              className="flex-1 min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5 text-slate-500" />
-                              <span>Editar / Exentos</span>
-                            </button>
+                          {puedeGestionarTesoreria && (
+                            <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditarConcepto(con)}
+                                className="flex-1 min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                              >
+                                <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Editar / Exentos</span>
+                              </button>
 
-                            <button
-                              type="button"
-                              onClick={() => handleSolicitarEliminarConcepto(con)}
-                              className="min-h-[38px] p-2 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 cursor-pointer"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                              <button
+                                type="button"
+                                onClick={() => handleSolicitarEliminarConcepto(con)}
+                                className="min-h-[38px] p-2 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 cursor-pointer"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -732,17 +759,19 @@ export const GlobalPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFamiliaAEditar(fam);
-                          setModalFamiliaAbierto(true);
-                        }}
-                        className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span>Editar Grupo / Descuento</span>
-                      </button>
+                      {puedeGestionarTesoreria && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFamiliaAEditar(fam);
+                            setModalFamiliaAbierto(true);
+                          }}
+                          className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Editar Grupo / Descuento</span>
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -865,6 +894,11 @@ export const GlobalPage: React.FC = () => {
             onRecargar={cargarDatos}
             onToast={mostrarToast}
           />
+        )}
+
+        {/* TAB 6: FORMULARIOS Y FICHAS OFICIALES */}
+        {tab === 'plantillas' && (
+          <PanelAdminPlantillas onToast={mostrarToast} />
         )}
       </main>
 

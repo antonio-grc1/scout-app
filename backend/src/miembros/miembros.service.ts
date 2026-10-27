@@ -457,6 +457,33 @@ export class MiembrosService {
       }
     }
 
+    // Permisos por campo: cada grupo de campos exige su propio permiso (actualización parcial).
+    if (!esPropio) {
+      const permisosActor = new Set(actor.asignaciones.flatMap((a) => a.permisos));
+      const PERMISO_POR_CAMPO: Record<string, string> = {
+        nombre: 'miembros.editar_identidad',
+        apellido: 'miembros.editar_identidad',
+        dni: 'miembros.editar_identidad',
+        fechaNacimiento: 'miembros.editar_identidad',
+        activo: 'miembros.baja',
+      };
+      const sinPermiso = Object.keys(dto).filter((k) => {
+        const req = PERMISO_POR_CAMPO[k];
+        if (!req) return false;
+        // Enviar el mismo valor no cuenta como modificación
+        const actual = (objetivo as Record<string, unknown>)[k];
+        const nuevo = (dto as Record<string, unknown>)[k];
+        const igual =
+          k === 'fechaNacimiento'
+            ? actual instanceof Date && String(nuevo) === actual.toISOString().slice(0, 10)
+            : actual === nuevo;
+        return !igual && !permisosActor.has(req);
+      });
+      if (sinPermiso.length) {
+        throw new ForbiddenException(`No tiene permiso para modificar: ${sinPermiso.join(', ')}`);
+      }
+    }
+
     let datosFijosJson: Prisma.InputJsonObject | undefined;
     if (dto.datosFijosJson) {
       const actual = (objetivo.datosFijosJson ?? {}) as Record<string, unknown>;
