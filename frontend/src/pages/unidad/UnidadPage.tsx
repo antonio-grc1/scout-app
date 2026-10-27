@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
 import { Navbar } from '../../components/Navbar';
 import { QrScannerModal } from '../../components/QrScannerModal';
 import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
@@ -11,6 +12,7 @@ import {
   ESTADO_FICHA_CONFIG,
   calcularCamada,
   calcularEdad,
+  esRolDeEducador,
   formatearMoneda,
   formatearNombreFamilia,
   normalizarTextoBusqueda,
@@ -59,6 +61,7 @@ const calcularDeudaMiembro = (m: any): number =>
   ) / 100;
 
 export const UnidadPage: React.FC = () => {
+  const { tienePermiso } = useAuthStore();
   const [miembros, setMiembros] = useState<any[]>([]);
   const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
   const [entregas, setEntregas] = useState<any[]>([]);
@@ -191,9 +194,7 @@ export const UnidadPage: React.FC = () => {
       }
 
       const asig = m.asignaciones?.[0];
-      const esEdu =
-        asig?.rol?.nombre?.toLowerCase().includes('educador') ||
-        asig?.rol?.nombre?.toLowerCase().includes('jefe');
+      const esEdu = esRolDeEducador(asig?.rol);
       const cfg = obtenerConfigRama(m, unidades);
       const entrega = entregasPorUsuario.get(m.id);
 
@@ -298,9 +299,7 @@ export const UnidadPage: React.FC = () => {
     for (const m of miembros) {
       if (!m.activo) continue;
       const asig = m.asignaciones?.[0];
-      const esEdu =
-        asig?.rol?.nombre?.toLowerCase().includes('educador') ||
-        asig?.rol?.nombre?.toLowerCase().includes('jefe');
+      const esEdu = esRolDeEducador(asig?.rol);
       if (esEdu) continue;
       const cfg = obtenerConfigRama(m, unidades);
       if (
@@ -413,11 +412,7 @@ export const UnidadPage: React.FC = () => {
       caminantes: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'caminantes').length,
       rover: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'rover').length,
       educadores: activos.filter((m) =>
-        m.asignaciones?.some(
-          (a: any) =>
-            a.rol?.nombre?.toLowerCase().includes('educador') ||
-            a.rol?.nombre?.toLowerCase().includes('jefe'),
-        ),
+        m.asignaciones?.some((a: any) => esRolDeEducador(a.rol)),
       ).length,
       faltaFicha: activos.filter(
         (m) => entregasPorUsuario.get(m.id)?.estado !== 'VALIDADO_FISICAMENTE',
@@ -474,23 +469,27 @@ export const UnidadPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Botones de Acción Principal (Touch target >= 44px) */}
-          <div className="grid grid-cols-2 sm:flex items-center gap-2">
-            <button
-              onClick={() => setScannerAbierto(true)}
-              className="min-h-[44px] px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
-            >
-              <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>Escanear QR</span>
-            </button>
+          {/* Botones de Acción Principal según capacidades del rol (Touch target >= 44px) */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            {tienePermiso('legajos.validar_fisico') && (
+              <button
+                onClick={() => setScannerAbierto(true)}
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+              >
+                <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>Escanear QR</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => setModalAltaAbierto(true)}
-              className="min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4 shrink-0" />
-              <span>Nuevo Miembro</span>
-            </button>
+            {tienePermiso('miembros.crear') && (
+              <button
+                onClick={() => setModalAltaAbierto(true)}
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4 shrink-0" />
+                <span>Nuevo Miembro</span>
+              </button>
+            )}
           </div>
         </div>
 

@@ -62,15 +62,25 @@ const PERMISOS: { clave: string; descripcion: string }[] = [
 // ---------------------------------------------------------------------------
 // 4. Roles base y sus permisos por defecto
 // ---------------------------------------------------------------------------
-const ROLES: { nombre: string; alcancePorDefecto: AlcanceRol; permisos: string[] | 'TODOS' }[] = [
+const ROLES: {
+  nombre: string;
+  alcancePorDefecto: AlcanceRol;
+  tipoMiembro: 'PROTAGONISTA' | 'EDUCADOR';
+  requiereRama: boolean;
+  permisos: string[] | 'TODOS';
+}[] = [
   {
     nombre: 'Protagonista',
     alcancePorDefecto: AlcanceRol.PROPIO,
+    tipoMiembro: 'PROTAGONISTA',
+    requiereRama: true,
     permisos: ['miembros.ver', 'miembros.editar', 'legajos.ver', 'legajos.completar', 'cuotas.ver'],
   },
   {
     nombre: 'Educador de Rama',
     alcancePorDefecto: AlcanceRol.UNIDAD,
+    tipoMiembro: 'EDUCADOR',
+    requiereRama: true,
     permisos: [
       'organizacion.ver',
       'miembros.ver',
@@ -89,12 +99,16 @@ const ROLES: { nombre: string; alcancePorDefecto: AlcanceRol; permisos: string[]
   {
     nombre: 'Jefe de Grupo',
     alcancePorDefecto: AlcanceRol.GLOBAL,
+    tipoMiembro: 'EDUCADOR',
+    requiereRama: false,
     permisos: 'TODOS',
   },
   {
     // GLOBAL pero con permisos acotados (solo lectura + validación física + completar su propio legajo)
     nombre: 'Educador Sin Rama',
     alcancePorDefecto: AlcanceRol.GLOBAL,
+    tipoMiembro: 'EDUCADOR',
+    requiereRama: false,
     permisos: ['organizacion.ver', 'miembros.ver', 'legajos.ver', 'legajos.completar', 'legajos.validar_fisico', 'cuotas.ver'],
   },
 ];
@@ -175,23 +189,38 @@ async function seedRoles(permisoIds: Map<string, number>): Promise<Map<string, n
     }
   }
 
+  const totalRolesExistentes = await prisma.rol.count();
+
   for (const r of ROLES) {
-    const rol = await prisma.rol.upsert({
-      where: { nombre: r.nombre },
-      update: { alcancePorDefecto: r.alcancePorDefecto, esSistema: true },
-      create: { nombre: r.nombre, alcancePorDefecto: r.alcancePorDefecto, esSistema: true },
-    });
+    const existente = await prisma.rol.findUnique({ where: { nombre: r.nombre } });
+    if (!existente && totalRolesExistentes > 0) {
+      // Si ya existen roles en la base y este nombre no está, fue renombrado o eliminado por el administrador: no recrearlo
+      continue;
+    }
+    const rol = existente
+      ? existente
+      : await prisma.rol.create({
+          data: {
+            nombre: r.nombre,
+            alcancePorDefecto: r.alcancePorDefecto,
+            tipoMiembro: r.tipoMiembro,
+            requiereRama: r.requiereRama,
+            esSistema: false,
+          },
+        });
     ids.set(rol.nombre, rol.id);
 
-    const claves = r.permisos === 'TODOS' ? [...permisoIds.keys()] : r.permisos;
-    await prisma.rolPermiso.createMany({
-      data: claves.map((clave) => {
-        const permisoId = permisoIds.get(clave);
-        if (!permisoId) throw new Error(`Permiso "${clave}" no definido`);
-        return { rolId: rol.id, permisoId };
-      }),
-      skipDuplicates: true,
-    });
+    if (!existente) {
+      const claves = r.permisos === 'TODOS' ? [...permisoIds.keys()] : r.permisos;
+      await prisma.rolPermiso.createMany({
+        data: claves.map((clave) => {
+          const permisoId = permisoIds.get(clave);
+          if (!permisoId) throw new Error(`Permiso "${clave}" no definido`);
+          return { rolId: rol.id, permisoId };
+        }),
+        skipDuplicates: true,
+      });
+    }
   }
   return ids;
 }
@@ -201,7 +230,15 @@ async function seedAdmin(unidadIds: Map<string, number>, rolIds: Map<string, num
   const dni = process.env.SEED_ADMIN_DNI ?? '11111111';
   const cicloAnio = Number(process.env.SEED_CICLO_ANIO ?? new Date().getFullYear());
   const unidadId = unidadIds.get('Jefatura de Grupo')!;
-  const rolId = rolIds.get('Jefe de Grupo')!;
+  let rolId = rolIds.get('Jefe de Grupo');
+  if (!rolId) {
+    const rolAdmin = await prisma.rol.findFirst({
+      where: { alcancePorDefecto: AlcanceRol.GLOBAL },
+      orderBy: { id: 'asc' },
+    });
+    rolId = rolAdmin?.id;
+  }
+  if (!rolId) return;
 
   let usuario = await prisma.usuario.findUnique({ where: { dni } });
   if (!usuario) {

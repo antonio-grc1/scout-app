@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useAuthStore } from './store/authStore';
@@ -26,7 +26,7 @@ const RutaProtegida: React.FC<{
   requiereAlcance?: 'UNIDAD' | 'GLOBAL';
   permitirCambioClave?: boolean;
 }> = ({ children, requiereAlcance, permitirCambioClave }) => {
-  const { token, tieneGlobal, tieneUnidad, requiereCambioClave } = useAuthStore();
+  const { token, puedeVerPadron, puedeAccederPanelGestion, requiereCambioClave } = useAuthStore();
 
   if (!token) {
     return <Navigate to="/login" replace />;
@@ -37,11 +37,11 @@ const RutaProtegida: React.FC<{
     return <Navigate to="/cambiar-clave" replace />;
   }
 
-  if (requiereAlcance === 'GLOBAL' && !tieneGlobal()) {
-    return <Navigate to="/autogestion" replace />;
+  if (requiereAlcance === 'GLOBAL' && !puedeAccederPanelGestion()) {
+    return <Navigate to={puedeVerPadron() ? '/rama' : '/autogestion'} replace />;
   }
 
-  if (requiereAlcance === 'UNIDAD' && !tieneUnidad() && !tieneGlobal()) {
+  if (requiereAlcance === 'UNIDAD' && !puedeVerPadron()) {
     return <Navigate to="/autogestion" replace />;
   }
 
@@ -49,12 +49,29 @@ const RutaProtegida: React.FC<{
 };
 
 export function App() {
-  const { token, tieneGlobal, tieneUnidad, requiereCambioClave } = useAuthStore();
+  const {
+    token,
+    puedeVerPadron,
+    puedeAccederPanelGestion,
+    requiereCambioClave,
+    refrescarSesionDesdeServidor,
+  } = useAuthStore();
+
+  useEffect(() => {
+    if (!token) return;
+    void refrescarSesionDesdeServidor();
+    const onFocus = () => {
+      void refrescarSesionDesdeServidor();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [token, refrescarSesionDesdeServidor]);
 
   const rutaDefault = () => {
     if (!token) return '/login';
     if (requiereCambioClave) return '/cambiar-clave';
-    if (tieneGlobal() || tieneUnidad()) return '/rama';
+    if (puedeVerPadron()) return '/rama';
+    if (puedeAccederPanelGestion()) return '/global';
     return '/autogestion';
   };
 

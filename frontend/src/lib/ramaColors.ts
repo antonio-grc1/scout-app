@@ -90,11 +90,13 @@ export function obtenerConfigRama(m: any, unidades: any[] = []): RamaColorConfig
 
   const texto = `${ramaObj?.nombre || ''} ${asig?.unidad?.nombre || ''} ${unidadObj?.nombre || ''} ${unidadObj?.rama?.nombre || ''}`.toLowerCase();
 
+  const rolObj = asig?.rol;
   const esAdulto =
     asig?.unidad?.tipo === 'JEFATURA' ||
     asig?.unidad?.tipo === 'SIN_RAMA_APOYO' ||
-    asig?.rol?.nombre?.toLowerCase().includes('educador') ||
-    asig?.rol?.nombre?.toLowerCase().includes('jefe');
+    rolObj?.tipoMiembro === 'EDUCADOR' ||
+    (rolObj?.tipoMiembro == null &&
+      (rolObj?.alcancePorDefecto === 'UNIDAD' || rolObj?.alcancePorDefecto === 'GLOBAL'));
 
   // 1. Lobatos: Amarillo
   if (texto.includes('lobat')) {

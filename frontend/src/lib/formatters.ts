@@ -362,10 +362,43 @@ export function agruparCandidatosPorFamilia(
 }
 
 /**
- * Selecciona automáticamente la plantilla de legajo adecuada según rol, rama y edad:
- * - Educadores / Dirigentes -> LEGAJO_EDUCADORES_2026
- * - Rama Rover o mayores de 18 años -> LEGAJO_ROVERS_2026
- * - Menores de 18 años (Lobatos, Scouts, Caminantes) -> LEGAJO_MENORES_2026
+ * Helpers dinámicos de Roles (CERO nombres de roles hardcodeados).
+ * Evalúan el comportamiento por `tipoMiembro`, `requiereRama` y `alcancePorDefecto`.
+ */
+export function esRolDeEducador(rol: any): boolean {
+  if (!rol) return false;
+  if (rol.tipoMiembro === 'PROTAGONISTA') return false;
+  if (rol.tipoMiembro === 'EDUCADOR') return true;
+  const alcance = String(rol.alcancePorDefecto || rol.alcance || '').toUpperCase();
+  return alcance === 'UNIDAD' || alcance === 'GLOBAL';
+}
+
+export function esRolDeProtagonista(rol: any): boolean {
+  if (!rol) return true;
+  if (rol.tipoMiembro === 'PROTAGONISTA') return true;
+  if (rol.tipoMiembro === 'EDUCADOR') return false;
+  const alcance = String(rol.alcancePorDefecto || rol.alcance || '').toUpperCase();
+  return alcance === 'PROPIO' || !alcance;
+}
+
+export function rolRequiereRama(rol: any): boolean {
+  if (!rol) return true;
+  if (typeof rol.requiereRama === 'boolean') return rol.requiereRama;
+  const alcance = String(rol.alcancePorDefecto || rol.alcance || '').toUpperCase();
+  return alcance !== 'GLOBAL';
+}
+
+export function esRolAlcanceGlobal(rol: any): boolean {
+  if (!rol) return false;
+  const alcance = String(rol.alcancePorDefecto || rol.alcance || '').toUpperCase();
+  return alcance === 'GLOBAL';
+}
+
+/**
+ * Selecciona automáticamente la plantilla de legajo adecuada según la naturaleza dinámica del rol, rama y edad:
+ * - Rol de naturaleza EDUCADOR -> LEGAJO_EDUCADORES_2026
+ * - Protagonista mayor de 18 años (o en rama con edad >= 18) -> LEGAJO_ROVERS_2026
+ * - Protagonista menor de 18 años -> LEGAJO_MENORES_2026
  */
 export function seleccionarPlantillaPorMiembro(
   plantillas: any[],
@@ -375,20 +408,14 @@ export function seleccionarPlantillaPorMiembro(
   if (!Array.isArray(plantillas) || plantillas.length === 0) return null;
 
   const asig = miembro?.asignaciones?.[0] || asignacionesFallback?.[0];
-  const rolNombre = String(asig?.rol?.nombre || asig?.rol || '').toLowerCase();
-  const alcance = String(asig?.alcanceOverride || asig?.rol?.alcancePorDefecto || asig?.alcance || '').toUpperCase();
-  const unidadNombre = String(
-    asig?.unidad?.nombre || asig?.unidadNombre || asig?.unidad?.rama?.nombre || '',
-  ).toLowerCase();
+  const rolObj = asig?.rol && typeof asig.rol === 'object' ? asig.rol : asig;
   const unidadTipo = String(asig?.unidad?.tipo || '').toUpperCase();
+  const edadMinRama = Number(asig?.unidad?.rama?.edadMinima ?? 0);
 
   const esEducador =
-    rolNombre.includes('educador') ||
-    rolNombre.includes('jefe') ||
+    esRolDeEducador(rolObj) ||
     unidadTipo === 'JEFATURA' ||
-    unidadTipo === 'SIN_RAMA_APOYO' ||
-    alcance === 'GLOBAL' ||
-    alcance === 'UNIDAD';
+    unidadTipo === 'SIN_RAMA_APOYO';
 
   if (esEducador) {
     const pEdu = plantillas.find((p) => p.codigo === 'LEGAJO_EDUCADORES_2026');
@@ -396,9 +423,9 @@ export function seleccionarPlantillaPorMiembro(
   }
 
   const edad = calcularEdad(miembro?.fechaNacimiento);
-  const esRoverOMayor = unidadNombre.includes('rover') || (edad !== null && edad >= 18);
+  const esMayorEdad = edadMinRama >= 18 || (edad !== null && edad >= 18);
 
-  if (esRoverOMayor) {
+  if (esMayorEdad) {
     const pRov = plantillas.find((p) => p.codigo === 'LEGAJO_ROVERS_2026');
     if (pRov) return pRov;
   }

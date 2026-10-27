@@ -10,7 +10,7 @@ export type CandidatosQueryDto = z.infer<typeof CandidatosQuerySchema>;
 
 export const PaseSchema = z.object({
   asignacionOrigenId: z.number().int().positive(),
-  unidadDestinoId: z.number().int().positive(),
+  unidadDestinoId: z.number().int().positive().optional(),
   /** Si se omite, conserva el rol de la asignación de origen. */
   rolDestinoId: z.number().int().positive().optional(),
   alcanceOverride: z.enum(AlcanceRol).nullish(),

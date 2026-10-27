@@ -47,7 +47,12 @@ export class PasesService {
     ]);
 
     return asignaciones
-      .filter((a) => alcanceEfectivo(a) === AlcanceRol.PROPIO && a.unidad.rama)
+      .filter((a) => {
+        const esProtagonista =
+          (a.rol.tipoMiembro ?? (alcanceEfectivo(a) === AlcanceRol.PROPIO ? 'PROTAGONISTA' : 'EDUCADOR')) ===
+          'PROTAGONISTA';
+        return esProtagonista && Boolean(a.unidad.rama);
+      })
       .flatMap((a) => {
         const r = sugerirPase(a.usuario.fechaNacimiento, a.unidad.rama!, ramas, fechaRef);
         if (!r) return [];
@@ -111,23 +116,38 @@ export class PasesService {
       assertUnidadEnAlcance(alcance, origen.unidadId);
       assertPuedeOtorgar(alcance, origen.rol, origen.alcanceOverride);
 
-      const unidadDestino = await tx.unidadOrganizativa.findUnique({ where: { id: p.unidadDestinoId } });
-      if (!unidadDestino || !unidadDestino.activa) throw new BadRequestException('Rama o sección destino inexistente o inactiva');
-
       let rolDestino = p.rolDestinoId ? await tx.rol.findUnique({ where: { id: p.rolDestinoId } }) : null;
+
+      let unidadDestino = p.unidadDestinoId
+        ? await tx.unidadOrganizativa.findUnique({ where: { id: p.unidadDestinoId } })
+        : null;
+
+      if (!unidadDestino && rolDestino?.requiereRama === false && tx.unidadOrganizativa.findFirst) {
+        const tipoPref =
+          rolDestino.alcancePorDefecto === AlcanceRol.GLOBAL ? TipoUnidad.JEFATURA : TipoUnidad.SIN_RAMA_APOYO;
+        unidadDestino =
+          (await tx.unidadOrganizativa.findFirst({ where: { activa: true, tipo: tipoPref } })) ??
+          (await tx.unidadOrganizativa.findFirst({
+            where: { activa: true, tipo: { in: [TipoUnidad.SIN_RAMA_APOYO, TipoUnidad.JEFATURA] } },
+          }));
+      }
+
+      if (!unidadDestino && !p.unidadDestinoId) {
+        unidadDestino = await tx.unidadOrganizativa.findUnique({ where: { id: origen.unidadId } });
+      }
+
+      if (!unidadDestino || !unidadDestino.activa) {
+        throw new BadRequestException('Rama o sección destino inexistente o inactiva');
+      }
+
       if (!rolDestino) {
-        if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO) {
+        if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && tx.rol.findFirst) {
           rolDestino = await tx.rol.findFirst({
-            where: {
-              OR: [
-                { nombre: { contains: 'sin rama', mode: 'insensitive' } },
-                { alcancePorDefecto: AlcanceRol.GLOBAL },
-              ],
-            },
+            where: { requiereRama: false, tipoMiembro: 'EDUCADOR' },
           });
-        } else if (unidadDestino.tipo === TipoUnidad.JEFATURA) {
+        } else if (unidadDestino.tipo === TipoUnidad.JEFATURA && tx.rol.findFirst) {
           rolDestino = await tx.rol.findFirst({
-            where: { nombre: { contains: 'jefe', mode: 'insensitive' } },
+            where: { requiereRama: false, alcancePorDefecto: AlcanceRol.GLOBAL },
           });
         } else {
           rolDestino = origen.rol;
@@ -136,31 +156,27 @@ export class PasesService {
       if (!rolDestino) throw new BadRequestException('Rol destino inexistente');
       const alcanceOverride = p.alcanceOverride !== undefined ? p.alcanceOverride : null;
 
-      // Validación de privilegios: solo GLOBAL puede otorgar Jefe de Grupo o rol con alcance GLOBAL
-      if (alcance.tipo !== 'GLOBAL') {
-        const esJefe = rolDestino.nombre.toLowerCase().includes('jefe') || rolDestino.alcancePorDefecto === AlcanceRol.GLOBAL;
-        if (esJefe || alcanceOverride === AlcanceRol.GLOBAL) {
-          throw new ForbiddenException('Solo un usuario con alcance global puede otorgar el rol de Jefe de Grupo o alcance global');
-        }
+      // Validación dinámica de privilegios por alcance (CERO nombres fijos)
+      assertPuedeOtorgar(alcance, rolDestino, alcanceOverride);
+
+      // Validación dinámica de vínculo con Rama según `requiereRama` del rol
+      const requiereRamaEfectivo =
+        rolDestino.requiereRama !== undefined && rolDestino.requiereRama !== null
+          ? rolDestino.requiereRama
+          : rolDestino.alcancePorDefecto !== AlcanceRol.GLOBAL;
+
+      const esUnidadRama = unidadDestino.tipo === TipoUnidad.SECCION_RAMA;
+
+      if (esUnidadRama && !requiereRamaEfectivo) {
+        throw new BadRequestException(
+          'El rol seleccionado está configurado como rol sin rama asignada y no puede asignarse a una rama específica.',
+        );
       }
 
-      // Validación de coherencia estricta entre unidad destino y rol destino
-      const esRama = unidadDestino.tipo === TipoUnidad.SECCION_RAMA;
-      const rolNombre = rolDestino.nombre.toLowerCase();
-      const esRolSinRama = rolNombre.includes('sin rama');
-      const esRolJefe = rolNombre.includes('jefe');
-      const esRolPersonalizado = rolDestino.esSistema === false;
-
-      if (esRama && (esRolSinRama || esRolJefe)) {
-        throw new BadRequestException('Una rama o sección no puede tener asignado el rol de Educador Sin Rama ni Jefe de Grupo');
-      }
-
-      if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && !esRolSinRama && !esRolPersonalizado) {
-        throw new BadRequestException('La sección de Educadores Sin Rama solo admite el rol de Educador Sin Rama o un rol personalizado');
-      }
-
-      if (unidadDestino.tipo === TipoUnidad.JEFATURA && !esRolJefe && (!esRolPersonalizado || rolDestino.alcancePorDefecto !== AlcanceRol.GLOBAL)) {
-        throw new BadRequestException('La unidad de Jefatura de Grupo solo admite el rol de Jefe de Grupo o un rol personalizado con alcance global');
+      if (!esUnidadRama && requiereRamaEfectivo) {
+        throw new BadRequestException(
+          'El rol seleccionado requiere estar asignado a una rama específica.',
+        );
       }
 
       if (unidadDestino.id === origen.unidadId && rolDestino.id === origen.rolId) {
