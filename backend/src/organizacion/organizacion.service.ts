@@ -81,8 +81,8 @@ export class OrganizacionService {
             _count: {
               select: {
                 asignaciones: true,
-                conceptosPago: true,
-                planesCuotaMensual: true,
+                conceptos: true,
+                planesCuota: true,
               },
             },
           },
@@ -92,7 +92,7 @@ export class OrganizacionService {
     if (!rama) throw new NotFoundException('Rama no encontrada');
 
     const asignacionesActivas = await this.prisma.asignacionMiembro.count({
-      where: { activo: true, unidad: { ramaId: id } },
+      where: { activo: true, usuario: { activo: true }, unidad: { ramaId: id } },
     });
     if (asignacionesActivas > 0) {
       throw new ConflictException(
@@ -100,26 +100,22 @@ export class OrganizacionService {
       );
     }
 
-    const tieneHistorial = rama.unidades.some(
-      (u) => u._count.asignaciones > 0 || u._count.conceptosPago > 0 || u._count.planesCuotaMensual > 0,
-    );
-
-    if (tieneHistorial) {
-      await this.prisma.$transaction([
-        this.prisma.unidadOrganizativa.updateMany({ where: { ramaId: id }, data: { activa: false } }),
-        this.prisma.rama.update({ where: { id }, data: { activa: false } }),
-      ]);
-      return {
-        eliminada: false,
-        desactivada: true,
-        mensaje: `Rama "${rama.nombre}" desactivada (conserva historial de miembros y cuotas).`,
-      };
-    }
+    const idsUnidades = rama.unidades.map((u) => u.id);
 
     await this.prisma.$transaction([
-      this.prisma.unidadOrganizativa.deleteMany({ where: { ramaId: id } }),
+      ...(idsUnidades.length > 0
+        ? [
+            this.prisma.asignacionMiembro.deleteMany({
+              where: { unidadId: { in: idsUnidades } },
+            }),
+            this.prisma.unidadOrganizativa.deleteMany({
+              where: { id: { in: idsUnidades } },
+            }),
+          ]
+        : []),
       this.prisma.rama.delete({ where: { id } }),
     ]);
+
     return {
       eliminada: true,
       desactivada: false,
@@ -134,7 +130,7 @@ export class OrganizacionService {
       orderBy: [{ rama: { ordenProgresion: 'asc' } }, { nombre: 'asc' }],
       include: {
         rama: { select: { id: true, nombre: true, edadMinima: true, edadMaxima: true } },
-        _count: { select: { asignaciones: { where: { activo: true } } } },
+        _count: { select: { asignaciones: { where: { activo: true, usuario: { activo: true } } } } },
       },
     });
   }
@@ -173,8 +169,8 @@ export class OrganizacionService {
         _count: {
           select: {
             asignaciones: true,
-            conceptosPago: true,
-            planesCuotaMensual: true,
+            conceptos: true,
+            planesCuota: true,
           },
         },
       },
@@ -182,7 +178,7 @@ export class OrganizacionService {
     if (!unidad) throw new NotFoundException('Sección no encontrada');
 
     const activas = await this.prisma.asignacionMiembro.count({
-      where: { unidadId: id, activo: true },
+      where: { unidadId: id, activo: true, usuario: { activo: true } },
     });
     if (activas > 0) {
       throw new ConflictException(
@@ -190,21 +186,11 @@ export class OrganizacionService {
       );
     }
 
-    const tieneHistorial =
-      unidad._count.asignaciones > 0 ||
-      unidad._count.conceptosPago > 0 ||
-      unidad._count.planesCuotaMensual > 0;
+    await this.prisma.$transaction([
+      this.prisma.asignacionMiembro.deleteMany({ where: { unidadId: id } }),
+      this.prisma.unidadOrganizativa.delete({ where: { id } }),
+    ]);
 
-    if (tieneHistorial) {
-      await this.prisma.unidadOrganizativa.update({ where: { id }, data: { activa: false } });
-      return {
-        eliminada: false,
-        desactivada: true,
-        mensaje: `Sección "${unidad.nombre}" desactivada.`,
-      };
-    }
-
-    await this.prisma.unidadOrganizativa.delete({ where: { id } });
     return {
       eliminada: true,
       desactivada: false,
