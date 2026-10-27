@@ -30,26 +30,68 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
   const [previaEntrega, setPreviaEntrega] = useState<any | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const transicionRef = useRef<Promise<void>>(Promise.resolve());
 
-  useEffect(() => {
-    if (!abierto) {
-      limpiarEstado();
-      return;
-    }
+  const detenerCamara = () => {
+    transicionRef.current = transicionRef.current
+      .then(async () => {
+        const inst = scannerRef.current;
+        if (!inst) return;
+        try {
+          if (inst.isScanning) {
+            await inst.stop();
+          }
+        } catch {
+          // Ignorar errores de transición DOM de html5-qrcode
+        }
+        try {
+          inst.clear();
+        } catch {
+          // Ignorar si el contenedor ya no está visible
+        }
+        scannerRef.current = null;
+      })
+      .catch(() => {});
+    return transicionRef.current;
+  };
 
-    if (modo === 'camara' && !previaEntrega) {
-      iniciarCamara();
-    } else {
-      detenerCamara();
-    }
+  const iniciarCamara = () => {
+    transicionRef.current = transicionRef.current
+      .then(async () => {
+        if (scannerRef.current?.isScanning) return;
+        const container = document.getElementById('qr-reader-container');
+        if (!container) return;
 
-    return () => {
-      detenerCamara();
-    };
-  }, [abierto, modo, previaEntrega]);
+        try {
+          setError(null);
+          setExito(null);
+          const html5QrCode = new Html5Qrcode('qr-reader-container');
+          scannerRef.current = html5QrCode;
+
+          await html5QrCode.start(
+            { facingMode: 'environment' },
+            {
+              fps: 10,
+              qrbox: { width: 240, height: 240 },
+            },
+            async (decodedText) => {
+              await detenerCamara();
+              await consultarFicha(decodedText);
+            },
+            () => {},
+          );
+        } catch {
+          scannerRef.current = null;
+          setError('Cámara no disponible. Ingresá el código al pie de la hoja o DNI.');
+          setModo('manual');
+        }
+      })
+      .catch(() => {});
+    return transicionRef.current;
+  };
 
   const limpiarEstado = () => {
-    detenerCamara();
+    void detenerCamara();
     setModo('camara');
     setCodigoManual('');
     setCargando(false);
@@ -59,51 +101,37 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
     setPreviaEntrega(null);
   };
 
-  const detenerCamara = () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
-      scannerRef.current.stop().catch(() => {});
+  useEffect(() => {
+    if (!abierto) {
+      limpiarEstado();
+      return;
     }
-  };
 
-  const iniciarCamara = async () => {
-    try {
-      setError(null);
-      setExito(null);
-      const html5QrCode = new Html5Qrcode('qr-reader-container');
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 240, height: 240 },
-        },
-        async (decodedText) => {
-          detenerCamara();
-          await consultarFicha(decodedText);
-        },
-        () => {},
-      );
-    } catch {
-      setError('Cámara no disponible. Ingresá el código al pie de la hoja.');
-      setModo('manual');
+    if (modo === 'camara' && !previaEntrega) {
+      void iniciarCamara();
+    } else {
+      void detenerCamara();
     }
-  };
+
+    return () => {
+      void detenerCamara();
+    };
+  }, [abierto, modo, previaEntrega]);
 
   const consultarFicha = async (hash: string) => {
     const hashLimpio = hash.trim();
     if (!hashLimpio) {
-      setError('Ingresá un código válido.');
+      setError('Ingresá un código o DNI válido.');
       return;
     }
 
     setCargando(true);
     setError(null);
     try {
-      const res = await api.get(`/legajos/qr/verificar/${hashLimpio}`);
+      const res = await api.get(`/legajos/qr/verificar/${encodeURIComponent(hashLimpio)}`);
       setPreviaEntrega(res.data);
     } catch (err: any) {
-      setError(traducirErrorAmigable(err, 'Código QR no encontrado.'));
+      setError(traducirErrorAmigable(err, 'Código QR o DNI sin ficha registrada.'));
     } finally {
       setCargando(false);
     }
@@ -115,10 +143,11 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
     setValidando(true);
     setError(null);
     try {
-      const res = await api.post(`/legajos/qr/validar/${previaEntrega.hashVerificacion}`);
-      setExito(
-        `Papel de ${previaEntrega.usuario.nombre} ${previaEntrega.usuario.apellido} recibido.`,
+      const res = await api.post(
+        `/legajos/qr/validar/${encodeURIComponent(previaEntrega.hashVerificacion)}`,
       );
+      const nombreCompleto = `${previaEntrega.usuario?.nombre || ''} ${previaEntrega.usuario?.apellido || ''}`.trim();
+      setExito(`Papel de ${nombreCompleto || 'miembro'} recibido.`);
       onValidadoExitoso(res.data);
       setTimeout(() => {
         onCerrar();
@@ -155,6 +184,7 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
             </h3>
           </div>
           <button
+            type="button"
             onClick={onCerrar}
             className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
@@ -166,6 +196,7 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
         {!previaEntrega && (
           <div className="grid grid-cols-2 gap-1.5 p-2 bg-slate-100 dark:bg-slate-800/60 mx-4 mt-3 rounded-xl text-xs font-bold">
             <button
+              type="button"
               onClick={() => {
                 setModo('camara');
                 setError(null);
@@ -180,10 +211,10 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
               <span>Cámara QR</span>
             </button>
             <button
+              type="button"
               onClick={() => {
                 setModo('manual');
                 setError(null);
-                detenerCamara();
               }}
               className={`min-h-[40px] rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 modo === 'manual'
@@ -198,6 +229,26 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
         )}
 
         <div className="p-4 sm:p-5 flex flex-col items-center">
+          {/* Mantenemos el contenedor del escáner montado en el DOM para evitar crashes de html5-qrcode al cambiar de modo */}
+          <div
+            className={
+              !previaEntrega && modo === 'camara'
+                ? 'w-full flex flex-col items-center'
+                : 'hidden'
+            }
+          >
+            <div
+              id="qr-reader-container"
+              className="w-full max-w-[260px] h-[260px] rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-slate-800"
+            />
+
+            {cargando && (
+              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-3 animate-pulse">
+                Verificando ficha...
+              </p>
+            )}
+          </div>
+
           {previaEntrega ? (
             <div className="w-full space-y-4">
               <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
@@ -265,45 +316,38 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
                   )}
               </div>
             </div>
-          ) : modo === 'camara' ? (
-            <>
-              <div
-                id="qr-reader-container"
-                className="w-full max-w-[260px] h-[260px] rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-slate-800"
-              />
-
-              {cargando && (
-                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-3 animate-pulse">
-                  Verificando ficha...
-                </p>
-              )}
-            </>
-          ) : (
-            <div className="w-full space-y-3">
+          ) : modo === 'manual' ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void consultarFicha(codigoManual);
+              }}
+              className="w-full space-y-3"
+            >
               <div className="relative">
                 <FileText className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
                   type="text"
-                  placeholder="Código al pie de la hoja..."
+                  autoFocus
+                  placeholder="Código al pie de la hoja o DNI..."
                   value={codigoManual}
                   onChange={(e) => setCodigoManual(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') consultarFicha(codigoManual);
-                  }}
                   className="w-full min-h-[46px] pl-10 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm outline-none focus:border-emerald-500"
                 />
               </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                Ingresá el código que figura al pie de la planilla impresa o el DNI del miembro.
+              </p>
 
               <button
-                type="button"
+                type="submit"
                 disabled={cargando || !codigoManual.trim()}
-                onClick={() => consultarFicha(codigoManual)}
                 className="w-full min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition shadow-xs cursor-pointer disabled:opacity-50"
               >
                 {cargando ? 'Buscando...' : 'Verificar Ficha'}
               </button>
-            </div>
-          )}
+            </form>
+          ) : null}
 
           {exito && (
             <div className="mt-3 w-full p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-2 text-emerald-800 dark:text-emerald-200 text-xs font-bold">

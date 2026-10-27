@@ -20,6 +20,7 @@ export const Navbar: React.FC = () => {
   const esPadron = location.pathname.startsWith('/padron');
   const esRama = location.pathname.startsWith('/rama') || location.pathname.startsWith('/unidad');
   const esGlobal = location.pathname.startsWith('/global');
+  const esCambiarClave = location.pathname.startsWith('/cambiar-clave');
 
   return (
     <>
@@ -110,6 +111,19 @@ export const Navbar: React.FC = () => {
                   <span>Mi Legajo</span>
                 </Link>
               </div>
+
+              <Link
+                to="/cambiar-clave"
+                title="Cambiar contraseña"
+                aria-label="Cambiar contraseña"
+                className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition ${
+                  esCambiarClave
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <KeyRound className="w-5 h-5" />
+              </Link>
 
               <ThemeToggle variant="dropdown" />
 

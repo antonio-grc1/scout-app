@@ -26,8 +26,8 @@ import {
   Loader2,
   AlertCircle,
   Eye,
-  ExternalLink,
 } from 'lucide-react';
+import { PdfViewerModal } from '../../components/PdfViewerModal';
 
 export const AutogestionPage: React.FC = () => {
   const { usuario, asignaciones } = useAuthStore();
@@ -249,61 +249,14 @@ export const AutogestionPage: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 sm:pb-10 transition-colors">
       <Navbar />
 
-      {/* Modal Visor de PDF en pantalla sin descarga obligatoria */}
-      {pdfPreviewUrl && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex flex-col p-2 sm:p-6 animate-in fade-in duration-150">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl mx-auto flex flex-col flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl">
-            <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 bg-slate-50 dark:bg-slate-900">
-              <div className="min-w-0">
-                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
-                  Vista Previa: {apellidoVisible}, {nombreVisible}
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Planilla Oficial 2026
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <a
-                  href={pdfPreviewUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="min-h-[38px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Abrir en pestaña</span>
-                </a>
-
-                <button
-                  type="button"
-                  onClick={handleDescargarCopiaPdf}
-                  className="min-h-[38px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Descargar</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={cerrarVistaPreviaPdf}
-                  className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-300 transition cursor-pointer"
-                  aria-label="Cerrar vista previa"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="flex-1 bg-slate-100 dark:bg-slate-950 relative">
-              <iframe
-                src={pdfPreviewUrl}
-                title="Vista previa de Ficha PDF"
-                className="w-full h-full border-0"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Visor de PDF en pantalla sin descarga obligatoria (compatible con celulares Android/iOS) */}
+      <PdfViewerModal
+        url={pdfPreviewUrl}
+        titulo={`Vista Previa: ${apellidoVisible}, ${nombreVisible}`}
+        subtitulo="Planilla Oficial 2026"
+        onCerrar={cerrarVistaPreviaPdf}
+        onDescargar={handleDescargarCopiaPdf}
+      />
 
       {toast && (
         <div className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">

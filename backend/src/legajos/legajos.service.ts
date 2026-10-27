@@ -309,26 +309,63 @@ export class LegajosService {
    * Consulta pública o semi-pública para cuando el educador escanea el QR.
    * Devuelve los datos del legajo asociado al hash para confirmar visualmente.
    */
-  async verificarQr(hashVerificacion: string) {
-    const entrega = await this.prisma.entregaFormulario.findUnique({
-      where: { hashVerificacion },
-      include: {
-        plantilla: { select: { id: true, codigo: true, titulo: true, version: true } },
-        usuario: {
-          select: {
-            id: true,
-            dni: true,
-            nombre: true,
-            apellido: true,
-            asignaciones: {
-              where: { activo: true },
-              select: { unidad: { select: { id: true, nombre: true } } },
-            },
+  private async resolverEntregaPorCodigo(codigoRaw: string) {
+    const limpio = codigoRaw
+      .trim()
+      .replace(/^verif:\s*/i, '')
+      .replace(/^c[oó]digo:\s*/i, '')
+      .replace(/\.\.\.$/, '')
+      .trim();
+
+    if (!limpio) return null;
+
+    const includeDetalle = {
+      plantilla: { select: { id: true, codigo: true, titulo: true, version: true } },
+      usuario: {
+        select: {
+          id: true,
+          dni: true,
+          nombre: true,
+          apellido: true,
+          asignaciones: {
+            where: { activo: true },
+            select: { unidadId: true, unidad: { select: { id: true, nombre: true } } },
           },
         },
-        validadoPor: { select: { id: true, nombre: true, apellido: true } },
       },
+      validadoPor: { select: { id: true, nombre: true, apellido: true } },
+    };
+
+    const exacta = await this.prisma.entregaFormulario.findFirst({
+      where: { hashVerificacion: { equals: limpio, mode: 'insensitive' } },
+      include: includeDetalle,
     });
+    if (exacta) return exacta;
+
+    if (limpio.length >= 6 && /^[0-9a-f]+$/i.test(limpio)) {
+      const porPrefijo = await this.prisma.entregaFormulario.findFirst({
+        where: { hashVerificacion: { startsWith: limpio, mode: 'insensitive' } },
+        orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
+        include: includeDetalle,
+      });
+      if (porPrefijo) return porPrefijo;
+    }
+
+    const soloDigitos = limpio.replace(/\D/g, '');
+    if (soloDigitos.length >= 6 && soloDigitos.length <= 10 && /^\d+$/.test(limpio.replace(/\./g, ''))) {
+      const porDni = await this.prisma.entregaFormulario.findFirst({
+        where: { usuario: { dni: soloDigitos } },
+        orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
+        include: includeDetalle,
+      });
+      if (porDni) return porDni;
+    }
+
+    return null;
+  }
+
+  async verificarQr(hashVerificacion: string) {
+    const entrega = await this.resolverEntregaPorCodigo(hashVerificacion);
     if (!entrega) throw new NotFoundException('Comprobante QR no válido o inexistente');
     return entrega;
   }
@@ -337,17 +374,7 @@ export class LegajosService {
    * El educador valida físicamente que la firma en papel coincide con el QR escaneado.
    */
   async validarFisico(actor: AuthUser, alcance: AlcanceAcceso, hashVerificacion: string) {
-    const entrega = await this.prisma.entregaFormulario.findUnique({
-      where: { hashVerificacion },
-      include: {
-        usuario: {
-          select: {
-            id: true,
-            asignaciones: { where: { activo: true }, select: { unidadId: true } },
-          },
-        },
-      },
-    });
+    const entrega = await this.resolverEntregaPorCodigo(hashVerificacion);
     if (!entrega) throw new NotFoundException('Ficha no encontrada para ese código QR');
 
     // Comprobar alcance sobre el usuario dueño de la ficha
