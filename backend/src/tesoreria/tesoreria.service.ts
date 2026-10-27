@@ -1056,16 +1056,54 @@ export class TesoreriaService {
   async vincularHermano(dto: VincularHermanoDto) {
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: dto.usuarioId },
-      select: { id: true, apellido: true, grupoFamiliarId: true },
+      select: { id: true, apellido: true, grupoFamiliarId: true, datosFijosJson: true },
     });
     if (!usuario) throw new NotFoundException('Miembro no encontrado');
 
     const hermano = await this.prisma.usuario.findUnique({
       where: { dni: dto.hermanoDni },
-      select: { id: true, apellido: true, grupoFamiliarId: true },
+      select: { id: true, apellido: true, grupoFamiliarId: true, datosFijosJson: true },
     });
     if (!hermano) throw new NotFoundException(`No existe un miembro registrado con el DNI ${dto.hermanoDni}`);
     if (hermano.id === usuario.id) throw new BadRequestException('No puede vincular a un miembro consigo mismo');
+
+    const CLAVES_FAMILIARES_COMPARTIDAS = [
+      'domicilio',
+      'obra_social',
+      'madre_nombres',
+      'madre_dni',
+      'madre_domicilio',
+      'madre_email',
+      'madre_telefono',
+      'madre_profesion',
+      'padre_nombres',
+      'padre_dni',
+      'padre_domicilio',
+      'padre_email',
+      'padre_telefono',
+      'padre_profesion',
+      'tutor_nombres',
+      'tutor_dni',
+      'tutor_domicilio',
+      'tutor_email',
+      'tutor_telefono',
+      'tutor_profesion',
+      'telefono_urgencias',
+      'emergencia_nombre',
+      'emergencia_telefono',
+    ];
+
+    const datosUsuario = ((usuario.datosFijosJson ?? {}) as Record<string, unknown>);
+    const datosHermano = ((hermano.datosFijosJson ?? {}) as Record<string, unknown>);
+    const mergedUsuario = { ...datosUsuario };
+    const mergedHermano = { ...datosHermano };
+
+    for (const clave of CLAVES_FAMILIARES_COMPARTIDAS) {
+      const valU = String(mergedUsuario[clave] ?? '').trim();
+      const valH = String(mergedHermano[clave] ?? '').trim();
+      if (!valU && valH) mergedUsuario[clave] = mergedHermano[clave];
+      if (!valH && valU) mergedHermano[clave] = mergedUsuario[clave];
+    }
 
     return this.prisma.$transaction(async (tx) => {
       let grupoId = usuario.grupoFamiliarId || hermano.grupoFamiliarId;
@@ -1084,7 +1122,7 @@ export class TesoreriaService {
       } else if (!grupoId) {
         const nuevoGrupo = await tx.grupoFamiliar.create({
           data: {
-            nombreFamilia: `Familia ${usuario.apellido}`,
+            nombreFamilia: `Familia ${hermano.apellido || usuario.apellido}`,
             porcentajeDescuentoHermanos: new Prisma.Decimal(0),
           },
         });
@@ -1093,11 +1131,17 @@ export class TesoreriaService {
 
       await tx.usuario.update({
         where: { id: usuario.id },
-        data: { grupoFamiliarId: grupoId },
+        data: {
+          grupoFamiliarId: grupoId,
+          datosFijosJson: mergedUsuario as Prisma.InputJsonObject,
+        },
       });
       await tx.usuario.update({
         where: { id: hermano.id },
-        data: { grupoFamiliarId: grupoId },
+        data: {
+          grupoFamiliarId: grupoId,
+          datosFijosJson: mergedHermano as Prisma.InputJsonObject,
+        },
       });
 
       const grupoActualizado = await tx.grupoFamiliar.findUnique({

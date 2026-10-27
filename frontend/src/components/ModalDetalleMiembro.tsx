@@ -14,8 +14,10 @@ import {
   NOMBRES_MESES_CORTOS,
   calcularEdad,
   formatearMoneda,
+  seleccionarPlantillaPorMiembro,
   traducirErrorAmigable,
 } from '../lib/formatters';
+import { BotonLlamarMiembro } from './BotonLlamarMiembro';
 import {
   X,
   User,
@@ -135,6 +137,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const [montoAjusteSaldo, setMontoAjusteSaldo] = useState('');
   const [motivoAjusteSaldo, setMotivoAjusteSaldo] = useState('');
   const [procesandoAccionCuota, setProcesandoAccionCuota] = useState(false);
+  const [desvinculandoMiembroId, setDesvinculandoMiembroId] = useState<number | null>(null);
 
   // Formulario de edición
   const [formData, setFormData] = useState({
@@ -144,6 +147,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     fechaNacimiento: '',
     emailContacto: '',
     telefonoContacto: '',
+    madreNombres: '',
+    madreTelefono: '',
+    padreNombres: '',
+    padreTelefono: '',
+    tutorNombres: '',
+    tutorTelefono: '',
     domicilio: '',
     obraSocial: '',
     telefonoUrgencias: '',
@@ -196,6 +205,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     setTab(tabInicial);
     setAlerta(null);
     setEditandoFicha(false);
+    setPlantillaActiva(null);
     cargarDatos(usuarioId);
   }, [usuarioId, tabInicial]);
 
@@ -231,7 +241,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         dni: m.dni || '',
         fechaNacimiento: fechaNac,
         emailContacto: m.emailContacto || '',
-        telefonoContacto: m.telefonoContacto || '',
+        telefonoContacto: m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
+        madreNombres: m.datosFijosJson?.madre_nombres || '',
+        madreTelefono: m.datosFijosJson?.madre_telefono || '',
+        padreNombres: m.datosFijosJson?.padre_nombres || '',
+        padreTelefono: m.datosFijosJson?.padre_telefono || '',
+        tutorNombres: m.datosFijosJson?.tutor_nombres || '',
+        tutorTelefono: m.datosFijosJson?.tutor_telefono || '',
         domicilio: m.datosFijosJson?.domicilio || '',
         obraSocial: m.datosFijosJson?.obra_social || '',
         telefonoUrgencias: m.datosFijosJson?.telefono_urgencias || '',
@@ -348,6 +364,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         activo: formData.activo,
         datosFijosJson: {
           ...(miembro.datosFijosJson || {}),
+          protagonista_telefono: formData.telefonoContacto.trim(),
+          madre_nombres: formData.madreNombres.trim(),
+          madre_telefono: formData.madreTelefono.trim(),
+          padre_nombres: formData.padreNombres.trim(),
+          padre_telefono: formData.padreTelefono.trim(),
+          tutor_nombres: formData.tutorNombres.trim(),
+          tutor_telefono: formData.tutorTelefono.trim(),
           domicilio: formData.domicilio.trim(),
           obra_social: formData.obraSocial.trim(),
           telefono_urgencias: formData.telefonoUrgencias.trim(),
@@ -365,6 +388,28 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       });
     } finally {
       setGuardando(false);
+    }
+  };
+
+  const handleDesvincularRapido = async (targetUserId: number, targetNombre: string) => {
+    if (!miembro) return;
+    setDesvinculandoMiembroId(targetUserId);
+    setAlerta(null);
+    try {
+      await api.post('/tesoreria/familias/desvincular-hermano', { usuarioId: targetUserId });
+      setAlerta({
+        tipo: 'exito',
+        texto: `${targetNombre} fue eliminado del grupo familiar.`,
+      });
+      if (onActualizado) onActualizado();
+      await cargarDatos(miembro.id);
+    } catch (err: any) {
+      setAlerta({
+        tipo: 'error',
+        texto: traducirErrorAmigable(err, 'No se pudo eliminar del grupo familiar.'),
+      });
+    } finally {
+      setDesvinculandoMiembroId(null);
     }
   };
 
@@ -765,7 +810,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       const resTodas = await api.get('/legajos/plantillas');
       lista = Array.isArray(resTodas.data) ? resTodas.data : [];
     }
-    const p = lista[0] || null;
+    const p = seleccionarPlantillaPorMiembro(lista, miembro) || lista[0] || null;
     setPlantillaActiva(p);
     return p;
   };
@@ -968,14 +1013,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-            {miembro?.telefonoContacto && (
-              <a
-                href={`tel:${miembro.telefonoContacto}`}
-                title="Llamar"
-                className="min-w-[40px] min-h-[40px] rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center"
-              >
-                <Phone className="w-4 h-4" />
-              </a>
+            {miembro && (
+              <BotonLlamarMiembro miembro={miembro} entrega={entregas?.[0]} />
             )}
             <button
               onClick={onCerrar}
@@ -1146,7 +1185,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
                       <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                        Teléfono Familiar
+                        Teléfono del Miembro
                       </label>
                       <input
                         type="tel"
@@ -1155,6 +1194,107 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         value={formData.telefonoContacto}
                         onChange={(e) =>
                           setFormData({ ...formData, telefonoContacto: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="correo@ejemplo.com"
+                        value={formData.emailContacto}
+                        onChange={(e) =>
+                          setFormData({ ...formData, emailContacto: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Nombre y Apellido Madre
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Nombre y apellido de la madre"
+                        value={formData.madreNombres}
+                        onChange={(e) =>
+                          setFormData({ ...formData, madreNombres: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Teléfono Madre
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Celular madre"
+                        value={formData.madreTelefono}
+                        onChange={(e) =>
+                          setFormData({ ...formData, madreTelefono: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Nombre y Apellido Padre
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Nombre y apellido del padre"
+                        value={formData.padreNombres}
+                        onChange={(e) =>
+                          setFormData({ ...formData, padreNombres: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Teléfono Padre
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Celular padre"
+                        value={formData.padreTelefono}
+                        onChange={(e) =>
+                          setFormData({ ...formData, padreTelefono: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Nombre y Apellido Tutor/a
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Nombre y apellido del tutor/a"
+                        value={formData.tutorNombres}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tutorNombres: e.target.value })
+                        }
+                        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                        Teléfono Tutor/a
+                      </label>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        placeholder="Celular tutor/a"
+                        value={formData.tutorTelefono}
+                        onChange={(e) =>
+                          setFormData({ ...formData, tutorTelefono: e.target.value })
                         }
                         className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
                       />
@@ -1186,7 +1326,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
                       />
                     </div>
-                    <div>
+                    <div className="sm:col-span-2">
                       <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
                         Obra Social / Prepaga
                       </label>
@@ -1216,15 +1356,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   {/* Grupo Familiar */}
                   {(() => {
                     const familiar = miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar;
-                    const hermanos = (miembro?.grupoFamiliar?.miembros || []).filter(
-                      (m: any) => m.id !== miembro?.id,
-                    );
+                    const integrantesFamilia = familiar?.miembros || [];
                     const pctDesc = familiar ? Number(familiar.porcentajeDescuentoHermanos ?? 0) : 0;
 
                     return (
-                      <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                        <div>
-                          <div className="flex items-center gap-2">
+                      <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                             <span className="font-bold text-indigo-950 dark:text-indigo-100">
                               {familiar ? familiar.nombreFamilia : 'Sin hermanos vinculados'}
@@ -1235,31 +1373,55 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                               </span>
                             )}
                           </div>
-                          {hermanos.length > 0 && (
-                            <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1">
-                              Hermanos: {hermanos.map((h: any) => h.nombre).join(', ')}
-                            </p>
-                          )}
-                        </div>
 
-                        <div className="flex items-center gap-2">
-                          {familiar && (
+                          <div className="flex items-center gap-2">
+                            {familiar && (
+                              <button
+                                type="button"
+                                onClick={() => setModalEditarFamiliaAbierto(true)}
+                                className="min-h-[38px] px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold text-xs cursor-pointer"
+                              >
+                                Descuento ({pctDesc}%)
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => setModalEditarFamiliaAbierto(true)}
-                              className="min-h-[38px] px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold text-xs cursor-pointer"
+                              onClick={() => setModalVincularHermanoAbierto(true)}
+                              className="min-h-[38px] px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer"
                             >
-                              Descuento ({pctDesc}%)
+                              + Hermano
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setModalVincularHermanoAbierto(true)}
-                            className="min-h-[38px] px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer"
-                          >
-                            + Hermano
-                          </button>
+                          </div>
                         </div>
+
+                        {integrantesFamilia.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-indigo-200/50 dark:border-indigo-800/50">
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
+                              Integrantes:
+                            </span>
+                            {integrantesFamilia.map((h: any) => (
+                              <span
+                                key={h.id}
+                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                              >
+                                <span>
+                                  {h.nombre} {h.apellido}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={desvinculandoMiembroId === h.id}
+                                  onClick={() =>
+                                    handleDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)
+                                  }
+                                  title={`Quitar a ${h.nombre} del grupo familiar`}
+                                  className="px-1.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
+                                >
+                                  {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
@@ -1453,47 +1615,71 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   {/* Barra rápida de Grupo Familiar y Descuento Hermanos */}
                   {(() => {
                     const familiar = miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar;
-                    const hermanos = (familiar?.miembros || []).filter(
-                      (m: any) => m.id !== miembro?.id,
-                    );
+                    const integrantesFamilia = familiar?.miembros || [];
                     const pctDesc = familiar ? Number(familiar.porcentajeDescuentoHermanos ?? 0) : 0;
 
                     return (
-                      <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/25 border border-indigo-200/80 dark:border-indigo-800/50 flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                          <span className="font-bold text-indigo-950 dark:text-indigo-100 text-xs">
-                            {familiar ? familiar.nombreFamilia : 'Sin grupo familiar'}
-                          </span>
-                          {familiar && (
-                            <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/70 text-indigo-800 dark:text-indigo-200 text-[10px] font-bold">
-                              {pctDesc > 0 ? `-${pctDesc}% desc. hermanos` : '0% desc.'}
+                      <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/25 border border-indigo-200/80 dark:border-indigo-800/50 space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                            <span className="font-bold text-indigo-950 dark:text-indigo-100 text-xs">
+                              {familiar ? familiar.nombreFamilia : 'Sin grupo familiar'}
                             </span>
-                          )}
-                          {hermanos.length > 0 && (
-                            <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                              • Hermanos: {hermanos.map((h: any) => h.nombre).join(', ')}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {familiar && (
+                            {familiar && (
+                              <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/70 text-indigo-800 dark:text-indigo-200 text-[10px] font-bold">
+                                {pctDesc > 0 ? `-${pctDesc}% desc. hermanos` : '0% desc.'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {familiar && (
+                              <button
+                                type="button"
+                                onClick={() => setModalEditarFamiliaAbierto(true)}
+                                className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] cursor-pointer"
+                              >
+                                Editar Familia ({pctDesc}%)
+                              </button>
+                            )}
                             <button
                               type="button"
-                              onClick={() => setModalEditarFamiliaAbierto(true)}
-                              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] cursor-pointer"
+                              onClick={() => setModalVincularHermanoAbierto(true)}
+                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] cursor-pointer"
                             >
-                              Editar Familia ({pctDesc}%)
+                              + Hermano
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setModalVincularHermanoAbierto(true)}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] cursor-pointer"
-                          >
-                            + Hermano
-                          </button>
+                          </div>
                         </div>
+
+                        {integrantesFamilia.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-indigo-200/50 dark:border-indigo-800/50">
+                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
+                              Integrantes:
+                            </span>
+                            {integrantesFamilia.map((h: any) => (
+                              <span
+                                key={h.id}
+                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                              >
+                                <span>
+                                  {h.nombre} {h.apellido}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={desvinculandoMiembroId === h.id}
+                                  onClick={() =>
+                                    handleDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)
+                                  }
+                                  title={`Quitar a ${h.nombre} del grupo familiar`}
+                                  className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
+                                >
+                                  {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     );
                   })()}

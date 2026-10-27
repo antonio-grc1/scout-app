@@ -5,6 +5,7 @@ import { QrScannerModal } from '../../components/QrScannerModal';
 import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
 import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
 import { MiembroCard } from '../../components/MiembroCard';
+import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
 import { obtenerConfigRama, obtenerOrdenRama, RAMA_COLORS } from '../../lib/ramaColors';
 import {
   ESTADO_FICHA_CONFIG,
@@ -28,7 +29,6 @@ import {
   X,
   CreditCard,
   FileCheck2,
-  Phone,
   Loader2,
 } from 'lucide-react';
 
@@ -778,15 +778,11 @@ export const UnidadPage: React.FC = () => {
                               </span>
                             </button>
 
-                            {m.telefonoContacto && (
-                              <a
-                                href={`tel:${m.telefonoContacto}`}
-                                title={`Llamar a ${m.telefonoContacto}`}
-                                className="min-h-[36px] min-w-[36px] rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-600 dark:text-slate-300 hover:text-emerald-600 inline-flex items-center justify-center transition"
-                              >
-                                <Phone className="w-3.5 h-3.5" />
-                              </a>
-                            )}
+                            <BotonLlamarMiembro
+                              miembro={m}
+                              entrega={entrega}
+                              className="min-h-[36px] min-w-[36px] px-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-600 dark:text-slate-300 hover:text-emerald-600 inline-flex items-center justify-center gap-1 transition cursor-pointer"
+                            />
                           </div>
                         </td>
                       </tr>

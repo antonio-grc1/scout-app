@@ -4,6 +4,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { ScopedRbacGuard } from './common/guards/scoped-rbac.guard.js';
 import { LegajosModule } from './legajos/legajos.module.js';
+import { MailerModule } from './mailer/mailer.module.js';
 import { MiembrosModule } from './miembros/miembros.module.js';
 import { OrganizacionModule } from './organizacion/organizacion.module.js';
 import { PasesModule } from './pases/pases.module.js';
@@ -13,6 +14,7 @@ import { TesoreriaModule } from './tesoreria/tesoreria.module.js';
 @Module({
   imports: [
     PrismaModule,
+    MailerModule,
     AuthModule,
     OrganizacionModule,
     MiembrosModule,

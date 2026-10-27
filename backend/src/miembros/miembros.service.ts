@@ -17,6 +17,7 @@ import {
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
 import { clavesCopiablesEntreHermanos, filtrarClaves } from '../common/utils/plantillas.util.js';
+import { MailerService } from '../mailer/mailer.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TesoreriaService } from '../tesoreria/tesoreria.service.js';
 import {
@@ -106,6 +107,7 @@ export class MiembrosService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly tesoreria?: TesoreriaService,
+    @Optional() private readonly mailer?: MailerService,
   ) {}
 
   // ---------------- Padrón ----------------
@@ -149,14 +151,74 @@ export class MiembrosService {
     return miembro;
   }
 
+  async obtenerMiPerfil(userId: number) {
+    const miembro = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+      select: MIEMBRO_SELECT,
+    });
+    if (!miembro) throw new NotFoundException('Perfil no encontrado');
+    return miembro;
+  }
+
+  async actualizarMiPerfil(userId: number, dto: EditarMiembroDto) {
+    const actual = await this.prisma.usuario.findUnique({
+      where: { id: userId },
+      select: { id: true, datosFijosJson: true },
+    });
+    if (!actual) throw new NotFoundException('Perfil no encontrado');
+
+    let datosFijosJson: Prisma.InputJsonObject | undefined;
+    if (dto.datosFijosJson) {
+      const base = (actual.datosFijosJson ?? {}) as Record<string, unknown>;
+      const merged = { ...base, ...dto.datosFijosJson };
+      for (const [k, v] of Object.entries(dto.datosFijosJson)) if (v === null) delete merged[k];
+      datosFijosJson = merged as Prisma.InputJsonObject;
+    }
+
+    return this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        emailContacto: dto.emailContacto !== undefined ? dto.emailContacto : undefined,
+        telefonoContacto: dto.telefonoContacto !== undefined ? dto.telefonoContacto : undefined,
+        datosFijosJson,
+      },
+      select: MIEMBRO_SELECT,
+    });
+  }
+
   // ---------------- Autocompletado por hermano ----------------
-  /** Claves de `datosFijosJson` copiables entre hermanos, leídas de las plantillas activas. */
+  /** Claves de `datosFijosJson` copiables entre hermanos, leídas de las plantillas activas + claves familiares estándar. */
   private async clavesCopiables(tx: Prisma.TransactionClient = this.prisma): Promise<Set<string>> {
     const plantillas = await tx.plantillaFormulario.findMany({
       where: { activa: true },
       select: { esquemaCamposJson: true },
     });
-    return clavesCopiablesEntreHermanos(plantillas.map((p) => p.esquemaCamposJson));
+    const set = clavesCopiablesEntreHermanos(plantillas.map((p) => p.esquemaCamposJson));
+    const estandarFamilia = [
+      'domicilio',
+      'obra_social',
+      'madre_nombres',
+      'madre_dni',
+      'madre_domicilio',
+      'madre_email',
+      'madre_telefono',
+      'madre_profesion',
+      'padre_nombres',
+      'padre_dni',
+      'padre_domicilio',
+      'padre_email',
+      'padre_telefono',
+      'padre_profesion',
+      'tutor_nombres',
+      'tutor_dni',
+      'tutor_domicilio',
+      'tutor_email',
+      'tutor_telefono',
+      'tutor_profesion',
+      'telefono_urgencias',
+    ];
+    for (const k of estandarFamilia) set.add(k);
+    return set;
   }
 
   /**
@@ -169,6 +231,7 @@ export class MiembrosService {
       where: { dni: dniHermano },
       select: {
         id: true,
+        dni: true,
         nombre: true,
         apellido: true,
         activo: true,
@@ -176,18 +239,92 @@ export class MiembrosService {
         telefonoContacto: true,
         datosFijosJson: true,
         grupoFamiliar: { select: { id: true, nombreFamilia: true } },
+        asignaciones: {
+          where: { activo: true },
+          select: { unidad: { select: { id: true, nombre: true } } },
+        },
       },
     });
     if (!hermano || !hermano.activo) throw new NotFoundException('No se encontró un miembro activo con ese DNI');
     return {
       id: hermano.id,
+      dni: hermano.dni,
       nombre: hermano.nombre,
       apellido: hermano.apellido,
       emailContacto: hermano.emailContacto,
       telefonoContacto: hermano.telefonoContacto,
       grupoFamiliar: hermano.grupoFamiliar,
+      asignaciones: hermano.asignaciones,
       datosCompartidos: filtrarClaves(hermano.datosFijosJson, await this.clavesCopiables()),
     };
+  }
+
+  /**
+   * Búsqueda de posibles hermanos por DNI, Apellido o Nombre en todo el grupo
+   * (sin restricción de rama para permitir vincular hermanos de distintas secciones).
+   */
+  async buscarHermanosPorCriterio(criterioRaw: string) {
+    const q = criterioRaw.trim();
+    if (!q) return [];
+
+    const candidatos = await this.prisma.usuario.findMany({
+      where: {
+        activo: true,
+        OR: [
+          { dni: { contains: q, mode: 'insensitive' } },
+          { apellido: { contains: q, mode: 'insensitive' } },
+          { nombre: { contains: q, mode: 'insensitive' } },
+        ],
+      },
+      orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
+      take: 15,
+      select: {
+        id: true,
+        dni: true,
+        nombre: true,
+        apellido: true,
+        emailContacto: true,
+        telefonoContacto: true,
+        datosFijosJson: true,
+        grupoFamiliar: {
+          select: {
+            id: true,
+            nombreFamilia: true,
+            porcentajeDescuentoHermanos: true,
+            miembros: {
+              where: { activo: true },
+              select: {
+                id: true,
+                dni: true,
+                nombre: true,
+                apellido: true,
+                asignaciones: {
+                  where: { activo: true },
+                  select: { unidad: { select: { id: true, nombre: true } } },
+                },
+              },
+            },
+          },
+        },
+        asignaciones: {
+          where: { activo: true },
+          select: { unidad: { select: { id: true, nombre: true } } },
+        },
+      },
+    });
+
+    const claves = await this.clavesCopiables();
+    return candidatos.map((h) => ({
+      id: h.id,
+      dni: h.dni,
+      nombre: h.nombre,
+      apellido: h.apellido,
+      emailContacto: h.emailContacto,
+      telefonoContacto: h.telefonoContacto,
+      grupoFamiliar: h.grupoFamiliar,
+      asignaciones: h.asignaciones,
+      datosCompartidos: filtrarClaves(h.datosFijosJson, claves),
+    }));
   }
 
   // ---------------- Alta ----------------
@@ -247,7 +384,22 @@ export class MiembrosService {
 
       return usuario.id;
     });
-    return this.prisma.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+
+    const creado = await this.prisma.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+
+    if (creado.emailContacto && this.mailer) {
+      const asig = creado.asignaciones?.[0];
+      void this.mailer.enviarBienvenidaAlta({
+        destinatario: creado.emailContacto,
+        nombre: creado.nombre,
+        apellido: creado.apellido,
+        dni: creado.dni,
+        unidadNombre: asig?.unidad?.nombre,
+        rolNombre: asig?.rol?.nombre,
+      });
+    }
+
+    return creado;
   }
 
   // ---------------- Edición ----------------

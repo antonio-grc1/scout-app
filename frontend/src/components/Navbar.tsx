@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from './ThemeToggle';
-import { Compass, Users, Shield, LogOut, KeyRound, Contact } from 'lucide-react';
+import { Compass, Users, Shield, LogOut, KeyRound, Contact, UserCircle2 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { usuario, logout, tieneGlobal, tieneUnidad, requiereCambioClave } = useAuthStore();
@@ -20,7 +20,7 @@ export const Navbar: React.FC = () => {
   const esPadron = location.pathname.startsWith('/padron');
   const esRama = location.pathname.startsWith('/rama') || location.pathname.startsWith('/unidad');
   const esGlobal = location.pathname.startsWith('/global');
-  const esCambiarClave = location.pathname.startsWith('/cambiar-clave');
+  const esPerfil = location.pathname.startsWith('/perfil');
 
   return (
     <>
@@ -110,20 +110,19 @@ export const Navbar: React.FC = () => {
                   <Compass className="w-4 h-4" />
                   <span>Mi Legajo</span>
                 </Link>
-              </div>
 
-              <Link
-                to="/cambiar-clave"
-                title="Cambiar contraseña"
-                aria-label="Cambiar contraseña"
-                className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl transition ${
-                  esCambiarClave
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <KeyRound className="w-5 h-5" />
-              </Link>
+                <Link
+                  to="/perfil"
+                  className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
+                    esPerfil
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <UserCircle2 className="w-4 h-4" />
+                  <span>Mi Perfil</span>
+                </Link>
+              </div>
 
               <ThemeToggle variant="dropdown" />
 
@@ -141,11 +140,11 @@ export const Navbar: React.FC = () => {
       </header>
 
       {/* Bottom Navigation Bar exclusiva para Móvil (Ergonomía para el pulgar) */}
-      {(tieneUnidad() || tieneGlobal()) && (
-        <nav
-          aria-label="Navegación principal móvil"
-          className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1 flex items-center justify-around shadow-lg"
-        >
+      <nav
+        aria-label="Navegación principal móvil"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1 flex items-center justify-around shadow-lg"
+      >
+        {(tieneUnidad() || tieneGlobal()) && (
           <Link
             to="/rama"
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
@@ -157,34 +156,46 @@ export const Navbar: React.FC = () => {
             <Users className="w-5 h-5 mb-0.5" />
             <span>{tieneGlobal() ? 'Padrón' : 'Mi Rama'}</span>
           </Link>
+        )}
 
-          {tieneGlobal() && (
-            <Link
-              to="/global"
-              className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
-                esGlobal
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              <Shield className="w-5 h-5 mb-0.5" />
-              <span>Jefatura</span>
-            </Link>
-          )}
-
+        {tieneGlobal() && (
           <Link
-            to="/autogestion"
+            to="/global"
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
-              esAutogestion
+              esGlobal
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : 'text-slate-500 dark:text-slate-400'
             }`}
           >
-            <Compass className="w-5 h-5 mb-0.5" />
-            <span>Mi Legajo</span>
+            <Shield className="w-5 h-5 mb-0.5" />
+            <span>Jefatura</span>
           </Link>
-        </nav>
-      )}
+        )}
+
+        <Link
+          to="/autogestion"
+          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
+            esAutogestion
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-slate-500 dark:text-slate-400'
+          }`}
+        >
+          <Compass className="w-5 h-5 mb-0.5" />
+          <span>Mi Legajo</span>
+        </Link>
+
+        <Link
+          to="/perfil"
+          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
+            esPerfil
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-slate-500 dark:text-slate-400'
+          }`}
+        >
+          <UserCircle2 className="w-5 h-5 mb-0.5" />
+          <span>Mi Perfil</span>
+        </Link>
+      </nav>
     </>
   );
 };

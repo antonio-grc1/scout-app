@@ -24,6 +24,28 @@ export class MiembrosController {
     return this.miembros.listar(a, q);
   }
 
+  /** Perfil propio del usuario autenticado (cualquier rol). */
+  @Get('mi-perfil')
+  obtenerMiPerfil(@CurrentUser() u: AuthUser) {
+    return this.miembros.obtenerMiPerfil(u.sub);
+  }
+
+  /** Actualización de datos de contacto propios del usuario autenticado. */
+  @Patch('mi-perfil')
+  actualizarMiPerfil(
+    @CurrentUser() u: AuthUser,
+    @Body(new ZodValidationPipe(EditarMiembroSchema)) dto: EditarMiembroDto,
+  ) {
+    return this.miembros.actualizarMiPerfil(u.sub, dto);
+  }
+
+  /** Búsqueda flexible de hermanos por DNI, Apellido o Nombre en todo el padrón activo. */
+  @RequirePermission('miembros.ver')
+  @Get('hermanos/buscar')
+  buscarHermanosPorCriterio(@Query('q') q?: string) {
+    return this.miembros.buscarHermanosPorCriterio(q ?? '');
+  }
+
   /** Autocompletado de datos familiares a partir del DNI de un hermano. */
   @RequirePermission('miembros.crear')
   @Get('hermano/:dni')

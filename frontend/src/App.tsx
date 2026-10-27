@@ -8,6 +8,7 @@ import { AutogestionPage } from './pages/autogestion/AutogestionPage';
 import { UnidadPage } from './pages/unidad/UnidadPage';
 import { GlobalPage } from './pages/global/GlobalPage';
 import { PadronPage } from './pages/padron/PadronPage';
+import { PerfilPage } from './pages/perfil/PerfilPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -75,6 +76,14 @@ export function App() {
             element={
               <RutaProtegida>
                 <AutogestionPage />
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/perfil"
+            element={
+              <RutaProtegida>
+                <PerfilPage />
               </RutaProtegida>
             }
           />
