@@ -3,8 +3,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  html {
+    /* Escalado base levemente mayor para optimizar lectura y áreas táctiles en celular y escritorio */
+    font-size: 16.5px;
+  }
+
   body {
-    @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased font-sans selection:bg-emerald-200 selection:text-emerald-900 dark:selection:bg-emerald-900 dark:selection:text-emerald-200;
+    @apply bg-zinc-50 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-100 antialiased font-sans selection:bg-amber-400 selection:text-zinc-950 dark:selection:bg-amber-400 dark:selection:text-zinc-950;
     margin: 0;
     min-height: 100vh;
   }

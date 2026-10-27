@@ -321,12 +321,12 @@ export const AutogestionPage: React.FC = () => {
                   type="button"
                   onClick={handleVerCopiaPdf}
                   disabled={generandoVistaPrevia}
-                  className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer transition disabled:opacity-50"
+                  className="flex-1 sm:flex-initial min-h-[46px] px-4 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-800 hover:bg-zinc-800 dark:hover:bg-zinc-700 text-amber-400 border border-zinc-800 dark:border-zinc-700 text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition disabled:opacity-50"
                 >
                   {generandoVistaPrevia ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <Eye className="w-4 h-4 text-amber-400" />
                   )}
                   <span>Ver Ficha</span>
                 </button>
@@ -335,7 +335,7 @@ export const AutogestionPage: React.FC = () => {
                   type="button"
                   onClick={handleDescargarCopiaPdf}
                   disabled={guardando}
-                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs disabled:opacity-50"
+                  className="flex-1 sm:flex-initial min-h-[46px] px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-zinc-950 text-xs font-black flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs disabled:opacity-50"
                 >
                   {guardando ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -353,10 +353,10 @@ export const AutogestionPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setVistaActiva('papeles')}
-              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[46px] px-3 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 vistaActiva === 'papeles'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                  ? 'bg-amber-400 text-zinc-950 shadow-2xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
               }`}
             >
               <FileText className="w-4 h-4" />
@@ -366,19 +366,19 @@ export const AutogestionPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setVistaActiva('cuotas')}
-              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[46px] px-3 py-2 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 vistaActiva === 'cuotas'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                  ? 'bg-amber-400 text-zinc-950 shadow-2xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
               }`}
             >
               <CreditCard className="w-4 h-4" />
               <span>Mis Cuotas</span>
               {saldoPendiente > 0 && (
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold ${
                     vistaActiva === 'cuotas'
-                      ? 'bg-white text-emerald-700'
+                      ? 'bg-zinc-950 text-amber-400'
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                   }`}
                 >

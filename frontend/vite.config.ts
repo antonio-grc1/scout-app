@@ -10,19 +10,22 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'pdf-templates/*.pdf'],
+      includeAssets: ['favicon.ico', 'pwa-icon.svg', 'pdf-templates/*.pdf'],
       manifest: {
         name: 'Sistema Scout - Grupo Scout Juan XXIII',
         short_name: 'ScoutApp',
-        description: 'Sistema de Gestión Integral del Grupo Scout - PWA Offline',
-        theme_color: '#15803d',
-        background_color: '#ffffff',
+        description: 'Sistema de Gestión Integral del Grupo Scout Juan XXIII - PWA Offline',
+        theme_color: '#09090b',
+        background_color: '#09090b',
         display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
         icons: [
           {
-            src: '/vite.svg',
-            sizes: '192x192',
+            src: '/pwa-icon.svg',
+            sizes: '192x192 512x512',
             type: 'image/svg+xml',
+            purpose: 'any maskable',
           },
         ],
       },
