@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/((?!assets/|api/|sw\\.js|workbox-.*\\.js|registerSW\\.js|manifest\\.webmanifest).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
