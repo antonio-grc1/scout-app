@@ -6,16 +6,17 @@ import { ModalCobroCampamento } from '../../components/ModalCobroCampamento';
 import { ModalEditarFamilia } from '../../components/ModalEditarFamilia';
 import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
 import { ModalConfirmacion, type ModalConfirmacionProps } from '../../components/ModalConfirmacion';
+import { PanelAdminRamas } from '../../components/PanelAdminRamas';
+import { PanelGestorRoles } from '../../components/PanelGestorRoles';
+import { PanelPasesPorCamada } from '../../components/PanelPasesPorCamada';
 import {
   NOMBRES_MESES_CORTOS,
   NOMBRES_MESES_LARGOS,
-  TIPO_UNIDAD_LABELS,
   formatearMoneda,
   traducirErrorAmigable,
 } from '../../lib/formatters';
 import {
   Shield,
-  ArrowRightLeft,
   PlusCircle,
   Users,
   Pencil,
@@ -34,7 +35,7 @@ import {
 } from 'lucide-react';
 
 export const GlobalPage: React.FC = () => {
-  const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'pases'>('tesoreria');
+  const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases'>('tesoreria');
   const [candidatos, setCandidatos] = useState<any[]>([]);
   const [conceptos, setConceptos] = useState<any[]>([]);
   const [planesMensuales, setPlanesMensuales] = useState<any[]>([]);
@@ -42,9 +43,11 @@ export const GlobalPage: React.FC = () => {
   const [subTabTesoreria, setSubTabTesoreria] = useState<'planes' | 'campamentos' | 'familias'>('planes');
   const [ramas, setRamas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
+  const [mostrarInactivasOrg, setMostrarInactivasOrg] = useState(false);
+  const [roles, setRoles] = useState<any[]>([]);
+  const [permisosCatalogo, setPermisosCatalogo] = useState<any[]>([]);
   const [colaboradores, setColaboradores] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
-  const [ejecutandoPaseId, setEjecutandoPaseId] = useState<number | null>(null);
   const [sincronizandoPlanId, setSincronizandoPlanId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ texto: string; tipo: 'exito' | 'error' } | null>(null);
 
@@ -67,7 +70,7 @@ export const GlobalPage: React.FC = () => {
 
   useEffect(() => {
     cargarDatos();
-  }, [tab]);
+  }, [tab, mostrarInactivasOrg]);
 
   const cargarDatos = async () => {
     setCargando(true);
@@ -93,12 +96,20 @@ export const GlobalPage: React.FC = () => {
           setUnidades(resUnidades.data);
         }
       } else if (tab === 'organizacion') {
+        const qInactivas = mostrarInactivasOrg ? '?incluirInactivas=true' : '';
         const [resRamas, resUnidades] = await Promise.all([
-          api.get('/organizacion/ramas'),
-          api.get('/organizacion/unidades'),
+          api.get(`/organizacion/ramas${qInactivas}`),
+          api.get(`/organizacion/unidades${qInactivas}`),
         ]);
         setRamas(resRamas.data);
         setUnidades(resUnidades.data);
+      } else if (tab === 'roles') {
+        const [resRoles, resPermisos] = await Promise.all([
+          api.get('/organizacion/roles'),
+          api.get('/organizacion/permisos'),
+        ]);
+        setRoles(resRoles.data || []);
+        setPermisosCatalogo(resPermisos.data || []);
       } else if (tab === 'colaboradores') {
         const res = await api.get('/legajos/colaboradores-adultos?cicloAnio=2026');
         setColaboradores(res.data);
@@ -107,38 +118,6 @@ export const GlobalPage: React.FC = () => {
       mostrarToast(traducirErrorAmigable(err, 'No se pudieron cargar los datos.'), 'error');
     } finally {
       setCargando(false);
-    }
-  };
-
-  // Acción rápida 1-Tap para Pase de Rama
-  const handleEjecutarPase = async (candidato: any) => {
-    let destino = candidato.unidadesDestino?.[0];
-    if (!destino && candidato.tipo === 'EGRESO') {
-      destino = unidades.find(
-        (u) =>
-          u.tipo === 'SIN_RAMA_APOYO' ||
-          u.nombre.toLowerCase().includes('sin rama') ||
-          u.nombre.toLowerCase().includes('apoyo'),
-      );
-    }
-
-    if (!destino) {
-      mostrarToast('No hay rama destino configurada para este pase.', 'error');
-      return;
-    }
-
-    setEjecutandoPaseId(candidato.asignacionId);
-    try {
-      await api.post('/pases', {
-        asignacionOrigenId: candidato.asignacionId,
-        unidadDestinoId: destino.id,
-      });
-      mostrarToast(`${candidato.usuario.nombre} pasó a ${destino.nombre}.`);
-      await cargarDatos();
-    } catch (err) {
-      mostrarToast(traducirErrorAmigable(err, 'No se pudo realizar el pase.'), 'error');
-    } finally {
-      setEjecutandoPaseId(null);
     }
   };
 
@@ -311,6 +290,16 @@ export const GlobalPage: React.FC = () => {
               Ramas y Edades
             </button>
             <button
+              onClick={() => setTab('roles')}
+              className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                tab === 'roles'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+              }`}
+            >
+              Roles y Permisos
+            </button>
+            <button
               onClick={() => setTab('pases')}
               className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                 tab === 'pases'
@@ -318,7 +307,7 @@ export const GlobalPage: React.FC = () => {
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
               }`}
             >
-              Pases Sugeridos
+              Pases por Camada
             </button>
           </div>
         </div>
@@ -742,48 +731,26 @@ export const GlobalPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 3: ORGANIZACIÓN (Sin códigos internos ni enums crudos) */}
+        {/* TAB 3: ORGANIZACIÓN (Panel de administración de Ramas y Secciones) */}
         {tab === 'organizacion' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-3">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Ramas por Edad</h2>
-              <div className="space-y-2">
-                {ramas.map((r) => (
-                  <div
-                    key={r.id}
-                    className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs"
-                  >
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{r.nombre}</span>
-                    <span className="text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full">
-                      {r.edadMinima} a {r.edadMaxima} años
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <PanelAdminRamas
+            ramas={ramas}
+            unidades={unidades}
+            mostrarInactivas={mostrarInactivasOrg}
+            onToggleMostrarInactivas={setMostrarInactivasOrg}
+            onRecargar={cargarDatos}
+            onToast={mostrarToast}
+          />
+        )}
 
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-3">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">Secciones del Grupo</h2>
-              <div className="space-y-2">
-                {unidades.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex justify-between items-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 text-xs"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-800 dark:text-slate-200 block">{u.nombre}</span>
-                      <span className="text-slate-400 text-[11px]">
-                        {TIPO_UNIDAD_LABELS[u.tipo] || 'Sección del Grupo'}
-                      </span>
-                    </div>
-                    <span className="text-slate-600 dark:text-slate-300 font-semibold">
-                      {u.rama?.nombre || 'Adultos'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* TAB 3B: GESTIÓN DE ROLES, ALCANCES Y PERMISOS */}
+        {tab === 'roles' && (
+          <PanelGestorRoles
+            roles={roles}
+            permisosCatalogo={permisosCatalogo}
+            onRecargar={cargarDatos}
+            onToast={mostrarToast}
+          />
         )}
 
         {/* TAB 4: COLABORADORES Y RECURSOS DE FAMILIAS */}
@@ -861,110 +828,14 @@ export const GlobalPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 4: PASES (Tarjetas en móvil, Tabla en desktop, Acción 1-Tap) */}
+        {/* TAB 5: PASES SUGERIDOS POR CAMADA (Corte al 30/06) */}
         {tab === 'pases' && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 sm:p-6 space-y-4 transition-colors">
-            <div className="flex justify-between items-center">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Pases Sugeridos por Edad
-              </h2>
-              <span className="text-xs font-bold bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-full">
-                {candidatos.length} {candidatos.length === 1 ? 'pendiente' : 'pendientes'}
-              </span>
-            </div>
-
-            {candidatos.length === 0 ? (
-              <div className="py-10 text-center text-sm text-slate-400 dark:text-slate-500">
-                Todos los miembros están en la rama que corresponde a su edad.
-              </div>
-            ) : (
-              <>
-                {/* VISTA MÓVIL: Tarjetas apiladas */}
-                <div className="grid grid-cols-1 gap-2.5 md:hidden">
-                  {candidatos.map((c) => {
-                    const enProceso = ejecutandoPaseId === c.asignacionId;
-                    return (
-                      <div
-                        key={c.asignacionId}
-                        className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between gap-3"
-                      >
-                        <div className="min-w-0">
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">
-                            {c.usuario.apellido}, {c.usuario.nombre}
-                          </h3>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {c.unidadActual.nombre} • <strong className="text-amber-600 dark:text-amber-400">{c.edad} años</strong>
-                          </p>
-                          <span className="inline-block mt-1.5 px-2 py-0.5 rounded-md font-bold text-[11px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                            {c.tipo === 'PROGRESION' ? `Pasa a ${c.ramaSugerida?.nombre}` : 'Pasa a Educador'}
-                          </span>
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={enProceso}
-                          onClick={() => handleEjecutarPase(c)}
-                          className="min-h-[42px] px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
-                        >
-                          {enProceso ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <ArrowRightLeft className="w-3.5 h-3.5" />
-                          )}
-                          <span>Pasar</span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* VISTA DESKTOP: Tabla limpia */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                    <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                      <tr>
-                        <th className="py-3 px-4">Miembro</th>
-                        <th className="py-3 px-4">Edad</th>
-                        <th className="py-3 px-4">Rama Actual</th>
-                        <th className="py-3 px-4">Pase Sugerido</th>
-                        <th className="py-3 px-4 text-right">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {candidatos.map((c) => {
-                        const enProceso = ejecutandoPaseId === c.asignacionId;
-                        return (
-                          <tr key={c.asignacionId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition">
-                            <td className="py-3 px-4 font-bold text-slate-900 dark:text-slate-100">
-                              {c.usuario.apellido}, {c.usuario.nombre}
-                            </td>
-                            <td className="py-3 px-4 font-bold text-amber-700 dark:text-amber-400">{c.edad} años</td>
-                            <td className="py-3 px-4 text-slate-700 dark:text-slate-300">{c.unidadActual.nombre}</td>
-                            <td className="py-3 px-4">
-                              <span className="inline-block px-2.5 py-0.5 rounded-full font-bold text-[11px] bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60">
-                                {c.tipo === 'PROGRESION' ? `Pasar a ${c.ramaSugerida?.nombre}` : 'Pasa a Educador'}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-right">
-                              <button
-                                type="button"
-                                disabled={enProceso}
-                                onClick={() => handleEjecutarPase(c)}
-                                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                              >
-                                {enProceso && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                                <span>Confirmar Pase</span>
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
+          <PanelPasesPorCamada
+            candidatos={candidatos}
+            unidades={unidades}
+            onRecargar={cargarDatos}
+            onToast={mostrarToast}
+          />
         )}
       </main>
 

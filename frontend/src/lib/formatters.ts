@@ -141,6 +141,32 @@ export function calcularEdad(fechaNacStr?: string | null): number | null {
 }
 
 /**
+ * Calcula el año de Camada según la cohorte escolar con corte al 30 de junio inclusive (30/06).
+ * - Nacidos entre el 01/01/Y y el 30/06/Y -> Camada Y.
+ * - Nacidos entre el 01/07/Y y el 31/12/Y -> Camada Y + 1.
+ */
+export function calcularCamada(fechaNacStr?: string | null): number | null {
+  if (!fechaNacStr) return null;
+  const nac = new Date(fechaNacStr);
+  if (isNaN(nac.getTime())) return null;
+  const anio = nac.getUTCFullYear();
+  const mes = nac.getUTCMonth(); // 0 = Enero .. 5 = Junio
+  return mes < 6 ? anio : anio + 1;
+}
+
+/**
+ * Calcula la edad cumplida al 30 de junio inclusive (30/06) del año de ciclo indicado.
+ */
+export function calcularEdadAlCorte30Junio(
+  fechaNacStr?: string | null,
+  anioCiclo: number = new Date().getFullYear(),
+): number | null {
+  const camada = calcularCamada(fechaNacStr);
+  if (camada === null) return null;
+  return anioCiclo - camada;
+}
+
+/**
  * Normaliza un texto para búsquedas sin distinción de mayúsculas/minúsculas ni tildes/acentos.
  */
 export function normalizarTextoBusqueda(valor: unknown): string {

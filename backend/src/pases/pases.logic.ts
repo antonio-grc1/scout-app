@@ -1,4 +1,6 @@
-import { calcularEdad } from '../common/utils/fechas.util.js';
+import { calcularAnioCamada, calcularEdad, fechaCorteCicloEscolar } from '../common/utils/fechas.util.js';
+
+export { calcularAnioCamada, fechaCorteCicloEscolar };
 
 export interface RamaLite {
   id: number;
@@ -14,30 +16,30 @@ export type SugerenciaPase =
   | { tipo: 'EGRESO' };
 
 /**
- * Decide si un protagonista debe pasar de rama según su edad y las ramas activas
- * (leídas de la BD). Devuelve `null` si sigue dentro del rango de su rama actual.
- * Rama destino: la de mayor orden que contenga su edad; si ninguna la contiene,
- * la siguiente en orden de progresión.
+ * Decide si un protagonista debe pasar de rama según su camada / edad al corte escolar (30/06 inclusive)
+ * o a la `fechaReferencia` indicada, y las ramas activas leídas de la BD.
+ * Devuelve `null` si sigue dentro del rango de su rama actual.
  */
 export function sugerirPase(
   fechaNacimiento: Date,
   ramaActual: RamaLite,
   ramas: RamaLite[],
-  fechaReferencia?: Date,
-): { edad: number; sugerencia: SugerenciaPase } | null {
+  fechaReferencia: Date = fechaCorteCicloEscolar(),
+): { edad: number; camada: number; sugerencia: SugerenciaPase } | null {
   const edad = calcularEdad(fechaNacimiento, fechaReferencia);
+  const camada = calcularAnioCamada(fechaNacimiento);
   if (edad <= ramaActual.edadMaxima) return null;
 
   const superiores = ramas
     .filter((r) => r.ordenProgresion > ramaActual.ordenProgresion)
     .sort((a, b) => a.ordenProgresion - b.ordenProgresion);
-  if (superiores.length === 0) return { edad, sugerencia: { tipo: 'EGRESO' } };
+  if (superiores.length === 0) return { edad, camada, sugerencia: { tipo: 'EGRESO' } };
 
   const queContiene = superiores.find((r) => edad >= r.edadMinima && edad <= r.edadMaxima);
-  if (queContiene) return { edad, sugerencia: { tipo: 'PROGRESION', ramaSugerida: queContiene } };
+  if (queContiene) return { edad, camada, sugerencia: { tipo: 'PROGRESION', ramaSugerida: queContiene } };
 
   // Ninguna rama superior contiene la edad: si ya superó todas, es egreso; si no, la siguiente.
   const ultima = superiores[superiores.length - 1];
-  if (edad > ultima.edadMaxima) return { edad, sugerencia: { tipo: 'EGRESO' } };
-  return { edad, sugerencia: { tipo: 'PROGRESION', ramaSugerida: superiores[0] } };
+  if (edad > ultima.edadMaxima) return { edad, camada, sugerencia: { tipo: 'EGRESO' } };
+  return { edad, camada, sugerencia: { tipo: 'PROGRESION', ramaSugerida: superiores[0] } };
 }
