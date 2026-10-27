@@ -27,6 +27,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // Cache offline de padrón y legajos para campamento sin señal (AGENTS.md §2)
         runtimeCaching: [
           {
