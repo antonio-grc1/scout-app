@@ -168,7 +168,6 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
     return 'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.';
   }
 
-  // Si el backend ya mandó un mensaje en español legible sin jerga técnica, lo usamos
   if (texto && !lower.includes('prisma') && !lower.includes('sql') && !lower.includes('constraint') && !lower.includes('exception')) {
     return texto;
   }
@@ -184,7 +183,7 @@ export interface OpcionTelefonoContacto {
 
 /**
  * Extrae todos los teléfonos registrados del miembro (propio, madre, padre, tutor y urgencias)
- * para mostrarlos en el selector rápido de llamada.
+ * junto con el nombre y apellido de la persona y su vínculo para el modal de llamada.
  */
 export function extraerTelefonosMiembro(
   miembro: any,
@@ -201,26 +200,106 @@ export function extraerTelefonosMiembro(
     const tel = String(telRaw ?? '').trim();
     if (!tel) return;
     const nombre = String(nombreRaw ?? '').trim() || undefined;
-    // Evitar duplicar exactamente la misma etiqueta y número
     if (resultado.some((r) => r.etiqueta === etiqueta && r.telefono === tel)) return;
     resultado.push({ etiqueta, nombre, telefono: tel });
   };
 
+  const nombreCompletoMiembro = `${miembro.nombre || ''} ${miembro.apellido || ''}`.trim();
+
   agregar(
     'Miembro',
     miembro.telefonoContacto || datos.protagonista_telefono,
-    `${miembro.nombre || ''} ${miembro.apellido || ''}`.trim(),
+    nombreCompletoMiembro,
   );
-  agregar('Madre', datos.madre_telefono, datos.madre_nombres);
-  agregar('Padre', datos.padre_telefono, datos.padre_nombres);
-  agregar('Tutor/a', datos.tutor_telefono, datos.tutor_nombres);
+  agregar(
+    'Madre',
+    datos.madre_telefono,
+    String(datos.madre_nombres ?? '').trim() || `${miembro.apellido ? `Madre (${miembro.nombre} ${miembro.apellido})` : 'Madre'}`,
+  );
+  agregar(
+    'Padre',
+    datos.padre_telefono,
+    String(datos.padre_nombres ?? '').trim() || `${miembro.apellido ? `Padre (${miembro.nombre} ${miembro.apellido})` : 'Padre'}`,
+  );
+  agregar(
+    'Tutor/a',
+    datos.tutor_telefono,
+    String(datos.tutor_nombres ?? '').trim() || `${miembro.apellido ? `Tutor/a (${miembro.nombre} ${miembro.apellido})` : 'Tutor/a'}`,
+  );
   agregar(
     'Emergencia',
     datos.emergencia_telefono || datos.telefono_urgencias || datos.tel_emergencia_1,
-    datos.emergencia_nombre,
+    String(datos.emergencia_nombre || datos.emergencia_contacto || '').trim() ||
+      `Emergencia (${nombreCompletoMiembro})`,
   );
 
   return resultado;
+}
+
+export interface OpcionGrupoHermanos {
+  key: string;
+  esGrupoExistente: boolean;
+  grupoFamiliarId?: number;
+  nombreFamilia: string;
+  representante: any;
+  integrantes: Array<{
+    id: number;
+    dni: string;
+    nombre: string;
+    apellido: string;
+    ramaNombre: string;
+  }>;
+  madreNombre?: string;
+  padreNombre?: string;
+  tutorNombre?: string;
+  domicilio?: string;
+}
+
+/**
+ * Agrupa los candidatos devueltos por /miembros/hermanos/buscar según su GrupoFamiliar.
+ * Si A y B ya son hermanos en el mismo GrupoFamiliar, se presentan juntos como un único
+ * grupo de hermanos seleccionable (transitividad A-B-C), diferenciándose de otras familias
+ * con el mismo apellido.
+ */
+export function agruparCandidatosPorFamilia(
+  candidatos: any[],
+  excluirUsuarioId?: number,
+): OpcionGrupoHermanos[] {
+  const gruposMap = new Map<string, OpcionGrupoHermanos>();
+
+  for (const c of candidatos || []) {
+    if (excluirUsuarioId && c.id === excluirUsuarioId) continue;
+
+    const gf = c.grupoFamiliar;
+    const key = gf?.id ? `gf-${gf.id}` : `user-${c.id}`;
+    if (gruposMap.has(key)) continue;
+
+    const datos = c.datosCompartidos || c.datosFijosJson || {};
+    const miembrosRaw = Array.isArray(gf?.miembros) && gf.miembros.length > 0 ? gf.miembros : [c];
+
+    const integrantes = miembrosRaw.map((m: any) => ({
+      id: m.id,
+      dni: m.dni,
+      nombre: m.nombre,
+      apellido: m.apellido,
+      ramaNombre: m.asignaciones?.[0]?.unidad?.nombre || 'Sin rama',
+    }));
+
+    gruposMap.set(key, {
+      key,
+      esGrupoExistente: Boolean(gf?.id && integrantes.length > 1),
+      grupoFamiliarId: gf?.id,
+      nombreFamilia: gf?.nombreFamilia || `Familia ${c.apellido}`,
+      representante: c,
+      integrantes,
+      madreNombre: datos.madre_nombres || undefined,
+      padreNombre: datos.padre_nombres || undefined,
+      tutorNombre: datos.tutor_nombres || undefined,
+      domicilio: datos.domicilio || undefined,
+    });
+  }
+
+  return Array.from(gruposMap.values());
 }
 
 /**

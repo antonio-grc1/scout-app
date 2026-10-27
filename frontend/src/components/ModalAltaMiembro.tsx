@@ -1,7 +1,20 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import { X, UserPlus, Search, CheckCircle2, AlertCircle } from 'lucide-react';
+import {
+  agruparCandidatosPorFamilia,
+  type OpcionGrupoHermanos,
+} from '../lib/formatters';
+import {
+  X,
+  UserPlus,
+  Search,
+  CheckCircle2,
+  AlertCircle,
+  Users,
+  Loader2,
+  MapPin,
+} from 'lucide-react';
 
 interface Props {
   abierto: boolean;
@@ -25,19 +38,23 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   const [fechaNacimiento, setFechaNacimiento] = useState('');
   const [emailContacto, setEmailContacto] = useState('');
   const [telefonoContacto, setTelefonoContacto] = useState('');
+  const [madreNombres, setMadreNombres] = useState('');
   const [madreTelefono, setMadreTelefono] = useState('');
+  const [padreNombres, setPadreNombres] = useState('');
   const [padreTelefono, setPadreTelefono] = useState('');
+  const [tutorNombres, setTutorNombres] = useState('');
   const [tutorTelefono, setTutorTelefono] = useState('');
   const [unidadId, setUnidadId] = useState<number | ''>('');
   const [rolId, setRolId] = useState<number | ''>('');
   const [domicilio, setDomicilio] = useState('');
   const [obraSocial, setObraSocial] = useState('');
 
-  // Hermano (por DNI o Apellido)
+  // Buscador en vivo de hermano y selección de grupo familiar
   const [dniHermano, setDniHermano] = useState('');
-  const [resultadosHermano, setResultadosHermano] = useState<any[]>([]);
+  const [gruposOpciones, setGruposOpciones] = useState<OpcionGrupoHermanos[]>([]);
+  const [grupoPreseleccionado, setGrupoPreseleccionado] = useState<OpcionGrupoHermanos | null>(null);
+  const [grupoConfirmado, setGrupoConfirmado] = useState<OpcionGrupoHermanos | null>(null);
   const [buscandoHermano, setBuscandoHermano] = useState(false);
-  const [hermanoEncontrado, setHermanoEncontrado] = useState<any | null>(null);
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,44 +161,60 @@ export const ModalAltaMiembro: React.FC<Props> = ({
     }
   }, [unidadesDisponibles, rolesDisponibles]);
 
+  // Búsqueda automática en vivo al escribir DNI, Nombre o Apellido
+  useEffect(() => {
+    if (!abierto) return;
+    const q = dniHermano.trim();
+    if (q.length < 2) {
+      setGruposOpciones([]);
+      setGrupoPreseleccionado(null);
+      setBuscandoHermano(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setBuscandoHermano(true);
+      try {
+        const res = await api.get(`/miembros/hermanos/buscar?q=${encodeURIComponent(q)}`);
+        const lista = Array.isArray(res.data) ? res.data : [];
+        const agrupados = agruparCandidatosPorFamilia(lista);
+        setGruposOpciones(agrupados);
+        if (agrupados.length === 1) {
+          setGrupoPreseleccionado(agrupados[0]);
+        } else {
+          setGrupoPreseleccionado((prev) =>
+            prev ? agrupados.find((g) => g.key === prev.key) || null : null,
+          );
+        }
+      } catch {
+        setGruposOpciones([]);
+      } finally {
+        setBuscandoHermano(false);
+      }
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [dniHermano, abierto]);
+
   if (!abierto) return null;
 
-  const aplicarDatosHermano = (hermano: any) => {
-    setHermanoEncontrado(hermano);
-    if (hermano.emailContacto) setEmailContacto(hermano.emailContacto);
-    if (hermano.datosCompartidos?.domicilio) setDomicilio(hermano.datosCompartidos.domicilio);
-    if (hermano.datosCompartidos?.obra_social) setObraSocial(hermano.datosCompartidos.obra_social);
-    if (hermano.datosCompartidos?.madre_telefono) setMadreTelefono(hermano.datosCompartidos.madre_telefono);
-    if (hermano.datosCompartidos?.padre_telefono) setPadreTelefono(hermano.datosCompartidos.padre_telefono);
-    if (hermano.datosCompartidos?.tutor_telefono) setTutorTelefono(hermano.datosCompartidos.tutor_telefono);
-    if (hermano.apellido && !apellido) setApellido(hermano.apellido);
-  };
-
-  const handleBuscarHermano = async () => {
-    const q = dniHermano.trim();
-    if (!q) return;
-    setBuscandoHermano(true);
-    setError(null);
-    setResultadosHermano([]);
-    try {
-      const res = await api.get(`/miembros/hermanos/buscar?q=${encodeURIComponent(q)}`);
-      const lista = Array.isArray(res.data) ? res.data : [];
-      if (lista.length === 0) {
-        setError('No se encontró ningún miembro activo con ese DNI o Apellido.');
-        setHermanoEncontrado(null);
-      } else if (lista.length === 1) {
-        setResultadosHermano(lista);
-        aplicarDatosHermano(lista[0]);
-      } else {
-        setResultadosHermano(lista);
-        setHermanoEncontrado(null);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'No se encontró ningún miembro activo.');
-      setHermanoEncontrado(null);
-    } finally {
-      setBuscandoHermano(false);
-    }
+  const handleConfirmarAdhesionGrupo = (grupo: OpcionGrupoHermanos) => {
+    setGrupoConfirmado(grupo);
+    const hermano = grupo.representante;
+    const comp = hermano?.datosCompartidos || hermano?.datosFijosJson || {};
+    if (hermano?.emailContacto && !emailContacto) setEmailContacto(hermano.emailContacto);
+    if (comp.domicilio) setDomicilio(comp.domicilio);
+    if (comp.obra_social) setObraSocial(comp.obra_social);
+    if (comp.madre_nombres) setMadreNombres(comp.madre_nombres);
+    if (comp.madre_telefono) setMadreTelefono(comp.madre_telefono);
+    if (comp.padre_nombres) setPadreNombres(comp.padre_nombres);
+    if (comp.padre_telefono) setPadreTelefono(comp.padre_telefono);
+    if (comp.tutor_nombres) setTutorNombres(comp.tutor_nombres);
+    if (comp.tutor_telefono) setTutorTelefono(comp.tutor_telefono);
+    if (hermano?.apellido && !apellido) setApellido(hermano.apellido);
+    setDniHermano('');
+    setGruposOpciones([]);
+    setGrupoPreseleccionado(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,14 +237,17 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         telefonoContacto: telefonoContacto.trim() || undefined,
         unidadId: Number(unidadId),
         rolId: Number(rolId),
-        hermanoDni: hermanoEncontrado?.dni || undefined,
-        copiarDatosHermano: Boolean(hermanoEncontrado),
+        hermanoDni: grupoConfirmado?.representante?.dni || undefined,
+        copiarDatosHermano: Boolean(grupoConfirmado),
         datosFijosJson: {
           domicilio: domicilio.trim() || undefined,
           obra_social: obraSocial.trim() || undefined,
           protagonista_telefono: telefonoContacto.trim() || undefined,
+          madre_nombres: madreNombres.trim() || undefined,
           madre_telefono: madreTelefono.trim() || undefined,
+          padre_nombres: padreNombres.trim() || undefined,
           padre_telefono: padreTelefono.trim() || undefined,
+          tutor_nombres: tutorNombres.trim() || undefined,
           tutor_telefono: tutorTelefono.trim() || undefined,
         },
       });
@@ -249,66 +285,127 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Autocompletado de hermano por DNI o Apellido */}
-          <div className="p-3.5 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 rounded-xl space-y-2">
-            <span className="font-semibold text-emerald-900 dark:text-emerald-200 block text-xs">
-              ¿Tiene un hermano/a ya inscripto? Buscar por DNI o Apellido para copiar datos:
+          {/* Buscador en vivo y adhesión al grupo familiar */}
+          <div className="p-3.5 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-900/60 rounded-2xl space-y-2.5">
+            <span className="font-extrabold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5 text-xs">
+              <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              ¿Tiene hermanos/as ya inscriptos? Buscá por DNI, Nombre o Apellido:
             </span>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="DNI o Apellido del hermano/a..."
-                value={dniHermano}
-                onChange={(e) => setDniHermano(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    void handleBuscarHermano();
-                  }
-                }}
-                className="flex-1 min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-emerald-500"
-              />
-              <button
-                type="button"
-                onClick={handleBuscarHermano}
-                disabled={buscandoHermano || !dniHermano.trim()}
-                className="min-h-[42px] px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Search className="w-4 h-4" />
-                <span>{buscandoHermano ? 'Buscando...' : 'Buscar'}</span>
-              </button>
-            </div>
 
-            {resultadosHermano.length > 1 && (
-              <div className="space-y-1 max-h-36 overflow-y-auto pt-1">
-                {resultadosHermano.map((h) => (
-                  <button
-                    key={h.id}
-                    type="button"
-                    onClick={() => aplicarDatosHermano(h)}
-                    className={`w-full text-left p-2 rounded-lg border text-xs flex items-center justify-between transition cursor-pointer ${
-                      hermanoEncontrado?.id === h.id
-                        ? 'bg-emerald-100 dark:bg-emerald-950/80 border-emerald-400 font-bold'
-                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-emerald-300'
-                    }`}
-                  >
-                    <span>
-                      {h.apellido}, {h.nombre} (DNI {h.dni})
-                    </span>
-                    <span className="text-[10px] text-slate-500">
-                      {h.asignaciones?.[0]?.unidad?.nombre || ''}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+            {!grupoConfirmado ? (
+              <>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Escribí DNI, nombre o apellido para ver los grupos de hermanos..."
+                    value={dniHermano}
+                    onChange={(e) => setDniHermano(e.target.value)}
+                    className="w-full min-h-[42px] pl-9 pr-9 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:border-indigo-500"
+                  />
+                  {buscandoHermano && (
+                    <Loader2 className="w-4 h-4 text-indigo-600 animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
+                  )}
+                </div>
 
-            {hermanoEncontrado && (
-              <div className="p-2.5 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 rounded-xl text-emerald-900 dark:text-emerald-200 flex items-center gap-2 text-xs">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span>
-                  Datos familiares copiados de <strong>{hermanoEncontrado.nombre} {hermanoEncontrado.apellido}</strong>.
-                </span>
+                {dniHermano.trim().length >= 2 && !buscandoHermano && gruposOpciones.length === 0 && (
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                    No se encontraron coincidencias para "{dniHermano.trim()}".
+                  </p>
+                )}
+
+                {gruposOpciones.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <span className="text-[11px] font-bold text-indigo-900 dark:text-indigo-200 block">
+                      Seleccioná el grupo de hermanos correspondiente:
+                    </span>
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                      {gruposOpciones.map((grupo) => {
+                        const seleccionado = grupoPreseleccionado?.key === grupo.key;
+                        return (
+                          <button
+                            key={grupo.key}
+                            type="button"
+                            onClick={() => setGrupoPreseleccionado(grupo)}
+                            className={`w-full text-left p-2.5 rounded-xl border transition cursor-pointer space-y-1.5 ${
+                              seleccionado
+                                ? 'bg-indigo-100/90 dark:bg-indigo-950/90 border-indigo-500 ring-1 ring-indigo-500'
+                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100">
+                                {grupo.esGrupoExistente
+                                  ? `${grupo.nombreFamilia} (${grupo.integrantes.length} hermanos)`
+                                  : `Nuevo grupo con ${grupo.representante.nombre} ${grupo.representante.apellido}`}
+                              </span>
+                              {seleccionado && (
+                                <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                              )}
+                            </div>
+
+                            <div className="flex flex-wrap gap-1">
+                              {grupo.integrantes.map((m) => (
+                                <span
+                                  key={m.id}
+                                  className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-900 text-[11px] font-semibold text-slate-700 dark:text-slate-300"
+                                >
+                                  {m.nombre} {m.apellido} (DNI {m.dni} • {m.ramaNombre})
+                                </span>
+                              ))}
+                            </div>
+
+                            {(grupo.madreNombre || grupo.padreNombre || grupo.domicilio) && (
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-2.5">
+                                {grupo.madreNombre && <span>Madre: {grupo.madreNombre}</span>}
+                                {grupo.padreNombre && <span>Padre: {grupo.padreNombre}</span>}
+                                {grupo.domicilio && (
+                                  <span className="inline-flex items-center gap-0.5">
+                                    <MapPin className="w-2.5 h-2.5" />
+                                    {grupo.domicilio}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {grupoPreseleccionado && (
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmarAdhesionGrupo(grupoPreseleccionado)}
+                        className="w-full min-h-[40px] px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Confirmar adhesión al grupo familiar</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-3 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 dark:text-slate-100 block truncate">
+                      Adherido a {grupoConfirmado.nombreFamilia}
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400 block truncate">
+                      Hermanos:{' '}
+                      {grupoConfirmado.integrantes.map((i) => `${i.nombre} ${i.apellido}`).join(', ')}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setGrupoConfirmado(null)}
+                  className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-700 dark:text-rose-300 font-bold text-[11px] shrink-0 cursor-pointer"
+                >
+                  Quitar
+                </button>
               </div>
             )}
           </div>
@@ -415,12 +512,23 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               />
             </div>
             <div>
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email (Recibe aviso de alta)</label>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Email</label>
               <input
                 type="email"
                 value={emailContacto}
                 onChange={(e) => setEmailContacto(e.target.value)}
-                placeholder="familia@email.com"
+                placeholder="correo@ejemplo.com"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre y Apellido Madre</label>
+              <input
+                type="text"
+                value={madreNombres}
+                onChange={(e) => setMadreNombres(e.target.value)}
+                placeholder="Opcional"
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
@@ -431,6 +539,17 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 inputMode="tel"
                 value={madreTelefono}
                 onChange={(e) => setMadreTelefono(e.target.value)}
+                placeholder="Opcional"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre y Apellido Padre</label>
+              <input
+                type="text"
+                value={padreNombres}
+                onChange={(e) => setPadreNombres(e.target.value)}
                 placeholder="Opcional"
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
@@ -446,7 +565,18 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
               />
             </div>
-            <div className="sm:col-span-2">
+
+            <div>
+              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre y Apellido Tutor/a</label>
+              <input
+                type="text"
+                value={tutorNombres}
+                onChange={(e) => setTutorNombres(e.target.value)}
+                placeholder="Opcional (si aplica)"
+                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+              />
+            </div>
+            <div>
               <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Teléfono Tutor/a</label>
               <input
                 type="tel"
