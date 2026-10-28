@@ -252,7 +252,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
             Configuración de Ramas, Edades de Pase y Secciones
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Modificá nombres, edades límite para sugerencias de pases (corte al 30/06) o agregá y quitá ramas.
+            Modificá nombres, edades límite para sugerencias de pases o agregá y quitá ramas.
           </p>
         </div>
 
@@ -446,7 +446,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                       )}
                     </div>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-7">
-                      Sugiere pase a la siguiente rama al cumplir {Number(r.edadMaxima) + 1} años (corte 30/06).
+                      Sugiere pase a la siguiente rama al cumplir {Number(r.edadMaxima) + 1} años.
                     </p>
                   </div>
 

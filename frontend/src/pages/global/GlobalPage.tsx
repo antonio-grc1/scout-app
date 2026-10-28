@@ -886,7 +886,7 @@ export const GlobalPage: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 5: PASES SUGERIDOS POR CAMADA (Corte al 30/06) */}
+        {/* TAB 5: PASES SUGERIDOS POR CAMADA */}
         {tab === 'pases' && (
           <PanelPasesPorCamada
             candidatos={candidatos}
