@@ -85,10 +85,12 @@ export const UnidadPage: React.FC = () => {
     'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'
   >('datos');
 
-  // Filtros rápidos (1-Tap) y selectores
+  // Filtros rápidos (1-Tap) y selectores con multi-selección de Checkboxes
   const [busqueda, setBusqueda] = useState('');
-  const [seccionFiltro, setSeccionFiltro] = useState<number | 'TODAS'>('TODAS');
-  const [rolFiltro, setRolFiltro] = useState<number | 'TODOS'>('TODOS');
+  const [seccionesFiltro, setSeccionesFiltro] = useState<number[]>([]);
+  const [rolesFiltro, setRolesFiltro] = useState<number[]>([]);
+  const [menuSeccionesAbierto, setMenuSeccionesAbierto] = useState(false);
+  const [menuRolesAbierto, setMenuRolesAbierto] = useState(false);
   const [chipActivo, setChipActivo] = useState<ChipFiltro>('TODOS');
   const [camadaFiltro, setCamadaFiltro] = useState<number | null>(null);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
@@ -188,6 +190,65 @@ export const UnidadPage: React.FC = () => {
     );
   };
 
+  // Conteos de miembros activos por sección y rol para badges y selector
+  const conteoPorUnidad = useMemo(() => {
+    const mapa = new Map<number, number>();
+    for (const m of miembros) {
+      if (!m.activo) continue;
+      for (const a of m.asignaciones || []) {
+        if (a.activo !== false) {
+          const uId = a.unidadId || a.unidad?.id;
+          if (uId) mapa.set(uId, (mapa.get(uId) || 0) + 1);
+        }
+      }
+    }
+    return mapa;
+  }, [miembros]);
+
+  const conteoPorRol = useMemo(() => {
+    const mapa = new Map<number, number>();
+    for (const m of miembros) {
+      if (!m.activo) continue;
+      for (const a of m.asignaciones || []) {
+        if (a.activo !== false) {
+          const rId = a.rolId || a.rol?.id;
+          if (rId) mapa.set(rId, (mapa.get(rId) || 0) + 1);
+        }
+      }
+    }
+    return mapa;
+  }, [miembros]);
+
+  const toggleSeccion = (id: number) => {
+    setSeccionesFiltro((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleRol = (id: number) => {
+    setRolesFiltro((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const textoBotonSecciones = useMemo(() => {
+    if (seccionesFiltro.length === 0) return 'Todas las secciones';
+    if (seccionesFiltro.length === 1) {
+      const u = unidades.find((item) => item.id === seccionesFiltro[0]);
+      return u?.nombre || '1 sección';
+    }
+    return `${seccionesFiltro.length} secciones seleccionadas`;
+  }, [seccionesFiltro, unidades]);
+
+  const textoBotonRoles = useMemo(() => {
+    if (rolesFiltro.length === 0) return 'Todos los roles';
+    if (rolesFiltro.length === 1) {
+      const r = roles.find((item) => item.id === rolesFiltro[0]);
+      return r?.nombre || '1 rol';
+    }
+    return `${rolesFiltro.length} roles seleccionados`;
+  }, [rolesFiltro, roles]);
+
   // Filtrado y Ordenamiento reactivo
   const miembrosFiltrados = useMemo(() => {
     const q = normalizarTextoBusqueda(busqueda);
@@ -204,22 +265,22 @@ export const UnidadPage: React.FC = () => {
       const esEdu = esRolDeEducador(asig?.rol);
       const entrega = entregasPorUsuario.get(m.id);
 
-      // Filtro por Sección (Unidad Operativa)
-      if (seccionFiltro !== 'TODAS') {
+      // Filtro por Sección (Unidades Operativas seleccionadas)
+      if (seccionesFiltro.length > 0) {
         const enSeccion = m.asignaciones?.some(
           (a: any) =>
             a.activo !== false &&
-            (a.unidadId === seccionFiltro || a.unidad?.id === seccionFiltro),
+            (seccionesFiltro.includes(a.unidadId) || seccionesFiltro.includes(a.unidad?.id)),
         );
         if (!enSeccion) return false;
       }
 
-      // Filtro por Rol
-      if (rolFiltro !== 'TODOS') {
+      // Filtro por Rol (Roles seleccionados)
+      if (rolesFiltro.length > 0) {
         const conRol = m.asignaciones?.some(
           (a: any) =>
             a.activo !== false &&
-            (a.rolId === rolFiltro || a.rol?.id === rolFiltro),
+            (rolesFiltro.includes(a.rolId) || rolesFiltro.includes(a.rol?.id)),
         );
         if (!conRol) return false;
       }
@@ -301,8 +362,8 @@ export const UnidadPage: React.FC = () => {
     });
   }, [
     miembros,
-    seccionFiltro,
-    rolFiltro,
+    seccionesFiltro,
+    rolesFiltro,
     chipActivo,
     camadaFiltro,
     busqueda,
@@ -321,19 +382,19 @@ export const UnidadPage: React.FC = () => {
       const asig = m.asignaciones?.[0];
       const esEdu = esRolDeEducador(asig?.rol);
       if (esEdu) continue;
-      if (seccionFiltro !== 'TODAS') {
+      if (seccionesFiltro.length > 0) {
         const enSeccion = m.asignaciones?.some(
           (a: any) =>
             a.activo !== false &&
-            (a.unidadId === seccionFiltro || a.unidad?.id === seccionFiltro),
+            (seccionesFiltro.includes(a.unidadId) || seccionesFiltro.includes(a.unidad?.id)),
         );
         if (!enSeccion) continue;
       }
-      if (rolFiltro !== 'TODOS') {
+      if (rolesFiltro.length > 0) {
         const conRol = m.asignaciones?.some(
           (a: any) =>
             a.activo !== false &&
-            (a.rolId === rolFiltro || a.rol?.id === rolFiltro),
+            (rolesFiltro.includes(a.rolId) || rolesFiltro.includes(a.rol?.id)),
         );
         if (!conRol) continue;
       }
@@ -346,7 +407,7 @@ export const UnidadPage: React.FC = () => {
     return Array.from(mapa.entries())
       .sort((a, b) => a[0] - b[0])
       .map(([anio, total]) => ({ anio, total }));
-  }, [miembros, seccionFiltro, rolFiltro, chipActivo, candidatosIds]);
+  }, [miembros, seccionesFiltro, rolesFiltro, chipActivo, candidatosIds]);
 
   // Agrupación de candidatos a pase por Camada y Rama actual
   const gruposCamadaPase = useMemo(() => {
@@ -535,63 +596,322 @@ export const UnidadPage: React.FC = () => {
           )}
         </div>
 
-        {/* Filtros Primarios: Sección (Unidad Operativa) y Rol */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-          {/* Selector de Sección */}
-          <div className="relative">
-            <GitBranch className="w-4 h-4 text-emerald-600 dark:text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={seccionFiltro}
-              onChange={(e) =>
-                setSeccionFiltro(e.target.value === 'TODAS' ? 'TODAS' : Number(e.target.value))
-              }
-              aria-label="Filtrar por sección operativa"
-              className="w-full min-h-[44px] pl-10 pr-8 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-500 transition appearance-none cursor-pointer shadow-2xs"
-            >
-              <option value="TODAS">Todas las secciones ({unidades.length})</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.nombre}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        {/* Filtros Primarios: Sección (Unidad Operativa) y Rol con soporte Multi-Select Checkboxes */}
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {/* Selector de Sección con Checkboxes */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuSeccionesAbierto(!menuSeccionesAbierto);
+                  setMenuRolesAbierto(false);
+                }}
+                aria-expanded={menuSeccionesAbierto}
+                aria-label="Filtrar por secciones operativas"
+                className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
+                  seccionesFiltro.length > 0
+                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
+                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <GitBranch className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="truncate">{textoBotonSecciones}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {seccionesFiltro.length > 0 && (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
+                      {seccionesFiltro.length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                      menuSeccionesAbierto ? 'rotate-180 text-emerald-600' : ''
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Menú Flotante con Checkboxes para Secciones */}
+              {menuSeccionesAbierto && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setMenuSeccionesAbierto(false)}
+                  />
+                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                        Secciones ({unidades.length})
+                      </span>
+                      <div className="flex items-center gap-2 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setSeccionesFiltro(unidades.map((u) => u.id))}
+                          className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        >
+                          Marcar todas
+                        </button>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setSeccionesFiltro([])}
+                          className="text-slate-500 hover:underline cursor-pointer"
+                        >
+                          Desmarcar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Opción Todas las secciones */}
+                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition">
+                      <input
+                        type="checkbox"
+                        checked={seccionesFiltro.length === 0}
+                        onChange={() => setSeccionesFiltro([])}
+                        className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Todas las secciones
+                      </span>
+                    </label>
+
+                    {/* Lista con Checkboxes */}
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-slate-100 dark:divide-slate-800/60 pr-1">
+                      {unidades.map((u) => {
+                        const estaMarcada = seccionesFiltro.includes(u.id);
+                        const cant = conteoPorUnidad.get(u.id) || 0;
+                        return (
+                          <label
+                            key={u.id}
+                            className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={estaMarcada}
+                                onChange={() => toggleSeccion(u.id)}
+                                className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                              />
+                              <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                                {u.nombre}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                              {cant}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setMenuSeccionesAbierto(false)}
+                      className="w-full min-h-[36px] py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer"
+                    >
+                      Listo
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Selector de Rol con Checkboxes */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuRolesAbierto(!menuRolesAbierto);
+                  setMenuSeccionesAbierto(false);
+                }}
+                aria-expanded={menuRolesAbierto}
+                aria-label="Filtrar por roles"
+                className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
+                  rolesFiltro.length > 0
+                    ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200'
+                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600'
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="truncate">{textoBotonRoles}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {rolesFiltro.length > 0 && (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
+                      {rolesFiltro.length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                      menuRolesAbierto ? 'rotate-180 text-indigo-600' : ''
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Menú Flotante con Checkboxes para Roles */}
+              {menuRolesAbierto && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setMenuRolesAbierto(false)}
+                  />
+                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                        Roles ({roles.length})
+                      </span>
+                      <div className="flex items-center gap-2 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setRolesFiltro(roles.map((r) => r.id))}
+                          className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                        >
+                          Marcar todos
+                        </button>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setRolesFiltro([])}
+                          className="text-slate-500 hover:underline cursor-pointer"
+                        >
+                          Desmarcar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Opción Todos los roles */}
+                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition">
+                      <input
+                        type="checkbox"
+                        checked={rolesFiltro.length === 0}
+                        onChange={() => setRolesFiltro([])}
+                        className="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Todos los roles
+                      </span>
+                    </label>
+
+                    {/* Lista con Checkboxes */}
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-slate-100 dark:divide-slate-800/60 pr-1">
+                      {roles.map((r) => {
+                        const estaMarcado = rolesFiltro.includes(r.id);
+                        const cant = conteoPorRol.get(r.id) || 0;
+                        return (
+                          <label
+                            key={r.id}
+                            className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={estaMarcado}
+                                onChange={() => toggleRol(r.id)}
+                                className="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0"
+                              />
+                              <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                                {r.nombre}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                              {cant}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setMenuRolesAbierto(false)}
+                      className="w-full min-h-[36px] py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer"
+                    >
+                      Listo
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Botón rápido para restablecer Filtros si están activos */}
+            {(seccionesFiltro.length > 0 || rolesFiltro.length > 0) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSeccionesFiltro([]);
+                  setRolesFiltro([]);
+                }}
+                className="min-h-[44px] px-3.5 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-100/70 dark:bg-slate-800/50 hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Restablecer sección y rol</span>
+              </button>
+            )}
           </div>
 
-          {/* Selector de Rol */}
-          <div className="relative">
-            <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <select
-              value={rolFiltro}
-              onChange={(e) =>
-                setRolFiltro(e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value))
-              }
-              aria-label="Filtrar por rol"
-              className="w-full min-h-[44px] pl-10 pr-8 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-500 transition appearance-none cursor-pointer shadow-2xs"
-            >
-              <option value="TODOS">Todos los roles ({roles.length})</option>
-              {roles.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.nombre}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {/* Botón rápido para restablecer Filtros de Sección y Rol si están activos */}
-          {(seccionFiltro !== 'TODAS' || rolFiltro !== 'TODOS') && (
-            <button
-              type="button"
-              onClick={() => {
-                setSeccionFiltro('TODAS');
-                setRolFiltro('TODOS');
-              }}
-              className="min-h-[44px] px-3.5 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-100/70 dark:bg-slate-800/50 hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restablecer filtros</span>
-            </button>
+          {/* Etiquetas / Pills de Filtros Activos para remoción en 1 tap */}
+          {(seccionesFiltro.length > 0 || rolesFiltro.length > 0) && (
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">
+                Activos:
+              </span>
+              {seccionesFiltro.map((id) => {
+                const u = unidades.find((item) => item.id === id);
+                if (!u) return null;
+                return (
+                  <span
+                    key={`sec-tag-${id}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800"
+                  >
+                    <GitBranch className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{u.nombre}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSeccionesFiltro((prev) => prev.filter((x) => x !== id))}
+                      className="hover:bg-emerald-200 dark:hover:bg-emerald-900 p-0.5 rounded cursor-pointer"
+                      aria-label={`Quitar filtro ${u.nombre}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                );
+              })}
+              {rolesFiltro.map((id) => {
+                const r = roles.find((item) => item.id === id);
+                if (!r) return null;
+                return (
+                  <span
+                    key={`rol-tag-${id}`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800"
+                  >
+                    <Shield className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                    <span>{r.nombre}</span>
+                    <button
+                      type="button"
+                      onClick={() => setRolesFiltro((prev) => prev.filter((x) => x !== id))}
+                      className="hover:bg-indigo-200 dark:hover:bg-indigo-900 p-0.5 rounded cursor-pointer"
+                      aria-label={`Quitar filtro ${r.nombre}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                );
+              })}
+              <button
+                type="button"
+                onClick={() => {
+                  setSeccionesFiltro([]);
+                  setRolesFiltro([]);
+                }}
+                className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline px-1.5 py-0.5 cursor-pointer ml-0.5"
+              >
+                Limpiar
+              </button>
+            </div>
           )}
         </div>
 
@@ -813,15 +1133,15 @@ export const UnidadPage: React.FC = () => {
             </p>
             {(busqueda ||
               chipActivo !== 'TODOS' ||
-              seccionFiltro !== 'TODAS' ||
-              rolFiltro !== 'TODOS' ||
+              seccionesFiltro.length > 0 ||
+              rolesFiltro.length > 0 ||
               camadaFiltro !== null) && (
               <button
                 onClick={() => {
                   setBusqueda('');
                   setChipActivo('TODOS');
-                  setSeccionFiltro('TODAS');
-                  setRolFiltro('TODOS');
+                  setSeccionesFiltro([]);
+                  setRolesFiltro([]);
                   setCamadaFiltro(null);
                 }}
                 className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs cursor-pointer"
