@@ -149,10 +149,10 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
         <div>
           <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-500" />
-            <span>Sugerencias de Pases de Rama por Camada (Corte al 30/06 inclusive)</span>
+            <span>Sugerencias de Pases de Rama por Camada</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Se agrupan en la misma camada quienes cumplen la edad de pase hasta el 30 de junio inclusive del ciclo actual.
+            Se agrupan en la misma camada quienes cumplen la edad reglamentaria de pase en este ciclo.
           </p>
         </div>
 
@@ -166,7 +166,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center space-y-2">
           <Users className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto" />
           <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-            Todas las camadas se encuentran en la rama correspondiente a su edad escolar (corte 30/06).
+            Todas las camadas se encuentran en la rama correspondiente a su edad escolar.
           </p>
         </div>
       ) : (
@@ -196,8 +196,8 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                      Nacidos entre el 01/07/{g.camada - 1} y el 30/06/{g.camada} • Cumplen{' '}
-                      <strong>{g.edadAlCorte} años</strong> al 30/06 •{' '}
+                      Nacidos entre 07/{g.camada - 1} y 06/{g.camada} • Cumplen{' '}
+                      <strong>{g.edadAlCorte} años</strong> •{' '}
                       <strong>
                         {g.miembros.length} {g.miembros.length === 1 ? 'integrante' : 'integrantes'}
                       </strong>
@@ -277,7 +277,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                             </span>
                             <span>•</span>
                             <span className="text-amber-700 dark:text-amber-400 font-semibold">
-                              Al 30/06: {c.edad} años
+                              Edad de pase: {c.edad} años
                             </span>
                           </div>
                         </div>

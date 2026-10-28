@@ -38,6 +38,7 @@ import {
   ArrowRightLeft,
   GitBranch,
   Shield,
+  Calendar,
   ChevronDown,
   RotateCcw,
 } from 'lucide-react';
@@ -89,10 +90,11 @@ export const UnidadPage: React.FC = () => {
   const [busqueda, setBusqueda] = useState('');
   const [seccionesFiltro, setSeccionesFiltro] = useState<number[]>([]);
   const [rolesFiltro, setRolesFiltro] = useState<number[]>([]);
+  const [camadasFiltro, setCamadasFiltro] = useState<number[]>([]);
   const [menuSeccionesAbierto, setMenuSeccionesAbierto] = useState(false);
   const [menuRolesAbierto, setMenuRolesAbierto] = useState(false);
+  const [menuCamadasAbierto, setMenuCamadasAbierto] = useState(false);
   const [chipActivo, setChipActivo] = useState<ChipFiltro>('TODOS');
-  const [camadaFiltro, setCamadaFiltro] = useState<number | null>(null);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
 
@@ -231,6 +233,12 @@ export const UnidadPage: React.FC = () => {
     );
   };
 
+  const toggleCamada = (anio: number) => {
+    setCamadasFiltro((prev) =>
+      prev.includes(anio) ? prev.filter((x) => x !== anio) : [...prev, anio],
+    );
+  };
+
   const textoBotonSecciones = useMemo(() => {
     if (seccionesFiltro.length === 0) return 'Todas las secciones';
     if (seccionesFiltro.length === 1) {
@@ -248,6 +256,14 @@ export const UnidadPage: React.FC = () => {
     }
     return `${rolesFiltro.length} roles seleccionados`;
   }, [rolesFiltro, roles]);
+
+  const textoBotonCamadas = useMemo(() => {
+    if (camadasFiltro.length === 0) return 'Todas las camadas';
+    if (camadasFiltro.length === 1) {
+      return `Camada ${camadasFiltro[0]}`;
+    }
+    return `${camadasFiltro.length} camadas seleccionadas`;
+  }, [camadasFiltro]);
 
   // Filtrado y Ordenamiento reactivo
   const miembrosFiltrados = useMemo(() => {
@@ -297,7 +313,10 @@ export const UnidadPage: React.FC = () => {
       }
 
       const camadaMiembro = calcularCamada(m.fechaNacimiento);
-      if (camadaFiltro !== null && (esEdu || camadaMiembro !== camadaFiltro)) {
+      if (
+        camadasFiltro.length > 0 &&
+        (esEdu || camadaMiembro === null || !camadasFiltro.includes(camadaMiembro))
+      ) {
         return false;
       }
 
@@ -365,7 +384,7 @@ export const UnidadPage: React.FC = () => {
     seccionesFiltro,
     rolesFiltro,
     chipActivo,
-    camadaFiltro,
+    camadasFiltro,
     busqueda,
     entregasPorUsuario,
     candidatosIds,
@@ -606,6 +625,7 @@ export const UnidadPage: React.FC = () => {
                 onClick={() => {
                   setMenuSeccionesAbierto(!menuSeccionesAbierto);
                   setMenuRolesAbierto(false);
+                  setMenuCamadasAbierto(false);
                 }}
                 aria-expanded={menuSeccionesAbierto}
                 aria-label="Filtrar por secciones operativas"
@@ -725,6 +745,7 @@ export const UnidadPage: React.FC = () => {
                 onClick={() => {
                   setMenuRolesAbierto(!menuRolesAbierto);
                   setMenuSeccionesAbierto(false);
+                  setMenuCamadasAbierto(false);
                 }}
                 aria-expanded={menuRolesAbierto}
                 aria-label="Filtrar por roles"
@@ -837,24 +858,134 @@ export const UnidadPage: React.FC = () => {
               )}
             </div>
 
-            {/* Botón rápido para restablecer Filtros si están activos */}
-            {(seccionesFiltro.length > 0 || rolesFiltro.length > 0) && (
+            {/* Selector de Camada con Checkboxes */}
+            <div className="relative">
               <button
                 type="button"
                 onClick={() => {
-                  setSeccionesFiltro([]);
-                  setRolesFiltro([]);
+                  setMenuCamadasAbierto(!menuCamadasAbierto);
+                  setMenuSeccionesAbierto(false);
+                  setMenuRolesAbierto(false);
                 }}
-                className="min-h-[44px] px-3.5 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-100/70 dark:bg-slate-800/50 hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                aria-expanded={menuCamadasAbierto}
+                aria-label="Filtrar por camadas"
+                className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
+                  camadasFiltro.length > 0
+                    ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600'
+                }`}
               >
-                <RotateCcw className="w-3.5 h-3.5" />
-                <span>Restablecer sección y rol</span>
+                <div className="flex items-center gap-2 truncate">
+                  <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span className="truncate">{textoBotonCamadas}</span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {camadasFiltro.length > 0 && (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-amber-600 text-white text-[10px] font-bold flex items-center justify-center">
+                      {camadasFiltro.length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                      menuCamadasAbierto ? 'rotate-180 text-amber-600' : ''
+                    }`}
+                  />
+                </div>
               </button>
-            )}
+
+              {/* Menú Flotante con Checkboxes para Camadas */}
+              {menuCamadasAbierto && (
+                <>
+                  <div
+                    className="fixed inset-0 z-20"
+                    onClick={() => setMenuCamadasAbierto(false)}
+                  />
+                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95">
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
+                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                        Camadas ({camadasDisponibles.length})
+                      </span>
+                      <div className="flex items-center gap-2 text-[11px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => setCamadasFiltro(camadasDisponibles.map((c) => c.anio))}
+                          className="text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                        >
+                          Marcar todas
+                        </button>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <button
+                          type="button"
+                          onClick={() => setCamadasFiltro([])}
+                          className="text-slate-500 hover:underline cursor-pointer"
+                        >
+                          Desmarcar
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Opción Todas las camadas */}
+                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition">
+                      <input
+                        type="checkbox"
+                        checked={camadasFiltro.length === 0}
+                        onChange={() => setCamadasFiltro([])}
+                        className="w-4 h-4 rounded accent-amber-600 cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        Todas las camadas
+                      </span>
+                    </label>
+
+                    {/* Lista con Checkboxes */}
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-slate-100 dark:divide-slate-800/60 pr-1">
+                      {camadasDisponibles.length === 0 ? (
+                        <p className="text-xs text-slate-400 py-3 text-center">
+                          No hay camadas para los filtros seleccionados
+                        </p>
+                      ) : (
+                        camadasDisponibles.map((c) => {
+                          const estaMarcada = camadasFiltro.includes(c.anio);
+                          return (
+                            <label
+                              key={c.anio}
+                              className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={estaMarcada}
+                                  onChange={() => toggleCamada(c.anio)}
+                                  className="w-4 h-4 rounded accent-amber-600 cursor-pointer shrink-0"
+                                />
+                                <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                                  Camada {c.anio}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                                {c.total}
+                              </span>
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setMenuCamadasAbierto(false)}
+                      className="w-full min-h-[36px] py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition cursor-pointer"
+                    >
+                      Listo
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Etiquetas / Pills de Filtros Activos para remoción en 1 tap */}
-          {(seccionesFiltro.length > 0 || rolesFiltro.length > 0) && (
+          {(seccionesFiltro.length > 0 || rolesFiltro.length > 0 || camadasFiltro.length > 0) && (
             <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
               <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">
                 Activos:
@@ -901,11 +1032,29 @@ export const UnidadPage: React.FC = () => {
                   </span>
                 );
               })}
+              {camadasFiltro.map((anio) => (
+                <span
+                  key={`camada-tag-${anio}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800"
+                >
+                  <Calendar className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <span>Camada {anio}</span>
+                  <button
+                    type="button"
+                    onClick={() => setCamadasFiltro((prev) => prev.filter((x) => x !== anio))}
+                    className="hover:bg-amber-200 dark:hover:bg-amber-900 p-0.5 rounded cursor-pointer"
+                    aria-label={`Quitar filtro Camada ${anio}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
               <button
                 type="button"
                 onClick={() => {
                   setSeccionesFiltro([]);
                   setRolesFiltro([]);
+                  setCamadasFiltro([]);
                 }}
                 className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline px-1.5 py-0.5 cursor-pointer ml-0.5"
               >
@@ -985,39 +1134,6 @@ export const UnidadPage: React.FC = () => {
           )}
         </div>
 
-        {/* Filtro Rápido por Camada (Corte 30/06) */}
-        {camadasDisponibles.length > 0 && chipActivo !== 'BAJAS' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
-            <span className="text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1 shrink-0">
-              Camadas (30/06):
-            </span>
-            <button
-              type="button"
-              onClick={() => setCamadaFiltro(null)}
-              className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border shrink-0 ${
-                camadaFiltro === null
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
-              }`}
-            >
-              Todas
-            </button>
-            {camadasDisponibles.map((cam) => (
-              <button
-                key={cam.anio}
-                type="button"
-                onClick={() => setCamadaFiltro(camadaFiltro === cam.anio ? null : cam.anio)}
-                className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer border shrink-0 ${
-                  camadaFiltro === cam.anio
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
-                    : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-emerald-300'
-                }`}
-              >
-                Camada {cam.anio} ({cam.total})
-              </button>
-            ))}
-          </div>
-        )}
 
         {/* Panel de Pase en Lote por Camada cuando se activa el filtro PASE_SUGERIDO */}
         {puedeVerPases && chipActivo === 'PASE_SUGERIDO' && gruposCamadaPase.length > 0 && (
@@ -1026,7 +1142,7 @@ export const UnidadPage: React.FC = () => {
               <div>
                 <h2 className="text-sm font-extrabold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  <span>Sugerencias de Pase por Camada (Corte al 30 de Junio inclusive)</span>
+                  <span>Sugerencias de Pase por Camada</span>
                 </h2>
                 <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
                   Podés pasar a toda una camada junta eligiendo la sección de destino, o revisar miembro por miembro abajo.
@@ -1055,7 +1171,7 @@ export const UnidadPage: React.FC = () => {
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                          {g.miembros.length} {g.miembros.length === 1 ? 'integrante' : 'integrantes'} • Cumplen {g.edadAlCorte} años hasta el 30/06
+                          {g.miembros.length} {g.miembros.length === 1 ? 'integrante' : 'integrantes'} • Cumplen {g.edadAlCorte} años
                         </p>
                       </div>
                     </div>
@@ -1135,14 +1251,14 @@ export const UnidadPage: React.FC = () => {
               chipActivo !== 'TODOS' ||
               seccionesFiltro.length > 0 ||
               rolesFiltro.length > 0 ||
-              camadaFiltro !== null) && (
+              camadasFiltro.length > 0) && (
               <button
                 onClick={() => {
                   setBusqueda('');
                   setChipActivo('TODOS');
                   setSeccionesFiltro([]);
                   setRolesFiltro([]);
-                  setCamadaFiltro(null);
+                  setCamadasFiltro([]);
                 }}
                 className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs cursor-pointer"
               >
