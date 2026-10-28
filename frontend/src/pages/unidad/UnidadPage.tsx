@@ -7,7 +7,7 @@ import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
 import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
 import { MiembroCard } from '../../components/MiembroCard';
 import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
-import { obtenerConfigRama, obtenerOrdenRama, RAMA_COLORS } from '../../lib/ramaColors';
+import { obtenerConfigRama } from '../../lib/ramaColors';
 import {
   ESTADO_FICHA_CONFIG,
   calcularCamada,
@@ -36,19 +36,18 @@ import {
   FileCheck2,
   Loader2,
   ArrowRightLeft,
+  GitBranch,
+  Shield,
+  ChevronDown,
+  RotateCcw,
 } from 'lucide-react';
 
-type CampoOrden = 'miembro' | 'edad' | 'rama' | 'ficha';
+type CampoOrden = 'miembro' | 'edad' | 'seccion' | 'ficha';
 type DireccionOrden = 'asc' | 'desc';
 type ChipFiltro =
   | 'TODOS'
-  | 'lobatos'
-  | 'scout'
-  | 'caminantes'
-  | 'rover'
-  | 'EDUCADORES'
-  | 'CON_DEUDA'
   | 'FALTA_FICHA'
+  | 'CON_DEUDA'
   | 'PASE_SUGERIDO'
   | 'BAJAS';
 
@@ -86,15 +85,17 @@ export const UnidadPage: React.FC = () => {
     'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'
   >('datos');
 
-  // Filtros rápidos (1-Tap)
+  // Filtros rápidos (1-Tap) y selectores
   const [busqueda, setBusqueda] = useState('');
+  const [seccionFiltro, setSeccionFiltro] = useState<number | 'TODAS'>('TODAS');
+  const [rolFiltro, setRolFiltro] = useState<number | 'TODOS'>('TODOS');
   const [chipActivo, setChipActivo] = useState<ChipFiltro>('TODOS');
   const [camadaFiltro, setCamadaFiltro] = useState<number | null>(null);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
 
   // Ordenamiento
-  const [campoOrden, setCampoOrden] = useState<CampoOrden>('rama');
+  const [campoOrden, setCampoOrden] = useState<CampoOrden>('seccion');
   const [direccionOrden, setDireccionOrden] = useState<DireccionOrden>('asc');
 
   const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
@@ -201,19 +202,29 @@ export const UnidadPage: React.FC = () => {
 
       const asig = m.asignaciones?.[0];
       const esEdu = esRolDeEducador(asig?.rol);
-      const cfg = obtenerConfigRama(m, unidades);
       const entrega = entregasPorUsuario.get(m.id);
 
-      if (chipActivo === 'EDUCADORES' && !esEdu) return false;
-      if (
-        (chipActivo === 'lobatos' ||
-          chipActivo === 'scout' ||
-          chipActivo === 'caminantes' ||
-          chipActivo === 'rover') &&
-        cfg.key !== chipActivo
-      ) {
-        return false;
+      // Filtro por Sección (Unidad Operativa)
+      if (seccionFiltro !== 'TODAS') {
+        const enSeccion = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (a.unidadId === seccionFiltro || a.unidad?.id === seccionFiltro),
+        );
+        if (!enSeccion) return false;
       }
+
+      // Filtro por Rol
+      if (rolFiltro !== 'TODOS') {
+        const conRol = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (a.rolId === rolFiltro || a.rol?.id === rolFiltro),
+        );
+        if (!conRol) return false;
+      }
+
+      // Filtros rápidos de estado operativo
       if (chipActivo === 'FALTA_FICHA' && entrega?.estado === 'VALIDADO_FISICAMENTE') {
         return false;
       }
@@ -230,7 +241,6 @@ export const UnidadPage: React.FC = () => {
       }
 
       if (q) {
-        const asig = m.asignaciones?.[0];
         const cfg = obtenerConfigRama(m, unidades);
         const coincide =
           normalizarTextoBusqueda(m.nombre).includes(q) ||
@@ -240,8 +250,12 @@ export const UnidadPage: React.FC = () => {
           normalizarTextoBusqueda(m.dni).includes(q) ||
           normalizarTextoBusqueda(m.telefonoContacto).includes(q) ||
           normalizarTextoBusqueda(m.grupoFamiliar?.nombreFamilia).includes(q) ||
-          normalizarTextoBusqueda(asig?.unidad?.nombre).includes(q) ||
           normalizarTextoBusqueda(cfg.nombre).includes(q) ||
+          m.asignaciones?.some(
+            (a: any) =>
+              normalizarTextoBusqueda(a.unidad?.nombre).includes(q) ||
+              normalizarTextoBusqueda(a.rol?.nombre || (typeof a.rol === 'string' ? a.rol : '')).includes(q),
+          ) ||
           (camadaMiembro !== null && normalizarTextoBusqueda(`camada ${camadaMiembro}`).includes(q));
         if (!coincide) return false;
       }
@@ -258,15 +272,14 @@ export const UnidadPage: React.FC = () => {
             .localeCompare(`${b.apellido} ${b.nombre}`.toLowerCase(), 'es');
           break;
         }
-        case 'rama': {
-          const ordenA = obtenerOrdenRama(a, unidades, ramas);
-          const ordenB = obtenerOrdenRama(b, unidades, ramas);
+        case 'seccion': {
+          const seccionA = a.asignaciones?.[0]?.unidad?.nombre || '';
+          const seccionB = b.asignaciones?.[0]?.unidad?.nombre || '';
           comp =
-            ordenA !== ordenB
-              ? ordenA - ordenB
-              : `${a.apellido} ${a.nombre}`
-                  .toLowerCase()
-                  .localeCompare(`${b.apellido} ${b.nombre}`.toLowerCase(), 'es');
+            seccionA.localeCompare(seccionB, 'es') ||
+            `${a.apellido} ${a.nombre}`
+              .toLowerCase()
+              .localeCompare(`${b.apellido} ${b.nombre}`.toLowerCase(), 'es');
           break;
         }
         case 'edad': {
@@ -288,6 +301,8 @@ export const UnidadPage: React.FC = () => {
     });
   }, [
     miembros,
+    seccionFiltro,
+    rolFiltro,
     chipActivo,
     camadaFiltro,
     busqueda,
@@ -296,10 +311,9 @@ export const UnidadPage: React.FC = () => {
     campoOrden,
     direccionOrden,
     unidades,
-    ramas,
   ]);
 
-  // Camadas disponibles de protagonistas según el chip de rama actual
+  // Camadas disponibles de protagonistas según sección y rol actuales
   const camadasDisponibles = useMemo(() => {
     const mapa = new Map<number, number>();
     for (const m of miembros) {
@@ -307,15 +321,21 @@ export const UnidadPage: React.FC = () => {
       const asig = m.asignaciones?.[0];
       const esEdu = esRolDeEducador(asig?.rol);
       if (esEdu) continue;
-      const cfg = obtenerConfigRama(m, unidades);
-      if (
-        (chipActivo === 'lobatos' ||
-          chipActivo === 'scout' ||
-          chipActivo === 'caminantes' ||
-          chipActivo === 'rover') &&
-        cfg.key !== chipActivo
-      ) {
-        continue;
+      if (seccionFiltro !== 'TODAS') {
+        const enSeccion = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (a.unidadId === seccionFiltro || a.unidad?.id === seccionFiltro),
+        );
+        if (!enSeccion) continue;
+      }
+      if (rolFiltro !== 'TODOS') {
+        const conRol = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (a.rolId === rolFiltro || a.rol?.id === rolFiltro),
+        );
+        if (!conRol) continue;
       }
       if (chipActivo === 'PASE_SUGERIDO' && !candidatosIds.has(m.id)) continue;
       const cam = calcularCamada(m.fechaNacimiento);
@@ -326,7 +346,7 @@ export const UnidadPage: React.FC = () => {
     return Array.from(mapa.entries())
       .sort((a, b) => a[0] - b[0])
       .map(([anio, total]) => ({ anio, total }));
-  }, [miembros, unidades, chipActivo, candidatosIds]);
+  }, [miembros, seccionFiltro, rolFiltro, chipActivo, candidatosIds]);
 
   // Agrupación de candidatos a pase por Camada y Rama actual
   const gruposCamadaPase = useMemo(() => {
@@ -413,20 +433,13 @@ export const UnidadPage: React.FC = () => {
     const activos = miembros.filter((m) => m.activo);
     return {
       todos: activos.length,
-      lobatos: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'lobatos').length,
-      scout: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'scout').length,
-      caminantes: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'caminantes').length,
-      rover: activos.filter((m) => obtenerConfigRama(m, unidades).key === 'rover').length,
-      educadores: activos.filter((m) =>
-        m.asignaciones?.some((a: any) => esRolDeEducador(a.rol)),
-      ).length,
       faltaFicha: activos.filter(
         (m) => entregasPorUsuario.get(m.id)?.estado !== 'VALIDADO_FISICAMENTE',
       ).length,
       conDeuda: activos.filter((m) => calcularDeudaMiembro(m) > 0).length,
       bajas: miembros.filter((m) => !m.activo).length,
     };
-  }, [miembros, unidades, entregasPorUsuario]);
+  }, [miembros, entregasPorUsuario]);
 
   const abrirMiembro = (
     id: number,
@@ -505,7 +518,7 @@ export const UnidadPage: React.FC = () => {
           <input
             type="text"
             inputMode="search"
-            placeholder="Buscar por nombre, apellido, DNI, familia o rama..."
+            placeholder="Buscar por nombre, apellido, DNI, familia, sección o rol..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             className="w-full min-h-[44px] pl-10 pr-10 py-2 rounded-2xl border border-slate-300 dark:border-slate-700 text-sm focus:border-emerald-500 outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs [&::-webkit-search-cancel-button]:hidden"
@@ -522,7 +535,67 @@ export const UnidadPage: React.FC = () => {
           )}
         </div>
 
-        {/* Barra de Chips Táctiles (1-Tap Filters) con Scroll Horizontal en Móvil */}
+        {/* Filtros Primarios: Sección (Unidad Operativa) y Rol */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {/* Selector de Sección */}
+          <div className="relative">
+            <GitBranch className="w-4 h-4 text-emerald-600 dark:text-emerald-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={seccionFiltro}
+              onChange={(e) =>
+                setSeccionFiltro(e.target.value === 'TODAS' ? 'TODAS' : Number(e.target.value))
+              }
+              aria-label="Filtrar por sección operativa"
+              className="w-full min-h-[44px] pl-10 pr-8 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-500 transition appearance-none cursor-pointer shadow-2xs"
+            >
+              <option value="TODAS">Todas las secciones ({unidades.length})</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nombre}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Selector de Rol */}
+          <div className="relative">
+            <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={rolFiltro}
+              onChange={(e) =>
+                setRolFiltro(e.target.value === 'TODOS' ? 'TODOS' : Number(e.target.value))
+              }
+              aria-label="Filtrar por rol"
+              className="w-full min-h-[44px] pl-10 pr-8 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:border-emerald-500 transition appearance-none cursor-pointer shadow-2xs"
+            >
+              <option value="TODOS">Todos los roles ({roles.length})</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Botón rápido para restablecer Filtros de Sección y Rol si están activos */}
+          {(seccionFiltro !== 'TODAS' || rolFiltro !== 'TODOS') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSeccionFiltro('TODAS');
+                setRolFiltro('TODOS');
+              }}
+              className="min-h-[44px] px-3.5 py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600 bg-slate-100/70 dark:bg-slate-800/50 hover:bg-slate-200/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Restablecer filtros</span>
+            </button>
+          )}
+        </div>
+
+        {/* Barra de Chips Táctiles de Estado Operativo */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap">
           <button
             onClick={() => setChipActivo('TODOS')}
@@ -533,66 +606,6 @@ export const UnidadPage: React.FC = () => {
             }`}
           >
             Todos ({conteos.todos})
-          </button>
-
-          <button
-            onClick={() => setChipActivo(chipActivo === 'lobatos' ? 'TODOS' : 'lobatos')}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
-              chipActivo === 'lobatos'
-                ? 'ring-2 ring-amber-500 ' + RAMA_COLORS.lobatos.badgeClases
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
-            }`}
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span>Lobatos ({conteos.lobatos})</span>
-          </button>
-
-          <button
-            onClick={() => setChipActivo(chipActivo === 'scout' ? 'TODOS' : 'scout')}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
-              chipActivo === 'scout'
-                ? 'ring-2 ring-emerald-500 ' + RAMA_COLORS.scout.badgeClases
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
-            }`}
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span>Scout ({conteos.scout})</span>
-          </button>
-
-          <button
-            onClick={() => setChipActivo(chipActivo === 'caminantes' ? 'TODOS' : 'caminantes')}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
-              chipActivo === 'caminantes'
-                ? 'ring-2 ring-sky-500 ' + RAMA_COLORS.caminantes.badgeClases
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
-            }`}
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-sky-500" />
-            <span>Caminantes ({conteos.caminantes})</span>
-          </button>
-
-          <button
-            onClick={() => setChipActivo(chipActivo === 'rover' ? 'TODOS' : 'rover')}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
-              chipActivo === 'rover'
-                ? 'ring-2 ring-red-500 ' + RAMA_COLORS.rover.badgeClases
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
-            }`}
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-            <span>Rover ({conteos.rover})</span>
-          </button>
-
-          <button
-            onClick={() => setChipActivo(chipActivo === 'EDUCADORES' ? 'TODOS' : 'EDUCADORES')}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
-              chipActivo === 'EDUCADORES'
-                ? 'ring-2 ring-indigo-500 ' + RAMA_COLORS.adultos.badgeClases
-                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800'
-            }`}
-          >
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-            <span>Educadores ({conteos.educadores})</span>
           </button>
 
           <button
@@ -653,7 +666,7 @@ export const UnidadPage: React.FC = () => {
         </div>
 
         {/* Filtro Rápido por Camada (Corte 30/06) */}
-        {camadasDisponibles.length > 0 && chipActivo !== 'EDUCADORES' && chipActivo !== 'BAJAS' && (
+        {camadasDisponibles.length > 0 && chipActivo !== 'BAJAS' && (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
             <span className="text-[11px] font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1 shrink-0">
               Camadas (30/06):
@@ -798,11 +811,18 @@ export const UnidadPage: React.FC = () => {
             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
               No encontramos personas con este filtro
             </p>
-            {(busqueda || chipActivo !== 'TODOS') && (
+            {(busqueda ||
+              chipActivo !== 'TODOS' ||
+              seccionFiltro !== 'TODAS' ||
+              rolFiltro !== 'TODOS' ||
+              camadaFiltro !== null) && (
               <button
                 onClick={() => {
                   setBusqueda('');
                   setChipActivo('TODOS');
+                  setSeccionFiltro('TODAS');
+                  setRolFiltro('TODOS');
+                  setCamadaFiltro(null);
                 }}
                 className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs cursor-pointer"
               >
@@ -847,12 +867,12 @@ export const UnidadPage: React.FC = () => {
                       </div>
                     </th>
                     <th
-                      onClick={() => handleOrdenar('rama')}
+                      onClick={() => handleOrdenar('seccion')}
                       className="py-3.5 px-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
                     >
                       <div className="flex items-center">
-                        <span>Rama / Sección</span>
-                        {renderIconoOrden('rama')}
+                        <span>Sección y Rol</span>
+                        {renderIconoOrden('seccion')}
                       </div>
                     </th>
                     <th
@@ -932,7 +952,7 @@ export const UnidadPage: React.FC = () => {
                           </div>
                         </td>
 
-                        {/* Rama / Sección */}
+                        {/* Sección y Rol */}
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span
@@ -941,8 +961,8 @@ export const UnidadPage: React.FC = () => {
                               <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotColor}`} />
                               {asig?.unidad?.nombre || cfg.nombre}
                             </span>
-                            {asig?.rol?.nombre && asig.rol.nombre !== 'Protagonista' && (
-                              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                            {asig?.rol?.nombre && (
+                              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
                                 {asig.rol.nombre}
                               </span>
                             )}
