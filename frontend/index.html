@@ -4,21 +4,140 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/pwa-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#047857" />
+    <meta name="description" content="Plataforma de gestión operativa, padrón y legajos del Grupo Scout Juan XXIII." />
+    <meta name="theme-color" content="#121316" />
     <title>Grupo Scout Juan XXIII - Sistema de Gestión</title>
     <script>
       (function() {
         try {
-          var saved = localStorage.getItem('scout-theme');
+          // 1. Resuelve modo oscuro / claro de inmediato
+          var savedTheme = localStorage.getItem('scout-theme');
           var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-          if (saved === 'dark' || (!saved || saved === 'system') && systemDark) {
-            document.documentElement.classList.add('dark');
-            document.documentElement.style.colorScheme = 'dark';
+          var isDark = savedTheme === 'dark' || ((!savedTheme || savedTheme === 'system') && systemDark);
+          var root = document.documentElement;
+
+          if (isDark) {
+            root.classList.add('dark');
+            root.style.colorScheme = 'dark';
           } else {
-            document.documentElement.classList.remove('dark');
-            document.documentElement.style.colorScheme = 'light';
+            root.classList.remove('dark');
+            root.style.colorScheme = 'light';
           }
-        } catch (e) {}
+
+          // 2. Diccionario de Presets para resolución instantánea
+          var PRESETS = {
+            scout: {
+              light: { brand: '#f59e0b', contrast: '#090a0f', paper: '#fbfbf9', paper2: '#f4f4f0', paper3: '#eaeae5', surface: '#ffffff', nav: '#ffffff', ink: '#18181b', muted: '#71717a', rule: '#e4e4e7' },
+              dark:  { brand: '#fbbf24', contrast: '#09090b', paper: '#111215', paper2: '#18191e', paper3: '#22242b', surface: '#18191e', nav: '#18191e', ink: '#f4f4f5', muted: '#a1a1aa', rule: '#27272a' }
+            },
+            nautical: {
+              light: { brand: '#0369a1', contrast: '#ffffff', paper: '#f8fafc', paper2: '#f1f5f9', paper3: '#e2e8f0', surface: '#ffffff', nav: '#ffffff', ink: '#0f172a', muted: '#64748b', rule: '#cbd5e1' },
+              dark:  { brand: '#38bdf8', contrast: '#08101e', paper: '#0b1120', paper2: '#0f172a', paper3: '#1e293b', surface: '#131d33', nav: '#131d33', ink: '#f8fafc', muted: '#94a3b8', rule: '#1e293b' }
+            },
+            forest: {
+              light: { brand: '#15803d', contrast: '#ffffff', paper: '#faf7f2', paper2: '#f5f0e8', paper3: '#ece5d8', surface: '#ffffff', nav: '#ffffff', ink: '#1c1917', muted: '#78716c', rule: '#e7e5e4' },
+              dark:  { brand: '#4ade80', contrast: '#0c150e', paper: '#111612', paper2: '#161c17', paper3: '#202922', surface: '#19211b', nav: '#19211b', ink: '#f5f5f4', muted: '#a8a29e', rule: '#292524' }
+            },
+            contrast: {
+              light: { brand: '#000000', contrast: '#ffffff', paper: '#ffffff', paper2: '#f4f4f5', paper3: '#e4e4e7', surface: '#ffffff', nav: '#ffffff', ink: '#000000', muted: '#374151', rule: '#000000', fontScale: '110%', logoScale: '1.1' },
+              dark:  { brand: '#facc15', contrast: '#000000', paper: '#000000', paper2: '#18181b', paper3: '#27272a', surface: '#09090b', nav: '#09090b', ink: '#ffffff', muted: '#d1d5db', rule: '#ffffff', fontScale: '110%', logoScale: '1.1' }
+            }
+          };
+
+          function getContrastHex(hex) {
+            if (!hex) return '#ffffff';
+            var h = hex.replace('#', '');
+            if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+            if (h.length !== 6) return '#ffffff';
+            var r = parseInt(h.substr(0,2),16);
+            var g = parseInt(h.substr(2,2),16);
+            var b = parseInt(h.substr(4,2),16);
+            var yiq = (r * 299 + g * 587 + b * 114) / 1000;
+            return yiq >= 128 ? '#090a0f' : '#ffffff';
+          }
+
+          // 3. Aplica personalización guardada antes del primer render
+          var customRaw = localStorage.getItem('scout-theme-customization');
+          if (customRaw) {
+            var cfg = JSON.parse(customRaw);
+            if (cfg.preset && cfg.preset !== 'custom') {
+              delete cfg.brandColor;
+              delete cfg.paperColor;
+              delete cfg.surfaceColor;
+              delete cfg.navColor;
+              delete cfg.inkColor;
+            }
+
+            if (
+              cfg.preset === 'scout' &&
+              !cfg.brandColor &&
+              !cfg.paperColor &&
+              !cfg.surfaceColor &&
+              !cfg.navColor &&
+              !cfg.inkColor &&
+              (!cfg.fontScale || cfg.fontScale === '100%') &&
+              (!cfg.logoScale || Number(cfg.logoScale) === 1.0)
+            ) {
+              return;
+            }
+
+            var mode = isDark ? 'dark' : 'light';
+            var pData = cfg.preset && PRESETS[cfg.preset] ? PRESETS[cfg.preset][mode] : PRESETS.scout[mode];
+
+            var brand = cfg.brandColor || (pData && pData.brand);
+            var contrast = cfg.brandContrast || (pData && pData.contrast);
+            var paper = cfg.paperColor || (pData && pData.paper);
+            var surface = cfg.surfaceColor || (pData && pData.surface);
+            var nav = cfg.navColor || (pData && pData.nav) || surface;
+            var ink = cfg.inkColor || (pData && pData.ink);
+            var muted = cfg.inkMutedColor || (pData && pData.muted);
+            var rule = cfg.ruleColor || (pData && pData.rule);
+            var fontScale = cfg.fontScale || (pData && pData.fontScale);
+            var logoScale = cfg.logoScale || (pData && pData.logoScale);
+
+            var s = root.style;
+            if (brand) {
+              s.setProperty('--color-brand', brand);
+              s.setProperty('--color-accent', brand);
+              s.setProperty('--color-focus', brand);
+            }
+            if (contrast) {
+              s.setProperty('--color-brand-contrast', contrast);
+              s.setProperty('--color-accent-ink', contrast);
+            }
+            if (paper) {
+              s.setProperty('--color-paper', paper);
+              var p2 = (pData && pData.paper2) || (paper && ink ? 'color-mix(in srgb, ' + paper + ' 92%, ' + ink + ')' : null);
+              var p3 = (pData && pData.paper3) || (paper && ink ? 'color-mix(in srgb, ' + paper + ' 85%, ' + ink + ')' : null);
+              if (p2) s.setProperty('--color-paper-2', p2);
+              if (p3) s.setProperty('--color-paper-3', p3);
+            }
+            if (surface) s.setProperty('--color-surface', surface);
+            if (nav) {
+              s.setProperty('--color-navbar', nav);
+              var navContrast = cfg.navContrast || getContrastHex(nav);
+              var isDarkNav = navContrast === '#ffffff';
+              s.setProperty('--color-navbar-ink', isDarkNav ? '#ffffff' : (isDark ? '#f4f4f5' : '#18181b'));
+              s.setProperty('--color-navbar-muted', isDarkNav ? 'rgba(255, 255, 255, 0.72)' : (isDark ? '#a1a1aa' : '#71717a'));
+              s.setProperty('--color-navbar-rule', isDarkNav ? 'rgba(255, 255, 255, 0.15)' : (rule || (isDark ? '#27272a' : '#e4e4e7')));
+              s.setProperty('--color-navbar-hover', isDarkNav ? 'rgba(255, 255, 255, 0.12)' : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'));
+            }
+            if (ink) {
+              s.setProperty('--color-ink', ink);
+              s.setProperty('--color-ink-2', isDark ? '#d4d4d8' : '#3f3f46');
+            }
+            if (muted) {
+              s.setProperty('--color-ink-muted', muted);
+              s.setProperty('--color-muted', muted);
+            }
+            if (rule) s.setProperty('--color-rule', rule);
+            if (fontScale) s.setProperty('--font-scale', fontScale);
+            if (logoScale) s.setProperty('--brand-logo-scale', String(logoScale));
+            if (cfg.logoUrl) s.setProperty('--brand-logo-url', cfg.logoUrl);
+          }
+        } catch (e) {
+          // Captura silenciosa para prevenir interrupción si localStorage está bloqueado
+        }
       })();
     </script>
   </head>

@@ -181,26 +181,26 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+      <div className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-800/30">
+        <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+            <div className="p-2.5 rounded-2xl bg-brand/10 text-brand">
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
+              <h3 className="font-bold text-ink text-base">
                 {planAEditar ? 'Editar Cuadro de Cuota Mensual' : 'Nuevo Cuadro de Cuota Mensual'}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-ink-muted">
                 Configure la cuota progresiva y los casilleros de meses del año
               </p>
             </div>
           </div>
           <button
             onClick={onCerrar}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -217,7 +217,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           {/* Nombre y Ciclo */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Nombre del Cuadro / Plan *
               </label>
               <input
@@ -226,12 +226,12 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej. Cuota Social 2026, Cuota Rovers 2026..."
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Ciclo / Año *
               </label>
               <input
@@ -241,7 +241,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 max={2100}
                 value={cicloAnio}
                 onChange={(e) => setCicloAnio(Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>
           </div>
@@ -249,11 +249,11 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           {/* Monto Mensual y Día de Vencimiento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Monto Mensual por Miembro ($) *
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs font-bold text-slate-400 pointer-events-none">
+                <span className="absolute left-3.5 top-2 text-xs font-bold text-ink-muted pointer-events-none">
                   $
                 </span>
                 <input
@@ -264,17 +264,17 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                   value={montoMensual}
                   onChange={(e) => setMontoMensual(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="5000.00"
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-3.5 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2 text-xs font-bold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Día de Vencimiento de Cada Mes
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs font-bold text-slate-400 pointer-events-none">
+                <span className="absolute left-3.5 top-2 text-xs font-bold text-ink-muted pointer-events-none">
                   Día
                 </span>
                 <input
@@ -283,20 +283,20 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                   max={31}
                   value={diaVencimiento}
                   onChange={(e) => setDiaVencimiento(Number(e.target.value))}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-11 pr-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+                  className="w-full rounded-xl border border-rule bg-surface pl-11 pr-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
           </div>
 
           {/* CASILLEROS DE MESES DEL AÑO */}
-          <div className="space-y-3 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+          <div className="space-y-3 p-4 rounded-2xl border border-rule bg-paper-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rule pb-2.5">
               <div>
-                <label className="text-xs font-bold text-slate-800 dark:text-slate-100 block">
+                <label className="text-xs font-bold text-ink block">
                   Casilleros de Meses del Año ({mesesHabilitados.length} seleccionados)
                 </label>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                <p className="text-[11px] text-ink-muted">
                   Cada mes habilitado genera y acumula la deuda mensual para los destinatarios
                 </p>
               </div>
@@ -306,21 +306,21 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={seleccionarCicloEscolar}
-                  className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 font-semibold hover:bg-emerald-100 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-semibold hover:bg-brand/15 transition-colors cursor-pointer"
                 >
                   Mar-Dic
                 </button>
                 <button
                   type="button"
                   onClick={seleccionarTodosLosMeses}
-                  className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 font-semibold hover:bg-blue-100 transition cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-paper-3 text-ink-2 border border-rule font-semibold hover:bg-paper-3 transition-colors cursor-pointer"
                 >
                   Ene-Dic
                 </button>
                 <button
                   type="button"
                   onClick={desmarcarTodosLosMeses}
-                  className="px-2 py-1 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition cursor-pointer"
+                  className="px-2 py-1 rounded-lg text-ink-muted hover:bg-paper-3 transition cursor-pointer"
                 >
                   Ninguno
                 </button>
@@ -338,11 +338,11 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                     onClick={() => toggleMes(m.num)}
                     className={`py-2 px-1.5 rounded-xl text-center border transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                       activo
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs ring-2 ring-emerald-500/20'
-                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                        ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs ring-2 ring-brand/20'
+                        : 'bg-surface text-ink-muted border-rule hover:border-rule'
                     }`}
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wider">{m.nombre}</span>
+                    <span className="text-xs font-semibold">{m.nombre}</span>
                     <span className="text-[9px] opacity-80">Mes {m.num}</span>
                   </button>
                 );
@@ -362,27 +362,27 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           />
 
           {/* DESCUENTO FAMILIAR POR HERMANOS */}
-          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
+          <div className="p-4 rounded-2xl border border-rule bg-paper-2 space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={permiteDescuentoHermanos}
                 onChange={(e) => setPermiteDescuentoHermanos(e.target.checked)}
-                className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
+                className="w-4 h-4 rounded text-brand focus:ring-brand/20"
               />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span className="text-xs font-bold text-ink">
                 Permitir descuento por grupo familiar / hermanos
               </span>
             </label>
 
             {permiteDescuentoHermanos && (
               <div className="pl-6 space-y-2 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600 dark:text-slate-400">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-ink-muted">
                   <input
                     type="checkbox"
                     checked={usarPorcentajePersonalizado}
                     onChange={(e) => setUsarPorcentajePersonalizado(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500"
+                    className="w-3.5 h-3.5 rounded text-brand focus:ring-brand/20"
                   />
                   <span>Fijar porcentaje de descuento específico para este cuadro</span>
                 </label>
@@ -399,9 +399,9 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                           setPorcentajeDescuentoHermanos(e.target.value === '' ? '' : Number(e.target.value))
                         }
                         placeholder="Ej. 15"
-                        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100"
+                        className="w-full rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs font-semibold text-ink"
                       />
-                      <span className="absolute right-3 top-1.5 text-xs font-bold text-slate-400">%</span>
+                      <span className="absolute right-3 top-1.5 text-xs font-bold text-ink-muted">%</span>
                     </div>
                   </div>
                 )}
@@ -410,18 +410,18 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           </div>
 
           {/* Footer del Form */}
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-rule flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onCerrar}
-              className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-xs hover:bg-paper-2 transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{guardando ? 'Guardando...' : planAEditar ? 'Guardar Cambios' : 'Crear Cuadro de Cuota'}</span>

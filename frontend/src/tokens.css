@@ -1,0 +1,75 @@
+:root {
+  /* Layout, Spacing, and Elevation Tokens (Preserved) */
+  --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
+  --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
+  --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --color-error: oklch(52% 0.19 27); --color-success: oklch(50% 0.12 150);
+  --container: 1440px; --gutter: 32px; --gap-columns: 24px; --section-gap-s: 32px; --section-gap: 48px; --section-gap-l: 64px;
+  --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
+
+  /* Typography & Geometry */
+  --font-display: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-outlier: var(--font-body);
+  --radius-card: 12px;
+  --radius-pill: 9999px;
+  --rule-hair: 1px;
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  --tracking-display: -0.015em;
+
+  /* ==========================================================================
+     Scout Juan XXIII Semantic Tokens (Light Mode Default)
+     ========================================================================== */
+  --color-brand: #f59e0b;                     /* Official Scout Amber 500 */
+  --color-brand-contrast: #090a0f;            /* High-contrast dark charcoal on amber */
+  --color-paper: #fbfbf9;                     /* Base application canvas */
+  --color-paper-2: #f4f4f0;                   /* Secondary container background */
+  --color-paper-3: #eaeae5;                   /* Tertiary subtle background */
+  --color-surface: #fffdfa;                   /* Cards, modals, elevated surfaces */
+  --color-navbar: var(--color-surface);       /* Navigation bar background */
+  --color-navbar-ink: var(--color-ink);       /* Navigation text & icon color */
+  --color-navbar-muted: var(--color-ink-muted);/* Muted navigation text */
+  --color-navbar-rule: var(--color-rule);     /* Navigation border/divider */
+  --color-navbar-hover: var(--color-paper-2); /* Navigation item hover state */
+  --color-ink: #18181b;                       /* Primary reading text (zinc-900) */
+  --color-ink-2: #3f3f46;                     /* Secondary text (zinc-700) */
+  --color-ink-muted: #71717a;                 /* Muted text & placeholders (zinc-500) */
+  --color-muted: var(--color-ink-muted);       /* Hallmark alias */
+  --color-rule: #e4e4e7;                      /* Borders & dividers (zinc-200) */
+  --color-accent: var(--color-brand);         /* Primary accent alias */
+  --color-accent-ink: var(--color-brand-contrast); /* Contrast on accent */
+  --color-focus: var(--color-brand);          /* Accessible dynamic focus ring */
+
+  /* Theme Dynamic Customization Scales */
+  --brand-logo-scale: 1;                      /* Scale factor 0.8 to 1.4 */
+  --brand-logo-url: "/brand/Logo%20Juancho%20Icono.png"; /* Institutional emblem */
+  --font-scale: 100%;                         /* Root rem scale: 100%, 110%, 125% */
+}
+
+.dark {
+  /* ==========================================================================
+     Scout Juan XXIII Semantic Tokens (Dark Mode Default)
+     ========================================================================== */
+  --color-brand: #fbbf24;                     /* Amber 400 for dark mode readability */
+  --color-brand-contrast: #09090b;            /* High contrast dark ink on amber */
+  --color-paper: #111215;                     /* Deep dark canvas */
+  --color-paper-2: #18191e;                   /* Secondary dark container */
+  --color-paper-3: #22242b;                   /* Tertiary dark container */
+  --color-surface: #18191e;                   /* Elevated dark card surface */
+  --color-navbar: var(--color-surface);
+  --color-navbar-ink: var(--color-ink);
+  --color-navbar-muted: var(--color-ink-muted);
+  --color-navbar-rule: var(--color-rule);
+  --color-navbar-hover: var(--color-paper-3);
+  --color-ink: #f4f4f5;                       /* Zinc 100 primary reading text */
+  --color-ink-2: #d4d4d8;                     /* Zinc 300 secondary text */
+  --color-ink-muted: #a1a1aa;                 /* Zinc 400 muted text */
+  --color-muted: var(--color-ink-muted);       /* Hallmark alias */
+  --color-rule: #27272a;                      /* Zinc 800 dark border/divider */
+  --color-accent: var(--color-brand);         /* Primary accent alias */
+  --color-accent-ink: var(--color-brand-contrast);
+  --color-focus: var(--color-brand);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+}

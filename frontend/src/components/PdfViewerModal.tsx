@@ -101,13 +101,13 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
   }, [pdfDoc, pageNumber, zoom, containerWidth]);
 
   return (
-    <div className="relative bg-white shadow-md rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 mx-auto my-2">
-      <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+    <div className="relative bg-white shadow-md rounded-lg overflow-hidden border border-rule mx-auto my-2">
+      <div className="bg-paper-2 px-3 py-1 text-[10px] font-bold text-ink-muted flex items-center justify-between border-b border-rule">
         <span>Hoja {pageNumber}</span>
-        {renderizando && <span className="animate-pulse">Renderizando...</span>}
+        {renderizando && <span className="animate-pulse">Renderizando…</span>}
       </div>
       <div className="overflow-x-auto flex justify-center bg-white">
-        <canvas ref={canvasRef} className="block max-w-none" />
+        <canvas ref={canvasRef} aria-label={`Página ${pageNumber} del documento PDF`} className="block max-w-none" />
       </div>
     </div>
   );
@@ -198,19 +198,19 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   if (!url) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col p-1.5 sm:p-5 animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-4xl mx-auto flex flex-col flex-1 overflow-hidden border border-slate-200 dark:border-slate-800 shadow-2xl">
+    <div className="fixed inset-0 z-50 bg-black/85 flex flex-col p-1.5 sm:p-5 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+      <div className="bg-surface rounded-2xl w-full max-w-4xl mx-auto flex flex-col flex-1 overflow-hidden border border-rule shadow-2xl text-ink">
         {/* Cabecera y Controles */}
-        <div className="p-2.5 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-900">
+        <div className="p-2.5 sm:p-4 border-b border-rule flex flex-wrap items-center justify-between gap-2 bg-paper-2">
           <div className="min-w-0 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
               <FileText className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-slate-100 truncate">
+              <h4 className="text-xs sm:text-sm font-extrabold text-ink truncate">
                 {titulo}
               </h4>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-ink-muted">
                 {subtitulo} {numPages > 0 ? `• ${numPages} hojas` : ''}
               </p>
             </div>
@@ -218,20 +218,20 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
           <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             {/* Controles de Zoom para celular y desktop */}
-            <div className="flex items-center bg-slate-200/70 dark:bg-slate-800 rounded-xl p-0.5">
+            <div className="flex items-center bg-paper-3 border border-rule rounded-xl p-0.5">
               <button
                 type="button"
                 onClick={() => setZoom((z) => Math.max(0.75, Number((z - 0.25).toFixed(2))))}
                 disabled={zoom <= 0.75}
                 title="Alejar"
-                className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 transition cursor-pointer"
+                className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
               >
                 <ZoomOut className="w-3.5 h-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => setZoom(1)}
-                className="px-2 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                className="px-2 text-[11px] font-bold text-ink cursor-pointer"
                 title="Restablecer zoom"
               >
                 {Math.round(zoom * 100)}%
@@ -241,7 +241,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
                 onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
                 disabled={zoom >= 2.5}
                 title="Acercar"
-                className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-40 transition cursor-pointer"
+                className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
               >
                 <ZoomIn className="w-3.5 h-3.5" />
               </button>
@@ -251,7 +251,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               href={url}
               target="_blank"
               rel="noopener noreferrer"
-              className="hidden sm:flex min-h-[38px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 font-bold text-xs items-center gap-1.5 transition"
+              className="hidden sm:flex min-h-[38px] px-3 rounded-xl bg-paper-2 hover:bg-surface text-ink font-bold text-xs items-center gap-1.5 transition border border-rule"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               <span>Abrir pestaña</span>
@@ -261,7 +261,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               <button
                 type="button"
                 onClick={onDescargar}
-                className="min-h-[38px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                className="min-h-[38px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span className="hidden xs:inline">Descargar</span>
@@ -272,7 +272,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               <button
                 type="button"
                 onClick={onCerrar}
-                className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-200/70 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-300 transition cursor-pointer"
+                className="min-h-[38px] min-w-[38px] rounded-xl bg-paper-2 hover:bg-surface text-ink-muted hover:text-ink flex items-center justify-center transition cursor-pointer border border-rule"
                 aria-label="Cerrar vista previa"
               >
                 <X className="w-4 h-4" />
@@ -284,22 +284,22 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         {/* Área de Visualización Nativa en Canvas (compatible con celulares Android/iOS sin apps externas) */}
         <div
           ref={containerRef}
-          className="flex-1 bg-slate-200/80 dark:bg-slate-950 overflow-y-auto overflow-x-auto p-2 sm:p-4"
+          className="flex-1 bg-paper-3 overflow-y-auto overflow-x-auto p-2 sm:p-4"
         >
           {cargando ? (
-            <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
-              <Loader2 className="w-7 h-7 animate-spin text-emerald-600" />
-              <p className="text-xs font-bold">Preparando páginas del documento...</p>
+            <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-2 text-ink-muted">
+              <Loader2 className="w-7 h-7 animate-spin text-brand" />
+              <p className="text-xs font-bold">Preparando páginas del documento…</p>
             </div>
           ) : error ? (
             <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-3 p-6 text-center">
-              <AlertTriangle className="w-8 h-8 text-amber-500" />
-              <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{error}</p>
+              <AlertTriangle className="w-8 h-8 text-brand" />
+              <p className="text-xs font-bold text-ink">{error}</p>
               {onDescargar && (
                 <button
                   type="button"
                   onClick={onDescargar}
-                  className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold"
+                  className="px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-extrabold cursor-pointer transition-colors shadow-2xs"
                 >
                   Descargar PDF
                 </button>

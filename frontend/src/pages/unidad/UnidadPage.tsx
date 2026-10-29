@@ -183,12 +183,12 @@ export const UnidadPage: React.FC = () => {
 
   const renderIconoOrden = (campo: CampoOrden) => {
     if (campoOrden !== campo) {
-      return <ArrowUpDown className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 ml-1 shrink-0" />;
+      return <ArrowUpDown className="w-3.5 h-3.5 text-ink-muted opacity-40 ml-1 shrink-0" />;
     }
     return direccionOrden === 'asc' ? (
-      <ArrowUp className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 ml-1 shrink-0" />
+      <ArrowUp className="w-3.5 h-3.5 text-brand ml-1 shrink-0" />
     ) : (
-      <ArrowDown className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 ml-1 shrink-0" />
+      <ArrowDown className="w-3.5 h-3.5 text-brand ml-1 shrink-0" />
     );
   };
 
@@ -530,7 +530,7 @@ export const UnidadPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-24 sm:pb-10 transition-colors">
+    <div className="min-h-screen bg-paper text-ink pb-24 sm:pb-10 transition-colors">
       <Navbar />
 
       {/* Toast Flotante No Bloqueante */}
@@ -539,7 +539,7 @@ export const UnidadPage: React.FC = () => {
           <div
             className={`px-4 py-3 rounded-2xl shadow-lg border text-xs font-bold flex items-center justify-between gap-3 ${
               toast.tipo === 'exito'
-                ? 'bg-emerald-600 text-white border-emerald-500'
+                ? 'bg-brand text-brand-contrast border-brand font-extrabold'
                 : 'bg-rose-600 text-white border-rose-500'
             }`}
           >
@@ -559,10 +559,10 @@ export const UnidadPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink">
                 Padrón del Grupo
               </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-brand/10 text-brand border border-brand/30">
                 {miembrosFiltrados.length}
               </span>
             </div>
@@ -573,9 +573,9 @@ export const UnidadPage: React.FC = () => {
             {tienePermiso('legajos.validar_fisico') && (
               <button
                 onClick={() => setScannerAbierto(true)}
-                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-100 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
               >
-                <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <QrCode className="w-4 h-4 text-ink-2 shrink-0" />
                 <span>Escanear QR</span>
               </button>
             )}
@@ -583,7 +583,7 @@ export const UnidadPage: React.FC = () => {
             {tienePermiso('miembros.crear') && (
               <button
                 onClick={() => setModalAltaAbierto(true)}
-                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-2xs cursor-pointer"
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-brand text-brand-contrast hover:opacity-95 font-extrabold text-xs flex items-center justify-center gap-2 transition-colors shadow-2xs cursor-pointer"
               >
                 <UserPlus className="w-4 h-4 shrink-0" />
                 <span>Nuevo Miembro</span>
@@ -594,21 +594,21 @@ export const UnidadPage: React.FC = () => {
 
         {/* Buscador Único en Vivo */}
         <div className="relative w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             inputMode="search"
             placeholder="Buscar por nombre, apellido, DNI, familia, sección o rol..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full min-h-[44px] pl-10 pr-10 py-2 rounded-2xl border border-slate-300 dark:border-slate-700 text-sm focus:border-emerald-500 outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 shadow-2xs [&::-webkit-search-cancel-button]:hidden"
+            className="w-full min-h-[44px] pl-10 pr-10 py-2 rounded-2xl border border-rule text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none bg-surface text-ink placeholder:text-ink-muted shadow-2xs transition-colors [&::-webkit-search-cancel-button]:hidden"
           />
           {busqueda && (
             <button
               type="button"
               onClick={() => setBusqueda('')}
               aria-label="Limpiar búsqueda"
-              className="min-w-[40px] min-h-[40px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -631,23 +631,23 @@ export const UnidadPage: React.FC = () => {
                 aria-label="Filtrar por secciones operativas"
                 className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
                   seccionesFiltro.length > 0
-                    ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
-                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600'
+                    ? 'border-brand/50 bg-brand/10 text-brand'
+                    : 'border-rule bg-surface text-ink hover:border-brand'
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <GitBranch className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <GitBranch className="w-4 h-4 text-brand shrink-0" />
                   <span className="truncate">{textoBotonSecciones}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {seccionesFiltro.length > 0 && (
-                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-brand-contrast text-[10px] font-extrabold flex items-center justify-center">
                       {seccionesFiltro.length}
                     </span>
                   )}
                   <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform ${
-                      menuSeccionesAbierto ? 'rotate-180 text-emerald-600' : ''
+                    className={`w-4 h-4 text-ink-muted transition-transform ${
+                      menuSeccionesAbierto ? 'rotate-180 text-brand' : ''
                     }`}
                   />
                 </div>
@@ -660,24 +660,24 @@ export const UnidadPage: React.FC = () => {
                     className="fixed inset-0 z-20"
                     onClick={() => setMenuSeccionesAbierto(false)}
                   />
-                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95">
-                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
+                      <span className="font-bold text-xs text-ink">
                         Secciones ({unidades.length})
                       </span>
                       <div className="flex items-center gap-2 text-[11px] font-bold">
                         <button
                           type="button"
                           onClick={() => setSeccionesFiltro(unidades.map((u) => u.id))}
-                          className="text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                          className="text-brand hover:underline cursor-pointer"
                         >
                           Marcar todas
                         </button>
-                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <span className="text-ink-muted opacity-40">•</span>
                         <button
                           type="button"
                           onClick={() => setSeccionesFiltro([])}
-                          className="text-slate-500 hover:underline cursor-pointer"
+                          className="text-ink-muted hover:underline cursor-pointer"
                         >
                           Desmarcar
                         </button>
@@ -685,40 +685,40 @@ export const UnidadPage: React.FC = () => {
                     </div>
 
                     {/* Opción Todas las secciones */}
-                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition">
+                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-paper-2 cursor-pointer select-none transition">
                       <input
                         type="checkbox"
                         checked={seccionesFiltro.length === 0}
                         onChange={() => setSeccionesFiltro([])}
-                        className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                        className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
                       />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-xs font-bold text-ink">
                         Todas las secciones
                       </span>
                     </label>
 
                     {/* Lista con Checkboxes */}
-                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-slate-100 dark:divide-slate-800/60 pr-1">
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
                       {unidades.map((u) => {
                         const estaMarcada = seccionesFiltro.includes(u.id);
                         const cant = conteoPorUnidad.get(u.id) || 0;
                         return (
                           <label
                             key={u.id}
-                            className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition"
+                            className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-paper-2 cursor-pointer select-none transition"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <input
                                 type="checkbox"
                                 checked={estaMarcada}
                                 onChange={() => toggleSeccion(u.id)}
-                                className="w-4 h-4 rounded accent-emerald-600 cursor-pointer shrink-0"
+                                className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
                               />
-                              <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                              <span className="text-xs font-medium text-ink truncate">
                                 {u.nombre}
                               </span>
                             </div>
-                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                            <span className="text-[11px] font-bold text-ink-muted shrink-0">
                               {cant}
                             </span>
                           </label>
@@ -729,7 +729,7 @@ export const UnidadPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setMenuSeccionesAbierto(false)}
-                      className="w-full min-h-[36px] py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer"
+                      className="w-full min-h-[36px] py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 font-extrabold text-xs transition-colors cursor-pointer"
                     >
                       Listo
                     </button>
@@ -752,7 +752,7 @@ export const UnidadPage: React.FC = () => {
                 className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
                   rolesFiltro.length > 0
                     ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200'
-                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600'
+                    : 'border-rule bg-surface text-ink hover:border-brand'
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
@@ -766,7 +766,7 @@ export const UnidadPage: React.FC = () => {
                     </span>
                   )}
                   <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform ${
+                    className={`w-4 h-4 text-ink-muted transition-transform ${
                       menuRolesAbierto ? 'rotate-180 text-indigo-600' : ''
                     }`}
                   />
@@ -780,9 +780,9 @@ export const UnidadPage: React.FC = () => {
                     className="fixed inset-0 z-20"
                     onClick={() => setMenuRolesAbierto(false)}
                   />
-                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95">
-                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
+                      <span className="font-bold text-xs text-ink">
                         Roles ({roles.length})
                       </span>
                       <div className="flex items-center gap-2 text-[11px] font-bold">
@@ -793,11 +793,11 @@ export const UnidadPage: React.FC = () => {
                         >
                           Marcar todos
                         </button>
-                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <span className="text-ink-muted opacity-40">•</span>
                         <button
                           type="button"
                           onClick={() => setRolesFiltro([])}
-                          className="text-slate-500 hover:underline cursor-pointer"
+                          className="text-ink-muted hover:underline cursor-pointer"
                         >
                           Desmarcar
                         </button>
@@ -805,27 +805,27 @@ export const UnidadPage: React.FC = () => {
                     </div>
 
                     {/* Opción Todos los roles */}
-                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition">
+                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-paper-2 cursor-pointer select-none transition">
                       <input
                         type="checkbox"
                         checked={rolesFiltro.length === 0}
                         onChange={() => setRolesFiltro([])}
                         className="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0"
                       />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-xs font-bold text-ink">
                         Todos los roles
                       </span>
                     </label>
 
                     {/* Lista con Checkboxes */}
-                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-slate-100 dark:divide-slate-800/60 pr-1">
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
                       {roles.map((r) => {
                         const estaMarcado = rolesFiltro.includes(r.id);
                         const cant = conteoPorRol.get(r.id) || 0;
                         return (
                           <label
                             key={r.id}
-                            className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition"
+                            className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-paper-2 cursor-pointer select-none transition"
                           >
                             <div className="flex items-center gap-2.5 min-w-0">
                               <input
@@ -834,11 +834,11 @@ export const UnidadPage: React.FC = () => {
                                 onChange={() => toggleRol(r.id)}
                                 className="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0"
                               />
-                              <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                              <span className="text-xs font-medium text-ink truncate">
                                 {r.nombre}
                               </span>
                             </div>
-                            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                            <span className="text-[11px] font-bold text-ink-muted shrink-0">
                               {cant}
                             </span>
                           </label>
@@ -871,23 +871,23 @@ export const UnidadPage: React.FC = () => {
                 aria-label="Filtrar por camadas"
                 className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer shadow-2xs ${
                   camadasFiltro.length > 0
-                    ? 'border-amber-500 bg-amber-50/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                    : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-slate-400 dark:hover:border-slate-600'
+                    ? 'border-brand/50 bg-brand/10 text-brand'
+                    : 'border-rule bg-surface text-ink hover:border-brand'
                 }`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <Calendar className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <Calendar className="w-4 h-4 text-brand shrink-0" />
                   <span className="truncate">{textoBotonCamadas}</span>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {camadasFiltro.length > 0 && (
-                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-amber-600 text-white text-[10px] font-bold flex items-center justify-center">
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-brand-contrast text-[10px] font-bold flex items-center justify-center">
                       {camadasFiltro.length}
                     </span>
                   )}
                   <ChevronDown
-                    className={`w-4 h-4 text-slate-400 transition-transform ${
-                      menuCamadasAbierto ? 'rotate-180 text-amber-600' : ''
+                    className={`w-4 h-4 text-ink-muted transition-transform ${
+                      menuCamadasAbierto ? 'rotate-180 text-brand' : ''
                     }`}
                   />
                 </div>
@@ -900,24 +900,24 @@ export const UnidadPage: React.FC = () => {
                     className="fixed inset-0 z-20"
                     onClick={() => setMenuCamadasAbierto(false)}
                   />
-                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl p-3 space-y-2 animate-in fade-in zoom-in-95">
-                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-slate-100 dark:border-slate-800">
-                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                  <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
+                      <span className="font-bold text-xs text-ink">
                         Camadas ({camadasDisponibles.length})
                       </span>
                       <div className="flex items-center gap-2 text-[11px] font-bold">
                         <button
                           type="button"
                           onClick={() => setCamadasFiltro(camadasDisponibles.map((c) => c.anio))}
-                          className="text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                          className="text-brand hover:underline cursor-pointer"
                         >
                           Marcar todas
                         </button>
-                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <span className="text-ink-muted opacity-40">•</span>
                         <button
                           type="button"
                           onClick={() => setCamadasFiltro([])}
-                          className="text-slate-500 hover:underline cursor-pointer"
+                          className="text-ink-muted hover:underline cursor-pointer"
                         >
                           Desmarcar
                         </button>
@@ -925,22 +925,22 @@ export const UnidadPage: React.FC = () => {
                     </div>
 
                     {/* Opción Todas las camadas */}
-                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition">
+                    <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-paper-2 cursor-pointer select-none transition">
                       <input
                         type="checkbox"
                         checked={camadasFiltro.length === 0}
                         onChange={() => setCamadasFiltro([])}
-                        className="w-4 h-4 rounded accent-amber-600 cursor-pointer shrink-0"
+                        className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
                       />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-xs font-bold text-ink">
                         Todas las camadas
                       </span>
                     </label>
 
                     {/* Lista con Checkboxes */}
-                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-slate-100 dark:divide-slate-800/60 pr-1">
+                    <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
                       {camadasDisponibles.length === 0 ? (
-                        <p className="text-xs text-slate-400 py-3 text-center">
+                        <p className="text-xs text-ink-muted py-3 text-center">
                           No hay camadas para los filtros seleccionados
                         </p>
                       ) : (
@@ -949,20 +949,20 @@ export const UnidadPage: React.FC = () => {
                           return (
                             <label
                               key={c.anio}
-                              className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-slate-50 dark:hover:bg-slate-800/70 cursor-pointer select-none transition"
+                              className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-paper-2 cursor-pointer select-none transition"
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <input
                                   type="checkbox"
                                   checked={estaMarcada}
                                   onChange={() => toggleCamada(c.anio)}
-                                  className="w-4 h-4 rounded accent-amber-600 cursor-pointer shrink-0"
+                                  className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
                                 />
-                                <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                                <span className="text-xs font-medium text-ink truncate">
                                   Camada {c.anio}
                                 </span>
                               </div>
-                              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 shrink-0">
+                              <span className="text-[11px] font-bold text-ink-muted shrink-0">
                                 {c.total}
                               </span>
                             </label>
@@ -974,7 +974,7 @@ export const UnidadPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setMenuCamadasAbierto(false)}
-                      className="w-full min-h-[36px] py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition cursor-pointer"
+                      className="w-full min-h-[36px] py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 font-extrabold text-xs transition cursor-pointer"
                     >
                       Listo
                     </button>
@@ -987,8 +987,8 @@ export const UnidadPage: React.FC = () => {
           {/* Etiquetas / Pills de Filtros Activos para remoción en 1 tap */}
           {(seccionesFiltro.length > 0 || rolesFiltro.length > 0 || camadasFiltro.length > 0) && (
             <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-              <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mr-1">
-                Activos:
+              <span className="text-xs font-semibold text-ink-muted mr-1">
+                Filtros activos:
               </span>
               {seccionesFiltro.map((id) => {
                 const u = unidades.find((item) => item.id === id);
@@ -996,14 +996,14 @@ export const UnidadPage: React.FC = () => {
                 return (
                   <span
                     key={`sec-tag-${id}`}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand/10 text-brand border border-brand/30"
                   >
-                    <GitBranch className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <GitBranch className="w-3 h-3 text-brand shrink-0" />
                     <span>{u.nombre}</span>
                     <button
                       type="button"
                       onClick={() => setSeccionesFiltro((prev) => prev.filter((x) => x !== id))}
-                      className="hover:bg-emerald-200 dark:hover:bg-emerald-900 p-0.5 rounded cursor-pointer"
+                      className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
                       aria-label={`Quitar filtro ${u.nombre}`}
                     >
                       <X className="w-3 h-3" />
@@ -1035,14 +1035,14 @@ export const UnidadPage: React.FC = () => {
               {camadasFiltro.map((anio) => (
                 <span
                   key={`camada-tag-${anio}`}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand/10 text-brand border border-brand/30"
                 >
-                  <Calendar className="w-3 h-3 text-amber-600 dark:text-amber-400 shrink-0" />
+                  <Calendar className="w-3 h-3 text-brand shrink-0" />
                   <span>Camada {anio}</span>
                   <button
                     type="button"
                     onClick={() => setCamadasFiltro((prev) => prev.filter((x) => x !== anio))}
-                    className="hover:bg-amber-200 dark:hover:bg-amber-900 p-0.5 rounded cursor-pointer"
+                    className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
                     aria-label={`Quitar filtro Camada ${anio}`}
                   >
                     <X className="w-3 h-3" />
@@ -1070,8 +1070,8 @@ export const UnidadPage: React.FC = () => {
             onClick={() => setChipActivo('TODOS')}
             className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer border ${
               chipActivo === 'TODOS'
-                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white shadow-2xs'
-                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800'
+                ? 'bg-brand text-brand-contrast border-brand shadow-2xs font-extrabold'
+                : 'bg-surface text-ink-2 border-rule hover:bg-paper-2'
             }`}
           >
             Todos ({conteos.todos})
@@ -1082,7 +1082,7 @@ export const UnidadPage: React.FC = () => {
             className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
               chipActivo === 'FALTA_FICHA'
                 ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                : 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60'
+                : 'bg-surface text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60'
             }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
@@ -1095,7 +1095,7 @@ export const UnidadPage: React.FC = () => {
               className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
                 chipActivo === 'CON_DEUDA'
                   ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                  : 'bg-white dark:bg-slate-900 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60'
+                  : 'bg-surface text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60'
               }`}
             >
               <CreditCard className="w-3.5 h-3.5" />
@@ -1110,8 +1110,8 @@ export const UnidadPage: React.FC = () => {
               }
               className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
                 chipActivo === 'PASE_SUGERIDO'
-                  ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-2xs'
-                  : 'bg-amber-50 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                  ? 'bg-brand text-brand-contrast border-brand shadow-2xs font-extrabold'
+                  : 'bg-brand/10 text-brand border-brand/30'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -1124,8 +1124,8 @@ export const UnidadPage: React.FC = () => {
               onClick={() => setChipActivo(chipActivo === 'BAJAS' ? 'TODOS' : 'BAJAS')}
               className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
                 chipActivo === 'BAJAS'
-                  ? 'bg-slate-700 text-white border-slate-700'
-                  : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-slate-800'
+                  ? 'bg-ink text-surface border-ink'
+                  : 'bg-surface text-ink-muted border-rule'
               }`}
             >
               <UserX className="w-3.5 h-3.5" />
@@ -1137,14 +1137,14 @@ export const UnidadPage: React.FC = () => {
 
         {/* Panel de Pase en Lote por Camada cuando se activa el filtro PASE_SUGERIDO */}
         {puedeVerPases && chipActivo === 'PASE_SUGERIDO' && gruposCamadaPase.length > 0 && (
-          <div className="bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 rounded-2xl p-4 space-y-3">
+          <div className="bg-brand/10 border border-brand/30 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div>
-                <h2 className="text-sm font-extrabold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <h2 className="text-sm font-extrabold text-brand flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-brand" />
                   <span>Sugerencias de Pase por Camada</span>
                 </h2>
-                <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                <p className="text-xs text-ink-muted">
                   Podés pasar a toda una camada junta eligiendo la sección de destino, o revisar miembro por miembro abajo.
                 </p>
               </div>
@@ -1158,19 +1158,19 @@ export const UnidadPage: React.FC = () => {
                 return (
                   <div
                     key={g.key}
-                    className="bg-white dark:bg-slate-900 rounded-xl p-3.5 border border-amber-200/80 dark:border-slate-800 flex flex-col justify-between gap-3 shadow-2xs"
+                    className="bg-surface rounded-xl p-3.5 border border-rule flex flex-col justify-between gap-3 shadow-2xs"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2.5 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-black text-xs">
+                          <span className="px-2.5 py-0.5 rounded-lg bg-brand/15 text-brand font-black text-xs">
                             Camada {g.camada}
                           </span>
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          <span className="text-xs font-bold text-ink">
                             {g.unidadActual} → {g.ramaSugeridaNombre}
                           </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        <p className="text-[11px] text-ink-muted mt-1">
                           {g.miembros.length} {g.miembros.length === 1 ? 'integrante' : 'integrantes'} • Cumplen {g.edadAlCorte} años
                         </p>
                       </div>
@@ -1186,7 +1186,7 @@ export const UnidadPage: React.FC = () => {
                               [g.key]: Number(e.target.value),
                             }))
                           }
-                          className="min-h-[38px] px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none flex-1"
+                          className="min-h-[38px] px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs font-bold text-ink outline-none flex-1"
                         >
                           {g.unidadesDestino.map((u) => (
                             <option key={u.id} value={u.id}>
@@ -1201,7 +1201,7 @@ export const UnidadPage: React.FC = () => {
                           type="button"
                           disabled={ejecutando}
                           onClick={() => handleEjecutarPaseCamada(g)}
-                          className="min-h-[38px] px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                          className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
                         >
                           {ejecutando ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1213,7 +1213,7 @@ export const UnidadPage: React.FC = () => {
                           </span>
                         </button>
                       ) : (
-                        <span className="text-xs text-amber-800 dark:text-amber-300 font-semibold px-2">
+                        <span className="text-xs text-brand font-semibold px-2">
                           Sugerencia de pase por edad
                         </span>
                       )}
@@ -1231,20 +1231,20 @@ export const UnidadPage: React.FC = () => {
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-24 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 animate-pulse p-4 flex items-center gap-3"
+                className="h-24 rounded-2xl bg-surface border border-rule animate-pulse p-4 flex items-center gap-3"
               >
-                <div className="w-11 h-11 rounded-2xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+                <div className="w-11 h-11 rounded-2xl bg-paper-3 shrink-0" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-40 bg-slate-200 dark:bg-slate-800 rounded" />
-                  <div className="h-3 w-28 bg-slate-100 dark:bg-slate-800/60 rounded" />
+                  <div className="h-4 w-40 bg-paper-3 rounded" />
+                  <div className="h-3 w-28 bg-paper-2 rounded" />
                 </div>
               </div>
             ))}
           </div>
         ) : miembrosFiltrados.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-10 text-center space-y-3">
-            <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto" />
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+          <div className="bg-surface rounded-2xl border border-rule p-10 text-center space-y-3">
+            <Users className="w-10 h-10 text-ink-muted opacity-40 mx-auto" />
+            <p className="text-sm font-bold text-ink">
               No encontramos personas con este filtro
             </p>
             {(busqueda ||
@@ -1260,7 +1260,7 @@ export const UnidadPage: React.FC = () => {
                   setRolesFiltro([]);
                   setCamadasFiltro([]);
                 }}
-                className="min-h-[40px] px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs cursor-pointer"
+                className="min-h-[40px] px-4 py-2 rounded-xl bg-paper-2 hover:bg-surface text-ink font-bold text-xs cursor-pointer transition-colors border border-rule"
               >
                 Mostrar todos
               </button>
@@ -1289,13 +1289,13 @@ export const UnidadPage: React.FC = () => {
             {/* ============================================================== */}
             {/* VISTA ESCRITORIO (md+): Tabla Limpia enfocada en lo Vital       */}
             {/* ============================================================== */}
-            <div className="hidden md:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
-              <table className="w-full text-left text-xs text-slate-600 dark:text-slate-300">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+            <div className="hidden md:block bg-surface rounded-2xl border border-rule shadow-2xs overflow-hidden">
+              <table className="w-full text-left text-xs text-ink-2">
+                <thead className="bg-paper-2 border-b border-rule text-ink font-semibold text-xs">
                   <tr>
                     <th
                       onClick={() => handleOrdenar('miembro')}
-                      className="py-3.5 px-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
+                      className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
                     >
                       <div className="flex items-center">
                         <span>Nombre y Familia</span>
@@ -1304,7 +1304,7 @@ export const UnidadPage: React.FC = () => {
                     </th>
                     <th
                       onClick={() => handleOrdenar('seccion')}
-                      className="py-3.5 px-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
+                      className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
                     >
                       <div className="flex items-center">
                         <span>Sección y Rol</span>
@@ -1313,7 +1313,7 @@ export const UnidadPage: React.FC = () => {
                     </th>
                     <th
                       onClick={() => handleOrdenar('edad')}
-                      className="py-3.5 px-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
+                      className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
                     >
                       <div className="flex items-center">
                         <span>Edad / Camada</span>
@@ -1322,7 +1322,7 @@ export const UnidadPage: React.FC = () => {
                     </th>
                     <th
                       onClick={() => handleOrdenar('ficha')}
-                      className="py-3.5 px-4 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
+                      className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
                     >
                       <div className="flex items-center">
                         <span>Ficha 2026</span>
@@ -1332,7 +1332,7 @@ export const UnidadPage: React.FC = () => {
                     <th className="py-3.5 px-4 text-right">Acciones Rápidas</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-rule">
                   {miembrosFiltrados.map((m) => {
                     const asig = m.asignaciones?.[0];
                     const entrega = entregasPorUsuario.get(m.id);
@@ -1348,9 +1348,9 @@ export const UnidadPage: React.FC = () => {
                       <tr
                         key={m.id}
                         onClick={() => abrirMiembro(m.id, 'datos')}
-                        className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition border-l-4 cursor-pointer ${
+                        className={`hover:bg-paper-2 transition border-l-4 cursor-pointer ${
                           !m.activo
-                            ? 'border-l-slate-300 dark:border-l-slate-700 opacity-60'
+                            ? 'border-l-rule opacity-60'
                             : cfg.borderClases
                         }`}
                       >
@@ -1360,7 +1360,7 @@ export const UnidadPage: React.FC = () => {
                             <div
                               className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs shrink-0 ${
                                 !m.activo
-                                  ? 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                                  ? 'bg-paper-3 text-ink-muted'
                                   : cfg.avatarClases
                               }`}
                             >
@@ -1369,16 +1369,16 @@ export const UnidadPage: React.FC = () => {
                             </div>
                             <div>
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                <span className="font-bold text-ink text-sm">
                                   {m.apellido}, {m.nombre}
                                 </span>
                                 {!m.activo && (
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-paper-2 text-ink-muted border border-rule">
                                     Baja
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                              <div className="text-[11px] text-ink-muted flex items-center gap-2">
                                 <span>DNI {m.dni}</span>
                                 {m.grupoFamiliar && (
                                   <span>• {formatearNombreFamilia(m.grupoFamiliar.nombreFamilia)}</span>
@@ -1398,7 +1398,7 @@ export const UnidadPage: React.FC = () => {
                               {asig?.unidad?.nombre || cfg.nombre}
                             </span>
                             {asig?.rol?.nombre && (
-                              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                              <span className="text-[10px] font-semibold text-ink-2 bg-paper-2 px-2 py-0.5 rounded-full border border-rule">
                                 {asig.rol.nombre}
                               </span>
                             )}
@@ -1408,11 +1408,11 @@ export const UnidadPage: React.FC = () => {
                         {/* Edad y Camada */}
                         <td className="py-3.5 px-4">
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            <span className="font-semibold text-ink">
                               {edad !== null ? `${edad} años` : '—'}
                             </span>
                             {cfg.key !== 'adultos' && calcularCamada(m.fechaNacimiento) !== null && (
-                              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500">
+                              <span className="text-[10px] font-bold text-ink-muted">
                                 Camada {calcularCamada(m.fechaNacimiento)}
                               </span>
                             )}
@@ -1457,7 +1457,7 @@ export const UnidadPage: React.FC = () => {
                                 type="button"
                                 disabled={validandoId === entrega.id}
                                 onClick={() => handleValidarFichaDirecto(entrega)}
-                                className="min-h-[36px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                                className="min-h-[36px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
                                 title="Confirmar que entregó la ficha en papel firmada"
                               >
                                 {validandoId === entrega.id ? (
@@ -1473,7 +1473,7 @@ export const UnidadPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => abrirMiembro(m.id, 'pase')}
-                                className="min-h-[36px] px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                                className="min-h-[36px] px-3 rounded-xl bg-brand hover:opacity-90 text-brand-contrast font-bold text-xs inline-flex items-center gap-1 transition cursor-pointer shadow-2xs"
                               >
                                 <Sparkles className="w-3.5 h-3.5" />
                                 <span>Pasar de Rama</span>
@@ -1487,14 +1487,14 @@ export const UnidadPage: React.FC = () => {
                                 className={`min-h-[36px] px-3 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer ${
                                   deudaMiembro > 0
                                     ? 'bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60'
-                                    : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                                    : 'bg-paper-2 hover:bg-surface text-ink border border-rule'
                                 }`}
                               >
                                 <CreditCard
                                   className={`w-3.5 h-3.5 ${
                                     deudaMiembro > 0
                                       ? 'text-rose-600 dark:text-rose-400'
-                                      : 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-brand'
                                   }`}
                                 />
                                 <span>
@@ -1508,7 +1508,7 @@ export const UnidadPage: React.FC = () => {
                             <BotonLlamarMiembro
                               miembro={m}
                               entrega={entrega}
-                              className="min-h-[36px] min-w-[36px] px-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-slate-600 dark:text-slate-300 hover:text-emerald-600 inline-flex items-center justify-center gap-1 transition cursor-pointer"
+                              className="min-h-[36px] min-w-[36px] px-2 rounded-xl bg-paper-2 hover:bg-brand/10 text-ink-muted hover:text-brand inline-flex items-center justify-center gap-1 transition-colors cursor-pointer border border-rule"
                             />
                           </div>
                         </td>

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from './ThemeToggle';
 import { BotonInstalarPwa } from './BotonInstalarPwa';
+import { BrandLogo } from './ui/BrandLogo';
 import { Compass, Users, Shield, LogOut, KeyRound, Contact, UserCircle2 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
@@ -32,13 +33,13 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 transition-colors">
+      <header className="bg-navbar border-b border-navbar-rule sticky top-0 z-40 transition-colors backdrop-blur-xs">
         {requiereCambioClave && (
-          <div className="bg-amber-500 text-amber-950 px-4 py-2.5 text-xs font-bold flex items-center justify-between">
+          <div className="bg-brand text-brand-contrast px-4 py-2.5 text-xs font-bold flex items-center justify-between">
             <div className="flex items-center gap-2 mx-auto">
               <KeyRound className="w-4 h-4 shrink-0" />
               <span>Actualiza tu contraseña inicial para continuar.</span>
-              <Link to="/cambiar-clave" className="underline font-extrabold ml-1 text-black">
+              <Link to="/cambiar-clave" className="underline font-extrabold ml-1 text-inherit">
                 Cambiar ahora
               </Link>
             </div>
@@ -47,16 +48,14 @@ export const Navbar: React.FC = () => {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16">
-            {/* Identidad del Grupo */}
+            {/* Identidad del Grupo con Logo Oficial */}
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
-                ⚜
-              </div>
+              <BrandLogo variant="icon" size="sm" className="shrink-0 drop-shadow-xs m-1" />
               <div>
-                <span className="font-bold text-slate-900 dark:text-slate-100 text-sm sm:text-base leading-tight block">
+                <span className="font-bold text-navbar-ink text-sm sm:text-base leading-tight block">
                   Grupo Scout Juan XXIII
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-none">
+                <span className="text-[11px] text-navbar-muted leading-none">
                   {usuario.nombre} {usuario.apellido}
                 </span>
               </div>
@@ -68,10 +67,10 @@ export const Navbar: React.FC = () => {
                 {puedeVerPadron() && (
                   <Link
                     to="/rama"
-                    className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
+                    className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                       esRama || esPadron
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
+                        : 'text-navbar-ink hover:bg-navbar-hover opacity-90 hover:opacity-100'
                     }`}
                   >
                     {tieneGlobal() ? <Contact className="w-4 h-4" /> : <Users className="w-4 h-4" />}
@@ -82,10 +81,10 @@ export const Navbar: React.FC = () => {
                 {puedeAccederPanelGestion() && (
                   <Link
                     to="/global"
-                    className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
+                    className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                       esGlobal
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
+                        : 'text-navbar-ink hover:bg-navbar-hover opacity-90 hover:opacity-100'
                     }`}
                   >
                     <Shield className="w-4 h-4" />
@@ -95,10 +94,10 @@ export const Navbar: React.FC = () => {
 
                 <Link
                   to="/autogestion"
-                  className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
+                  className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                     esAutogestion
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
+                      : 'text-navbar-ink hover:bg-navbar-hover opacity-90 hover:opacity-100'
                   }`}
                 >
                   <Compass className="w-4 h-4" />
@@ -107,10 +106,10 @@ export const Navbar: React.FC = () => {
 
                 <Link
                   to="/perfil"
-                  className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition ${
+                  className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                     esPerfil
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
+                      : 'text-navbar-ink hover:bg-navbar-hover opacity-90 hover:opacity-100'
                   }`}
                 >
                   <UserCircle2 className="w-4 h-4" />
@@ -126,7 +125,7 @@ export const Navbar: React.FC = () => {
                 onClick={handleLogout}
                 title="Salir"
                 aria-label="Cerrar sesión"
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition cursor-pointer"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-navbar-muted hover:text-rose-600 dark:hover:text-rose-400 hover:bg-navbar-hover rounded-xl transition-colors cursor-pointer"
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -138,15 +137,15 @@ export const Navbar: React.FC = () => {
       {/* Bottom Navigation Bar exclusiva para Móvil (Ergonomía para el pulgar) */}
       <nav
         aria-label="Navegación principal móvil"
-        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-2 py-1 flex items-center justify-around shadow-lg"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-navbar border-t border-navbar-rule px-2 py-1 flex items-center justify-around shadow-lg transition-colors backdrop-blur-xs"
       >
         {puedeVerPadron() && (
           <Link
             to="/rama"
-            className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
+            className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
               esRama || esPadron
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-slate-500 dark:text-slate-400'
+                ? 'text-brand'
+                : 'text-navbar-muted hover:text-navbar-ink'
             }`}
           >
             <Users className="w-5 h-5 mb-0.5" />
@@ -157,10 +156,10 @@ export const Navbar: React.FC = () => {
         {puedeAccederPanelGestion() && (
           <Link
             to="/global"
-            className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
+            className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
               esGlobal
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-slate-500 dark:text-slate-400'
+                ? 'text-brand'
+                : 'text-navbar-muted hover:text-navbar-ink'
             }`}
           >
             <Shield className="w-5 h-5 mb-0.5" />
@@ -170,10 +169,10 @@ export const Navbar: React.FC = () => {
 
         <Link
           to="/autogestion"
-          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
+          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
             esAutogestion
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-slate-500 dark:text-slate-400'
+              ? 'text-brand'
+              : 'text-navbar-muted hover:text-navbar-ink'
           }`}
         >
           <Compass className="w-5 h-5 mb-0.5" />
@@ -182,10 +181,10 @@ export const Navbar: React.FC = () => {
 
         <Link
           to="/perfil"
-          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition ${
+          className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
             esPerfil
-              ? 'text-emerald-600 dark:text-emerald-400'
-              : 'text-slate-500 dark:text-slate-400'
+              ? 'text-brand'
+              : 'text-navbar-muted hover:text-navbar-ink'
           }`}
         >
           <UserCircle2 className="w-5 h-5 mb-0.5" />

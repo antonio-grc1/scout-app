@@ -96,22 +96,22 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
           type="button"
           onClick={handleClickInstalar}
           title="Descargar e instalar la App en tu celular"
-          className="min-h-[40px] px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition cursor-pointer shrink-0"
+          className="min-h-[40px] px-3 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer shrink-0"
         >
           <Download className="w-4 h-4 shrink-0" />
           <span className="hidden md:inline">Instalar App</span>
         </button>
       ) : (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center shrink-0 border border-brand/30">
               <Smartphone className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+              <h3 className="text-sm font-extrabold text-ink font-display">
                 Instalá Scout App en tu Celular
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 Accedé directo desde tu pantalla de inicio y consultá fichas médicas en campamento sin conexión.
               </p>
             </div>
@@ -119,7 +119,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
           <button
             type="button"
             onClick={handleClickInstalar}
-            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shrink-0"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
           >
             <Download className="w-4 h-4" />
             <span>Descargar en Celular</span>
@@ -131,22 +131,24 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
         createPortal(
           <div
             onClick={() => setModalGuiaAbierto(false)}
-            className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-reduce:animate-none"
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="bg-white dark:bg-slate-900 border-t sm:border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden"
+              className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transition-colors"
             >
-              <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50">
+              <div className="p-4 border-b border-rule flex items-center justify-between bg-paper-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
-                    ⚜
-                  </div>
+                  <img
+                    src="/brand/Logo%20Juancho%20Icono.png"
+                    alt="Grupo Scout Juan XXIII"
+                    className="w-8 h-8 object-contain shrink-0 m-1"
+                  />
                   <div>
-                    <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    <h4 className="text-sm font-extrabold text-ink font-display">
                       Instalar App en tu Celular
                     </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[11px] text-ink-muted">
                       Grupo Scout Juan XXIII
                     </p>
                   </div>
@@ -154,64 +156,64 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                 <button
                   type="button"
                   onClick={() => setModalGuiaAbierto(false)}
-                  className="min-w-[36px] min-h-[36px] rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  className="min-w-[36px] min-h-[36px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-5 space-y-4 text-xs text-slate-700 dark:text-slate-200">
+              <div className="p-5 space-y-4 text-xs text-neutral-700 dark:text-neutral-200">
                 {esIos ? (
                   <div className="space-y-3">
-                    <p className="font-bold text-slate-900 dark:text-white text-sm">
+                    <p className="font-bold text-ink text-sm">
                       Pasos para instalar en iPhone / iPad (Safari):
                     </p>
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                      <Share className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-paper border border-rule">
+                      <Share className="w-5 h-5 text-brand shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-extrabold block text-slate-900 dark:text-white">
-                          1. Tocá el botón "Compartir"
+                        <span className="font-extrabold block text-ink">
+                          1. Tocá el botón “Compartir”
                         </span>
-                        <span className="text-slate-500 dark:text-slate-400">
+                        <span className="text-ink-muted">
                           Está en la barra inferior o superior de Safari.
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                      <PlusSquare className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-paper border border-rule">
+                      <PlusSquare className="w-5 h-5 text-brand shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-extrabold block text-slate-900 dark:text-white">
-                          2. Elegí "Agregar a inicio"
+                        <span className="font-extrabold block text-ink">
+                          2. Elegí “Agregar a inicio”
                         </span>
-                        <span className="text-slate-500 dark:text-slate-400">
-                          Deslizá hacia abajo en el menú y tocá "Agregar a la pantalla de inicio".
+                        <span className="text-ink-muted">
+                          Deslizá hacia abajo en el menú y tocá “Agregar a la pantalla de inicio”.
                         </span>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <p className="font-bold text-slate-900 dark:text-white text-sm">
+                    <p className="font-bold text-ink text-sm">
                       Pasos para instalar en Android / Chrome:
                     </p>
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                      <MoreVertical className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-paper border border-rule">
+                      <MoreVertical className="w-5 h-5 text-brand shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-extrabold block text-slate-900 dark:text-white">
+                        <span className="font-extrabold block text-ink">
                           1. Abrí el menú del navegador (⋮)
                         </span>
-                        <span className="text-slate-500 dark:text-slate-400">
+                        <span className="text-ink-muted">
                           Tocá los tres puntos arriba a la derecha en Chrome.
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                      <Smartphone className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-paper border border-rule">
+                      <Smartphone className="w-5 h-5 text-brand shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-extrabold block text-slate-900 dark:text-white">
-                          2. Tocá "Instalar aplicación" o "Agregar a la pantalla principal"
+                        <span className="font-extrabold block text-ink">
+                          2. Tocá “Instalar aplicación” o “Agregar a la pantalla principal”
                         </span>
-                        <span className="text-slate-500 dark:text-slate-400">
+                        <span className="text-ink-muted">
                           La app quedará instalada con su ícono oficial en tu pantalla de inicio.
                         </span>
                       </div>
@@ -219,8 +221,8 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                   </div>
                 )}
 
-                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 flex items-center gap-2 text-emerald-900 dark:text-emerald-200 font-semibold">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div className="p-3 rounded-xl bg-brand/10 border border-brand/30 flex items-center gap-2 text-ink font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-brand shrink-0" />
                   <span>
                     Una vez instalada, abre a pantalla completa como una aplicación nativa.
                   </span>
@@ -229,7 +231,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                 <button
                   type="button"
                   onClick={() => setModalGuiaAbierto(false)}
-                  className="w-full min-h-[44px] py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition cursor-pointer"
+                  className="w-full min-h-[44px] py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition-colors cursor-pointer"
                 >
                   Entendido
                 </button>

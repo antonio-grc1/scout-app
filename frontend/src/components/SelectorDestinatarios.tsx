@@ -128,11 +128,11 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
   };
 
   return (
-    <div className="space-y-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 p-4">
-      <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+    <div className="space-y-4 rounded-2xl border border-rule bg-paper-2 p-4">
+      <div className="flex items-center justify-between border-b border-rule pb-2.5">
         <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <h4 className="font-bold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">
+          <Users className="w-4 h-4 text-brand" />
+          <h4 className="font-bold text-ink text-xs">
             Destinatarios
           </h4>
         </div>
@@ -140,7 +140,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
 
       {/* Dimensión 1: Población / Rol */}
       <div>
-        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+        <label className="block text-xs font-semibold text-ink-2 mb-1.5">
           1. ¿A quiénes se les aplica? (Rol)
         </label>
         <div className="grid grid-cols-3 gap-2">
@@ -150,8 +150,8 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             onClick={() => onChangeDestinatarioTipo('PROTAGONISTAS')}
             className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
               destinatarioTipo === 'PROTAGONISTAS'
-                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                ? 'bg-brand text-brand-contrast border-brand font-extrabold shadow-2xs'
+                : 'bg-surface text-ink-2 border-rule hover:bg-paper-2/60'
             }`}
           >
             {destinatarioTipo === 'PROTAGONISTAS' && <Check className="w-3.5 h-3.5" />}
@@ -165,7 +165,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
               destinatarioTipo === 'EDUCADORES'
                 ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                : 'bg-surface text-ink-2 border-rule hover:bg-paper-2/60'
             }`}
           >
             {destinatarioTipo === 'EDUCADORES' && <Check className="w-3.5 h-3.5" />}
@@ -179,7 +179,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
               destinatarioTipo === 'TODOS'
                 ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
+                : 'bg-surface text-ink-2 border-rule hover:bg-paper-2/60'
             }`}
           >
             {destinatarioTipo === 'TODOS' && <Check className="w-3.5 h-3.5" />}
@@ -190,7 +190,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
 
       {/* Dimensión 2: Rama / Sección Organizativa */}
       <div>
-        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+        <label className="block text-xs font-semibold text-ink-2 mb-1.5">
           2. ¿En qué Rama o Sección?
         </label>
         <select
@@ -200,7 +200,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             const val = e.target.value;
             onChangeUnidadId(val === '' ? null : Number(val));
           }}
-          className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition"
+          className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors"
         >
           <option value="">Todo el Grupo Scout (Todas las Ramas y Secciones)</option>
           {unidades.map((u) => (
@@ -212,9 +212,9 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
       </div>
 
       {/* Resumen del Alcance Seleccionado */}
-      <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/70 text-xs flex items-center gap-2">
-        <span className="font-bold text-slate-700 dark:text-slate-300">Alcance configurado:</span>
-        <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+      <div className="p-2.5 rounded-xl bg-paper-3 border border-rule/70 text-xs flex items-center gap-2">
+        <span className="font-bold text-ink-2">Alcance configurado:</span>
+        <span className="font-bold text-ink-2">
           {destinatarioTipo === 'PROTAGONISTAS'
             ? 'Protagonistas'
             : destinatarioTipo === 'EDUCADORES'
@@ -228,13 +228,13 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
       </div>
 
       {/* Dimensión 3: Excepciones de Miembros Particulares */}
-      <div className="space-y-2 pt-1 border-t border-slate-200/80 dark:border-slate-800">
+      <div className="space-y-2 pt-1 border-t border-rule">
         <div className="flex items-center justify-between">
-          <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink-2 flex items-center gap-1.5">
             <UserX className="w-3.5 h-3.5 text-rose-500" />
             <span>Excepciones particulares (miembros exentos de la cuota)</span>
           </label>
-          <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500">
+          <span className="text-[11px] font-bold text-ink-muted dark:text-ink-muted">
             {excepcionesIds.length} {excepcionesIds.length === 1 ? 'excluido' : 'excluidos'}
           </span>
         </div>
@@ -242,14 +242,14 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
         {/* Input con autocompletado */}
         <div className="relative">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
               disabled={disabled}
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Escriba nombre, apellido o DNI para excluir..."
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-8 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
+              className="w-full rounded-xl border border-rule bg-surface pl-8 pr-8 py-1.5 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
             />
             {busqueda && (
               <button
@@ -258,7 +258,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
                   setBusqueda('');
                   setResultadosBusqueda([]);
                 }}
-                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="absolute right-2.5 top-2 text-ink-muted hover:text-ink cursor-pointer"
                 title="Limpiar búsqueda"
               >
                 <X className="w-3.5 h-3.5" />
@@ -268,10 +268,10 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
 
           {/* Menú de resultados de búsqueda */}
           {busqueda.trim().length >= 2 && (
-            <div className="absolute z-20 mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xl max-h-56 overflow-y-auto">
+            <div className="absolute z-20 mt-1 w-full rounded-xl border border-rule bg-surface shadow-xl max-h-56 overflow-y-auto">
               {buscando ? (
-                <div className="p-3 text-center text-xs text-slate-400">
-                  Buscando coincidencias...
+                <div className="p-3 text-center text-xs text-ink-muted">
+                  Buscando coincidencias…
                 </div>
               ) : resultadosBusqueda.length > 0 ? (
                 resultadosBusqueda.map((m) => {
@@ -282,20 +282,20 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
                       type="button"
                       disabled={yaExcluido}
                       onClick={() => handleAgregarExcepcion(m)}
-                      className="w-full text-left px-3.5 py-2 text-xs hover:bg-slate-50 dark:hover:bg-slate-700/60 flex items-center justify-between border-b border-slate-100 dark:border-slate-700/40 last:border-0 cursor-pointer disabled:opacity-50"
+                      className="w-full text-left px-3.5 py-2 text-xs hover:bg-paper-2 flex items-center justify-between border-b border-rule last:border-0 cursor-pointer disabled:opacity-50"
                     >
                       <div>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                        <span className="font-bold text-ink">
                           {m.nombre} {m.apellido}
                         </span>
-                        <span className="text-slate-400 dark:text-slate-400 text-[11px] ml-2">
+                        <span className="text-ink-muted dark:text-ink-muted text-[11px] ml-2">
                           DNI {m.dni}
                         </span>
                       </div>
                       {yaExcluido ? (
                         <span className="text-[10px] text-rose-500 font-semibold">Ya excluido</span>
                       ) : (
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
+                        <span className="text-[10px] text-brand font-bold hover:underline">
                           + Excluir
                         </span>
                       )}
@@ -303,7 +303,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
                   );
                 })
               ) : (
-                <div className="p-3 text-center text-xs text-slate-400 italic">
+                <div className="p-3 text-center text-xs text-ink-muted italic">
                   No se encontraron miembros coincidentes con "{busqueda.trim()}".
                 </div>
               )}

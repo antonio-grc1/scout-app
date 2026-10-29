@@ -5,8 +5,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  Loader2,
 } from 'lucide-react';
+import { Button } from './ui/Button';
 
 export interface ModalConfirmacionProps {
   abierto: boolean;
@@ -45,7 +45,7 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
         );
       case 'exito':
         return (
-          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-6 h-6" />
           </div>
         );
@@ -64,27 +64,17 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
       case 'confirmacion':
       default:
         return (
-          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-full bg-brand/15 text-brand flex items-center justify-center shrink-0">
             <HelpCircle className="w-6 h-6" />
           </div>
         );
     }
   };
 
-  const getBotonConfirmarClase = () => {
-    if (tipo === 'peligro') {
-      return 'bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-500';
-    }
-    if (tipo === 'alerta') {
-      return 'bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500';
-    }
-    return 'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500';
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
       <div
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transition-colors"
+        className="bg-surface border border-rule rounded-2xl w-full max-w-md shadow-md overflow-hidden transition-colors"
         role="dialog"
         aria-modal="true"
       >
@@ -93,7 +83,7 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
             <div className="flex items-center gap-3">
               {getIcono()}
               <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100 leading-snug">
+                <h3 className="text-lg font-bold text-ink leading-snug">
                   {titulo}
                 </h3>
               </div>
@@ -102,32 +92,36 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
               <button
                 type="button"
                 onClick={onCerrar}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition p-1 rounded-lg"
+                className="text-ink-muted hover:text-ink transition-colors p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             )}
           </div>
 
-          <div className="mt-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+          <div className="mt-4 text-sm text-ink-2 leading-relaxed whitespace-pre-line">
             {mensaje}
           </div>
 
           <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
             {!esAlertaSimple && (
-              <button
+              <Button
                 type="button"
                 disabled={cargando}
+                variant="secondary"
+                size="md"
                 onClick={onCerrar}
-                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition cursor-pointer disabled:opacity-50"
               >
                 {textoCancelar}
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
               type="button"
               disabled={cargando}
+              loading={cargando}
+              variant={tipo === 'peligro' ? 'danger' : 'primary'}
+              size="md"
               onClick={async () => {
                 if (onConfirmar) {
                   await onConfirmar();
@@ -135,11 +129,9 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
                   onCerrar();
                 }
               }}
-              className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-xs transition shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 ${getBotonConfirmarClase()}`}
             >
-              {cargando && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{textoConfirmar}</span>
-            </button>
+            </Button>
           </div>
         </div>
       </div>

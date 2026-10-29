@@ -106,19 +106,19 @@ export const ModalVincularHermano: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+      <div className="bg-surface border border-rule rounded-3xl max-w-lg w-full shadow-md overflow-hidden flex flex-col max-h-[90vh]">
         {/* Encabezado */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
+        <div className="flex items-center justify-between p-5 border-b border-rule bg-paper-2 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400">
+            <div className="p-2.5 rounded-2xl bg-brand/10 text-brand">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-base">
+              <h3 className="font-extrabold text-ink text-base">
                 Vincular al Grupo Familiar
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[11px] text-ink-muted">
                 Buscá por DNI, Nombre o Apellido para asociar a {usuarioNombre}
               </p>
             </div>
@@ -126,7 +126,7 @@ export const ModalVincularHermano: React.FC<Props> = ({
           <button
             type="button"
             onClick={onCerrar}
-            className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+            className="p-1.5 rounded-xl hover:bg-paper-2 text-ink-muted hover:text-ink transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -142,35 +142,35 @@ export const ModalVincularHermano: React.FC<Props> = ({
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-semibold text-ink-2 mb-1.5">
               DNI, Nombre o Apellido del Hermano/a
             </label>
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 autoFocus
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder="Escribí DNI, nombre o apellido para ver coincidencias..."
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-indigo-500 outline-none text-xs"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors text-xs"
               />
               {buscando && (
-                <Loader2 className="w-4 h-4 text-indigo-600 animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
+                <Loader2 className="w-4 h-4 text-brand animate-spin absolute right-3.5 top-1/2 -translate-y-1/2" />
               )}
             </div>
           </div>
 
           {/* Lista desplegable de grupos de hermanos / candidatos coincidentes */}
           {busqueda.trim().length >= 2 && !buscando && gruposOpciones.length === 0 && (
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500">
+            <div className="p-4 rounded-2xl bg-paper-2 border border-rule text-center text-xs text-ink-muted">
               No se encontraron miembros activos con "{busqueda.trim()}".
             </div>
           )}
 
           {gruposOpciones.length > 0 && (
             <div className="space-y-2">
-              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">
+              <span className="text-[11px] font-bold text-ink-muted block">
                 Seleccioná el grupo de hermanos correspondiente ({gruposOpciones.length}{' '}
                 {gruposOpciones.length === 1 ? 'opción encontrada' : 'opciones encontradas'}):
               </span>
@@ -184,21 +184,21 @@ export const ModalVincularHermano: React.FC<Props> = ({
                       onClick={() => setGrupoSeleccionado(grupo)}
                       className={`w-full text-left p-3.5 rounded-2xl border transition cursor-pointer space-y-2 ${
                         seleccionado
-                          ? 'bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500 ring-1 ring-indigo-500'
-                          : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          ? 'bg-brand/15 border-brand ring-1 ring-brand'
+                          : 'bg-paper-2 border-rule hover:bg-paper-2'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-1.5">
-                          <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                          <span className="text-xs font-extrabold text-slate-900 dark:text-slate-100">
+                          <Users className="w-4 h-4 text-brand shrink-0" />
+                          <span className="text-xs font-extrabold text-ink">
                             {grupo.esGrupoExistente
                               ? `${grupo.nombreFamilia} (${grupo.integrantes.length} hermanos)`
                               : `Nuevo grupo con ${grupo.representante.nombre} ${grupo.representante.apellido}`}
                           </span>
                         </div>
                         {seleccionado && (
-                          <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                          <CheckCircle2 className="w-4 h-4 text-brand shrink-0" />
                         )}
                       </div>
 
@@ -207,12 +207,12 @@ export const ModalVincularHermano: React.FC<Props> = ({
                         {grupo.integrantes.map((m) => (
                           <span
                             key={m.id}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-surface border border-rule text-[11px] font-bold text-ink"
                           >
                             <span>
                               {m.nombre} {m.apellido}
                             </span>
-                            <span className="text-[10px] font-normal text-slate-400">
+                            <span className="text-[10px] font-normal text-ink-muted">
                               (DNI {m.dni} • {m.ramaNombre})
                             </span>
                           </span>
@@ -221,7 +221,7 @@ export const ModalVincularHermano: React.FC<Props> = ({
 
                       {/* Datos adicionales para diferenciar familias con el mismo apellido */}
                       {(grupo.madreNombre || grupo.padreNombre || grupo.domicilio) && (
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-3 gap-y-0.5 pt-0.5">
+                        <div className="text-[11px] text-ink-muted flex flex-wrap gap-x-3 gap-y-0.5 pt-0.5">
                           {grupo.madreNombre && <span>Madre: {grupo.madreNombre}</span>}
                           {grupo.padreNombre && <span>Padre: {grupo.padreNombre}</span>}
                           {grupo.domicilio && (
@@ -241,26 +241,26 @@ export const ModalVincularHermano: React.FC<Props> = ({
 
           {/* Resumen de adhesión al grupo seleccionado */}
           {grupoSeleccionado && (
-            <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 space-y-1.5 animate-in fade-in">
-              <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-extrabold text-xs">
+            <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 space-y-1.5 animate-in fade-in">
+              <div className="flex items-center gap-2 text-ink font-extrabold text-xs">
                 <CheckCircle2 className="w-4 h-4 shrink-0" />
                 <span>
                   Se vinculará a {usuarioNombre} con{' '}
                   {grupoSeleccionado.integrantes.map((i) => `${i.nombre} ${i.apellido}`).join(', ')}
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 leading-relaxed">
+              <p className="text-[11px] text-ink-muted leading-relaxed">
                 Todos los miembros quedarán unidos en el mismo grupo familiar y compartirán los descuentos y teléfonos familiares.
               </p>
             </div>
           )}
 
           {/* Pie de Botones */}
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-rule">
             <button
               type="button"
               onClick={onCerrar}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-bold text-xs transition cursor-pointer"
             >
               Cancelar
             </button>
@@ -268,7 +268,7 @@ export const ModalVincularHermano: React.FC<Props> = ({
               type="button"
               onClick={handleConfirmar}
               disabled={!grupoSeleccionado || guardando}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-sm transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               {guardando ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

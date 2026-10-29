@@ -257,7 +257,7 @@ export const AutogestionPage: React.FC = () => {
   const saldoPendiente = Number(estadoCuenta?.resumen?.saldoPendiente || 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 sm:pb-10 transition-colors">
+    <div className="min-h-screen bg-paper text-ink pb-24 sm:pb-10 transition-colors">
       <Navbar />
 
       {/* Modal Visor de PDF en pantalla sin descarga obligatoria (compatible con celulares Android/iOS) */}
@@ -274,7 +274,7 @@ export const AutogestionPage: React.FC = () => {
           <div
             className={`p-3.5 rounded-2xl shadow-lg border flex items-center justify-between gap-3 text-xs font-bold ${
               toast.tipo === 'exito'
-                ? 'bg-emerald-900 text-white border-emerald-700'
+                ? 'bg-brand text-brand-contrast border-brand font-extrabold'
                 : 'bg-rose-900 text-white border-rose-700'
             }`}
           >
@@ -291,11 +291,11 @@ export const AutogestionPage: React.FC = () => {
 
       <main className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4">
         {/* Cabecera Compacta + Acciones 1-Tap Ver / Descargar PDF */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+        <div className="bg-surface rounded-2xl p-4 border border-rule shadow-2xs space-y-3 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg font-extrabold text-slate-900 dark:text-slate-100">
+                <h1 className="text-lg font-extrabold text-ink">
                   {nombreVisible} {apellidoVisible}
                 </h1>
                 <span
@@ -305,10 +305,10 @@ export const AutogestionPage: React.FC = () => {
                   <span>{fichaConfig.label}</span>
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 DNI {dniVisible}
                 {precarga?.usuario?.asignaciones?.[0]?.unidad?.nombre && (
-                  <span className="ml-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="ml-1.5 font-bold text-brand">
                     • {precarga.usuario.asignaciones[0].unidad.nombre}
                   </span>
                 )}
@@ -321,12 +321,12 @@ export const AutogestionPage: React.FC = () => {
                   type="button"
                   onClick={handleVerCopiaPdf}
                   disabled={generandoVistaPrevia}
-                  className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer transition disabled:opacity-50"
+                  className="flex-1 sm:flex-initial min-h-[44px] px-3.5 py-2 rounded-xl bg-paper-2 hover:bg-surface text-ink border border-rule text-xs font-extrabold flex items-center justify-center gap-1.5 cursor-pointer transition-colors disabled:opacity-50"
                 >
                   {generandoVistaPrevia ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <Eye className="w-4 h-4 text-brand" />
                   )}
                   <span>Ver Ficha</span>
                 </button>
@@ -335,7 +335,7 @@ export const AutogestionPage: React.FC = () => {
                   type="button"
                   onClick={handleDescargarCopiaPdf}
                   disabled={guardando}
-                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition shadow-2xs disabled:opacity-50"
+                  className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-brand text-brand-contrast hover:opacity-95 text-xs font-extrabold flex items-center justify-center gap-2 cursor-pointer transition-colors shadow-2xs disabled:opacity-50"
                 >
                   {guardando ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -349,14 +349,14 @@ export const AutogestionPage: React.FC = () => {
           </div>
 
           {/* Selector Rápido de Vista (Papeles vs Cuotas) */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-rule">
             <button
               type="button"
               onClick={() => setVistaActiva('papeles')}
-              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'papeles'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                  ? 'bg-brand text-brand-contrast shadow-2xs'
+                  : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
               }`}
             >
               <FileText className="w-4 h-4" />
@@ -366,10 +366,10 @@ export const AutogestionPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setVistaActiva('cuotas')}
-              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'cuotas'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                  ? 'bg-brand text-brand-contrast shadow-2xs'
+                  : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
               }`}
             >
               <CreditCard className="w-4 h-4" />
@@ -378,7 +378,7 @@ export const AutogestionPage: React.FC = () => {
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
                     vistaActiva === 'cuotas'
-                      ? 'bg-white text-emerald-700'
+                      ? 'bg-brand-contrast text-brand'
                       : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
                   }`}
                 >
@@ -393,18 +393,18 @@ export const AutogestionPage: React.FC = () => {
         {vistaActiva === 'papeles' && (
           <div>
             {cargandoInicial ? (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-3 text-slate-500">
-                <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-                <span className="text-xs font-bold">Cargando formulario...</span>
+              <div className="bg-surface rounded-2xl p-8 border border-rule flex flex-col items-center justify-center gap-3 text-ink-muted">
+                <Loader2 className="w-6 h-6 animate-spin text-brand" />
+                <span className="text-xs font-bold">Cargando formulario…</span>
               </div>
             ) : errorCarga ? (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-rose-200 dark:border-rose-900/60 flex flex-col items-center text-center gap-3">
+              <div className="bg-surface rounded-2xl p-6 border border-rose-200 dark:border-rose-900/60 flex flex-col items-center text-center gap-3">
                 <AlertCircle className="w-8 h-8 text-rose-500" />
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{errorCarga}</p>
+                <p className="text-sm font-bold text-ink">{errorCarga}</p>
                 <button
                   type="button"
                   onClick={inicializarAutogestion}
-                  className="min-h-[44px] px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer transition"
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>Reintentar</span>
@@ -423,14 +423,14 @@ export const AutogestionPage: React.FC = () => {
 
         {/* VISTA 2: MIS CUOTAS (Tarjetas Compactas Mobile-First) */}
         {vistaActiva === 'cuotas' && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-              <span className="text-sm font-extrabold text-slate-800 dark:text-slate-100">
+          <div className="bg-surface rounded-2xl p-4 sm:p-5 border border-rule shadow-2xs space-y-4 transition-colors">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule pb-3">
+              <span className="text-sm font-extrabold text-ink">
                 Estado de Cuenta
               </span>
               <div className="flex items-center gap-2 flex-wrap">
                 {Number(estadoCuenta?.resumen?.saldoAFavor || 0) > 0 && (
-                  <span className="px-2.5 py-1 rounded-xl text-xs font-extrabold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  <span className="px-2.5 py-1 rounded-xl text-xs font-extrabold bg-brand/10 text-brand border border-brand/30">
                     Saldo a favor: {formatearMoneda(estadoCuenta.resumen.saldoAFavor)}
                   </span>
                 )}
@@ -438,7 +438,7 @@ export const AutogestionPage: React.FC = () => {
                   className={`text-base font-black ${
                     saldoPendiente > 0
                       ? 'text-rose-600 dark:text-rose-400'
-                      : 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-brand'
                   }`}
                 >
                   {saldoPendiente > 0 ? `Deuda: ${formatearMoneda(saldoPendiente)}` : 'Cuotas al día'}
@@ -452,19 +452,19 @@ export const AutogestionPage: React.FC = () => {
                 return (
                   <div
                     key={cargo.id}
-                    className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1.5"
+                    className="p-3 rounded-xl border border-rule bg-paper-2 space-y-1.5"
                   >
                     <div className="flex justify-between items-start gap-2">
-                      <span className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                      <span className="font-bold text-xs text-ink">
                         {cargo.concepto?.nombre}
                       </span>
                       <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border ${cConf.badgeClass}`}>
                         {cConf.label}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 flex justify-between">
+                    <div className="text-xs text-ink-muted flex justify-between">
                       <span>Total: {formatearMoneda(cargo.montoFinal)}</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-300">
+                      <span className="font-bold text-ink-2">
                         Pagado: {formatearMoneda(cargo.montoPagado)}
                       </span>
                     </div>
@@ -473,17 +473,17 @@ export const AutogestionPage: React.FC = () => {
               })}
 
               {(!estadoCuenta?.cargos || estadoCuenta.cargos.length === 0) && (
-                <div className="col-span-full py-6 text-center text-xs text-slate-400">
+                <div className="col-span-full py-6 text-center text-xs text-ink-muted">
                   No tenés cuotas pendientes este año.
                 </div>
               )}
             </div>
 
             {estadoCuenta?.pagos?.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <div className="space-y-2 pt-2 border-t border-rule">
                 <div className="flex items-center gap-1.5">
-                  <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <h3 className="text-xs font-bold text-slate-500 uppercase">Pagos Realizados</h3>
+                  <Receipt className="w-4 h-4 text-brand" />
+                  <h3 className="text-xs font-bold text-ink-muted">Pagos realizados</h3>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -497,18 +497,18 @@ export const AutogestionPage: React.FC = () => {
                     return (
                       <div
                         key={pago.id}
-                        className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs"
+                        className="p-3 rounded-xl bg-paper-2 border border-rule flex items-center justify-between gap-2 text-xs"
                       >
                         <div className="min-w-0">
-                          <span className="font-bold text-slate-800 dark:text-slate-200 block truncate">
+                          <span className="font-bold text-ink block truncate">
                             {conceptosTexto}
                           </span>
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[11px] text-ink-muted">
                             {new Date(pago.fechaPago).toLocaleDateString('es-AR')} •{' '}
                             {METODO_PAGO_LABELS[pago.metodoPago] || 'Efectivo'}
                           </span>
                         </div>
-                        <span className="font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
+                        <span className="font-extrabold text-ink shrink-0">
                           {formatearMoneda(pago.montoTotal)}
                         </span>
                       </div>

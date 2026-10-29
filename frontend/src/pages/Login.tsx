@@ -4,6 +4,8 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BotonInstalarPwa } from '../components/BotonInstalarPwa';
+import { Button } from '../components/ui/Button';
+import { BrandLogo } from '../components/ui/BrandLogo';
 import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -53,36 +55,39 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors">
+    <div className="min-h-screen bg-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <BotonInstalarPwa variante="navbar" />
         <ThemeToggle variant="segmented" />
       </div>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-16 h-16 bg-emerald-600 text-white text-3xl font-bold rounded-2xl flex items-center justify-center mx-auto shadow-md">
-          ⚜
-        </div>
-        <h2 className="mt-4 text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+        <BrandLogo
+          variant="transparent"
+          size="lg"
+          center
+          className="drop-shadow-sm my-3"
+        />
+        <h2 className="mt-4 text-2xl font-extrabold text-ink tracking-tight font-display">
           Grupo Scout Juan XXIII
         </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mt-1 text-sm text-ink-muted">
           Ingreso exclusivo para Protagonistas, Familias y Educadores
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-sm border border-slate-200 dark:border-slate-800 rounded-2xl sm:px-10 transition-colors">
+        <div className="bg-surface py-8 px-6 shadow-sm border border-rule rounded-2xl sm:px-10 transition-colors">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="p-3.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-xl text-sm flex items-center gap-2">
+              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             <div>
-              <label htmlFor="dni" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <label htmlFor="dni" className="block text-sm font-semibold text-ink">
                 Número de DNI
               </label>
               <div className="mt-1.5">
@@ -95,13 +100,13 @@ export const Login: React.FC = () => {
                   value={dni}
                   onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
                   placeholder="Sin puntos ni espacios"
-                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
+                  className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink placeholder:text-ink-muted text-base focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="clave" className="block text-sm font-semibold text-slate-700 dark:text-slate-300">
+              <label htmlFor="clave" className="block text-sm font-semibold text-ink">
                 Contraseña
               </label>
               <div className="mt-1.5 relative">
@@ -113,30 +118,33 @@ export const Login: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-base focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:focus:ring-emerald-950/40 outline-none transition"
+                  className="w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl border border-rule bg-surface text-ink placeholder:text-ink-muted text-base focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                 />
                 <button
                   type="button"
                   onClick={() => setMostrarPassword((prev) => !prev)}
                   aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                  className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                  className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
                 >
                   {mostrarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+              <p className="text-xs text-ink-muted mt-1.5">
                 Si ingresas por primera vez, tu clave inicial es tu DNI.
               </p>
             </div>
 
             <div>
-              <button
+              <Button
                 type="submit"
                 disabled={cargando}
-                className="w-full min-h-[48px] flex items-center justify-center py-3 px-4 rounded-xl shadow-xs text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer disabled:opacity-50"
+                loading={cargando}
+                variant="primary"
+                size="lg"
+                className="w-full"
               >
-                {cargando ? 'Ingresando...' : 'Ingresar'}
-              </button>
+                {cargando ? 'Ingresando…' : 'Ingresar'}
+              </Button>
             </div>
           </form>
         </div>

@@ -140,28 +140,28 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+      <div className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
         {/* Header */}
-        <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-800/30">
+        <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
               <Tent className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-base">
+              <h3 className="font-bold text-ink text-base">
                 {conceptoAEditar
                   ? 'Editar Campamento / Cobro Especial'
                   : 'Nuevo Campamento / Cobro Especial'}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-ink-muted">
                 Definí el monto, a quiénes aplica y quiénes están becados o exentos
               </p>
             </div>
           </div>
           <button
             onClick={onCerrar}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -178,7 +178,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           {/* Nombre y Tipo */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Nombre del Campamento / Cobro *
               </label>
               <input
@@ -187,18 +187,18 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej. Campamento de Verano 2026, Acantonamiento, Pañuelo..."
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Categoría
               </label>
               <select
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value as any)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               >
                 <option value="CAMPAMENTO">Campamento</option>
                 <option value="EVENTO">Evento Especial</option>
@@ -212,11 +212,11 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           {/* Monto, Año y Fecha de Vencimiento */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Monto Base ($) *
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs font-bold text-slate-400 pointer-events-none">
+                <span className="absolute left-3.5 top-2 text-xs font-bold text-ink-muted pointer-events-none">
                   $
                 </span>
                 <input
@@ -227,13 +227,13 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                   value={montoBase}
                   onChange={(e) => setMontoBase(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="25000.00"
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-8 pr-3.5 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Ciclo / Año
               </label>
               <input
@@ -242,19 +242,19 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 max={2100}
                 value={cicloAnio}
                 onChange={(e) => setCicloAnio(Number(e.target.value))}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-ink-2 mb-1">
                 Fecha de Vencimiento (opcional)
               </label>
               <input
                 type="date"
                 value={fechaVencimiento}
                 onChange={(e) => setFechaVencimiento(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           />
 
           {/* REGLA DE DESCUENTO FAMILIAR */}
-          <div className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 space-y-3">
+          <div className="p-4 rounded-2xl border border-rule bg-paper-2 space-y-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -279,14 +279,14 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 onChange={(e) => setPermiteDescuentoHermanos(e.target.checked)}
                 className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span className="text-xs font-bold text-ink">
                 Permitir descuento por hermanos / grupo familiar
               </span>
             </label>
 
             {permiteDescuentoHermanos && (
               <div className="pl-6 space-y-2 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-600 dark:text-slate-400">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-ink-muted">
                   <input
                     type="checkbox"
                     checked={usarPorcentajePersonalizado}
@@ -308,9 +308,9 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                           setPorcentajeDescuentoHermanos(e.target.value === '' ? '' : Number(e.target.value))
                         }
                         placeholder="Ej. 20"
-                        className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-slate-900 dark:text-slate-100"
+                        className="w-full rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs font-semibold text-ink"
                       />
-                      <span className="absolute right-3 top-1.5 text-xs font-bold text-slate-400">%</span>
+                      <span className="absolute right-3 top-1.5 text-xs font-bold text-ink-muted">%</span>
                     </div>
                   </div>
                 )}
@@ -324,11 +324,11 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           </div>
 
           {/* Footer del Formulario */}
-          <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-rule flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onCerrar}
-              className="min-h-[42px] px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="min-h-[42px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-xs hover:bg-paper-2 transition cursor-pointer"
             >
               Cancelar
             </button>

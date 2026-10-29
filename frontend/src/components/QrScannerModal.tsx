@@ -173,20 +173,20 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-xs">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md overflow-hidden shadow-2xl transition-colors">
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+      <div className="bg-surface border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-md overflow-hidden shadow-2xl transition-colors text-ink">
         {/* Cabecera */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center justify-between p-4 border-b border-rule">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            <h3 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+            <ShieldCheck className="w-5 h-5 text-brand" />
+            <h3 className="font-extrabold text-ink text-sm">
               Recibir Ficha en Papel
             </h3>
           </div>
           <button
             type="button"
             onClick={onCerrar}
-            className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -194,7 +194,7 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
 
         {/* Selector de modo táctil */}
         {!previaEntrega && (
-          <div className="grid grid-cols-2 gap-1.5 p-2 bg-slate-100 dark:bg-slate-800/60 mx-4 mt-3 rounded-xl text-xs font-bold">
+          <div className="grid grid-cols-2 gap-1.5 p-2 bg-paper-2 border border-rule mx-4 mt-3 rounded-xl text-xs font-bold">
             <button
               type="button"
               onClick={() => {
@@ -203,8 +203,8 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
               }}
               className={`min-h-[40px] rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 modo === 'camara'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-2xs'
-                  : 'text-slate-500'
+                  ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               <Camera className="w-4 h-4" />
@@ -218,8 +218,8 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
               }}
               className={`min-h-[40px] rounded-lg flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 modo === 'manual'
-                  ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-2xs'
-                  : 'text-slate-500'
+                  ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
+                  : 'text-ink-muted hover:text-ink'
               }`}
             >
               <Keyboard className="w-4 h-4" />
@@ -239,29 +239,29 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
           >
             <div
               id="qr-reader-container"
-              className="w-full max-w-[260px] h-[260px] rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-slate-800"
+              className="w-full max-w-[260px] h-[260px] rounded-2xl overflow-hidden bg-black flex items-center justify-center border border-rule"
             />
 
             {cargando && (
-              <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-3 animate-pulse">
-                Verificando ficha...
+              <p className="text-xs font-bold text-brand mt-3 animate-pulse">
+                Verificando ficha…
               </p>
             )}
           </div>
 
           {previaEntrega ? (
             <div className="w-full space-y-4">
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center font-bold text-sm shrink-0">
                       <User className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm truncate">
+                      <h4 className="font-extrabold text-ink text-sm truncate">
                         {previaEntrega.usuario?.apellido}, {previaEntrega.usuario?.nombre}
                       </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                      <p className="text-xs text-ink-muted">
                         DNI {previaEntrega.usuario?.dni} •{' '}
                         {previaEntrega.usuario?.asignaciones?.[0]?.unidad?.nombre || 'Sin Sección'}
                       </p>
@@ -279,8 +279,8 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
               </div>
 
               {previaEntrega.estado === 'VALIDADO_FISICAMENTE' && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-2 text-emerald-800 dark:text-emerald-200 text-xs font-bold">
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <div className="p-3 bg-brand/10 border border-brand/30 rounded-xl flex items-center gap-2 text-brand text-xs font-bold">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-brand" />
                   <span>Esta ficha ya figura como entregada al día.</span>
                 </div>
               )}
@@ -296,7 +296,7 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
                 <button
                   type="button"
                   onClick={handleReintentar}
-                  className="flex-1 min-h-[46px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 min-h-[46px] px-3 rounded-xl border border-rule text-ink font-bold text-xs hover:bg-paper-2 transition cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <RotateCcw className="w-4 h-4" />
                   <span>Otro QR</span>
@@ -308,7 +308,7 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
                       type="button"
                       disabled={validando}
                       onClick={handleValidarFisicamente}
-                      className="flex-1 min-h-[46px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      className="flex-1 min-h-[46px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs transition-colors shadow-2xs cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>{validando ? 'Guardando...' : 'Confirmar Recibido'}</span>
@@ -325,24 +325,24 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
               className="w-full space-y-3"
             >
               <div className="relative">
-                <FileText className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <FileText className="w-4 h-4 text-ink-muted absolute left-3.5 top-3.5" />
                 <input
                   type="text"
                   autoFocus
                   placeholder="Código al pie de la hoja o DNI..."
                   value={codigoManual}
                   onChange={(e) => setCodigoManual(e.target.value)}
-                  className="w-full min-h-[46px] pl-10 pr-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm outline-none focus:border-emerald-500"
+                  className="w-full min-h-[46px] pl-10 pr-3 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm outline-none focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 transition-colors placeholder:text-ink-muted"
                 />
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1">
+              <p className="text-[11px] text-ink-muted px-1">
                 Ingresá el código que figura al pie de la planilla impresa o el DNI del miembro.
               </p>
 
               <button
                 type="submit"
                 disabled={cargando || !codigoManual.trim()}
-                className="w-full min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs transition shadow-xs cursor-pointer disabled:opacity-50"
+                className="w-full min-h-[46px] rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
               >
                 {cargando ? 'Buscando...' : 'Verificar Ficha'}
               </button>
@@ -350,8 +350,8 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
           ) : null}
 
           {exito && (
-            <div className="mt-3 w-full p-3 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl flex items-center gap-2 text-emerald-800 dark:text-emerald-200 text-xs font-bold">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <div className="mt-3 w-full p-3 bg-brand/10 border border-brand/30 rounded-xl flex items-center gap-2 text-brand text-xs font-bold">
+              <CheckCircle2 className="w-4 h-4 text-brand shrink-0" />
               <span>{exito}</span>
             </div>
           )}
