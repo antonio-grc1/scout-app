@@ -17,6 +17,8 @@ import {
   Plus,
   Check,
   Loader2,
+  Tent,
+  Hammer,
 } from 'lucide-react';
 
 export interface CampoSchema {
@@ -335,7 +337,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       const valorActual = String(formData[campo.key] || '');
       return (
         <div key={campo.key} className="space-y-1.5">
-          <label className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+          <label className="block text-xs font-bold text-ink-2">
             {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
           </label>
           <input
@@ -354,8 +356,8 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                   onClick={() => setValue(campo.key, opt.value, { shouldValidate: true })}
                   className={`flex-1 min-w-[76px] min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                     activo
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                      ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                      : 'bg-paper-2 text-ink-2 border-rule hover:bg-paper-2'
                   }`}
                 >
                   {activo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
@@ -378,10 +380,10 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       return (
         <div
           key={campo.key}
-          className={`rounded-2xl border transition-all md:col-span-2 ${
+          className={`rounded-2xl border transition-colors md:col-span-2 ${
             isChecked
-              ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800'
-              : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+              ? 'bg-brand/10 border-brand/40'
+              : 'bg-paper-2 border-rule'
           }`}
         >
           <button
@@ -389,28 +391,28 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             onClick={() => setValue(campo.key, !isChecked, { shouldValidate: true })}
             className="w-full min-h-[52px] px-4 py-3 flex items-center justify-between gap-3 text-left cursor-pointer"
           >
-            <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug">
+            <span className="text-xs sm:text-sm font-bold text-ink leading-snug">
               {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
             </span>
 
             <span
               className={`shrink-0 inline-flex items-center w-14 h-8 rounded-full p-1 transition-colors ${
-                isChecked ? 'bg-emerald-600 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                isChecked ? 'bg-brand justify-end' : 'bg-paper-3 justify-start'
               }`}
             >
-              <span className="w-6 h-6 rounded-full bg-white shadow-xs flex items-center justify-center text-[10px] font-extrabold text-slate-700">
+              <span className="w-6 h-6 rounded-full bg-white shadow-xs flex items-center justify-center text-[10px] font-extrabold text-ink-2">
                 {isChecked ? 'SÍ' : 'NO'}
               </span>
             </span>
           </button>
 
           {isChecked && campoDetalle && (
-            <div className="px-4 pb-3.5 pt-1 border-t border-emerald-200/60 dark:border-emerald-800/50">
+            <div className="px-4 pb-3.5 pt-1 border-t border-brand/30">
               <input
                 type="text"
                 placeholder={`${campoDetalle.label}...`}
                 {...register(campoDetalle.key)}
-                className="w-full min-h-[42px] px-3.5 py-2 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="w-full min-h-[42px] px-3.5 py-2 bg-surface border border-brand/40 rounded-xl text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
           )}
@@ -426,31 +428,33 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       return (
         <div key={campo.key} className="md:col-span-2 space-y-3 pt-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
+            <span className="text-xs font-semibold text-ink-2">
               Materiales para Prestar o Donar
             </span>
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+            <div className="flex bg-paper-3 p-1 rounded-xl">
               <button
                 type="button"
                 onClick={() => setCatMateriales('campamento')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   catMateriales === 'campamento'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
-                    : 'text-slate-500'
+                    ? 'bg-surface text-brand shadow-2xs'
+                    : 'text-ink-muted'
                 }`}
               >
-                ⛺ Campamento
+                <Tent className="w-3.5 h-3.5" />
+                <span>Campamento</span>
               </button>
               <button
                 type="button"
                 onClick={() => setCatMateriales('construccion')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   catMateriales === 'construccion'
-                    ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
-                    : 'text-slate-500'
+                    ? 'bg-surface text-brand shadow-2xs'
+                    : 'text-ink-muted'
                 }`}
               >
-                🏗️ Construcción
+                <Hammer className="w-3.5 h-3.5" />
+                <span>Construcción</span>
               </button>
             </div>
           </div>
@@ -467,11 +471,11 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                   key={item.key}
                   className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition ${
                     isPre || isDon
-                      ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
-                      : 'bg-white dark:bg-slate-800/60 border-slate-200 dark:border-slate-800'
+                      ? 'bg-brand/10 border-brand/40'
+                      : 'bg-surface border-rule'
                   }`}
                 >
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+                  <span className="text-xs font-bold text-ink truncate">
                     {item.label}
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -480,8 +484,8 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                       onClick={() => setValue(preKey, !isPre)}
                       className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
                         isPre
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          ? 'bg-brand text-brand-contrast border-brand shadow-xs'
+                          : 'bg-paper-2 text-ink-muted border-rule'
                       }`}
                     >
                       Prestar
@@ -491,8 +495,8 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                       onClick={() => setValue(donKey, !isDon)}
                       className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
                         isDon
-                          ? 'bg-emerald-600 text-white border-emerald-600'
-                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                          ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                          : 'bg-paper-2 text-ink-muted border-rule'
                       }`}
                     >
                       Donar
@@ -510,7 +514,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
     if (campo.type === 'textarea') {
       return (
         <div key={campo.key} className="space-y-1.5 md:col-span-2">
-          <label htmlFor={campo.key} className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+          <label htmlFor={campo.key} className="block text-xs font-bold text-ink-2">
             {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
           </label>
           <textarea
@@ -519,7 +523,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             {...register(campo.key, {
               required: esRequerido ? 'Completá este campo' : false,
             })}
-            className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full px-3.5 py-2.5 bg-surface border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
           />
           {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
         </div>
@@ -532,7 +536,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
     return (
       <div key={campo.key} className="space-y-1.5">
-        <label htmlFor={campo.key} className="block text-xs font-bold text-slate-700 dark:text-slate-200">
+        <label htmlFor={campo.key} className="block text-xs font-bold text-ink-2">
           {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
         </label>
         <input
@@ -542,7 +546,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           {...register(campo.key, {
             required: esRequerido ? 'Completá este campo' : false,
           })}
-          className="w-full min-h-[44px] px-3.5 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full min-h-[44px] px-3.5 py-2 bg-surface border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
         />
         {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
       </div>
@@ -570,12 +574,12 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           </div>
 
           {/* Selector de Familiares por Pestañas Táctiles (montados en DOM para validación completa) */}
-          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+          <div className="pt-4 border-t border-rule space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                Datos de Familiares Obligatorios
+              <span className="text-xs font-semibold text-ink-muted">
+                Datos de familiares obligatorios
               </span>
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
+              <div className="flex bg-paper-3 p-1 rounded-xl w-full sm:w-auto">
                 {(
                   [
                     { id: 'madre', label: 'Madre', req: true },
@@ -590,18 +594,18 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                       key={t.id}
                       type="button"
                       onClick={() => setFamiliarTab(t.id)}
-                      className={`flex-1 sm:flex-initial min-h-[40px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`flex-1 sm:flex-initial min-h-[40px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                         familiarTab === t.id
-                          ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-2xs'
+                          ? 'bg-surface text-brand shadow-2xs'
                           : tieneErrores
                             ? 'text-rose-600 dark:text-rose-400'
-                            : 'text-slate-600 dark:text-slate-400'
+                            : 'text-ink-muted'
                       }`}
                     >
                       <span>{t.label}</span>
                       {t.req && <span className="text-rose-500 font-extrabold">*</span>}
                       {tieneDatos && !tieneErrores && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="w-2 h-2 rounded-full bg-brand" />
                       )}
                       {tieneErrores && (
                         <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
@@ -619,7 +623,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 return (
                   <div
                     key={tabId}
-                    className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/30 border border-slate-200/80 dark:border-slate-800 ${
+                    className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-2xl bg-paper-2 border border-rule ${
                       esActivo ? '' : 'hidden'
                     }`}
                   >
@@ -652,10 +656,10 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setPersonasRetiroVisibles((n) => Math.min(3, n + 1))}
-              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition cursor-pointer"
+              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl border border-dashed border-brand dark:border-brand/40 text-brand font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-brand/10 transition-colors cursor-pointer whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
-              <span>Agregar otra persona autorizada ({personasRetiroVisibles}/3)</span>
+              <Plus className="w-4 h-4 shrink-0" />
+              <span className="whitespace-nowrap">Agregar otra persona autorizada ({personasRetiroVisibles}/3)</span>
             </button>
           )}
         </div>
@@ -699,8 +703,8 @@ export const DynamicFormRenderer: React.FC<Props> = ({
     return (
       <div className="space-y-4">
         {seccionActual.id === 'seccion_autorizacion_salidas' && (
-          <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1">
-            <p className="font-bold text-slate-800 dark:text-slate-100">
+          <div className="p-3.5 rounded-xl bg-paper-2 border border-rule text-xs text-ink-2 space-y-1">
+            <p className="font-bold text-ink">
               Salidas por el día sin pernocte (Ciclo 2026)
             </p>
             <p>
@@ -708,7 +712,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               Grupo Scout.
             </p>
             {Boolean(formData.autorizante_nombre) && (
-              <p className="pt-1 text-emerald-700 dark:text-emerald-400 font-bold">
+              <p className="pt-1 text-brand font-bold">
                 Firma: {String(formData.autorizante_nombre)} (
                 {String(formData.autorizante_caracter || 'Familiar')})
               </p>
@@ -726,13 +730,13 @@ export const DynamicFormRenderer: React.FC<Props> = ({
   return (
     <div ref={formTopRef} className="space-y-4 scroll-mt-20">
       {/* Navegador de Pasos Compacto (1 fila deslizable con el pulgar) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+      <div className="bg-surface rounded-2xl p-3 sm:p-4 border border-rule shadow-2xs space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold text-xs flex items-center justify-center shrink-0">
-              {pasoActivo + 1}/{secciones.length}
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-bold text-xs shrink-0">
+              Paso {pasoActivo + 1} de {secciones.length}
             </span>
-            <h2 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100 truncate">
+            <h2 className="text-sm sm:text-base font-extrabold text-ink truncate">
               {NOMBRES_CORTOS_PASO[seccionActual?.id] || seccionActual?.titulo}
             </h2>
           </div>
@@ -741,9 +745,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             type="button"
             onClick={handleGuardarBorrador}
             disabled={cargando}
-            className="min-h-[36px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shrink-0 disabled:opacity-50"
+            className="min-h-[36px] px-3 rounded-xl bg-paper-3 hover:bg-paper-3 text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
           >
-            <Save className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <Save className="w-3.5 h-3.5 text-brand" />
             <span>Guardar avance</span>
           </button>
         </div>
@@ -762,10 +766,10 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 onClick={() => irAPaso(idx)}
                 className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer shrink-0 border ${
                   esActivo
-                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                    ? 'bg-brand text-brand-contrast shadow-xs font-bold border-neutral-900 dark:border-brand'
                     : esPasado
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                      : 'bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800'
+                      ? 'bg-brand/10 text-ink-2 border-brand/30'
+                      : 'bg-paper-2 text-ink-muted border-rule'
                 }`}
               >
                 {esPasado ? (
@@ -791,12 +795,12 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       )}
 
       {/* Cuerpo de Campos del Paso Actual */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-6 border border-slate-200 dark:border-slate-800 shadow-2xs">
+      <div className="bg-surface rounded-2xl p-4 sm:p-6 border border-rule shadow-2xs">
         {renderContenidoSeccion()}
       </div>
 
       {/* Barra de Acción Inferior Optimizada para el Pulgar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-3.5 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+      <div className="bg-surface rounded-2xl p-3.5 sm:p-5 border border-rule shadow-2xs space-y-3">
         {pasoActivo < secciones.length - 1 ? (
           <div className="space-y-3">
             {/* Fila Principal: Botón Siguiente Destacado y Botón Anterior */}
@@ -805,7 +809,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 type="button"
                 disabled={pasoActivo === 0}
                 onClick={() => irAPaso(pasoActivo - 1)}
-                className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-30 cursor-pointer shrink-0"
+                className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule text-ink-2 font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-30 cursor-pointer shrink-0"
                 aria-label="Paso anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -815,7 +819,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleSiguientePaso}
-                className="flex-1 min-h-[52px] sm:min-h-[56px] px-5 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-extrabold text-sm sm:text-base shadow-md shadow-emerald-600/25 flex items-center justify-center gap-2 transition cursor-pointer"
+                className="flex-1 min-h-[52px] sm:min-h-[56px] px-5 sm:px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-sm sm:text-base shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <span>
                   Siguiente:{' '}
@@ -827,18 +831,18 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             </div>
 
             {/* Acción Secundaria: Finalizar y Descargar PDF (discreto para no confundir al usuario) */}
-            <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-slate-800 text-xs">
-              <span className="text-[11px] font-semibold text-slate-400">
+            <div className="flex items-center justify-between pt-1 border-t border-rule text-xs">
+              <span className="text-[11px] font-semibold text-ink-muted">
                 Paso {pasoActivo + 1} de {secciones.length}
               </span>
               <button
                 type="button"
                 onClick={handleFinalizarFirma}
                 disabled={cargando}
-                className="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-xs flex items-center gap-1.5 transition py-1.5 px-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+                className="text-ink-muted hover:text-ink font-bold text-xs flex items-center gap-1.5 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-paper-2 cursor-pointer disabled:opacity-50 whitespace-nowrap"
               >
-                <Download className="w-3.5 h-3.5 text-slate-400" />
-                <span>Finalizar y Descargar PDF</span>
+                <Download className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                <span className="whitespace-nowrap">Finalizar y descargar PDF</span>
               </button>
             </div>
           </div>
@@ -848,7 +852,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => irAPaso(pasoActivo - 1)}
-              className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+              className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule text-ink-2 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Paso anterior</span>
@@ -858,14 +862,14 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               type="button"
               onClick={handleFinalizarFirma}
               disabled={cargando}
-              className="flex-1 min-h-[54px] sm:min-h-[58px] px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-600/25 flex items-center justify-center gap-2.5 transition cursor-pointer disabled:opacity-50"
+              className="flex-1 min-h-[54px] sm:min-h-[58px] px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-black text-sm sm:text-base shadow-lg shadow-sm flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
             >
               {cargando ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <Download className="w-5 h-5 stroke-[2.5]" />
               )}
-              <span>Finalizar y Descargar PDF Oficial</span>
+              <span className="whitespace-nowrap">Finalizar y descargar PDF oficial</span>
             </button>
           </div>
         )}

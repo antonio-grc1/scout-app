@@ -3,7 +3,10 @@ import { Navbar } from '../../components/Navbar';
 import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
+import { useThemeStore } from '../../store/themeStore';
 import { obtenerConfigRama } from '../../lib/ramaColors';
+import { Button } from '../../components/ui/Button';
+import { ThemeCustomizerModal } from '../../components/ThemeCustomizerModal';
 import {
   calcularEdad,
   traducirErrorAmigable,
@@ -22,14 +25,17 @@ import {
   EyeOff,
   CheckCircle2,
   AlertCircle,
+  Palette,
 } from 'lucide-react';
 
 export const PerfilPage: React.FC = () => {
   const { usuario, setSesion } = useAuthStore();
+  const { customization } = useThemeStore();
   const [perfil, setPerfil] = useState<any | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
   const [guardandoClave, setGuardandoClave] = useState(false);
+  const [customizerAbierto, setCustomizerAbierto] = useState(false);
   const [alertaContacto, setAlertaContacto] = useState<{
     tipo: 'exito' | 'error';
     texto: string;
@@ -178,34 +184,34 @@ export const PerfilPage: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 sm:pb-10 transition-colors">
+    <div className="min-h-screen bg-paper pb-24 sm:pb-10 transition-colors">
       <Navbar />
 
       <main className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
         {cargando ? (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center gap-3 text-slate-500">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-            <span className="text-xs font-bold">Cargando tu perfil...</span>
+          <div className="bg-surface rounded-2xl p-10 border border-rule flex flex-col items-center justify-center gap-3 text-ink-muted">
+            <Loader2 className="w-6 h-6 animate-spin text-brand" />
+            <span className="text-xs font-bold">Cargando tu perfil…</span>
           </div>
         ) : (
           <>
             {/* Tarjeta de Identidad Institucional */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
                   <div
                     className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 ${
-                      cfgRama?.avatarClases || 'bg-emerald-600 text-white'
+                      cfgRama?.avatarClases || 'bg-amber-400 text-neutral-950 font-black'
                     }`}
                   >
                     {perfil?.nombre?.[0] || usuario?.nombre?.[0] || ''}
                     {perfil?.apellido?.[0] || usuario?.apellido?.[0] || ''}
                   </div>
                   <div>
-                    <h1 className="text-xl font-black text-slate-900 dark:text-slate-100">
+                    <h1 className="text-xl font-black text-ink">
                       {perfil?.nombre || usuario?.nombre} {perfil?.apellido || usuario?.apellido}
                     </h1>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+                    <p className="text-xs text-ink-muted mt-0.5 font-medium">
                       DNI {perfil?.dni || usuario?.dni} •{' '}
                       {calcularEdad(perfil?.fechaNacimiento) ?? '—'} años
                     </p>
@@ -221,7 +227,7 @@ export const PerfilPage: React.FC = () => {
                         key={a.id}
                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-extrabold border ${
                           c?.badgeClases ||
-                          'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                          'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800'
                         }`}
                       >
                         <ShieldCheck className="w-3.5 h-3.5" />
@@ -236,15 +242,15 @@ export const PerfilPage: React.FC = () => {
 
               {/* Grupo Familiar si tiene hermanos vinculados */}
               {hermanos.length > 0 && (
-                <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
-                    <Users className="w-3.5 h-3.5 text-emerald-600" />
+                <div className="mt-4 pt-3.5 border-t border-rule flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-muted">
+                    <Users className="w-3.5 h-3.5 text-brand" />
                     Grupo Familiar:
                   </span>
                   {hermanos.map((h: any) => (
                     <span
                       key={h.id}
-                      className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200"
+                      className="px-2.5 py-1 rounded-lg bg-paper-2 text-xs font-bold text-ink"
                     >
                       {h.nombre} {h.apellido} (DNI {h.dni})
                     </span>
@@ -253,19 +259,94 @@ export const PerfilPage: React.FC = () => {
               )}
             </div>
 
+            {/* Tarjeta de Personalización y Apariencia */}
+            <div className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs space-y-4 transition-colors">
+              <div className="flex items-center gap-2 border-b border-rule pb-3">
+                <Palette className="w-4 h-4 text-brand" />
+                <div>
+                  <h2 className="text-sm font-extrabold text-ink">
+                    Personalización y Apariencia
+                  </h2>
+                  <p className="text-[11px] text-ink-muted">
+                    Configurá la paleta institucional, escala tipográfica y tamaño del logo en este dispositivo.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  {/* Muestras de color activas */}
+                  <div className="flex items-center -space-x-1.5 overflow-hidden p-1">
+                    <span
+                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs bg-brand"
+                      title="Color Primario"
+                    />
+                    <span
+                      style={{ backgroundColor: 'var(--color-navbar)' }}
+                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs"
+                      title="Barra de Navegación"
+                    />
+                    <span
+                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs bg-paper"
+                      title="Fondo General"
+                    />
+                    <span
+                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs bg-ink"
+                      title="Color de Texto"
+                    />
+                  </div>
+
+                  <div>
+                    <span className="text-xs font-bold text-ink block">
+                      Tema en uso:{' '}
+                      <span className="text-brand font-extrabold">
+                        {customization?.preset === 'nautical'
+                          ? 'Azul Marino & Oro'
+                          : customization?.preset === 'forest'
+                            ? 'Bosque & Arena'
+                            : customization?.preset === 'contrast'
+                              ? 'Alto Contraste'
+                              : customization?.preset === 'custom'
+                                ? 'Personalizado'
+                                : 'Scout Tradicional'}
+                      </span>
+                    </span>
+                    <span className="text-[11px] text-ink-muted">
+                      Escala de texto: {customization?.fontScale || '100%'}
+                    </span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => setCustomizerAbierto(true)}
+                  leftIcon={<Palette className="w-4 h-4" />}
+                  className="min-h-[44px] cursor-pointer whitespace-nowrap"
+                >
+                  <span>Personalizar Tema</span>
+                </Button>
+              </div>
+            </div>
+
+            <ThemeCustomizerModal
+              abierto={customizerAbierto}
+              onCerrar={() => setCustomizerAbierto(false)}
+            />
+
             {/* Formulario de Contacto y Teléfonos Familiares */}
             <form
               onSubmit={handleGuardarContacto}
-              className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
+              className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs space-y-4"
             >
-              <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <Phone className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center gap-2 border-b border-rule pb-3">
+                <Phone className="w-4 h-4 text-brand" />
                 <div>
-                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                  <h2 className="text-sm font-extrabold text-ink">
                     Datos de Contacto y Teléfonos
                   </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Mantené actualizados tus teléfonos para emergencias y comunicaciones del grupo.
+                  <p className="text-[11px] text-ink-muted">
+                    Esta información es vital ante emergencias y salidas de grupo.
                   </p>
                 </div>
               </div>
@@ -274,7 +355,7 @@ export const PerfilPage: React.FC = () => {
                 <div
                   className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border ${
                     alertaContacto.tipo === 'exito'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
                       : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-200 border-rose-200 dark:border-rose-800'
                   }`}
                 >
@@ -289,27 +370,11 @@ export const PerfilPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Teléfono del Miembro
-                  </label>
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    placeholder="Ej: 3511234567"
-                    value={formContacto.telefonoContacto}
-                    onChange={(e) =>
-                      setFormContacto({ ...formContacto, telefonoContacto: e.target.value })
-                    }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Email
+                  <label className="block text-ink font-bold mb-1">
+                    Email de Contacto
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Mail className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="email"
                       placeholder="correo@ejemplo.com"
@@ -317,126 +382,134 @@ export const PerfilPage: React.FC = () => {
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, emailContacto: e.target.value })
                       }
-                      className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Nombre y Apellido Madre
+                  <label className="block text-ink font-bold mb-1">
+                    Teléfono del Miembro
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="tel"
+                      placeholder="Ej: 3511234567"
+                      value={formContacto.telefonoContacto}
+                      onChange={(e) =>
+                        setFormContacto({ ...formContacto, telefonoContacto: e.target.value })
+                      }
+                      className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-ink font-bold mb-1">
+                    Madre: Nombre Completo
                   </label>
                   <input
                     type="text"
-                    placeholder="Nombre y apellido de la madre"
                     value={formContacto.madreNombres}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, madreNombres: e.target.value })
                     }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Teléfono Madre
+                  <label className="block text-ink font-bold mb-1">
+                    Madre: Teléfono
                   </label>
                   <input
                     type="tel"
-                    inputMode="tel"
-                    placeholder="Celular madre"
                     value={formContacto.madreTelefono}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, madreTelefono: e.target.value })
                     }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Nombre y Apellido Padre
+                  <label className="block text-ink font-bold mb-1">
+                    Padre: Nombre Completo
                   </label>
                   <input
                     type="text"
-                    placeholder="Nombre y apellido del padre"
                     value={formContacto.padreNombres}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, padreNombres: e.target.value })
                     }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Teléfono Padre
+                  <label className="block text-ink font-bold mb-1">
+                    Padre: Teléfono
                   </label>
                   <input
                     type="tel"
-                    inputMode="tel"
-                    placeholder="Celular padre"
                     value={formContacto.padreTelefono}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, padreTelefono: e.target.value })
                     }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Nombre y Apellido Tutor/a
+                  <label className="block text-ink font-bold mb-1">
+                    Tutor/a Legal: Nombre
                   </label>
                   <input
                     type="text"
-                    placeholder="Nombre y apellido del tutor/a"
                     value={formContacto.tutorNombres}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, tutorNombres: e.target.value })
                     }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Teléfono Tutor/a
+                  <label className="block text-ink font-bold mb-1">
+                    Tutor/a Legal: Teléfono
                   </label>
                   <input
                     type="tel"
-                    inputMode="tel"
-                    placeholder="Celular tutor/a"
                     value={formContacto.tutorTelefono}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, tutorTelefono: e.target.value })
                     }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
-                    Teléfono de Urgencias
+                  <label className="block text-ink font-bold mb-1">
+                    Teléfono alternativo para Urgencias
                   </label>
                   <input
                     type="tel"
-                    inputMode="tel"
-                    placeholder="Alternativo para emergencias"
+                    placeholder="Teléfono fijo o pariente cercano"
                     value={formContacto.telefonoUrgencias}
                     onChange={(e) =>
                       setFormContacto({ ...formContacto, telefonoUrgencias: e.target.value })
                     }
-                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-ink font-bold mb-1">
                     Domicilio
                   </label>
                   <div className="relative">
-                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <MapPin className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
                       placeholder="Calle y número"
@@ -444,17 +517,17 @@ export const PerfilPage: React.FC = () => {
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, domicilio: e.target.value })
                       }
-                      className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-ink font-bold mb-1">
                     Obra Social / Prepaga
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <User className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     <input
                       type="text"
                       placeholder="OSDE, Apross, etc."
@@ -462,40 +535,38 @@ export const PerfilPage: React.FC = () => {
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, obraSocial: e.target.value })
                       }
-                      className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      className="w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                     />
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end pt-2">
-                <button
+                <Button
                   type="submit"
                   disabled={guardandoContacto}
-                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  loading={guardandoContacto}
+                  variant="primary"
+                  leftIcon={<Save className="w-4 h-4" />}
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 cursor-pointer whitespace-nowrap"
                 >
-                  {guardandoContacto ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  <span>Guardar Datos de Contacto</span>
-                </button>
+                  <span className="whitespace-nowrap">Guardar datos de contacto</span>
+                </Button>
               </div>
             </form>
 
             {/* Sección Cambiar Contraseña */}
             <form
               onSubmit={handleCambiarClave}
-              className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-4"
+              className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs space-y-4"
             >
-              <div className="flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-                <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <div className="flex items-center gap-2 border-b border-rule pb-3">
+                <KeyRound className="w-4 h-4 text-brand" />
                 <div>
-                  <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+                  <h2 className="text-sm font-extrabold text-ink">
                     Seguridad y Contraseña
                   </h2>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className="text-[11px] text-ink-muted">
                     Podés actualizar tu clave de acceso cuando quieras (mínimo 8 caracteres).
                   </p>
                 </div>
@@ -505,7 +576,7 @@ export const PerfilPage: React.FC = () => {
                 <div
                   className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border ${
                     alertaClave.tipo === 'exito'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
+                      ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800'
                       : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-200 border-rose-200 dark:border-rose-800'
                   }`}
                 >
@@ -520,7 +591,7 @@ export const PerfilPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-ink font-bold mb-1">
                     Contraseña Actual
                   </label>
                   <div className="relative">
@@ -531,12 +602,12 @@ export const PerfilPage: React.FC = () => {
                       onChange={(e) =>
                         setFormClave({ ...formClave, passwordActual: e.target.value })
                       }
-                      className="w-full min-h-[42px] px-3 pr-10 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      className="w-full min-h-[42px] px-3 pr-10 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setVerActual((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer"
                     >
                       {verActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -544,7 +615,7 @@ export const PerfilPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-ink font-bold mb-1">
                     Nueva Contraseña
                   </label>
                   <div className="relative">
@@ -557,12 +628,12 @@ export const PerfilPage: React.FC = () => {
                       onChange={(e) =>
                         setFormClave({ ...formClave, passwordNueva: e.target.value })
                       }
-                      className="w-full min-h-[42px] px-3 pr-10 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      className="w-full min-h-[42px] px-3 pr-10 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setVerNueva((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer"
                     >
                       {verNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -570,7 +641,7 @@ export const PerfilPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                  <label className="block text-ink font-bold mb-1">
                     Repetir Nueva Contraseña
                   </label>
                   <div className="relative">
@@ -580,12 +651,12 @@ export const PerfilPage: React.FC = () => {
                       minLength={8}
                       value={formClave.confirmar}
                       onChange={(e) => setFormClave({ ...formClave, confirmar: e.target.value })}
-                      className="w-full min-h-[42px] px-3 pr-10 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none"
+                      className="w-full min-h-[42px] px-3 pr-10 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
                     />
                     <button
                       type="button"
                       onClick={() => setVerConfirmar((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer"
                     >
                       {verConfirmar ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -594,18 +665,16 @@ export const PerfilPage: React.FC = () => {
               </div>
 
               <div className="flex justify-end pt-2">
-                <button
+                <Button
                   type="submit"
                   disabled={guardandoClave}
-                  className="min-h-[44px] px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-slate-800 dark:hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  loading={guardandoClave}
+                  variant="primary"
+                  leftIcon={<KeyRound className="w-4 h-4" />}
+                  className="min-h-[44px] px-5 py-2.5 rounded-xl text-xs font-extrabold flex items-center gap-2 cursor-pointer shadow-2xs"
                 >
-                  {guardandoClave ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <KeyRound className="w-4 h-4" />
-                  )}
                   <span>Actualizar Contraseña</span>
-                </button>
+                </Button>
               </div>
             </form>
 

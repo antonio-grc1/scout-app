@@ -998,10 +998,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const saldoAFavor = Number(estadoCuenta?.resumen?.saldoAFavor ?? 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800 transition-colors animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center sm:p-4">
+      <div className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-md flex flex-col max-h-[92vh] border border-rule transition-colors animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink">
         {/* Cabecera Compacta */}
-        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/80 dark:bg-slate-900/90 shrink-0">
+        <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0 text-ink">
           <div className="flex items-center gap-3 min-w-0">
             {(() => {
               const cfgRama = miembro ? obtenerConfigRama(miembro, unidades) : null;
@@ -1009,9 +1009,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                 <div
                   className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base shadow-xs shrink-0 ${
                     !miembro?.activo
-                      ? 'bg-slate-400 text-white'
+                      ? 'bg-paper-3 text-ink-muted'
                       : cfgRama?.avatarClases ||
-                        (esEducador ? 'bg-indigo-600 text-white' : 'bg-emerald-600 text-white')
+                        (esEducador ? 'bg-paper-3 text-brand' : 'bg-brand text-brand-contrast')
                   }`}
                 >
                   {miembro ? `${miembro.nombre?.[0] || ''}${miembro.apellido?.[0] || ''}` : '...'}
@@ -1020,16 +1020,16 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             })()}
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                <h3 className="text-base sm:text-lg font-extrabold text-ink truncate">
                   {miembro ? `${miembro.apellido}, ${miembro.nombre}` : 'Cargando...'}
                 </h3>
                 {miembro && !miembro.activo && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-paper-3 text-ink-2">
                     Baja
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+              <p className="text-xs text-ink-muted truncate">
                 DNI {miembro?.dni || '—'} • {calcularEdad(miembro?.fechaNacimiento) ?? '—'} años •{' '}
                 {asignacionPrincipal?.unidad?.nombre || 'Sin Sección'}
               </p>
@@ -1043,7 +1043,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             <button
               onClick={onCerrar}
               aria-label="Cerrar"
-              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition cursor-pointer"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:hover:bg-paper-3 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -1051,13 +1051,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         </div>
 
         {/* Pestañas Táctiles (Touch Target >= 44px) */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 overflow-x-auto no-scrollbar text-xs font-bold text-slate-500 dark:text-slate-400 shrink-0">
+        <div className="flex border-b border-rule bg-surface px-3 overflow-x-auto no-scrollbar text-xs font-bold text-ink-muted shrink-0">
           <button
             onClick={() => setTab('datos')}
             className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
               tab === 'datos'
-                ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'border-brand text-brand font-bold'
+                : 'border-transparent hover:text-ink'
             }`}
           >
             <User className="w-4 h-4" />
@@ -1069,8 +1069,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               onClick={() => setTab('cuotas')}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'cuotas'
-                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'border-brand text-brand font-bold'
+                  : 'border-transparent hover:text-ink'
               }`}
             >
               <CreditCard className="w-4 h-4" />
@@ -1088,8 +1088,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               onClick={() => setTab('ficha')}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'ficha'
-                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'border-brand text-brand font-bold'
+                  : 'border-transparent hover:text-ink'
               }`}
             >
               <FileCheck2 className="w-4 h-4" />
@@ -1102,14 +1102,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               onClick={() => setTab('pase')}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'pase'
-                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'border-brand text-brand font-bold'
+                  : 'border-transparent hover:text-ink'
               }`}
             >
               <ArrowRightLeft className="w-4 h-4" />
               <span>Pase</span>
               {candidatoPase && (
-                <span className="w-2 h-2 rounded-full bg-amber-500 inline-block animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-brand inline-block animate-pulse" />
               )}
             </button>
           )}
@@ -1119,8 +1119,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               onClick={() => setTab('seguridad')}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'seguridad'
-                  ? 'border-emerald-600 text-emerald-600 dark:text-emerald-400'
-                  : 'border-transparent hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'border-brand text-brand font-bold'
+                  : 'border-transparent hover:text-ink'
               }`}
             >
               <KeyRound className="w-4 h-4" />
@@ -1134,7 +1134,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           <div
             className={`mx-4 mt-3 p-3 rounded-xl text-xs font-bold flex items-center justify-between border ${
               alerta.tipo === 'exito'
-                ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300'
+                ? 'bg-brand/10 border-brand/30 text-ink'
                 : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300'
             }`}
           >
@@ -1148,9 +1148,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         {/* Cuerpo del Modal */}
         <div className="p-4 sm:p-5 overflow-y-auto space-y-5 text-xs flex-1">
           {cargando ? (
-            <div className="py-14 text-center text-slate-400">
-              <div className="inline-block animate-spin rounded-full h-7 w-7 border-b-2 border-emerald-600 mb-2" />
-              <p>Cargando...</p>
+            <div className="py-14 text-center text-ink-muted">
+              <div className="inline-block animate-spin rounded-full h-7 w-7 border-b-2 border-brand mb-2" />
+              <p>Cargando…</p>
             </div>
           ) : miembro ? (
             <>
@@ -1189,7 +1189,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                       { key: 'alergias', label: 'Alergias o Cuidados Médicos', editable: puedeEditarContacto, placeholder: 'Alergias, medicación habitual o dieta especial', full: true, multiline: true },
                     ];
                     const claseInput =
-                      'w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:border-emerald-500 outline-none';
+                      'w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors';
                     const mostrarValor = (c: Campo) => {
                       const v = String(formData[c.key] ?? '');
                       if (!v) return null;
@@ -1204,7 +1204,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                           if (!c.editable && !valor) return null;
                           return (
                             <div key={c.key} className={c.full ? 'sm:col-span-2' : ''}>
-                              <label className="block text-slate-600 dark:text-slate-300 font-bold mb-1">
+                              <label className="block text-ink-2 font-bold mb-1">
                                 {c.label}
                                 {c.editable && c.required ? ' *' : ''}
                               </label>
@@ -1229,7 +1229,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                   />
                                 )
                               ) : (
-                                <p className="min-h-[42px] px-1 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 whitespace-pre-wrap break-words">
+                                <p className="min-h-[42px] px-1 py-2 text-sm font-semibold text-ink whitespace-pre-wrap break-words">
                                   {valor}
                                 </p>
                               )}
@@ -1247,15 +1247,15 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                     const pctDesc = familiar ? Number(familiar.porcentajeDescuentoHermanos ?? 0) : 0;
 
                     return (
-                      <div className="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-2.5">
+                      <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 space-y-2.5">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                            <span className="font-bold text-indigo-950 dark:text-indigo-100">
+                            <Users className="w-4 h-4 text-brand" />
+                            <span className="font-bold text-ink">
                               {familiar ? familiar.nombreFamilia : 'Sin hermanos vinculados'}
                             </span>
                             {familiar && pctDesc > 0 && (
-                              <span className="px-2 py-0.5 rounded-full bg-indigo-200/80 dark:bg-indigo-800 text-indigo-900 dark:text-indigo-100 text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-full bg-brand/20 text-brand font-bold text-[10px] font-bold">
                                 -{pctDesc}% cuota
                               </span>
                             )}
@@ -1266,7 +1266,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                               <button
                                 type="button"
                                 onClick={() => setModalEditarFamiliaAbierto(true)}
-                                className="min-h-[38px] px-3 rounded-xl border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-300 font-bold text-xs cursor-pointer"
+                                className="min-h-[38px] px-3 rounded-xl border border-brand/40 bg-surface text-brand font-bold text-xs cursor-pointer"
                               >
                                 Descuento ({pctDesc}%)
                               </button>
@@ -1274,7 +1274,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             <button
                               type="button"
                               onClick={() => setModalVincularHermanoAbierto(true)}
-                              className="min-h-[38px] px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer"
+                              className="min-h-[38px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
                             >
                               + Hermano
                             </button>
@@ -1282,14 +1282,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         </div>
 
                         {integrantesFamilia.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-indigo-200/50 dark:border-indigo-800/50">
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rule">
+                            <span className="text-[11px] font-bold text-ink-muted mr-1">
                               Integrantes:
                             </span>
                             {integrantesFamilia.map((h: any) => (
                               <span
                                 key={h.id}
-                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-xs font-bold text-slate-800 dark:text-slate-200"
+                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl bg-surface border border-brand/30 text-xs font-bold text-ink"
                               >
                                 <span>
                                   {h.nombre} {h.apellido}
@@ -1315,15 +1315,15 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                   {/* Estado Activo / Baja y Botón Guardar */}
                   {puedeEditarMiembro && (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-rule">
                       <label className="flex items-center gap-2.5 cursor-pointer min-h-[42px]">
                         <input
                           type="checkbox"
                           checked={formData.activo}
                           onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                          className="w-5 h-5 text-emerald-600 rounded border-slate-300 cursor-pointer"
+                          className="w-5 h-5 text-brand rounded border-rule cursor-pointer focus:ring-brand/20"
                         />
-                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                        <span className="font-bold text-ink-2">
                           {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
                         </span>
                       </label>
@@ -1331,7 +1331,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                       <button
                         type="submit"
                         disabled={guardando}
-                        className="min-h-[44px] px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
+                        className="min-h-[44px] px-5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
                       >
                         <Save className="w-4 h-4" />
                         <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
@@ -1347,26 +1347,26 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               {tab === 'cuotas' && (
                 <div className="space-y-4">
                   {/* Resumen Financiero + Botones de Acción Directa */}
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-4 flex-wrap">
                       <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        <span className="text-xs font-semibold text-ink-muted block">
                           Deuda Total
                         </span>
                         <span
                           className={`text-xl font-black ${
                             saldoPendiente > 0
                               ? 'text-rose-600 dark:text-rose-400'
-                              : 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-ink'
                           }`}
                         >
                           {formatearMoneda(saldoPendiente)}
                         </span>
                       </div>
 
-                      <div className="pl-4 border-l border-slate-200 dark:border-slate-700">
+                      <div className="pl-4 border-l border-rule">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-[10px] font-bold uppercase text-teal-600 dark:text-teal-400">
+                          <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">
                             Saldo a Favor
                           </span>
                           {puedeGestionarTesoreria && (
@@ -1394,7 +1394,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => setModalGenerarDeudaAbierto(true)}
-                          className="min-h-[42px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                          className="min-h-[42px] px-3.5 rounded-xl border border-rule bg-surface text-ink-2 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
                         >
                           <PlusCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                           <span>+ Cargo</span>
@@ -1408,7 +1408,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             setCargoIdACobrar(null);
                             setModalCobrarAbierto(true);
                           }}
-                          className="min-h-[42px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          className="min-h-[42px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
                         >
                           <CreditCard className="w-4 h-4" />
                           <span>{saldoPendiente > 0 ? 'Cobrar / Pagar' : 'Registrar Adelanto'}</span>
@@ -1431,7 +1431,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => setAjustandoSaldo(false)}
-                          className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                          className="text-ink-muted hover:text-ink cursor-pointer"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -1450,7 +1450,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
                               tipoAjusteSaldo === opt.k
                                 ? 'bg-teal-600 text-white border-teal-600'
-                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                : 'bg-surface text-ink-2 border-rule'
                             }`}
                           >
                             {opt.label}
@@ -1471,7 +1471,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             value={montoAjusteSaldo}
                             onChange={(e) => setMontoAjusteSaldo(e.target.value)}
                             placeholder="Ej: 5000"
-                            className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-slate-100"
+                            className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-xs font-bold text-ink"
                           />
                         </div>
                         <div>
@@ -1483,7 +1483,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             value={motivoAjusteSaldo}
                             onChange={(e) => setMotivoAjusteSaldo(e.target.value)}
                             placeholder="Ej: Devolución en mano, saldo año anterior..."
-                            className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-white dark:bg-slate-800 text-xs text-slate-900 dark:text-slate-100"
+                            className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-xs text-ink"
                           />
                         </div>
                       </div>
@@ -1492,7 +1492,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => setAjustandoSaldo(false)}
-                          className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl border border-rule text-xs font-semibold text-ink-2 cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -1514,15 +1514,15 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                     const pctDesc = familiar ? Number(familiar.porcentajeDescuentoHermanos ?? 0) : 0;
 
                     return (
-                      <div className="p-3 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/25 border border-indigo-200/80 dark:border-indigo-800/50 space-y-2">
+                      <div className="p-3 rounded-2xl bg-brand/10 border border-brand/30 space-y-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                            <span className="font-bold text-indigo-950 dark:text-indigo-100 text-xs">
+                            <Users className="w-4 h-4 text-brand shrink-0" />
+                            <span className="font-bold text-ink text-xs">
                               {familiar ? familiar.nombreFamilia : 'Sin grupo familiar'}
                             </span>
                             {familiar && (
-                              <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/70 text-indigo-800 dark:text-indigo-200 text-[10px] font-bold">
+                              <span className="px-2 py-0.5 rounded-full bg-brand/15 text-brand text-[10px] font-bold">
                                 {pctDesc > 0 ? `-${pctDesc}% desc. hermanos` : '0% desc.'}
                               </span>
                             )}
@@ -1532,7 +1532,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                               <button
                                 type="button"
                                 onClick={() => setModalEditarFamiliaAbierto(true)}
-                                className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] cursor-pointer"
+                                className="px-2.5 py-1 rounded-lg bg-surface border border-brand/40 text-brand font-bold text-[11px] cursor-pointer"
                               >
                                 Editar Familia ({pctDesc}%)
                               </button>
@@ -1540,7 +1540,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             <button
                               type="button"
                               onClick={() => setModalVincularHermanoAbierto(true)}
-                              className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[11px] cursor-pointer transition-colors"
                             >
                               + Hermano
                             </button>
@@ -1548,14 +1548,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         </div>
 
                         {integrantesFamilia.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-indigo-200/50 dark:border-indigo-800/50">
-                            <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 mr-1">
+                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rule">
+                            <span className="text-[11px] font-bold text-ink-muted mr-1">
                               Integrantes:
                             </span>
                             {integrantesFamilia.map((h: any) => (
                               <span
                                 key={h.id}
-                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-[11px] font-bold text-slate-800 dark:text-slate-200"
+                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-0.5 rounded-lg bg-surface border border-brand/30 text-[11px] font-bold text-ink"
                               >
                                 <span>
                                   {h.nombre} {h.apellido}
@@ -1581,7 +1581,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                   {/* Lista de Cuotas / Cargos en Tarjetas Mobile-First */}
                   <div className="space-y-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-xs font-semibold text-ink-muted block">
                       Cuotas y Conceptos Activos ({estadoCuenta?.cargos?.length || 0})
                     </span>
 
@@ -1601,12 +1601,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                           return (
                             <div
                               key={c.id}
-                              className="p-3.5 rounded-2xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-3"
+                              className="p-3.5 rounded-2xl bg-surface border border-rule space-y-3"
                             >
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div className="space-y-1">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                    <span className="font-bold text-ink text-sm">
                                       {c.concepto?.nombre || 'Cuota'}
                                     </span>
                                     {c.concepto?.mes && (
@@ -1621,12 +1621,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                     </span>
                                   </div>
 
-                                  <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                  <div className="text-xs text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
                                     <span>
                                       Total: <strong>{formatearMoneda(c.montoFinal)}</strong>
                                     </span>
                                     {desc > 0 && (
-                                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                                      <span className="text-brand font-semibold">
                                         (Base {formatearMoneda(c.montoOriginal)} • Desc. -{formatearMoneda(desc)})
                                       </span>
                                     )}
@@ -1652,7 +1652,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                         setCargoIdACobrar(c.id);
                                         setModalCobrarAbierto(true);
                                       }}
-                                      className="min-h-[38px] px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                                      className="min-h-[38px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
                                     >
                                       <CreditCard className="w-3.5 h-3.5" />
                                       <span>Cobrar {formatearMoneda(pendiente)}</span>
@@ -1667,7 +1667,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                         : handleIniciarEdicionCargo(c)
                                     }
                                     title="Editar monto o descuento de esta cuota"
-                                    className="min-h-[38px] px-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                                    className="min-h-[38px] px-2.5 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-xs flex items-center gap-1 cursor-pointer"
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
@@ -1687,11 +1687,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                               {estaEditandoEste && cargoEditando && (
                                 <form
                                   onSubmit={handleGuardarEdicionCargo}
-                                  className="pt-3 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-2.5 animate-in fade-in"
+                                  className="pt-3 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-2.5 animate-in fade-in"
                                 >
                                   {cargoEditando.esIndividual && (
                                     <div className="sm:col-span-3">
-                                      <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                                      <label className="block text-[11px] font-bold text-ink-2 mb-1">
                                         Concepto / Motivo
                                       </label>
                                       <input
@@ -1704,12 +1704,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                             nombreConcepto: e.target.value,
                                           })
                                         }
-                                        className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs"
+                                        className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs"
                                       />
                                     </div>
                                   )}
                                   <div>
-                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                                    <label className="block text-[11px] font-bold text-ink-2 mb-1">
                                       Monto Original ($)
                                     </label>
                                     <input
@@ -1724,11 +1724,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                           montoOriginal: e.target.value,
                                         })
                                       }
-                                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold"
+                                      className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs font-bold"
                                     />
                                   </div>
                                   <div>
-                                    <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">
+                                    <label className="block text-[11px] font-bold text-ink-2 mb-1">
                                       Descuento ($)
                                     </label>
                                     <input
@@ -1742,21 +1742,21 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                           montoDescuento: e.target.value,
                                         })
                                       }
-                                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-emerald-600"
+                                      className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs font-bold text-brand"
                                     />
                                   </div>
                                   <div className="flex items-end justify-end gap-1.5">
                                     <button
                                       type="button"
                                       onClick={() => setCargoEditando(null)}
-                                      className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                                      className="px-3 py-1.5 rounded-xl border border-rule text-xs font-semibold cursor-pointer"
                                     >
                                       Cancelar
                                     </button>
                                     <button
                                       type="submit"
                                       disabled={procesandoAccionCuota}
-                                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                                      className="px-3.5 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold cursor-pointer disabled:opacity-50 transition-colors"
                                     >
                                       Guardar
                                     </button>
@@ -1768,7 +1768,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         })}
                       </div>
                     ) : (
-                      <div className="p-6 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400">
+                      <div className="p-6 text-center bg-paper-2 rounded-2xl border border-rule text-ink-muted">
                         Sin cuotas activas asignadas.
                       </div>
                     )}
@@ -1776,14 +1776,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                   {/* Cuotas Anuladas (Colapsable, permite Reactivar o Eliminar definitivamente) */}
                   {estadoCuenta?.cargosAnulados?.length > 0 && (
-                    <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden">
+                    <div className="border border-rule rounded-2xl overflow-hidden">
                       <button
                         type="button"
                         onClick={() => setMostrarAnulados(!mostrarAnulados)}
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+                        className="w-full p-3 bg-paper-2 flex items-center justify-between text-xs font-bold text-ink-2 cursor-pointer"
                       >
                         <span>
-                          Cuotas Anuladas ({estadoCuenta.cargosAnulados.length}) — Toca para reactivar o borrar
+                          Cuotas anuladas ({estadoCuenta.cargosAnulados.length})
                         </span>
                         {mostrarAnulados ? (
                           <ChevronUp className="w-4 h-4" />
@@ -1793,17 +1793,17 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                       </button>
 
                       {mostrarAnulados && (
-                        <div className="p-3 space-y-2 bg-white dark:bg-slate-900 divide-y divide-slate-100 dark:divide-slate-800">
+                        <div className="p-3 space-y-2 bg-surface divide-y divide-rule">
                           {estadoCuenta.cargosAnulados.map((ca: any) => (
                             <div
                               key={ca.id}
                               className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
                             >
                               <div>
-                                <span className="font-bold text-slate-700 dark:text-slate-300 line-through">
+                                <span className="font-bold text-ink-2 line-through">
                                   {ca.concepto?.nombre || 'Cuota'}
                                 </span>
-                                <span className="ml-2 text-slate-400">
+                                <span className="ml-2 text-ink-muted">
                                   ({formatearMoneda(ca.montoFinal)})
                                 </span>
                               </div>
@@ -1814,7 +1814,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                   onClick={() =>
                                     handleReactivarCargo(ca.id, ca.concepto?.nombre || 'Cuota')
                                   }
-                                  className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                                  className="px-2.5 py-1 rounded-lg bg-brand/10 text-brand border border-brand/30 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
                                 >
                                   <RotateCcw className="w-3 h-3" />
                                   <span>Reactivar</span>
@@ -1843,8 +1843,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                   {/* Historial de Pagos (con Edición y Reversión) */}
                   {estadoCuenta?.pagos?.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                    <div className="space-y-2 pt-2 border-t border-rule">
+                      <span className="text-xs font-semibold text-ink-muted flex items-center gap-1.5">
                         <Receipt className="w-3.5 h-3.5" />
                         <span>Pagos Registrados ({estadoCuenta.pagos.length})</span>
                       </span>
@@ -1861,22 +1861,22 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                           return (
                             <div
                               key={p.id}
-                              className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/70 dark:border-slate-800 space-y-2"
+                              className="p-3 rounded-xl bg-paper-2 border border-rule space-y-2"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">
+                                    <span className="font-extrabold text-brand text-sm">
                                       +{formatearMoneda(p.montoTotal)}
                                     </span>
-                                    <span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                                    <span className="px-2 py-0.5 rounded-md bg-surface text-ink-2 text-[10px] font-bold border border-rule">
                                       {METODO_PAGO_LABELS[p.metodoPago] || p.metodoPago}
                                     </span>
-                                    <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold truncate">
+                                    <span className="text-[11px] text-ink-muted font-semibold truncate">
                                       {conceptosImputados}
                                     </span>
                                   </div>
-                                  <span className="text-[11px] text-slate-400 block mt-0.5">
+                                  <span className="text-[11px] text-ink-muted block mt-0.5">
                                     {new Date(p.fechaPago).toLocaleDateString('es-AR')}
                                     {p.referenciaComprobante &&
                                       ` • Comprobante: ${p.referenciaComprobante}`}
@@ -1898,7 +1898,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                           })
                                     }
                                     title="Editar método o comprobante"
-                                    className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200/70 dark:hover:bg-slate-700 cursor-pointer"
+                                    className="p-1.5 rounded-lg text-ink-muted hover:bg-paper-3 cursor-pointer"
                                   >
                                     <Pencil className="w-3.5 h-3.5" />
                                   </button>
@@ -1917,7 +1917,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                               {editandoEstePago && pagoEditando && (
                                 <form
                                   onSubmit={handleGuardarEdicionPago}
-                                  className="pt-2 border-t border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-3 gap-2 animate-in fade-in"
+                                  className="pt-2 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-2 animate-in fade-in"
                                 >
                                   <select
                                     value={pagoEditando.metodoPago}
@@ -1927,7 +1927,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                         metodoPago: e.target.value as any,
                                       })
                                     }
-                                    className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold"
+                                    className="px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs font-semibold"
                                   >
                                     <option value="EFECTIVO">Efectivo</option>
                                     <option value="TRANSFERENCIA">Transferencia</option>
@@ -1943,7 +1943,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                       })
                                     }
                                     placeholder="N° Comprobante"
-                                    className="px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                                    className="px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs"
                                   />
                                   <div className="flex items-center gap-1.5">
                                     <input
@@ -1956,12 +1956,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                         })
                                       }
                                       placeholder="Observaciones"
-                                      className="flex-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                                      className="flex-1 px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs"
                                     />
                                     <button
                                       type="submit"
                                       disabled={procesandoAccionCuota}
-                                      className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                                      className="px-3 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold cursor-pointer transition-colors"
                                     >
                                       OK
                                     </button>
@@ -1985,13 +1985,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   {editandoFicha && plantillaActiva && precargaFicha ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold text-slate-700 dark:text-slate-200">
+                        <span className="text-xs font-extrabold text-ink-2">
                           Completando Ficha 2026
                         </span>
                         <button
                           type="button"
                           onClick={() => setEditandoFicha(false)}
-                          className="min-h-[36px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs cursor-pointer"
+                          className="min-h-[36px] px-3 rounded-xl bg-paper-3 text-ink-2 font-bold text-xs cursor-pointer"
                         >
                           Volver al resumen
                         </button>
@@ -2023,10 +2023,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                       return (
                         <div className="space-y-3">
-                          <div className="p-4 bg-white dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-3.5">
+                          <div className="p-4 bg-surface rounded-2xl border border-rule space-y-3.5">
                             <div className="flex items-start justify-between gap-3">
                               <div className="space-y-1">
-                                <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm block">
+                                <span className="font-extrabold text-ink text-sm block">
                                   Ficha Médica y Autorizaciones 2026
                                 </span>
                                 <div className="flex items-center gap-2 flex-wrap">
@@ -2037,7 +2037,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                   </span>
                                 </div>
                                 {ent?.validadoPor && (
-                                  <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 font-bold pt-0.5">
+                                  <span className="block text-[11px] text-brand font-bold pt-0.5">
                                     ✓ Papel recibido por {ent.validadoPor.nombre}{' '}
                                     {ent.validadoPor.apellido}
                                   </span>
@@ -2052,7 +2052,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                   type="button"
                                   disabled={validandoFichaId === ent.id}
                                   onClick={() => handleValidarFisicoDirecto(ent)}
-                                  className="col-span-2 sm:flex-1 min-h-[44px] px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                                  className="col-span-2 sm:flex-1 min-h-[44px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
                                 >
                                   <FileCheck2 className="w-4 h-4" />
                                   <span>
@@ -2067,12 +2067,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                 type="button"
                                 disabled={generandoVistaPrevia}
                                 onClick={() => handleVerPdfEducador(ent)}
-                                className="min-h-[44px] px-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 font-extrabold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                                className="min-h-[44px] px-3.5 rounded-xl bg-brand/10 hover:bg-brand/15 text-brand border border-brand/30 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                               >
                                 {generandoVistaPrevia ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <Eye className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                  <Eye className="w-4 h-4 text-brand" />
                                 )}
                                 <span>Ver Planilla PDF</span>
                               </button>
@@ -2081,7 +2081,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                 type="button"
                                 disabled={descargandoPdfId !== null}
                                 onClick={() => handleDescargarPdfEducador(ent)}
-                                className="min-h-[44px] px-3.5 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                                className="min-h-[44px] px-3.5 rounded-xl bg-paper-3 hover:opacity-90 text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                               >
                                 {descargandoPdfId !== null ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -2096,12 +2096,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                   type="button"
                                   disabled={cargandoFichaEditor}
                                   onClick={handleAbrirEditorFicha}
-                                  className="col-span-2 sm:col-span-1 min-h-[44px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                                  className="col-span-2 sm:col-span-1 min-h-[44px] px-3.5 rounded-xl border border-rule bg-surface text-ink-2 hover:bg-paper-2 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                                 >
                                   {cargandoFichaEditor ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
-                                    <Pencil className="w-4 h-4 text-emerald-600" />
+                                    <Pencil className="w-4 h-4 text-brand" />
                                   )}
                                   <span>{ent ? 'Editar Ficha' : 'Rellenar Ficha'}</span>
                                 </button>
@@ -2130,14 +2130,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               {tab === 'pase' && (
                 <div className="space-y-4">
                   {candidatoPase && (
-                    <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3.5 rounded-2xl flex items-center justify-between gap-3">
+                    <div className="bg-brand/10 border border-brand/30 p-3.5 rounded-2xl flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+                        <Sparkles className="w-5 h-5 text-brand shrink-0" />
                         <div>
-                          <span className="font-bold text-amber-950 dark:text-amber-100 text-xs block">
+                          <span className="font-bold text-ink text-xs block">
                             Cumplió {candidatoPase.edad} años
                           </span>
-                          <span className="text-[11px] text-amber-800 dark:text-amber-300">
+                          <span className="text-[11px] text-ink-2">
                             Sugerido:{' '}
                             {candidatoPase.tipo === 'PROGRESION'
                               ? `Pasar a ${candidatoPase.ramaSugerida?.nombre}`
@@ -2155,8 +2155,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                       onClick={() => handleCambioCategoria('RAMA')}
                       className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
                         categoriaDestino === 'RAMA'
-                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 ring-2 ring-emerald-500/30'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                          ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30 font-bold'
+                          : 'border-rule text-ink-2'
                       }`}
                     >
                       Rama
@@ -2166,8 +2166,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                       onClick={() => handleCambioCategoria('SIN_RAMA')}
                       className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
                         categoriaDestino === 'SIN_RAMA'
-                          ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-900 dark:text-indigo-200 ring-2 ring-indigo-500/30'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                          ? 'border-neutral-900 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 ring-2 ring-neutral-400/30 font-bold'
+                          : 'border-rule text-ink-2'
                       }`}
                     >
                       Sin Rama / Apoyo
@@ -2178,8 +2178,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                         onClick={() => handleCambioCategoria('JEFATURA')}
                         className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
                           categoriaDestino === 'JEFATURA'
-                            ? 'border-amber-600 bg-amber-50 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 ring-2 ring-amber-500/30'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                            ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30'
+                            : 'border-rule text-ink-2'
                         }`}
                       >
                         Jefatura / Global
@@ -2200,17 +2200,17 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                               onClick={() => handleSeleccionarRama(rama)}
                               className={`p-3 rounded-xl border text-left transition cursor-pointer ${
                                 seleccionada
-                                  ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/50 ring-2 ring-emerald-500/40'
-                                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                                  ? 'border-brand bg-brand/10 ring-2 ring-brand/40'
+                                  : 'border-rule bg-surface'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                                <span className="font-bold text-xs text-ink">
                                   {rama.nombre}
                                 </span>
                                 <span className={`w-2.5 h-2.5 rounded-full ${config.dotColor}`} />
                               </div>
-                              <span className="text-[10px] text-slate-400 block">
+                              <span className="text-[10px] text-ink-muted block">
                                 {rama.edadMinima}-{rama.edadMaxima} años
                               </span>
                             </button>
@@ -2220,7 +2220,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                       {unidadesRamaSeleccionada.length > 1 && (
                         <div className="space-y-1.5">
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                          <span className="text-xs font-bold text-ink-2 block">
                             Sección de {ramaSeleccionadaObj?.nombre}:
                           </span>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2233,8 +2233,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                                   onClick={() => setUnidadDestinoId(String(u.id))}
                                   className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
                                     activa
-                                      ? 'bg-emerald-600 text-white border-emerald-600'
-                                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-slate-700'
+                                      ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                                      : 'bg-surface text-ink-2 border-rule'
                                   }`}
                                 >
                                   {u.nombre}
@@ -2249,7 +2249,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
                   {/* Selector de Rol Dinámico para la categoría seleccionada */}
                   <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                    <span className="text-xs font-bold text-ink-2 block">
                       Función / Rol:
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2267,8 +2267,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             onClick={() => setRolDestinoId(String(r.id))}
                             className={`min-h-[42px] px-3 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
                               activo
-                                ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200'
-                                : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                                ? 'border-brand bg-brand/10 text-brand font-bold'
+                                : 'border-rule text-ink-2'
                             }`}
                           >
                             {r.nombre}
@@ -2282,7 +2282,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                     type="button"
                     disabled={ejecutandoPase || (!unidadDestinoId && !rolDestinoId) || esMismoDestino}
                     onClick={handleEjecutarPase}
-                    className="w-full min-h-[46px] rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-xs disabled:opacity-40"
+                    className="w-full min-h-[46px] rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs disabled:opacity-40"
                   >
                     <ArrowRightLeft className="w-4 h-4" />
                     <span>
@@ -2300,11 +2300,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               {/* PESTAÑA 5: SEGURIDAD Y CONTRASEÑA                        */}
               {/* ======================================================== */}
               {tab === 'seguridad' && (
-                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 space-y-3">
-                  <span className="font-bold text-amber-950 dark:text-amber-100 text-sm block">
+                <div className="p-4 rounded-2xl bg-brand/10 border border-brand/30 space-y-3">
+                  <span className="font-bold text-ink text-sm block">
                     ¿Olvidó su contraseña?
                   </span>
-                  <p className="text-amber-800 dark:text-amber-300 text-xs">
+                  <p className="text-ink-2 text-xs">
                     Restablece su clave para que vuelva a ser su número de DNI (
                     <strong>{miembro.dni}</strong>).
                   </p>
@@ -2312,7 +2312,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                     type="button"
                     onClick={handleResetClave}
                     disabled={reseteandoClave}
-                    className="min-h-[44px] px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs inline-flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                    className="min-h-[44px] px-4 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <KeyRound className="w-4 h-4" />
                     <span>

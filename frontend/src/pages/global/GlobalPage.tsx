@@ -246,7 +246,7 @@ export const GlobalPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-24 sm:pb-10 transition-colors">
+    <div className="min-h-screen bg-paper text-ink pb-24 sm:pb-10 transition-colors">
       <Navbar />
 
       {/* Toast flotante */}
@@ -255,7 +255,7 @@ export const GlobalPage: React.FC = () => {
           <div
             className={`p-3.5 rounded-2xl shadow-lg border flex items-center justify-between gap-3 text-xs font-bold ${
               toast.tipo === 'exito'
-                ? 'bg-emerald-900 text-white border-emerald-700'
+                ? 'bg-brand text-brand-contrast border-brand font-extrabold'
                 : 'bg-rose-900 text-white border-rose-700'
             }`}
           >
@@ -269,11 +269,11 @@ export const GlobalPage: React.FC = () => {
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
         {/* Cabecera Compacta con Pestañas Táctiles */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3 transition-colors">
+        <div className="bg-surface rounded-2xl p-4 sm:p-5 border border-rule shadow-xs space-y-3 transition-colors">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-slate-100">
+              <Shield className="w-5 h-5 text-brand shrink-0" />
+              <h1 className="text-lg sm:text-xl font-extrabold text-ink">
                 Jefatura y Tesorería
               </h1>
             </div>
@@ -283,10 +283,10 @@ export const GlobalPage: React.FC = () => {
             {puedeVerTesoreria && (
               <button
                 onClick={() => setTab('tesoreria')}
-                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'tesoreria'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    ? 'bg-brand text-brand-contrast shadow-2xs'
+                    : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
                 }`}
               >
                 Tesorería
@@ -295,10 +295,10 @@ export const GlobalPage: React.FC = () => {
             {puedeVerColaboradores && (
               <button
                 onClick={() => setTab('colaboradores')}
-                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'colaboradores'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    ? 'bg-brand text-brand-contrast shadow-2xs'
+                    : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
                 }`}
               >
                 Familias Voluntarias
@@ -307,10 +307,10 @@ export const GlobalPage: React.FC = () => {
             {puedeVerOrganizacion && (
               <button
                 onClick={() => setTab('organizacion')}
-                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'organizacion'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    ? 'bg-brand text-brand-contrast shadow-2xs'
+                    : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
                 }`}
               >
                 Ramas y Edades
@@ -319,10 +319,10 @@ export const GlobalPage: React.FC = () => {
             {puedeVerRoles && (
               <button
                 onClick={() => setTab('roles')}
-                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'roles'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    ? 'bg-brand text-brand-contrast shadow-2xs'
+                    : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
                 }`}
               >
                 Roles y Permisos
@@ -331,10 +331,10 @@ export const GlobalPage: React.FC = () => {
             {puedeVerPases && (
               <button
                 onClick={() => setTab('pases')}
-                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'pases'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    ? 'bg-brand text-brand-contrast shadow-2xs'
+                    : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
                 }`}
               >
                 Pases por Camada
@@ -343,10 +343,10 @@ export const GlobalPage: React.FC = () => {
             {puedeVerPlantillas && (
               <button
                 onClick={() => setTab('plantillas')}
-                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'plantillas'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    ? 'bg-brand text-brand-contrast shadow-2xs'
+                    : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
                 }`}
               >
                 Formularios y Fichas
@@ -357,16 +357,16 @@ export const GlobalPage: React.FC = () => {
 
         {/* TAB 2: TESORERÍA */}
         {tab === 'tesoreria' && (
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 sm:p-6 space-y-5 transition-colors">
+          <div className="bg-surface rounded-2xl border border-rule shadow-xs p-4 sm:p-6 space-y-5 transition-colors">
             {/* Sub-pestañas de Tesorería */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-slate-200 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-rule pb-3">
               <button
                 type="button"
                 onClick={() => setSubTabTesoreria('planes')}
                 className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   subTabTesoreria === 'planes'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    ? 'bg-brand/10 text-brand border border-brand/30'
+                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
                 }`}
               >
                 <Layers className="w-4 h-4" />
@@ -379,7 +379,7 @@ export const GlobalPage: React.FC = () => {
                 className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   subTabTesoreria === 'campamentos'
                     ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
                 }`}
               >
                 <Tent className="w-4 h-4" />
@@ -392,7 +392,7 @@ export const GlobalPage: React.FC = () => {
                 className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   subTabTesoreria === 'familias'
                     ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
                 }`}
               >
                 <Users className="w-4 h-4" />
@@ -404,13 +404,13 @@ export const GlobalPage: React.FC = () => {
             {subTabTesoreria === 'planes' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center gap-2">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Toca un mes para habilitar o desactivar su cobro en el grupo.
                   </p>
                   {puedeGestionarTesoreria && (
                     <button
                       onClick={handleCrearPlan}
-                      className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer transition shadow-xs shrink-0"
+                      className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-brand-contrast hover:opacity-95 font-extrabold text-xs cursor-pointer transition-colors shadow-2xs shrink-0"
                     >
                       <PlusCircle className="w-4 h-4" />
                       <span>Nueva Cuota</span>
@@ -429,15 +429,15 @@ export const GlobalPage: React.FC = () => {
                     return (
                       <div
                         key={plan.id}
-                        className="p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col justify-between gap-4"
+                        className="p-4 sm:p-5 rounded-2xl border border-rule bg-paper-2 flex flex-col justify-between gap-4"
                       >
                         <div className="space-y-3">
                           <div className="flex justify-between items-start gap-3">
                             <div>
-                              <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-base leading-snug">
+                              <h4 className="font-extrabold text-ink text-base leading-snug">
                                 {plan.nombre}
                               </h4>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                              <p className="text-xs text-ink-muted mt-0.5">
                                 {plan.unidad ? plan.unidad.nombre : 'Todo el Grupo Scout'} •{' '}
                                 {plan.destinatarioTipo === 'EDUCADORES'
                                   ? 'Educadores'
@@ -448,10 +448,10 @@ export const GlobalPage: React.FC = () => {
                             </div>
 
                             <div className="text-right shrink-0">
-                              <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 block">
+                              <span className="text-lg font-black text-ink block">
                                 {formatearMoneda(plan.montoMensual)}
                               </span>
-                              <span className="text-[10px] text-slate-400 font-medium">por mes</span>
+                              <span className="text-[10px] text-ink-muted font-medium">por mes</span>
                             </div>
                           </div>
 
@@ -470,8 +470,8 @@ export const GlobalPage: React.FC = () => {
                                     !puedeGestionarTesoreria ? 'cursor-default' : 'cursor-pointer'
                                   } ${
                                     activo
-                                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs hover:bg-emerald-700'
-                                      : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                                      ? 'bg-brand text-brand-contrast border-brand font-extrabold shadow-2xs hover:opacity-90'
+                                      : 'bg-surface text-ink-muted border-rule hover:border-brand'
                                   }`}
                                 >
                                   <span>{NOMBRES_MESES_CORTOS[num]}</span>
@@ -489,32 +489,32 @@ export const GlobalPage: React.FC = () => {
 
                           {/* Métricas de Recaudación */}
                           {rec && rec.totalCargos > 0 && (
-                            <div className="p-3 rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5 text-xs">
+                            <div className="p-3 rounded-xl bg-surface border border-rule space-y-1.5 text-xs">
                               <div className="flex items-center justify-between">
-                                <span className="text-slate-500 dark:text-slate-400">
+                                <span className="text-ink-muted">
                                   Cobrado:{' '}
-                                  <strong className="text-emerald-600 dark:text-emerald-400">
+                                  <strong className="text-ink">
                                     {formatearMoneda(rec.totalRecaudado)}
                                   </strong>
                                 </span>
-                                <span className="text-slate-500 dark:text-slate-400">
+                                <span className="text-ink-muted">
                                   Pendiente:{' '}
                                   <strong className="text-rose-600 dark:text-rose-400">
                                     {formatearMoneda(rec.totalPendiente)}
                                   </strong>
                                 </span>
                               </div>
-                              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                              <div className="w-full h-1.5 bg-paper-3 rounded-full overflow-hidden">
                                 <div
-                                  className="h-full bg-emerald-500 rounded-full transition-all"
+                                  className="h-full bg-brand rounded-full"
                                   style={{ width: `${Math.min(100, rec.porcentajeCobrado || 0)}%` }}
                                 />
                               </div>
-                              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                              <div className="flex items-center justify-between text-[11px] text-ink-muted">
                                 <span>
                                   {rec.cargosPagados} de {rec.totalCargos} cuotas al día
                                 </span>
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                                <span className="font-bold text-ink">
                                   {rec.porcentajeCobrado}%
                                 </span>
                               </div>
@@ -523,8 +523,8 @@ export const GlobalPage: React.FC = () => {
                         </div>
 
                         {/* Footer Card */}
-                        <div className="pt-3 border-t border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        <div className="pt-3 border-t border-rule flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-ink-muted">
                             {mesesHabilitados.length} de 12 meses activos
                             {excepciones.length > 0 && ` • ${excepciones.length} becados`}
                           </span>
@@ -534,16 +534,16 @@ export const GlobalPage: React.FC = () => {
                               <button
                                 type="button"
                                 onClick={() => handleEditarPlan(plan)}
-                                className="min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                                className="min-h-[38px] py-1.5 px-3 rounded-xl bg-surface border border-rule text-ink font-bold text-xs transition flex items-center gap-1.5 cursor-pointer hover:bg-paper-2"
                               >
-                                <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                                <Pencil className="w-3.5 h-3.5 text-ink-muted" />
                                 <span>Editar</span>
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => handleSolicitarEliminarPlan(plan)}
-                                className="min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer"
+                                className="min-h-[38px] py-1.5 px-3 rounded-xl bg-surface border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer hover:bg-paper-2"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -555,7 +555,7 @@ export const GlobalPage: React.FC = () => {
                   })}
 
                   {planesMensuales.length === 0 && !cargando && (
-                    <div className="col-span-full py-10 text-center text-sm text-slate-400">
+                    <div className="col-span-full py-10 text-center text-sm text-ink-muted">
                       No hay cuadros de cuota mensual creados.
                     </div>
                   )}
@@ -567,7 +567,7 @@ export const GlobalPage: React.FC = () => {
             {subTabTesoreria === 'campamentos' && (
               <div className="space-y-4">
                 <div className="flex flex-wrap justify-between items-center gap-2">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <p className="text-xs text-ink-muted">
                     Creá o editá campamentos, eventos, inscripciones o indumentaria para el grupo o una sección.
                   </p>
                   {puedeGestionarTesoreria && (
@@ -593,16 +593,16 @@ export const GlobalPage: React.FC = () => {
                       return (
                         <div
                           key={con.id}
-                          className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-col justify-between gap-4"
+                          className="p-4 rounded-2xl border border-rule bg-paper-2 flex flex-col justify-between gap-4"
                         >
                           <div className="space-y-3">
                             <div className="flex justify-between items-start gap-2">
                               <div>
-                                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                                <h3 className="font-bold text-ink text-sm">
                                   {con.nombre}
                                 </h3>
-                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 mt-0.5">
-                                  <span className="font-semibold text-slate-700 dark:text-slate-300">
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted mt-0.5">
+                                  <span className="font-semibold text-ink-2">
                                     {con.unidad ? con.unidad.nombre : 'Todo el Grupo'}
                                   </span>
                                   <span>•</span>
@@ -627,7 +627,7 @@ export const GlobalPage: React.FC = () => {
                             </div>
 
                             {con.fechaVencimiento && (
-                              <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-semibold">
+                              <div className="flex items-center gap-1 text-[11px] text-brand font-semibold">
                                 <Calendar className="w-3 h-3" />
                                 <span>
                                   Vence: {new Date(con.fechaVencimiento).toLocaleDateString('es-AR')}
@@ -637,28 +637,28 @@ export const GlobalPage: React.FC = () => {
 
                             {/* Métricas de Recaudación del Evento */}
                             {rec && (
-                              <div className="p-3 rounded-xl bg-white dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-700/80 space-y-1.5 text-xs">
+                              <div className="p-3 rounded-xl bg-surface border border-rule space-y-1.5 text-xs">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-slate-500 dark:text-slate-400">
+                                  <span className="text-ink-muted">
                                     Cobrado:{' '}
-                                    <strong className="text-emerald-600 dark:text-emerald-400">
+                                    <strong className="text-ink">
                                       {formatearMoneda(rec.totalRecaudado)}
                                     </strong>
                                   </span>
-                                  <span className="text-slate-500 dark:text-slate-400">
+                                  <span className="text-ink-muted">
                                     Falta:{' '}
                                     <strong className="text-rose-600 dark:text-rose-400">
                                       {formatearMoneda(rec.totalPendiente)}
                                     </strong>
                                   </span>
                                 </div>
-                                <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div className="w-full h-1.5 bg-paper-3 rounded-full overflow-hidden">
                                   <div
-                                    className="h-full bg-blue-500 rounded-full transition-all"
+                                    className="h-full bg-blue-500 rounded-full"
                                     style={{ width: `${Math.min(100, rec.porcentajeCobrado || 0)}%` }}
                                   />
                                 </div>
-                                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                <div className="flex items-center justify-between text-[11px] text-ink-muted">
                                   <span>
                                     {rec.cargosPagados} de {rec.totalCargos} pagados
                                   </span>
@@ -671,20 +671,20 @@ export const GlobalPage: React.FC = () => {
                           </div>
 
                           {puedeGestionarTesoreria && (
-                            <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                            <div className="pt-3 border-t border-rule flex items-center justify-between gap-2">
                               <button
                                 type="button"
                                 onClick={() => handleEditarConcepto(con)}
-                                className="flex-1 min-h-[38px] py-1.5 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="flex-1 min-h-[38px] py-1.5 px-3 rounded-xl bg-surface border border-rule text-ink font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer hover:bg-paper-2"
                               >
-                                <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                                <Pencil className="w-3.5 h-3.5 text-ink-muted" />
                                 <span>Editar / Exentos</span>
                               </button>
 
                               <button
                                 type="button"
                                 onClick={() => handleSolicitarEliminarConcepto(con)}
-                                className="min-h-[38px] p-2 rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 cursor-pointer"
+                                className="min-h-[38px] p-2 rounded-xl bg-surface border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 cursor-pointer hover:bg-paper-2"
                                 title="Eliminar"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -696,7 +696,7 @@ export const GlobalPage: React.FC = () => {
                     })}
 
                   {conceptos.filter((con) => !con.planCuotaMensualId).length === 0 && !cargando && (
-                    <div className="col-span-full py-10 text-center text-sm text-slate-400">
+                    <div className="col-span-full py-10 text-center text-sm text-ink-muted">
                       No hay cobros de campamento ni eventos especiales.
                     </div>
                   )}
@@ -713,15 +713,15 @@ export const GlobalPage: React.FC = () => {
                   return (
                     <div
                       key={fam.id}
-                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 flex flex-col justify-between gap-4"
+                      className="p-4 rounded-2xl border border-rule bg-surface flex flex-col justify-between gap-4"
                     >
                       <div className="space-y-3">
                         <div className="flex justify-between items-start gap-2">
                           <div>
-                            <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                            <h4 className="font-extrabold text-ink text-sm">
                               {fam.nombreFamilia}
                             </h4>
-                            <span className="text-xs text-slate-400">
+                            <span className="text-xs text-ink-muted">
                               {miembros.length} {miembros.length === 1 ? 'integrante' : 'hermanos'}
                             </span>
                           </div>
@@ -729,8 +729,8 @@ export const GlobalPage: React.FC = () => {
                           <span
                             className={`px-2.5 py-1 rounded-xl text-xs font-black border ${
                               pct > 0
-                                ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
-                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
+                                ? 'bg-brand/10 text-brand border-brand/30'
+                                : 'bg-paper-2 text-ink-muted border-rule'
                             }`}
                           >
                             {pct > 0 ? `${pct}% Desc.` : 'Sin desc.'}
@@ -745,12 +745,12 @@ export const GlobalPage: React.FC = () => {
                                 key={m.id}
                                 type="button"
                                 onClick={() => setMiembroDetalleId(m.id)}
-                                className="w-full p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50/70 dark:hover:bg-slate-700 flex items-center justify-between text-xs cursor-pointer transition text-left"
+                                className="w-full p-2 rounded-xl bg-paper-2 hover:bg-brand/10 flex items-center justify-between text-xs cursor-pointer transition text-left"
                               >
-                                <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                                <span className="font-bold text-ink truncate">
                                   {m.nombre} {m.apellido}
                                 </span>
-                                <span className="px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-semibold shrink-0">
+                                <span className="px-2 py-0.5 rounded-md bg-paper-3 text-ink-2 text-[10px] font-semibold shrink-0">
                                   {uNombre}
                                 </span>
                               </button>
@@ -766,7 +766,7 @@ export const GlobalPage: React.FC = () => {
                             setFamiliaAEditar(fam);
                             setModalFamiliaAbierto(true);
                           }}
-                          className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 text-slate-700 dark:text-slate-200 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200 dark:border-slate-700"
+                          className="w-full min-h-[40px] py-2 px-3 rounded-xl bg-paper-2 hover:bg-surface text-ink font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border border-rule"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                           <span>Editar Grupo / Descuento</span>
@@ -777,7 +777,7 @@ export const GlobalPage: React.FC = () => {
                 })}
 
                 {familias.length === 0 && !cargando && (
-                  <div className="col-span-full py-10 text-center text-sm text-slate-400">
+                  <div className="col-span-full py-10 text-center text-sm text-ink-muted">
                     No hay grupos familiares con hermanos registrados aún.
                   </div>
                 )}
@@ -815,9 +815,9 @@ export const GlobalPage: React.FC = () => {
         {tab === 'colaboradores' && (
           <div className="space-y-4">
             {colaboradores.length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl p-10 text-center border border-slate-200 dark:border-slate-800 text-slate-400">
-                <HeartHandshake className="w-10 h-10 mx-auto mb-2 text-slate-300 dark:text-slate-700" />
-                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
+              <div className="bg-surface rounded-2xl p-10 text-center border border-rule text-ink-muted">
+                <HeartHandshake className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                <p className="text-sm font-semibold text-ink-2">
                   Aún no hay familias voluntarias registradas este año.
                 </p>
               </div>
@@ -826,16 +826,16 @@ export const GlobalPage: React.FC = () => {
                 {colaboradores.map((col, idx) => (
                   <div
                     key={col.entregaId || idx}
-                    className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3"
+                    className="bg-surface rounded-2xl p-4 sm:p-5 border border-rule shadow-xs space-y-3"
                   >
                     <div className="flex justify-between items-start gap-2">
                       <div>
-                        <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                        <h3 className="font-bold text-sm text-ink">
                           {col.adulto.nombre}
                         </h3>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-ink-muted">
                           {col.adulto.profesion} • Familia de{' '}
-                          <strong className="text-emerald-700 dark:text-emerald-400">
+                          <strong className="text-brand">
                             {col.protagonista.nombre} {col.protagonista.apellido}
                           </strong>{' '}
                           ({col.protagonista.unidad})
@@ -844,7 +844,7 @@ export const GlobalPage: React.FC = () => {
                       {col.adulto.telefono && col.adulto.telefono !== '-' && (
                         <a
                           href={`tel:${col.adulto.telefono}`}
-                          className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center gap-1.5 shrink-0"
+                          className="min-h-[38px] px-3 py-1.5 rounded-xl bg-brand/10 text-brand border border-brand/30 font-bold text-xs flex items-center gap-1.5 shrink-0 hover:bg-brand/20 transition-colors"
                         >
                           <Phone className="w-3.5 h-3.5" />
                           <span>Llamar</span>
@@ -854,27 +854,27 @@ export const GlobalPage: React.FC = () => {
 
                     <div className="flex flex-wrap gap-1.5">
                       {col.areas.cocinaCampamento && (
-                        <span className="text-[11px] bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                        <span className="text-[11px] bg-brand/10 text-brand border border-brand/30 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
                           <Utensils className="w-3 h-3" /> Cocina
                         </span>
                       )}
                       {col.areas.campamento && (
-                        <span className="text-[11px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 px-2 py-0.5 rounded-md font-medium">
+                        <span className="text-[11px] bg-paper-2 text-ink border border-rule px-2 py-0.5 rounded-md font-medium">
                           Apoyo en Campamento
                         </span>
                       )}
                       {(col.areas.transporte || col.areas.camion || col.areas.camioneta || col.areas.colectivo) && (
-                        <span className="text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                        <span className="text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
                           <Truck className="w-3 h-3" /> Transporte
                         </span>
                       )}
                       {col.areas.manoObra && (
-                        <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                        <span className="text-[11px] bg-paper-2 text-ink px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
                           <Wrench className="w-3 h-3" /> Mantenimiento
                         </span>
                       )}
                       {col.areas.ensenando && (
-                        <span className="text-[11px] bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border border-purple-200 px-2 py-0.5 rounded-md font-medium">
+                        <span className="text-[11px] bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-2 py-0.5 rounded-md font-medium">
                           Talleres
                         </span>
                       )}

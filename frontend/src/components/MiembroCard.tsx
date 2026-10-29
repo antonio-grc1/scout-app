@@ -68,9 +68,9 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
   return (
     <div
       onClick={() => onAbrirDetalle('datos')}
-      className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 border-l-4 p-4 shadow-2xs active:scale-[0.99] transition cursor-pointer ${
+      className={`bg-surface rounded-2xl border border-rule border-l-4 p-4 shadow-2xs active:scale-[0.99] transition cursor-pointer ${
         !miembro.activo
-          ? 'border-l-slate-300 dark:border-l-slate-700 opacity-65'
+          ? 'border-l-rule opacity-65'
           : cfgRama.borderClases
       }`}
     >
@@ -80,7 +80,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
           <div
             className={`w-11 h-11 rounded-2xl flex items-center justify-center text-sm shrink-0 shadow-2xs ${
               !miembro.activo
-                ? 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                ? 'bg-paper-3 text-ink-muted'
                 : cfgRama.avatarClases
             }`}
           >
@@ -90,11 +90,11 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
 
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">
+              <h3 className="font-bold text-ink text-sm truncate">
                 {miembro.apellido}, {miembro.nombre}
               </h3>
               {!miembro.activo && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-paper-2 text-ink-muted border border-rule">
                   Baja
                 </span>
               )}
@@ -109,19 +109,19 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
               </span>
 
               {asig?.rol?.nombre && (
-                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-semibold text-ink-2 bg-paper-2 px-2 py-0.5 rounded-full border border-rule">
                   {asig.rol.nombre}
                 </span>
               )}
 
               {edad !== null && (
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                <span className="text-[11px] text-ink-muted font-medium">
                   • {edad} años
                 </span>
               )}
 
               {!esEducador && camada !== null && (
-                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                <span className="px-2 py-0.5 rounded-md bg-paper-2 text-ink-2 text-[10px] font-bold border border-rule">
                   Camada {camada}
                 </span>
               )}
@@ -166,7 +166,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
 
       {/* Acciones Rápidas (1-Tap) con área táctil >= 44px */}
       <div
-        className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-2 flex-wrap"
+        className="mt-3 pt-2.5 border-t border-rule flex items-center gap-2 flex-wrap"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 1-Tap: Validar Ficha Física si está pendiente de firma */}
@@ -175,7 +175,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
             type="button"
             disabled={validandoDirecto}
             onClick={() => onValidarFichaDirecto(entrega)}
-            className="min-h-[42px] px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
+            className="min-h-[42px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
           >
             {validandoDirecto ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -191,7 +191,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
           <button
             type="button"
             onClick={() => onAbrirDetalle('pase')}
-            className="min-h-[42px] px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+            className="min-h-[42px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Pasar de Rama</span>
@@ -203,9 +203,9 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
           <button
             type="button"
             onClick={() => onAbrirDetalle('ficha')}
-            className="min-h-[42px] px-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+            className="min-h-[42px] px-3 rounded-xl bg-paper-2 hover:bg-surface text-ink font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer border border-rule"
           >
-            <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <FileText className="w-3.5 h-3.5 text-brand" />
             <span>Ver Ficha</span>
           </button>
         )}
@@ -217,15 +217,15 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
             onClick={() => onAbrirDetalle('cuotas')}
             className={`min-h-[42px] px-3 rounded-xl font-bold text-xs flex items-center gap-1.5 transition cursor-pointer ${
               deudaTotal > 0
-                ? 'bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60'
-                : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200'
+                ? 'bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60'
+                : 'bg-paper-2 hover:bg-surface text-ink border border-rule'
             }`}
           >
             <CreditCard
               className={`w-3.5 h-3.5 ${
                 deudaTotal > 0
                   ? 'text-rose-600 dark:text-rose-400'
-                  : 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-brand'
               }`}
             />
             <span>{deudaTotal > 0 ? `Debe ${formatearMoneda(deudaTotal)}` : 'Cuotas al día'}</span>
@@ -239,7 +239,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
           <button
             type="button"
             onClick={() => onAbrirDetalle('pase')}
-            className="min-h-[42px] px-2.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold flex items-center gap-1 transition ml-auto cursor-pointer"
+            className="min-h-[42px] px-2.5 rounded-xl text-ink-muted hover:bg-paper-2 text-xs font-semibold flex items-center gap-1 transition ml-auto cursor-pointer"
           >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             <span>Pase</span>

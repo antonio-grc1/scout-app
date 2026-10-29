@@ -79,7 +79,7 @@ export const CambiarClave: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex flex-col transition-colors">
+    <div className="min-h-screen bg-paper text-ink flex flex-col transition-colors">
       {!requiereCambioClave ? (
         <Navbar />
       ) : (
@@ -90,11 +90,11 @@ export const CambiarClave: React.FC = () => {
 
       <div className="flex-1 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md w-full">
-          <div className="bg-white dark:bg-slate-900 py-8 px-6 shadow-sm border border-slate-200 dark:border-slate-800 rounded-2xl sm:px-10 transition-colors">
+          <div className="bg-surface py-8 px-6 shadow-sm border border-rule rounded-2xl sm:px-10 transition-colors">
             <div className="flex items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
-                <KeyRound className="w-6 h-6 text-emerald-600" />
-                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                <KeyRound className="w-6 h-6 text-brand" />
+                <h3 className="text-xl font-bold text-ink">
                   {requiereCambioClave ? 'Actualizar Contraseña Inicial' : 'Cambiar Contraseña'}
                 </h3>
               </div>
@@ -103,7 +103,7 @@ export const CambiarClave: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
-                  className="min-h-[38px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1 transition cursor-pointer"
+                  className="min-h-[38px] px-3 rounded-xl border border-rule text-xs font-bold text-ink-2 hover:bg-paper-2 flex items-center gap-1 transition cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
                   <span>Volver</span>
@@ -111,7 +111,7 @@ export const CambiarClave: React.FC = () => {
               )}
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
+            <p className="text-xs text-ink-muted mb-6">
               {requiereCambioClave
                 ? 'Por seguridad institucional, debes cambiar tu clave de acceso provisional por una clave personal secreta de al menos 8 caracteres.'
                 : 'Ingresa tu contraseña actual y define una nueva clave personal de al menos 8 caracteres.'}
@@ -126,14 +126,14 @@ export const CambiarClave: React.FC = () => {
               )}
 
               {exito && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-900 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <div className="p-3 bg-brand/10 border border-brand/30 text-ink rounded-xl text-xs font-bold flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-brand" />
                   <span>{exito}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-xs font-semibold text-ink">
                   Contraseña Actual {requiereCambioClave ? '(o DNI)' : ''}
                 </label>
                 <div className="mt-1 relative">
@@ -143,13 +143,13 @@ export const CambiarClave: React.FC = () => {
                     value={claveActual}
                     onChange={(e) => setClaveActual(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setMostrarActual((v) => !v)}
                     aria-label={mostrarActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition cursor-pointer"
                   >
                     {mostrarActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -157,7 +157,7 @@ export const CambiarClave: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-xs font-semibold text-ink">
                   Nueva Contraseña (mínimo 8 caracteres)
                 </label>
                 <div className="mt-1 relative">
@@ -167,13 +167,13 @@ export const CambiarClave: React.FC = () => {
                     value={claveNueva}
                     onChange={(e) => setClaveNueva(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setMostrarNueva((v) => !v)}
                     aria-label={mostrarNueva ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
                   >
                     {mostrarNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -181,7 +181,7 @@ export const CambiarClave: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                <label className="block text-xs font-semibold text-ink">
                   Repetir Nueva Contraseña
                 </label>
                 <div className="mt-1 relative">
@@ -191,13 +191,13 @@ export const CambiarClave: React.FC = () => {
                     value={claveRepetir}
                     onChange={(e) => setClaveRepetir(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:border-emerald-500 outline-none"
+                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setMostrarRepetir((v) => !v)}
                     aria-label={mostrarRepetir ? 'Ocultar repetición de contraseña' : 'Ver repetición de contraseña'}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition cursor-pointer"
+                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
                   >
                     {mostrarRepetir ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -207,9 +207,9 @@ export const CambiarClave: React.FC = () => {
               <button
                 type="submit"
                 disabled={cargando}
-                className="w-full min-h-[46px] py-2.5 px-4 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition cursor-pointer disabled:opacity-50"
+                className="w-full min-h-[46px] py-2.5 px-4 rounded-xl text-sm font-bold text-brand-contrast bg-brand hover:opacity-90 active:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] transition-colors cursor-pointer disabled:opacity-50"
               >
-                {cargando ? 'Guardando...' : 'Confirmar Nueva Contraseña'}
+                {cargando ? 'Guardando…' : 'Confirmar Nueva Contraseña'}
               </button>
             </form>
           </div>

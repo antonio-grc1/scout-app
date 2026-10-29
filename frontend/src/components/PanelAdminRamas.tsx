@@ -246,12 +246,12 @@ export const PanelAdminRamas: React.FC<Props> = ({
   return (
     <div className="space-y-4">
       {/* Barra superior de control */}
-      <div className="flex items-center justify-between gap-2 flex-wrap bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 shadow-xs">
+      <div className="flex items-center justify-between gap-2 flex-wrap bg-surface rounded-2xl border border-rule p-4 shadow-xs">
         <div>
-          <h2 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">
+          <h2 className="text-sm font-extrabold text-ink">
             Configuración de Ramas, Edades de Pase y Secciones
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-ink-muted">
             Modificá nombres, edades límite para sugerencias de pases o agregá y quitá ramas.
           </p>
         </div>
@@ -261,8 +261,8 @@ export const PanelAdminRamas: React.FC<Props> = ({
           onClick={() => onToggleMostrarInactivas(!mostrarInactivas)}
           className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
             mostrarInactivas
-              ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-slate-900 dark:border-white'
-              : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+              ? 'bg-ink text-paper border-ink'
+              : 'bg-paper-2 text-ink-2 border-rule'
           }`}
         >
           {mostrarInactivas ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -272,11 +272,11 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* COLUMNA 1: RAMAS Y EDADES DE SUGERENCIA DE PASES */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
+        <div className="bg-surface rounded-2xl border border-rule shadow-xs p-5 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <Layers className="w-4 h-4 text-brand" />
+              <h3 className="text-base font-bold text-ink">
                 Ramas y Edades de Pase
               </h3>
             </div>
@@ -284,7 +284,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={abrirCrearRama}
-                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Agregar Rama</span>
@@ -295,10 +295,10 @@ export const PanelAdminRamas: React.FC<Props> = ({
           {puedeGestionar && (creandoRama || editandoRama) && (
             <form
               onSubmit={handleGuardarRama}
-              className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 space-y-3"
+              className="p-4 rounded-2xl bg-brand/10 border border-brand/30/70 space-y-3"
             >
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-extrabold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-ink">
                   {editandoRama ? `Editar Rama: ${editandoRama.nombre}` : 'Nueva Rama Pedagógica'}
                 </h4>
                 <button
@@ -307,7 +307,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     setCreandoRama(false);
                     setEditandoRama(null);
                   }}
-                  className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                  className="p-1 text-ink-muted hover:text-ink cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -315,7 +315,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="sm:col-span-2">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-bold text-ink-2 mb-1">
                     Nombre de la Rama
                   </label>
                   <input
@@ -324,12 +324,12 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     value={formRama.nombre}
                     onChange={(e) => setFormRama({ ...formRama, nombre: e.target.value })}
                     placeholder="Ej: Castores, Lobatos, Scout..."
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-bold text-ink-2 mb-1">
                     Edad Mínima (años)
                   </label>
                   <input
@@ -339,12 +339,12 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     required
                     value={formRama.edadMinima}
                     onChange={(e) => setFormRama({ ...formRama, edadMinima: Number(e.target.value) })}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-bold text-ink-2 mb-1">
                     Edad Máxima (Sugiere pase al superar)
                   </label>
                   <input
@@ -354,12 +354,12 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     required
                     value={formRama.edadMaxima}
                     onChange={(e) => setFormRama({ ...formRama, edadMaxima: Number(e.target.value) })}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-bold text-ink-2 mb-1">
                     Orden de Progresión (1°, 2°, 3°...)
                   </label>
                   <input
@@ -371,20 +371,20 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     onChange={(e) =>
                       setFormRama({ ...formRama, ordenProgresion: Number(e.target.value) })
                     }
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                   />
                 </div>
 
                 {creandoRama && (
                   <div className="sm:col-span-2 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-slate-700 dark:text-slate-300 font-semibold">
+                    <label className="flex items-center gap-2 cursor-pointer text-ink-2 font-semibold">
                       <input
                         type="checkbox"
                         checked={formRama.crearSeccionAutomatica}
                         onChange={(e) =>
                           setFormRama({ ...formRama, crearSeccionAutomatica: e.target.checked })
                         }
-                        className="w-4 h-4 rounded accent-emerald-600"
+                        className="w-4 h-4 rounded accent-brand"
                       />
                       <span>Crear sección operativa automáticamente para esta rama</span>
                     </label>
@@ -399,14 +399,14 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     setCreandoRama(false);
                     setEditandoRama(null);
                   }}
-                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer"
+                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-surface border border-rule text-ink-2 text-xs font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={guardandoRama}
-                  className="min-h-[38px] px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {guardandoRama ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>Guardar Rama</span>
@@ -424,19 +424,19 @@ export const PanelAdminRamas: React.FC<Props> = ({
                   key={r.id}
                   className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border text-xs transition ${
                     inactiva
-                      ? 'bg-slate-100/70 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-65'
-                      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800'
+                      ? 'bg-paper-2 border-rule opacity-65'
+                      : 'bg-paper-2 border-rule'
                   }`}
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-black text-[10px] flex items-center justify-center">
+                      <span className="w-5 h-5 rounded-full bg-paper-3 text-ink-2 font-black text-[10px] flex items-center justify-center">
                         {r.ordenProgresion}
                       </span>
-                      <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                      <span className="font-extrabold text-ink text-sm">
                         {r.nombre}
                       </span>
-                      <span className="text-emerald-700 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-0.5 rounded-full border border-emerald-200/70 dark:border-emerald-800/60">
+                      <span className="text-brand font-bold bg-brand/10 px-2.5 py-0.5 rounded-full border border-brand/30">
                         {r.edadMinima} a {r.edadMaxima} años
                       </span>
                       {inactiva && (
@@ -445,7 +445,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 pl-7">
+                    <p className="text-[11px] text-ink-muted pl-7">
                       Sugiere pase a la siguiente rama al cumplir {Number(r.edadMaxima) + 1} años.
                     </p>
                   </div>
@@ -456,7 +456,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                         type="button"
                         onClick={() => abrirEditarRama(r)}
                         title="Modificar nombre o edades"
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer"
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>Editar</span>
@@ -467,7 +467,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                           type="button"
                           disabled={enProceso}
                           onClick={() => handleReactivarRama(r)}
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
                         >
                           {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
                           <span>Activar</span>
@@ -493,11 +493,11 @@ export const PanelAdminRamas: React.FC<Props> = ({
         </div>
 
         {/* COLUMNA 2: SECCIONES / UNIDADES DEL GRUPO */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
+        <div className="bg-surface rounded-2xl border border-rule shadow-xs p-5 space-y-4">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <GitBranch className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <GitBranch className="w-4 h-4 text-brand" />
+              <h3 className="text-base font-bold text-ink">
                 Secciones Operativas del Grupo
               </h3>
             </div>
@@ -505,7 +505,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={abrirCrearUnidad}
-                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                className="min-h-[38px] px-3 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 <span>Agregar Sección</span>
@@ -516,10 +516,10 @@ export const PanelAdminRamas: React.FC<Props> = ({
           {puedeGestionar && (creandoUnidad || editandoUnidad) && (
             <form
               onSubmit={handleGuardarUnidad}
-              className="p-4 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 space-y-3"
+              className="p-4 rounded-2xl bg-brand/10 border border-brand/30/70 space-y-3"
             >
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-extrabold text-emerald-900 dark:text-emerald-200 uppercase tracking-wider">
+                <h4 className="text-xs font-semibold text-ink">
                   {editandoUnidad ? `Editar Sección: ${editandoUnidad.nombre}` : 'Nueva Sección del Grupo'}
                 </h4>
                 <button
@@ -528,7 +528,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     setCreandoUnidad(false);
                     setEditandoUnidad(null);
                   }}
-                  className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                  className="p-1 text-ink-muted hover:text-ink cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -536,7 +536,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="sm:col-span-2">
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-bold text-ink-2 mb-1">
                     Nombre de la Sección
                   </label>
                   <input
@@ -545,12 +545,12 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     value={formUnidad.nombre}
                     onChange={(e) => setFormUnidad({ ...formUnidad, nombre: e.target.value })}
                     placeholder="Ej: Rama Scout Cura Brochero"
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-bold text-ink-2 mb-1">
                     Tipo de Sección
                   </label>
                   <select
@@ -561,7 +561,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                         tipo: e.target.value as 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO',
                       })
                     }
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                   >
                     <option value="SECCION_RAMA">Sección de Rama (Protagonistas)</option>
                     <option value="SIN_RAMA_APOYO">Equipo de Apoyo / Sin Rama</option>
@@ -571,7 +571,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
                 {formUnidad.tipo === 'SECCION_RAMA' && (
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block font-bold text-ink-2 mb-1">
                       Rama Asociada
                     </label>
                     <select
@@ -583,9 +583,9 @@ export const PanelAdminRamas: React.FC<Props> = ({
                           ramaId: e.target.value ? Number(e.target.value) : '',
                         })
                       }
-                      className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-emerald-500"
+                      className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                     >
-                      <option value="">Seleccionar rama...</option>
+                      <option value="">Seleccionar rama…</option>
                       {ramas
                         .filter((r) => r.activa !== false)
                         .map((r) => (
@@ -605,14 +605,14 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     setCreandoUnidad(false);
                     setEditandoUnidad(null);
                   }}
-                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold cursor-pointer"
+                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-surface border border-rule text-ink-2 text-xs font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={guardandoUnidad}
-                  className="min-h-[38px] px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {guardandoUnidad ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>Guardar Sección</span>
@@ -631,16 +631,16 @@ export const PanelAdminRamas: React.FC<Props> = ({
                   key={u.id}
                   className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border text-xs transition ${
                     inactiva
-                      ? 'bg-slate-100/70 dark:bg-slate-800/30 border-slate-200 dark:border-slate-800 opacity-65'
-                      : 'bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800'
+                      ? 'bg-paper-2 border-rule opacity-65'
+                      : 'bg-paper-2 border-rule'
                   }`}
                 >
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-extrabold text-slate-900 dark:text-slate-100 text-sm">
+                      <span className="font-extrabold text-ink text-sm">
                         {u.nombre}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-slate-200/70 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold">
+                      <span className="px-2 py-0.5 rounded-md bg-paper-3 text-ink-2 text-[10px] font-bold">
                         {u.rama?.nombre || 'Adultos'}
                       </span>
                       {inactiva && (
@@ -649,7 +649,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                         </span>
                       )}
                     </div>
-                    <span className="text-slate-500 dark:text-slate-400 text-[11px] block mt-0.5">
+                    <span className="text-ink-muted text-[11px] block mt-0.5">
                       {TIPO_UNIDAD_LABELS[u.tipo] || 'Sección del Grupo'} • {miembrosActivos}{' '}
                       {miembrosActivos === 1 ? 'miembro activo' : 'miembros activos'}
                     </span>
@@ -660,7 +660,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={() => abrirEditarUnidad(u)}
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 font-bold flex items-center gap-1 cursor-pointer"
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>Editar</span>
@@ -671,7 +671,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                           type="button"
                           disabled={enProceso}
                           onClick={() => handleReactivarUnidad(u)}
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
                         >
                           {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
                           <span>Activar</span>
