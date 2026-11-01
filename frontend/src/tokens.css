@@ -28,7 +28,7 @@
   --color-paper-2: #f4f4f0;                   /* Secondary container background */
   --color-paper-3: #eaeae5;                   /* Tertiary subtle background */
   --color-surface: #fffdfa;                   /* Cards, modals, elevated surfaces */
-  --color-navbar: var(--color-surface);       /* Navigation bar background */
+  --color-navbar: var(--color-paper);         /* Navigation bar background */
   --color-navbar-ink: var(--color-ink);       /* Navigation text & icon color */
   --color-navbar-muted: var(--color-ink-muted);/* Muted navigation text */
   --color-navbar-rule: var(--color-rule);     /* Navigation border/divider */
@@ -58,7 +58,7 @@
   --color-paper-2: #18191e;                   /* Secondary dark container */
   --color-paper-3: #22242b;                   /* Tertiary dark container */
   --color-surface: #18191e;                   /* Elevated dark card surface */
-  --color-navbar: var(--color-surface);
+  --color-navbar: var(--color-paper);
   --color-navbar-ink: var(--color-ink);
   --color-navbar-muted: var(--color-ink-muted);
   --color-navbar-rule: var(--color-rule);

@@ -89,7 +89,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
   const [activePreset, setActivePreset] = useState<string>(customization.preset || 'scout');
   const [brandColor, setBrandColor] = useState(customization.brandColor || initialTokens.brand);
   const [paperColor, setPaperColor] = useState(customization.paperColor || initialTokens.paper);
-  const [navColor, setNavColor] = useState(customization.navColor || initialTokens.nav || initialTokens.surface);
+  const [navColor, setNavColor] = useState(customization.navColor || initialTokens.nav || initialTokens.paper);
   const [inkColor, setInkColor] = useState(customization.inkColor || initialTokens.ink);
   const [fontScale, setFontScale] = useState<FontScale>(customization.fontScale || '100%');
 
@@ -105,13 +105,13 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
       const pTokens = THEME_PRESETS[currentPreset][resolvedTheme];
       setBrandColor(pTokens.brand);
       setPaperColor(pTokens.paper);
-      setNavColor(pTokens.nav || pTokens.surface);
+      setNavColor(pTokens.nav || pTokens.paper);
       setInkColor(pTokens.ink);
     } else {
       const defTokens = THEME_PRESETS.scout[resolvedTheme];
       setBrandColor(customization.brandColor || defTokens.brand);
       setPaperColor(customization.paperColor || defTokens.paper);
-      setNavColor(customization.navColor || defTokens.nav || defTokens.surface);
+      setNavColor(customization.navColor || customization.paperColor || defTokens.nav || defTokens.paper);
       setInkColor(customization.inkColor || defTokens.ink);
     }
   }, [isVisible, customization, resolvedTheme]);
@@ -138,7 +138,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
       const target = THEME_PRESETS[presetId][resolvedTheme];
       setBrandColor(target.brand);
       setPaperColor(target.paper);
-      setNavColor(target.nav || target.surface);
+      setNavColor(target.nav || target.paper);
       setInkColor(target.ink);
       if (presetId === 'contrast') {
         setFontScale('110%');
@@ -162,6 +162,11 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     } else if (key === 'paper') {
       nextPaper = value;
       setPaperColor(value);
+      // Mantener sincronizada la barra de navegación con el color de fondo si no fue personalizada aparte
+      if (!navColor || navColor === paperColor) {
+        nextNav = value;
+        setNavColor(value);
+      }
     } else if (key === 'nav') {
       nextNav = value;
       setNavColor(value);
@@ -197,7 +202,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     const def = THEME_PRESETS.scout[resolvedTheme];
     setBrandColor(def.brand);
     setPaperColor(def.paper);
-    setNavColor(def.nav || def.surface);
+    setNavColor(def.nav || def.paper);
     setInkColor(def.ink);
     setFontScale('100%');
   };

@@ -30,20 +30,20 @@
           // 2. Diccionario de Presets para resolución instantánea
           var PRESETS = {
             scout: {
-              light: { brand: '#f59e0b', contrast: '#090a0f', paper: '#fbfbf9', paper2: '#f4f4f0', paper3: '#eaeae5', surface: '#ffffff', nav: '#ffffff', ink: '#18181b', muted: '#71717a', rule: '#e4e4e7' },
-              dark:  { brand: '#fbbf24', contrast: '#09090b', paper: '#111215', paper2: '#18191e', paper3: '#22242b', surface: '#18191e', nav: '#18191e', ink: '#f4f4f5', muted: '#a1a1aa', rule: '#27272a' }
+              light: { brand: '#f59e0b', contrast: '#090a0f', paper: '#fbfbf9', paper2: '#f4f4f0', paper3: '#eaeae5', surface: '#ffffff', nav: '#fbfbf9', ink: '#18181b', muted: '#71717a', rule: '#e4e4e7' },
+              dark:  { brand: '#fbbf24', contrast: '#09090b', paper: '#111215', paper2: '#18191e', paper3: '#22242b', surface: '#18191e', nav: '#111215', ink: '#f4f4f5', muted: '#a1a1aa', rule: '#27272a' }
             },
             nautical: {
-              light: { brand: '#0369a1', contrast: '#ffffff', paper: '#f8fafc', paper2: '#f1f5f9', paper3: '#e2e8f0', surface: '#ffffff', nav: '#ffffff', ink: '#0f172a', muted: '#64748b', rule: '#cbd5e1' },
-              dark:  { brand: '#38bdf8', contrast: '#08101e', paper: '#0b1120', paper2: '#0f172a', paper3: '#1e293b', surface: '#131d33', nav: '#131d33', ink: '#f8fafc', muted: '#94a3b8', rule: '#1e293b' }
+              light: { brand: '#0369a1', contrast: '#ffffff', paper: '#f8fafc', paper2: '#f1f5f9', paper3: '#e2e8f0', surface: '#ffffff', nav: '#f8fafc', ink: '#0f172a', muted: '#64748b', rule: '#cbd5e1' },
+              dark:  { brand: '#38bdf8', contrast: '#08101e', paper: '#0b1120', paper2: '#0f172a', paper3: '#1e293b', surface: '#131d33', nav: '#0b1120', ink: '#f8fafc', muted: '#94a3b8', rule: '#1e293b' }
             },
             forest: {
-              light: { brand: '#15803d', contrast: '#ffffff', paper: '#faf7f2', paper2: '#f5f0e8', paper3: '#ece5d8', surface: '#ffffff', nav: '#ffffff', ink: '#1c1917', muted: '#78716c', rule: '#e7e5e4' },
-              dark:  { brand: '#4ade80', contrast: '#0c150e', paper: '#111612', paper2: '#161c17', paper3: '#202922', surface: '#19211b', nav: '#19211b', ink: '#f5f5f4', muted: '#a8a29e', rule: '#292524' }
+              light: { brand: '#15803d', contrast: '#ffffff', paper: '#faf7f2', paper2: '#f5f0e8', paper3: '#ece5d8', surface: '#ffffff', nav: '#faf7f2', ink: '#1c1917', muted: '#78716c', rule: '#e7e5e4' },
+              dark:  { brand: '#4ade80', contrast: '#0c150e', paper: '#111612', paper2: '#161c17', paper3: '#202922', surface: '#19211b', nav: '#111612', ink: '#f5f5f4', muted: '#a8a29e', rule: '#292524' }
             },
             contrast: {
               light: { brand: '#92400e', contrast: '#ffffff', paper: '#ffffff', paper2: '#f4f4f5', paper3: '#e4e4e7', surface: '#ffffff', nav: '#ffffff', ink: '#000000', muted: '#374151', rule: '#000000', fontScale: '110%', logoScale: '1.0' },
-              dark:  { brand: '#facc15', contrast: '#000000', paper: '#000000', paper2: '#18181b', paper3: '#27272a', surface: '#09090b', nav: '#09090b', ink: '#ffffff', muted: '#d1d5db', rule: '#ffffff', fontScale: '110%', logoScale: '1.0' }
+              dark:  { brand: '#facc15', contrast: '#000000', paper: '#000000', paper2: '#18181b', paper3: '#27272a', surface: '#09090b', nav: '#000000', ink: '#ffffff', muted: '#d1d5db', rule: '#ffffff', fontScale: '110%', logoScale: '1.0' }
             }
           };
 
@@ -96,7 +96,7 @@
             var contrast = cfg.brandContrast || (pData && pData.contrast);
             var paper = cfg.paperColor || (pData && pData.paper);
             var surface = cfg.surfaceColor || (pData && pData.surface);
-            var nav = cfg.navColor || (pData && pData.nav) || surface;
+            var nav = cfg.navColor || paper;
             var ink = cfg.inkColor || (pData && pData.ink);
             var muted = cfg.inkMutedColor || (pData && pData.muted);
             var rule = cfg.ruleColor || (pData && pData.rule);

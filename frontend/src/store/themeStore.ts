@@ -85,7 +85,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       paper2: '#f4f4f0',
       paper3: '#eaeae5',
       surface: '#ffffff',
-      nav: '#ffffff',
+      nav: '#fbfbf9',
       ink: '#18181b',
       muted: '#71717a',
       rule: '#e4e4e7',
@@ -99,7 +99,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       paper2: '#18191e',
       paper3: '#22242b',
       surface: '#18191e',
-      nav: '#18191e',
+      nav: '#111215',
       ink: '#f4f4f5',
       muted: '#a1a1aa',
       rule: '#27272a',
@@ -118,7 +118,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       paper2: '#f1f5f9',
       paper3: '#e2e8f0',
       surface: '#ffffff',
-      nav: '#ffffff',
+      nav: '#f8fafc',
       ink: '#0f172a',
       muted: '#64748b',
       rule: '#cbd5e1',
@@ -132,7 +132,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       paper2: '#0f172a',
       paper3: '#1e293b',
       surface: '#131d33',
-      nav: '#131d33',
+      nav: '#0b1120',
       ink: '#f8fafc',
       muted: '#94a3b8',
       rule: '#1e293b',
@@ -151,7 +151,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       paper2: '#f5f0e8',
       paper3: '#ece5d8',
       surface: '#ffffff',
-      nav: '#ffffff',
+      nav: '#faf7f2',
       ink: '#1c1917',
       muted: '#78716c',
       rule: '#e7e5e4',
@@ -165,7 +165,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       paper2: '#161c17',
       paper3: '#202922',
       surface: '#19211b',
-      nav: '#19211b',
+      nav: '#111612',
       ink: '#f5f5f4',
       muted: '#a8a29e',
       rule: '#292524',
@@ -198,7 +198,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       paper2: '#18181b',
       paper3: '#27272a',
       surface: '#09090b',
-      nav: '#09090b',
+      nav: '#000000',
       ink: '#ffffff',
       muted: '#d1d5db',
       rule: '#ffffff',
@@ -363,7 +363,7 @@ const applyDocumentCustomization = (
   const paper = cfg.paperColor || pData.paper;
   const ink = cfg.inkColor || pData.ink;
   const surface = cfg.surfaceColor || pData.surface;
-  const nav = cfg.navColor || pData.nav || surface;
+  const nav = cfg.navColor || paper;
   const muted = cfg.inkMutedColor || pData.muted;
   const rule = cfg.ruleColor || pData.rule;
   const fontScale = cfg.fontScale || pData.fontScale || '100%';
