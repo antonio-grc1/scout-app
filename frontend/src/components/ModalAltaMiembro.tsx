@@ -5,6 +5,9 @@ import {
   agruparCandidatosPorFamilia,
   esRolAlcanceGlobal,
   esRolDeProtagonista,
+  esRolJefe,
+  esRolRama,
+  esRolSinRama,
   rolRequiereRama,
   type OpcionGrupoHermanos,
 } from '../lib/formatters';
@@ -65,10 +68,6 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null;
   const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA';
   const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO';
-
-  const esRolJefe = (r: any) => !rolRequiereRama(r) && esRolAlcanceGlobal(r);
-  const esRolSinRama = (r: any) => !rolRequiereRama(r) && !esRolAlcanceGlobal(r);
-  const esRolRama = (r: any) => rolRequiereRama(r);
 
   const unidadSeleccionada = useMemo(
     () => unidadesDisponibles.find((u) => u.id === Number(unidadId)),

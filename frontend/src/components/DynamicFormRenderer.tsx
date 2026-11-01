@@ -752,6 +752,14 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           </button>
         </div>
 
+        {/* Barra de Progreso Dinámica de Carga y Avance */}
+        <div className="w-full bg-paper-3 rounded-full h-1.5 overflow-hidden">
+          <div
+            className="bg-brand h-full rounded-full transition-all duration-300 ease-out shadow-xs"
+            style={{ width: `${((pasoActivo + 1) / Math.max(secciones.length, 1)) * 100}%` }}
+          />
+        </div>
+
         {/* Chips Horizontales de Pasos */}
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1">
           {secciones.map((sec, idx) => {
@@ -766,9 +774,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 onClick={() => irAPaso(idx)}
                 className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer shrink-0 border ${
                   esActivo
-                    ? 'bg-brand text-brand-contrast shadow-xs font-bold border-neutral-900 dark:border-brand'
+                    ? 'bg-brand text-brand-contrast shadow-xs font-bold border-brand'
                     : esPasado
-                      ? 'bg-brand/10 text-ink-2 border-brand/30'
+                      ? 'bg-brand/10 text-brand border-brand/30'
                       : 'bg-paper-2 text-ink-muted border-rule'
                 }`}
               >

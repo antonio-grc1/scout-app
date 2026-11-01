@@ -24,6 +24,9 @@
             root.style.colorScheme = 'light';
           }
 
+          var metaEl = document.querySelector('meta[name="theme-color"]');
+          if (metaEl) metaEl.setAttribute('content', isDark ? '#18191e' : '#ffffff');
+
           // 2. Diccionario de Presets para resolución instantánea
           var PRESETS = {
             scout: {
@@ -39,8 +42,8 @@
               dark:  { brand: '#4ade80', contrast: '#0c150e', paper: '#111612', paper2: '#161c17', paper3: '#202922', surface: '#19211b', nav: '#19211b', ink: '#f5f5f4', muted: '#a8a29e', rule: '#292524' }
             },
             contrast: {
-              light: { brand: '#000000', contrast: '#ffffff', paper: '#ffffff', paper2: '#f4f4f5', paper3: '#e4e4e7', surface: '#ffffff', nav: '#ffffff', ink: '#000000', muted: '#374151', rule: '#000000', fontScale: '110%', logoScale: '1.1' },
-              dark:  { brand: '#facc15', contrast: '#000000', paper: '#000000', paper2: '#18181b', paper3: '#27272a', surface: '#09090b', nav: '#09090b', ink: '#ffffff', muted: '#d1d5db', rule: '#ffffff', fontScale: '110%', logoScale: '1.1' }
+              light: { brand: '#92400e', contrast: '#ffffff', paper: '#ffffff', paper2: '#f4f4f5', paper3: '#e4e4e7', surface: '#ffffff', nav: '#ffffff', ink: '#000000', muted: '#374151', rule: '#000000', fontScale: '110%', logoScale: '1.0' },
+              dark:  { brand: '#facc15', contrast: '#000000', paper: '#000000', paper2: '#18181b', paper3: '#27272a', surface: '#09090b', nav: '#09090b', ink: '#ffffff', muted: '#d1d5db', rule: '#ffffff', fontScale: '110%', logoScale: '1.0' }
             }
           };
 
@@ -62,10 +65,14 @@
             var cfg = JSON.parse(customRaw);
             if (cfg.preset && cfg.preset !== 'custom') {
               delete cfg.brandColor;
+              delete cfg.brandContrast;
               delete cfg.paperColor;
               delete cfg.surfaceColor;
               delete cfg.navColor;
+              delete cfg.navContrast;
               delete cfg.inkColor;
+              delete cfg.inkMutedColor;
+              delete cfg.ruleColor;
             }
 
             if (
@@ -78,6 +85,7 @@
               (!cfg.fontScale || cfg.fontScale === '100%') &&
               (!cfg.logoScale || Number(cfg.logoScale) === 1.0)
             ) {
+              if (metaEl) metaEl.setAttribute('content', isDark ? '#18191e' : '#ffffff');
               return;
             }
 
@@ -115,12 +123,12 @@
             if (surface) s.setProperty('--color-surface', surface);
             if (nav) {
               s.setProperty('--color-navbar', nav);
-              var navContrast = cfg.navContrast || getContrastHex(nav);
+              var navContrast = getContrastHex(nav);
               var isDarkNav = navContrast === '#ffffff';
-              s.setProperty('--color-navbar-ink', isDarkNav ? '#ffffff' : (isDark ? '#f4f4f5' : '#18181b'));
-              s.setProperty('--color-navbar-muted', isDarkNav ? 'rgba(255, 255, 255, 0.72)' : (isDark ? '#a1a1aa' : '#71717a'));
+              s.setProperty('--color-navbar-ink', isDarkNav ? '#ffffff' : '#18181b');
+              s.setProperty('--color-navbar-muted', isDarkNav ? 'rgba(255, 255, 255, 0.72)' : '#71717a');
               s.setProperty('--color-navbar-rule', isDarkNav ? 'rgba(255, 255, 255, 0.15)' : (rule || (isDark ? '#27272a' : '#e4e4e7')));
-              s.setProperty('--color-navbar-hover', isDarkNav ? 'rgba(255, 255, 255, 0.12)' : (isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)'));
+              s.setProperty('--color-navbar-hover', isDarkNav ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.05)');
             }
             if (ink) {
               s.setProperty('--color-ink', ink);
@@ -134,6 +142,7 @@
             if (fontScale) s.setProperty('--font-scale', fontScale);
             if (logoScale) s.setProperty('--brand-logo-scale', String(logoScale));
             if (cfg.logoUrl) s.setProperty('--brand-logo-url', cfg.logoUrl);
+            if (metaEl) metaEl.setAttribute('content', nav || (isDark ? '#18191e' : '#ffffff'));
           }
         } catch (e) {
           // Captura silenciosa para prevenir interrupción si localStorage está bloqueado

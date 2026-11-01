@@ -6,7 +6,6 @@ import {
   RotateCcw,
   Sparkles,
   Type,
-  Maximize2,
   Sliders,
   Compass,
 } from 'lucide-react';
@@ -93,7 +92,6 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
   const [navColor, setNavColor] = useState(customization.navColor || initialTokens.nav || initialTokens.surface);
   const [inkColor, setInkColor] = useState(customization.inkColor || initialTokens.ink);
   const [fontScale, setFontScale] = useState<FontScale>(customization.fontScale || '100%');
-  const [logoScale, setLogoScale] = useState<number>(customization.logoScale || 1.0);
 
   // Sync state on modal open or when resolvedTheme / customization changes
   useEffect(() => {
@@ -102,7 +100,6 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     const currentPreset = customization.preset || 'scout';
     setActivePreset(currentPreset);
     setFontScale(customization.fontScale || '100%');
-    setLogoScale(customization.logoScale || 1.0);
 
     if (currentPreset !== 'custom' && THEME_PRESETS[currentPreset]) {
       const pTokens = THEME_PRESETS[currentPreset][resolvedTheme];
@@ -145,10 +142,8 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
       setInkColor(target.ink);
       if (presetId === 'contrast') {
         setFontScale('110%');
-        setLogoScale(1.1);
       } else {
         setFontScale(target.fontScale || '100%');
-        setLogoScale(target.logoScale || 1.0);
       }
     }
   };
@@ -184,7 +179,6 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
       navContrast: getContrastTextColor(nextNav),
       inkColor: nextInk,
       fontScale,
-      logoScale,
     });
   };
 
@@ -193,15 +187,6 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     setFontScale(scale);
     setCustomization({
       fontScale: scale,
-    });
-  };
-
-  // Logo scale update
-  const handleLogoScaleChange = (scale: number) => {
-    const clamped = Math.max(0.8, Math.min(1.4, Number(scale.toFixed(2))));
-    setLogoScale(clamped);
-    setCustomization({
-      logoScale: clamped,
     });
   };
 
@@ -215,7 +200,6 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     setNavColor(def.nav || def.surface);
     setInkColor(def.ink);
     setFontScale('100%');
-    setLogoScale(1.0);
   };
 
   return (
@@ -245,7 +229,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
                 Personalización y Apariencia
               </h2>
               <p className="text-xs text-ink-muted leading-tight mt-0.5">
-                Ajustá la paleta institucional, la escala del escudo y la accesibilidad.
+                Ajustá la paleta institucional y la accesibilidad tipográfica.
               </p>
             </div>
           </div>
@@ -494,55 +478,6 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
                   <span className="text-[10px] text-ink-muted font-normal">{s.note}</span>
                 </button>
               ))}
-            </div>
-          </div>
-
-          {/* SECCIÓN 5: Escala del Logo Institucional */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <Maximize2 className="w-3.5 h-3.5 text-brand" />
-                Escala del escudo institucional ({logoScale.toFixed(2)}x)
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => handleLogoScaleChange(0.85)}
-                  className="text-[10px] px-2 py-0.5 rounded-lg border border-rule hover:bg-paper-2 font-medium cursor-pointer"
-                >
-                  Compacto
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleLogoScaleChange(1.0)}
-                  className="text-[10px] px-2 py-0.5 rounded-lg border border-rule hover:bg-paper-2 font-medium cursor-pointer"
-                >
-                  Normal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleLogoScaleChange(1.25)}
-                  className="text-[10px] px-2 py-0.5 rounded-lg border border-rule hover:bg-paper-2 font-medium cursor-pointer"
-                >
-                  Prominente
-                </button>
-              </div>
-            </div>
-
-            <div className="p-3 bg-surface rounded-xl border border-rule flex items-center gap-4">
-              <input
-                type="range"
-                min="0.8"
-                max="1.4"
-                step="0.05"
-                value={logoScale}
-                onChange={(e) => handleLogoScaleChange(parseFloat(e.target.value))}
-                className="w-full accent-brand cursor-pointer"
-                aria-label="Escala visual del logo institucional"
-              />
-              <div className="shrink-0 w-12 flex justify-center">
-                <BrandLogo variant="icon" size="sm" scaleOverride={logoScale} />
-              </div>
             </div>
           </div>
         </div>

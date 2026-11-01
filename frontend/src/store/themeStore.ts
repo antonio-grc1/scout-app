@@ -178,7 +178,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
     label: 'Alto Contraste',
     description: 'Máxima legibilidad y contraste estricto WCAG AAA',
     light: {
-      brand: '#000000',
+      brand: '#92400e',
       contrast: '#ffffff',
       paper: '#ffffff',
       paper2: '#f4f4f5',
@@ -189,7 +189,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       muted: '#374151',
       rule: '#000000',
       fontScale: '110%',
-      logoScale: 1.1,
+      logoScale: 1.0,
     },
     dark: {
       brand: '#facc15',
@@ -203,7 +203,7 @@ export const THEME_PRESETS: Record<Exclude<ThemePreset, 'custom'>, ThemePresetDe
       muted: '#d1d5db',
       rule: '#ffffff',
       fontScale: '110%',
-      logoScale: 1.1,
+      logoScale: 1.0,
     },
   },
 };
@@ -235,6 +235,17 @@ export function getContrastTextColor(hexColor: string): '#ffffff' | '#090a0f' {
 
   return contrastWithWhite >= contrastWithDark ? '#ffffff' : '#090a0f';
 }
+
+export const updateMetaThemeColor = (color: string) => {
+  if (typeof document === 'undefined') return;
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement('meta');
+    meta.setAttribute('name', 'theme-color');
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute('content', color);
+};
 
 const getSystemPreference = (): 'light' | 'dark' => {
   if (typeof window === 'undefined') return 'light';
@@ -335,6 +346,7 @@ const applyDocumentCustomization = (
     s.removeProperty('--font-scale');
     s.removeProperty('--brand-logo-scale');
     s.removeProperty('--brand-logo-url');
+    updateMetaThemeColor(resolvedTheme === 'dark' ? '#18191e' : '#ffffff');
     return;
   }
 
@@ -352,10 +364,6 @@ const applyDocumentCustomization = (
   const ink = cfg.inkColor || pData.ink;
   const surface = cfg.surfaceColor || pData.surface;
   const nav = cfg.navColor || pData.nav || surface;
-  const navContrast =
-    cfg.navContrast ||
-    pData.navContrast ||
-    (nav ? getContrastTextColor(nav) : undefined);
   const muted = cfg.inkMutedColor || pData.muted;
   const rule = cfg.ruleColor || pData.rule;
   const fontScale = cfg.fontScale || pData.fontScale || '100%';
@@ -398,11 +406,11 @@ const applyDocumentCustomization = (
 
   if (nav) {
     s.setProperty('--color-navbar', nav);
-    const isDarkNav = (navContrast || getContrastTextColor(nav)) === '#ffffff';
-    s.setProperty('--color-navbar-ink', isDarkNav ? '#ffffff' : (resolvedTheme === 'dark' ? '#f4f4f5' : '#18181b'));
+    const isDarkNav = getContrastTextColor(nav) === '#ffffff';
+    s.setProperty('--color-navbar-ink', isDarkNav ? '#ffffff' : '#18181b');
     s.setProperty(
       '--color-navbar-muted',
-      isDarkNav ? 'rgba(255, 255, 255, 0.72)' : (resolvedTheme === 'dark' ? '#a1a1aa' : '#71717a')
+      isDarkNav ? 'rgba(255, 255, 255, 0.72)' : '#71717a'
     );
     s.setProperty(
       '--color-navbar-rule',
@@ -412,7 +420,7 @@ const applyDocumentCustomization = (
       '--color-navbar-hover',
       isDarkNav
         ? 'rgba(255, 255, 255, 0.12)'
-        : (resolvedTheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)')
+        : 'rgba(0, 0, 0, 0.05)'
     );
   } else {
     s.removeProperty('--color-navbar');
@@ -421,6 +429,8 @@ const applyDocumentCustomization = (
     s.removeProperty('--color-navbar-rule');
     s.removeProperty('--color-navbar-hover');
   }
+
+  updateMetaThemeColor(nav || (resolvedTheme === 'dark' ? '#18191e' : '#ffffff'));
 };
 
 // Inicialización temprana en carga de módulo

@@ -13,9 +13,12 @@ import {
   METODO_PAGO_LABELS,
   NOMBRES_MESES_CORTOS,
   calcularEdad,
-  esRolAlcanceGlobal,
+
   esRolDeEducador,
   esRolDeProtagonista,
+  esRolJefe,
+  esRolRama,
+  esRolSinRama,
   formatearMoneda,
   rolRequiereRama,
   seleccionarPlantillaPorMiembro,
@@ -69,9 +72,9 @@ const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null
 const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA';
 const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO';
 
-const esRolJefe = (r: any) => !rolRequiereRama(r) && esRolAlcanceGlobal(r);
-const esRolSinRama = (r: any) => !rolRequiereRama(r) && !esRolAlcanceGlobal(r);
-const esRolRama = (r: any) => rolRequiereRama(r);
+
+
+
 
 const getRamaColorConfig = (nombreRama: string) => {
   const n = (nombreRama || '').toLowerCase();
@@ -196,13 +199,28 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     [unidades, ramaSeleccionadaId],
   );
 
-  const rolesRama = useMemo(() => roles.filter(esRolRama), [roles]);
+  const candidatoPase = candidatosPase.find((c) => c.usuario?.id === miembro?.id);
+
+  const esEgreso = useMemo(() => {
+    if (candidatoPase?.tipo === 'EGRESO' || candidatoPase?.tipo === 'EGRESO_SIN_RAMA') return true;
+    const edad = miembro?.fechaNacimiento ? calcularEdad(miembro.fechaNacimiento) : 0;
+    const esRover = miembro?.asignaciones?.[0]?.unidad?.rama?.nombre?.toLowerCase().includes('rover');
+    return Boolean(esRover && (edad ?? 0) >= 21);
+  }, [candidatoPase, miembro]);
+
+  const rolesRama = useMemo(() => {
+    if (esEgreso) {
+      const edus = roles.filter((r) => esRolRama(r) && esRolDeEducador(r));
+      return edus.length > 0 ? edus : roles.filter(esRolRama);
+    }
+    return roles.filter(esRolRama);
+  }, [roles, esEgreso]);
   const rolesSinRama = useMemo(() => {
-    const sr = roles.filter((r) => !rolRequiereRama(r) && (!esRolAlcanceGlobal(r) || tieneGlobal()));
-    return sr.length > 0 ? sr : roles.filter((r) => !rolRequiereRama(r));
-  }, [roles, tieneGlobal]);
+    const sr = roles.filter(esRolSinRama);
+    return sr.length > 0 ? sr : roles.filter((r) => !rolRequiereRama(r) && !esRolJefe(r));
+  }, [roles]);
   const rolesJefatura = useMemo(() => {
-    const jf = roles.filter((r) => !rolRequiereRama(r) && esRolAlcanceGlobal(r));
+    const jf = roles.filter(esRolJefe);
     return jf.length > 0 ? jf : roles.filter((r) => !rolRequiereRama(r));
   }, [roles]);
 
@@ -219,7 +237,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
   const esEducador = esRolDeEducador(asignacionPrincipal?.rol);
 
-  const candidatoPase = candidatosPase.find((c) => c.usuario?.id === miembro?.id);
+  // candidatoPase moved above
 
   useEffect(() => {
     if (!usuarioId) {
@@ -296,7 +314,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           const uSin = (resUnidades.data || []).find(esUnidadSinRama);
           const rSin =
             (resRoles.data || []).find(esRolSinRama) ||
-            (resRoles.data || []).find((r: any) => !rolRequiereRama(r));
+            (resRoles.data || []).find((r: any) => !rolRequiereRama(r) && !esRolJefe(r));
           if (uSin) unidadIni = String(uSin.id);
           if (rSin) rolIni = String(rSin.id);
         } else if (candidato.ramaSugerida) {
@@ -449,7 +467,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     if (cat === 'SIN_RAMA') {
       setRamaSeleccionadaId(null);
       const u = unidades.find(esUnidadSinRama) || unidades.find((x) => !esUnidadRama(x));
-      const r = roles.find(esRolSinRama) || roles.find((x) => !rolRequiereRama(x));
+      const r = roles.find(esRolSinRama) || roles.find((x) => !rolRequiereRama(x) && !esRolJefe(x));
       if (u) setUnidadDestinoId(String(u.id));
       if (r) setRolDestinoId(String(r.id));
     } else if (cat === 'JEFATURA') {
@@ -482,10 +500,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       }
 
       const currentRol = roles.find((r) => r.id === Number(rolDestinoId));
-      if (!currentRol || !esRolRama(currentRol)) {
+      if (!currentRol || !esRolRama(currentRol) || (esEgreso && !esRolDeEducador(currentRol))) {
         const asig = miembro?.asignaciones?.[0];
         const eraEdu = esRolDeEducador(asig?.rol);
-        const rolDefecto = eraEdu
+        const rolDefecto = (eraEdu || esEgreso)
           ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
           : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
         if (rolDefecto) {
@@ -508,10 +526,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     }
 
     const currentRol = roles.find((r) => r.id === Number(rolDestinoId));
-    if (!currentRol || !esRolRama(currentRol)) {
+    if (!currentRol || !esRolRama(currentRol) || (esEgreso && !esRolDeEducador(currentRol))) {
       const asig = miembro?.asignaciones?.[0];
       const eraEdu = esRolDeEducador(asig?.rol);
-      const rolDefecto = eraEdu
+      const rolDefecto = (eraEdu || esEgreso)
         ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
         : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
       if (rolDefecto) {
@@ -2141,7 +2159,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                             Sugerido:{' '}
                             {candidatoPase.tipo === 'PROGRESION'
                               ? `Pasar a ${candidatoPase.ramaSugerida?.nombre}`
-                              : 'Pasar a Equipo de Apoyo / Educador'}
+                              : 'Pasar a Educador (con rama o sin rama / apoyo)'}
                           </span>
                         </div>
                       </div>

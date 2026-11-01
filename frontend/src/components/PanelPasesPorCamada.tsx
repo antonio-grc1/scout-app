@@ -8,6 +8,7 @@ interface Props {
   unidades: any[];
   onRecargar: () => Promise<void>;
   onToast: (texto: string, tipo?: 'exito' | 'error') => void;
+  onAbrirMiembro?: (usuarioId: number) => void;
 }
 
 export const PanelPasesPorCamada: React.FC<Props> = ({
@@ -15,6 +16,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   unidades,
   onRecargar,
   onToast,
+  onAbrirMiembro,
 }) => {
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});
@@ -31,6 +33,24 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
       ),
     [unidades],
   );
+
+  const formatearNombreUnidadDestino = (
+    u: { id: number; nombre: string; tipo?: string; ramaId?: number | null },
+    tipoPase: string,
+  ) => {
+    if (tipoPase !== 'EGRESO') return u.nombre;
+    const unidadObj = unidades.find((x) => x.id === u.id);
+    if (unidadObj?.rama?.nombre) {
+      return `${u.nombre} (Rama ${unidadObj.rama.nombre})`;
+    }
+    if (unidadObj?.tipo === 'SIN_RAMA_APOYO' || u.tipo === 'SIN_RAMA_APOYO') {
+      return `${u.nombre} (Sin Rama / Apoyo)`;
+    }
+    if (unidadObj?.tipo === 'JEFATURA' || u.tipo === 'JEFATURA') {
+      return `${u.nombre} (Jefatura)`;
+    }
+    return u.nombre;
+  };
 
   const gruposCamada = useMemo(() => {
     const mapa = new Map<
@@ -66,7 +86,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
           unidadActualNombre: c.unidadActual?.nombre || 'Sección',
           ramaActualNombre: c.ramaActual?.nombre || 'Rama',
           ramaSugeridaNombre:
-            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Educador / Apoyo',
+            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Pase a Educador',
           tipo: c.tipo,
           unidadesDestino: dests,
           miembros: [],
@@ -218,7 +238,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                       >
                         {g.unidadesDestino.map((u) => (
                           <option key={u.id} value={u.id}>
-                            Sección destino: {u.nombre}
+                            Sección destino: {formatearNombreUnidadDestino(u, g.tipo)}
                           </option>
                         ))}
                       </select>
@@ -264,9 +284,20 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-sm text-ink">
-                              {c.usuario.apellido}, {c.usuario.nombre}
-                            </span>
+                            {onAbrirMiembro ? (
+                              <button
+                                type="button"
+                                onClick={() => onAbrirMiembro(c.usuario.id)}
+                                className="font-bold text-sm text-ink hover:text-brand hover:underline transition text-left cursor-pointer"
+                                title="Abrir ficha y configurar pase detallado"
+                              >
+                                {c.usuario.apellido}, {c.usuario.nombre}
+                              </button>
+                            ) : (
+                              <span className="font-bold text-sm text-ink">
+                                {c.usuario.apellido}, {c.usuario.nombre}
+                              </span>
+                            )}
                             <span className="text-xs text-ink-muted">DNI {c.usuario.dni}</span>
                           </div>
                           <div className="text-xs text-ink-muted mt-0.5 flex items-center gap-2 flex-wrap">
@@ -296,7 +327,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                             >
                               {g.unidadesDestino.map((u) => (
                                 <option key={u.id} value={u.id}>
-                                  {u.nombre}
+                                  {formatearNombreUnidadDestino(u, g.tipo)}
                                 </option>
                               ))}
                             </select>

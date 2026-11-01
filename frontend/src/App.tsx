@@ -9,6 +9,7 @@ import { UnidadPage } from './pages/unidad/UnidadPage';
 import { GlobalPage } from './pages/global/GlobalPage';
 import { PadronPage } from './pages/padron/PadronPage';
 import { PerfilPage } from './pages/perfil/PerfilPage';
+import { BarraDeCarga } from './components/ui/BarraDeCarga';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -78,6 +79,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <BarraDeCarga />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route

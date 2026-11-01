@@ -281,7 +281,9 @@ async function main(): Promise<void> {
   console.log(`🎖️  Roles: ${rolIds.size}`);
   await seedAdmin(unidadIds, rolIds);
   await seedPlantillaOficial(prisma);
-  await seedDemo(prisma);
+  if (process.env.SEED_DEMO === 'true') {
+    await seedDemo(prisma);
+  }
 }
 
 main()
