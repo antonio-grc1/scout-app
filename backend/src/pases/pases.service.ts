@@ -25,7 +25,7 @@ export class PasesService {
     if (q.unidadId) assertUnidadEnAlcance(alcance, q.unidadId);
 
     const [ramas, unidadesDestino, asignaciones] = await Promise.all([
-      this.prisma.rama.findMany({ where: { activa: true } }),
+      this.prisma.rama.findMany({ where: { activa: true }, orderBy: { ordenProgresion: 'asc' } }),
       this.prisma.unidadOrganizativa.findMany({
         where: { activa: true },
         select: { id: true, nombre: true, ramaId: true, tipo: true },
@@ -46,6 +46,8 @@ export class PasesService {
       }),
     ]);
 
+    const ramaMap = new Map(ramas.map((rm) => [rm.id, rm.ordenProgresion]));
+
     return asignaciones
       .filter((a) => {
         const esProtagonista =
@@ -57,6 +59,30 @@ export class PasesService {
         const r = sugerirPase(a.usuario.fechaNacimiento, a.unidad.rama!, ramas, fechaRef);
         if (!r) return [];
         const ramaSugerida = r.sugerencia.tipo === 'PROGRESION' ? r.sugerencia.ramaSugerida : null;
+
+        let dests: Array<{ id: number; nombre: string; tipo: TipoUnidad; ramaId: number | null }>;
+        if (ramaSugerida) {
+          dests = unidadesDestino
+            .filter((u) => u.ramaId === ramaSugerida.id)
+            .map(({ id, nombre, tipo, ramaId }) => ({ id, nombre, tipo, ramaId }));
+        } else {
+          // EGRESO: Rover pasa a Educador. Puede ir a Sin Rama/Apoyo, a cualquier Rama (como Educador), o a Jefatura.
+          dests = [...unidadesDestino]
+            .sort((u1, u2) => {
+              const scoreTipo = (t: TipoUnidad) =>
+                t === TipoUnidad.SIN_RAMA_APOYO ? 0 : t === TipoUnidad.SECCION_RAMA ? 1 : 2;
+              const diffTipo = scoreTipo(u1.tipo) - scoreTipo(u2.tipo);
+              if (diffTipo !== 0) return diffTipo;
+              if (u1.ramaId && u2.ramaId) {
+                const o1 = ramaMap.get(u1.ramaId) ?? 0;
+                const o2 = ramaMap.get(u2.ramaId) ?? 0;
+                if (o1 !== o2) return o1 - o2;
+              }
+              return u1.nombre.localeCompare(u2.nombre);
+            })
+            .map(({ id, nombre, tipo, ramaId }) => ({ id, nombre, tipo, ramaId }));
+        }
+
         return [
           {
             asignacionId: a.id,
@@ -69,11 +95,7 @@ export class PasesService {
             ramaActual: { id: a.unidad.rama!.id, nombre: a.unidad.rama!.nombre, edadMaxima: a.unidad.rama!.edadMaxima },
             tipo: r.sugerencia.tipo,
             ramaSugerida: ramaSugerida && { id: ramaSugerida.id, nombre: ramaSugerida.nombre },
-            unidadesDestino: ramaSugerida
-              ? unidadesDestino.filter((u) => u.ramaId === ramaSugerida.id).map(({ id, nombre }) => ({ id, nombre }))
-              : unidadesDestino
-                  .filter((u) => u.tipo === TipoUnidad.SIN_RAMA_APOYO || u.tipo === TipoUnidad.JEFATURA)
-                  .map(({ id, nombre }) => ({ id, nombre })),
+            unidadesDestino: dests,
           },
         ];
       })
@@ -106,7 +128,7 @@ export class PasesService {
     for (const p of pases) {
       const origen = await tx.asignacionMiembro.findUnique({
         where: { id: p.asignacionOrigenId },
-        include: { rol: true, usuario: { select: { id: true, activo: true } } },
+        include: { rol: true, usuario: { select: { id: true, activo: true, fechaNacimiento: true } } },
       });
       if (!origen) throw new NotFoundException(`Asignación ${p.asignacionOrigenId} no encontrada`);
       if (!origen.activo) throw new ConflictException(`La asignación ${origen.id} ya está cerrada`);
@@ -142,13 +164,54 @@ export class PasesService {
 
       if (!rolDestino) {
         if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && tx.rol.findFirst) {
-          rolDestino = await tx.rol.findFirst({
-            where: { requiereRama: false, tipoMiembro: 'EDUCADOR' },
-          });
+          rolDestino =
+            (await tx.rol.findFirst({
+              where: {
+                requiereRama: false,
+                tipoMiembro: 'EDUCADOR',
+                nombre: { contains: 'Sin Rama', mode: 'insensitive' },
+              },
+            })) ??
+            (await tx.rol.findFirst({
+              where: {
+                requiereRama: false,
+                tipoMiembro: 'EDUCADOR',
+                nombre: { not: { contains: 'Jefe', mode: 'insensitive' } },
+              },
+            })) ??
+            (await tx.rol.findFirst({
+              where: { requiereRama: false, tipoMiembro: 'EDUCADOR' },
+            }));
         } else if (unidadDestino.tipo === TipoUnidad.JEFATURA && tx.rol.findFirst) {
-          rolDestino = await tx.rol.findFirst({
-            where: { requiereRama: false, alcancePorDefecto: AlcanceRol.GLOBAL },
-          });
+          rolDestino =
+            (await tx.rol.findFirst({
+              where: {
+                requiereRama: false,
+                tipoMiembro: 'EDUCADOR',
+                nombre: { contains: 'Jefe', mode: 'insensitive' },
+              },
+            })) ??
+            (await tx.rol.findFirst({
+              where: { requiereRama: false, alcancePorDefecto: AlcanceRol.GLOBAL },
+            }));
+        } else if (unidadDestino.tipo === TipoUnidad.SECCION_RAMA && origen.rol.tipoMiembro === 'PROTAGONISTA') {
+          const edad = calcularEdad(origen.usuario.fechaNacimiento, hoy);
+          // Si el protagonista tiene edad de pase a educador (>= 21 años, egreso de Rover)
+          if (edad >= 21 && tx.rol.findFirst) {
+            rolDestino =
+              (await tx.rol.findFirst({
+                where: {
+                  requiereRama: true,
+                  tipoMiembro: 'EDUCADOR',
+                  nombre: { contains: 'Educador', mode: 'insensitive' },
+                },
+              })) ??
+              (await tx.rol.findFirst({
+                where: { requiereRama: true, tipoMiembro: 'EDUCADOR' },
+              }));
+          } else {
+            rolDestino = origen.rol;
+          }
         } else {
           rolDestino = origen.rol;
         }

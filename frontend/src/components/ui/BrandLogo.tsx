@@ -89,11 +89,11 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
 
       {(variant === 'text' || variant === 'full' || showSubtitle) && (
         <div className={cn('min-w-0', center ? 'text-center' : 'text-left')}>
-          <span className="font-extrabold text-ink text-sm sm:text-base leading-tight block truncate font-display">
+          <span className="font-extrabold text-inherit text-sm sm:text-base leading-tight block truncate font-display">
             Grupo Scout Juan XXIII
           </span>
           {showSubtitle && subtitleText && (
-            <span className="text-[11px] text-ink-muted leading-tight block truncate">
+            <span className="text-[11px] opacity-75 leading-tight block truncate">
               {subtitleText}
             </span>
           )}

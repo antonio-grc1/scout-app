@@ -397,6 +397,23 @@ export function esRolAlcanceGlobal(rol: any): boolean {
   return alcance === 'GLOBAL';
 }
 
+export function esRolJefe(rol: any): boolean {
+  if (!rol) return false;
+  if (rolRequiereRama(rol)) return false;
+  const nombre = String(rol.nombre || '').toLowerCase();
+  return nombre.includes('jefe') || nombre.includes('jefatura');
+}
+
+export function esRolSinRama(rol: any): boolean {
+  if (!rol) return false;
+  if (rolRequiereRama(rol)) return false;
+  return !esRolJefe(rol);
+}
+
+export function esRolRama(rol: any): boolean {
+  return rolRequiereRama(rol);
+}
+
 /**
  * Selecciona automáticamente la plantilla de legajo adecuada según la naturaleza dinámica del rol, rama y edad:
  * - Rol de naturaleza EDUCADOR -> LEGAJO_EDUCADORES_2026

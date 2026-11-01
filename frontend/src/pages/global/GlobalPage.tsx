@@ -80,6 +80,7 @@ export const GlobalPage: React.FC = () => {
   const [modalFamiliaAbierto, setModalFamiliaAbierto] = useState(false);
   const [familiaAEditar, setFamiliaAEditar] = useState<any | null>(null);
   const [miembroDetalleId, setMiembroDetalleId] = useState<number | null>(null);
+  const [tabInicialDetalle, setTabInicialDetalle] = useState<'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'>('cuotas');
   const [modalConf, setModalConf] = useState<ModalConfirmacionProps | null>(null);
 
   const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
@@ -744,7 +745,10 @@ export const GlobalPage: React.FC = () => {
                               <button
                                 key={m.id}
                                 type="button"
-                                onClick={() => setMiembroDetalleId(m.id)}
+                                onClick={() => {
+                                  setTabInicialDetalle('cuotas');
+                                  setMiembroDetalleId(m.id);
+                                }}
                                 className="w-full p-2 rounded-xl bg-paper-2 hover:bg-brand/10 flex items-center justify-between text-xs cursor-pointer transition text-left"
                               >
                                 <span className="font-bold text-ink truncate">
@@ -893,6 +897,10 @@ export const GlobalPage: React.FC = () => {
             unidades={unidades}
             onRecargar={cargarDatos}
             onToast={mostrarToast}
+            onAbrirMiembro={(id) => {
+              setTabInicialDetalle('pase');
+              setMiembroDetalleId(id);
+            }}
           />
         )}
 
@@ -948,7 +956,7 @@ export const GlobalPage: React.FC = () => {
       {miembroDetalleId !== null && (
         <ModalDetalleMiembro
           usuarioId={miembroDetalleId}
-          tabInicial="cuotas"
+          tabInicial={tabInicialDetalle}
           onCerrar={() => setMiembroDetalleId(null)}
           onActualizado={() => {
             cargarDatos();

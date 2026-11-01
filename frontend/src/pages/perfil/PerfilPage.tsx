@@ -268,7 +268,7 @@ export const PerfilPage: React.FC = () => {
                     Personalización y Apariencia
                   </h2>
                   <p className="text-[11px] text-ink-muted">
-                    Configurá la paleta institucional, escala tipográfica y tamaño del logo en este dispositivo.
+                    Configurá la paleta institucional y la escala tipográfica en este dispositivo.
                   </p>
                 </div>
               </div>

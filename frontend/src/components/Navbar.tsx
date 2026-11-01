@@ -125,7 +125,7 @@ export const Navbar: React.FC = () => {
                 onClick={handleLogout}
                 title="Salir"
                 aria-label="Cerrar sesión"
-                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-navbar-muted hover:text-rose-600 dark:hover:text-rose-400 hover:bg-navbar-hover rounded-xl transition-colors cursor-pointer"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-navbar-muted hover:text-rose-500 hover:bg-navbar-hover rounded-xl transition-colors cursor-pointer"
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -137,14 +137,14 @@ export const Navbar: React.FC = () => {
       {/* Bottom Navigation Bar exclusiva para Móvil (Ergonomía para el pulgar) */}
       <nav
         aria-label="Navegación principal móvil"
-        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-navbar border-t border-navbar-rule px-2 py-1 flex items-center justify-around shadow-lg transition-colors backdrop-blur-xs"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-navbar border-t border-navbar-rule px-2 py-1.5 flex items-center justify-around shadow-lg transition-colors backdrop-blur-xs"
       >
         {puedeVerPadron() && (
           <Link
             to="/rama"
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
               esRama || esPadron
-                ? 'text-brand'
+                ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
                 : 'text-navbar-muted hover:text-navbar-ink'
             }`}
           >
@@ -158,7 +158,7 @@ export const Navbar: React.FC = () => {
             to="/global"
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
               esGlobal
-                ? 'text-brand'
+                ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
                 : 'text-navbar-muted hover:text-navbar-ink'
             }`}
           >
@@ -171,7 +171,7 @@ export const Navbar: React.FC = () => {
           to="/autogestion"
           className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
             esAutogestion
-              ? 'text-brand'
+              ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
               : 'text-navbar-muted hover:text-navbar-ink'
           }`}
         >
@@ -183,7 +183,7 @@ export const Navbar: React.FC = () => {
           to="/perfil"
           className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
             esPerfil
-              ? 'text-brand'
+              ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
               : 'text-navbar-muted hover:text-navbar-ink'
           }`}
         >

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { TIPO_UNIDAD_LABELS, traducirErrorAmigable } from '../lib/formatters';
@@ -62,6 +62,23 @@ export const PanelAdminRamas: React.FC<Props> = ({
   });
   const [guardandoUnidad, setGuardandoUnidad] = useState(false);
   const [procesandoUnidadId, setProcesandoUnidadId] = useState<number | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if ((creandoRama || editandoRama) && !guardandoRama) {
+          setCreandoRama(false);
+          setEditandoRama(null);
+        }
+        if ((creandoUnidad || editandoUnidad) && !guardandoUnidad) {
+          setCreandoUnidad(false);
+          setEditandoUnidad(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [creandoRama, editandoRama, guardandoRama, creandoUnidad, editandoUnidad, guardandoUnidad]);
 
   const abrirCrearRama = () => {
     const maxOrden = ramas.reduce((max, r) => Math.max(max, Number(r.ordenProgresion || 0)), 0);
@@ -292,129 +309,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
             )}
           </div>
 
-          {puedeGestionar && (creandoRama || editandoRama) && (
-            <form
-              onSubmit={handleGuardarRama}
-              className="p-4 rounded-2xl bg-brand/10 border border-brand/30/70 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-ink">
-                  {editandoRama ? `Editar Rama: ${editandoRama.nombre}` : 'Nueva Rama Pedagógica'}
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreandoRama(false);
-                    setEditandoRama(null);
-                  }}
-                  className="p-1 text-ink-muted hover:text-ink cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="sm:col-span-2">
-                  <label className="block font-bold text-ink-2 mb-1">
-                    Nombre de la Rama
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formRama.nombre}
-                    onChange={(e) => setFormRama({ ...formRama, nombre: e.target.value })}
-                    placeholder="Ej: Castores, Lobatos, Scout..."
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-ink-2 mb-1">
-                    Edad Mínima (años)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={99}
-                    required
-                    value={formRama.edadMinima}
-                    onChange={(e) => setFormRama({ ...formRama, edadMinima: Number(e.target.value) })}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-ink-2 mb-1">
-                    Edad Máxima (Sugiere pase al superar)
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={99}
-                    required
-                    value={formRama.edadMaxima}
-                    onChange={(e) => setFormRama({ ...formRama, edadMaxima: Number(e.target.value) })}
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-ink-2 mb-1">
-                    Orden de Progresión (1°, 2°, 3°...)
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={20}
-                    required
-                    value={formRama.ordenProgresion}
-                    onChange={(e) =>
-                      setFormRama({ ...formRama, ordenProgresion: Number(e.target.value) })
-                    }
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
-
-                {creandoRama && (
-                  <div className="sm:col-span-2 pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer text-ink-2 font-semibold">
-                      <input
-                        type="checkbox"
-                        checked={formRama.crearSeccionAutomatica}
-                        onChange={(e) =>
-                          setFormRama({ ...formRama, crearSeccionAutomatica: e.target.checked })
-                        }
-                        className="w-4 h-4 rounded accent-brand"
-                      />
-                      <span>Crear sección operativa automáticamente para esta rama</span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreandoRama(false);
-                    setEditandoRama(null);
-                  }}
-                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-surface border border-rule text-ink-2 text-xs font-bold cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={guardandoRama}
-                  className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
-                >
-                  {guardandoRama ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  <span>Guardar Rama</span>
-                </button>
-              </div>
-            </form>
-          )}
-
+          {/* Listado de Ramas */}
           <div className="space-y-2">
             {ramas.map((r) => {
               const inactiva = r.activa === false;
@@ -422,10 +317,10 @@ export const PanelAdminRamas: React.FC<Props> = ({
               return (
                 <div
                   key={r.id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border text-xs transition ${
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border text-xs transition-colors ${
                     inactiva
                       ? 'bg-paper-2 border-rule opacity-65'
-                      : 'bg-paper-2 border-rule'
+                      : 'bg-paper-2 border-rule hover:border-brand/40 hover:bg-surface'
                   }`}
                 >
                   <div className="space-y-0.5">
@@ -456,7 +351,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                         type="button"
                         onClick={() => abrirEditarRama(r)}
                         title="Modificar nombre o edades"
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer"
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>Editar</span>
@@ -513,114 +408,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
             )}
           </div>
 
-          {puedeGestionar && (creandoUnidad || editandoUnidad) && (
-            <form
-              onSubmit={handleGuardarUnidad}
-              className="p-4 rounded-2xl bg-brand/10 border border-brand/30/70 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-semibold text-ink">
-                  {editandoUnidad ? `Editar Sección: ${editandoUnidad.nombre}` : 'Nueva Sección del Grupo'}
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreandoUnidad(false);
-                    setEditandoUnidad(null);
-                  }}
-                  className="p-1 text-ink-muted hover:text-ink cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="sm:col-span-2">
-                  <label className="block font-bold text-ink-2 mb-1">
-                    Nombre de la Sección
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formUnidad.nombre}
-                    onChange={(e) => setFormUnidad({ ...formUnidad, nombre: e.target.value })}
-                    placeholder="Ej: Rama Scout Cura Brochero"
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-ink-2 mb-1">
-                    Tipo de Sección
-                  </label>
-                  <select
-                    value={formUnidad.tipo}
-                    onChange={(e) =>
-                      setFormUnidad({
-                        ...formUnidad,
-                        tipo: e.target.value as 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO',
-                      })
-                    }
-                    className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  >
-                    <option value="SECCION_RAMA">Sección de Rama (Protagonistas)</option>
-                    <option value="SIN_RAMA_APOYO">Equipo de Apoyo / Sin Rama</option>
-                    <option value="JEFATURA">Jefatura de Grupo</option>
-                  </select>
-                </div>
-
-                {formUnidad.tipo === 'SECCION_RAMA' && (
-                  <div>
-                    <label className="block font-bold text-ink-2 mb-1">
-                      Rama Asociada
-                    </label>
-                    <select
-                      required
-                      value={formUnidad.ramaId}
-                      onChange={(e) =>
-                        setFormUnidad({
-                          ...formUnidad,
-                          ramaId: e.target.value ? Number(e.target.value) : '',
-                        })
-                      }
-                      className="w-full min-h-[40px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                    >
-                      <option value="">Seleccionar rama…</option>
-                      {ramas
-                        .filter((r) => r.activa !== false)
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.nombre} ({r.edadMinima}-{r.edadMaxima} años)
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCreandoUnidad(false);
-                    setEditandoUnidad(null);
-                  }}
-                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-surface border border-rule text-ink-2 text-xs font-bold cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={guardandoUnidad}
-                  className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
-                >
-                  {guardandoUnidad ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  <span>Guardar Sección</span>
-                </button>
-              </div>
-            </form>
-          )}
-
+          {/* Listado de Secciones */}
           <div className="space-y-2">
             {unidades.map((u) => {
               const inactiva = u.activa === false;
@@ -629,10 +417,10 @@ export const PanelAdminRamas: React.FC<Props> = ({
               return (
                 <div
                   key={u.id}
-                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border text-xs transition ${
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl border text-xs transition-colors ${
                     inactiva
                       ? 'bg-paper-2 border-rule opacity-65'
-                      : 'bg-paper-2 border-rule'
+                      : 'bg-paper-2 border-rule hover:border-brand/40 hover:bg-surface'
                   }`}
                 >
                   <div>
@@ -660,7 +448,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={() => abrirEditarUnidad(u)}
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer"
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>Editar</span>
@@ -695,6 +483,316 @@ export const PanelAdminRamas: React.FC<Props> = ({
           </div>
         </div>
       </div>
+
+      {/* Modal / Overlay Flotante para Crear o Editar Rama */}
+      {puedeGestionar && (creandoRama || editandoRama) && (
+        <div
+          onClick={() => {
+            if (!guardandoRama) {
+              setCreandoRama(false);
+              setEditandoRama(null);
+            }
+          }}
+          className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+          >
+            {/* Cabecera del Modal */}
+            <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-ink">
+                    {editandoRama ? `Editar Rama: ${editandoRama.nombre}` : 'Nueva Rama Pedagógica'}
+                  </h3>
+                  <p className="text-xs text-ink-muted">
+                    {editandoRama
+                      ? 'Modificá el nombre, rango de edades de permanencia y orden de progresión.'
+                      : 'Definí los datos de la nueva rama pedagógica del grupo.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreandoRama(false);
+                  setEditandoRama(null);
+                }}
+                className="min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form
+              id="form-modal-rama"
+              onSubmit={handleGuardarRama}
+              className="flex flex-col flex-1 overflow-hidden"
+            >
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+                <div>
+                  <label className="block text-xs font-bold text-ink-2 mb-1.5">
+                    Nombre de la Rama *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formRama.nombre}
+                    onChange={(e) => setFormRama({ ...formRama, nombre: e.target.value })}
+                    placeholder="Ej: Castores, Lobatos, Scout..."
+                    className="w-full min-h-[42px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1.5">
+                      Edad Mínima (años) *
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      required
+                      value={formRama.edadMinima}
+                      onChange={(e) => setFormRama({ ...formRama, edadMinima: Number(e.target.value) })}
+                      className="w-full min-h-[42px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1.5">
+                      Edad Máxima *
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={99}
+                      required
+                      value={formRama.edadMaxima}
+                      onChange={(e) => setFormRama({ ...formRama, edadMaxima: Number(e.target.value) })}
+                      className="w-full min-h-[42px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                    />
+                    <span className="text-[11px] text-ink-muted mt-1 block">
+                      Sugiere pase al cumplir {Number(formRama.edadMaxima) + 1} años.
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-ink-2 mb-1.5">
+                    Orden de Progresión (1°, 2°, 3°...) *
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    required
+                    value={formRama.ordenProgresion}
+                    onChange={(e) =>
+                      setFormRama({ ...formRama, ordenProgresion: Number(e.target.value) })
+                    }
+                    className="w-full min-h-[42px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  />
+                </div>
+
+                {creandoRama && (
+                  <div className="pt-1">
+                    <label className="flex items-center gap-2.5 p-3 rounded-xl bg-paper-2 border border-rule cursor-pointer text-ink-2 font-semibold">
+                      <input
+                        type="checkbox"
+                        checked={formRama.crearSeccionAutomatica}
+                        onChange={(e) =>
+                          setFormRama({ ...formRama, crearSeccionAutomatica: e.target.checked })
+                        }
+                        className="w-4 h-4 rounded accent-brand"
+                      />
+                      <span>Crear sección operativa automáticamente para esta rama</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Pie con Acciones */}
+              <div className="p-4 sm:p-5 border-t border-rule bg-paper-2 flex items-center justify-end gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={guardandoRama}
+                  onClick={() => {
+                    setCreandoRama(false);
+                    setEditandoRama(null);
+                  }}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold text-xs cursor-pointer disabled:opacity-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardandoRama}
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs transition-colors"
+                >
+                  {guardandoRama ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>{editandoRama ? 'Guardar Cambios' : 'Crear Rama'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal / Overlay Flotante para Crear o Editar Sección */}
+      {puedeGestionar && (creandoUnidad || editandoUnidad) && (
+        <div
+          onClick={() => {
+            if (!guardandoUnidad) {
+              setCreandoUnidad(false);
+              setEditandoUnidad(null);
+            }
+          }}
+          className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+          >
+            {/* Cabecera del Modal */}
+            <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold">
+                  <GitBranch className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-ink">
+                    {editandoUnidad ? `Editar Sección: ${editandoUnidad.nombre}` : 'Nueva Sección del Grupo'}
+                  </h3>
+                  <p className="text-xs text-ink-muted">
+                    {editandoUnidad
+                      ? 'Modificá el nombre, tipo de sección o su rama pedagógica asociada.'
+                      : 'Configurá una nueva sección operativa para el grupo.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreandoUnidad(false);
+                  setEditandoUnidad(null);
+                }}
+                className="min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form
+              id="form-modal-unidad"
+              onSubmit={handleGuardarUnidad}
+              className="flex flex-col flex-1 overflow-hidden"
+            >
+              <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+                <div>
+                  <label className="block text-xs font-bold text-ink-2 mb-1.5">
+                    Nombre de la Sección *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formUnidad.nombre}
+                    onChange={(e) => setFormUnidad({ ...formUnidad, nombre: e.target.value })}
+                    placeholder="Ej: Rama Scout Cura Brochero"
+                    className="w-full min-h-[42px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-ink-2 mb-1.5">
+                    Tipo de Sección *
+                  </label>
+                  <select
+                    value={formUnidad.tipo}
+                    onChange={(e) =>
+                      setFormUnidad({
+                        ...formUnidad,
+                        tipo: e.target.value as 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO',
+                      })
+                    }
+                    className="w-full min-h-[42px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  >
+                    <option value="SECCION_RAMA">Sección de Rama (Protagonistas)</option>
+                    <option value="SIN_RAMA_APOYO">Equipo de Apoyo / Sin Rama</option>
+                    <option value="JEFATURA">Jefatura de Grupo</option>
+                  </select>
+                </div>
+
+                {formUnidad.tipo === 'SECCION_RAMA' && (
+                  <div>
+                    <label className="block text-xs font-bold text-ink-2 mb-1.5">
+                      Rama Pedagógica Asociada *
+                    </label>
+                    <select
+                      required
+                      value={formUnidad.ramaId}
+                      onChange={(e) =>
+                        setFormUnidad({
+                          ...formUnidad,
+                          ramaId: e.target.value ? Number(e.target.value) : '',
+                        })
+                      }
+                      className="w-full min-h-[42px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-sm font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                    >
+                      <option value="">Seleccionar rama…</option>
+                      {ramas
+                        .filter((r) => r.activa !== false)
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.nombre} ({r.edadMinima}-{r.edadMaxima} años)
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Pie con Acciones */}
+              <div className="p-4 sm:p-5 border-t border-rule bg-paper-2 flex items-center justify-end gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  disabled={guardandoUnidad}
+                  onClick={() => {
+                    setCreandoUnidad(false);
+                    setEditandoUnidad(null);
+                  }}
+                  className="min-h-[44px] px-4 py-2 rounded-xl bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold text-xs cursor-pointer disabled:opacity-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={guardandoUnidad}
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs transition-colors"
+                >
+                  {guardandoUnidad ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  <span>{editandoUnidad ? 'Guardar Cambios' : 'Crear Sección'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
