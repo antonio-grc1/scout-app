@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, Monitor, Check } from 'lucide-react';
+import { Sun, Moon, Monitor, Check, Palette } from 'lucide-react';
 import { useThemeStore, ThemeMode } from '../store/themeStore';
 
 interface ThemeToggleProps {
@@ -11,7 +11,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   variant = 'dropdown',
   className = '',
 }) => {
-  const { theme, resolvedTheme, setTheme, toggleTheme } = useThemeStore();
+  const { theme, resolvedTheme, setTheme, toggleTheme, openCustomizer } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -164,6 +164,18 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
               {theme === opt.value && <Check className="w-3.5 h-3.5 text-brand" />}
             </button>
           ))}
+          <div className="border-t border-rule my-1" />
+          <button
+            type="button"
+            onClick={() => {
+              openCustomizer();
+              setIsOpen(false);
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-brand hover:bg-paper-2 transition cursor-pointer"
+          >
+            <Palette className="w-3.5 h-3.5 text-brand shrink-0" />
+            <span>Personalizar colores...</span>
+          </button>
         </div>
       )}
     </div>

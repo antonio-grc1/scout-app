@@ -16,8 +16,8 @@ export default defineConfig({
         name: 'Sistema Scout - Grupo Scout Juan XXIII',
         short_name: 'ScoutApp',
         description: 'Sistema de Gestión Integral del Grupo Scout Juan XXIII - PWA Offline',
-        theme_color: '#047857',
-        background_color: '#f8fafc',
+        theme_color: '#18191e',
+        background_color: '#fbfbf9',
         display: 'standalone',
         icons: [
           {
