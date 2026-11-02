@@ -42,6 +42,12 @@ export class AuthController {
     return this.auth.perfil(user);
   }
 
+  @PermitirClavePendiente()
+  @Get('perfil')
+  perfil(@CurrentUser() user: AuthUser) {
+    return this.auth.perfil(user);
+  }
+
   @RequirePermission('auth.resetear_clave')
   @Post('usuarios/:id/resetear-clave')
   @HttpCode(200)

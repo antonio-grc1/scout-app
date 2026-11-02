@@ -66,11 +66,19 @@ export const AutogestionPage: React.FC = () => {
         if (resMe.data?.usuario?.id) {
           targetUserId = resMe.data.usuario.id;
           usuarioMe = resMe.data.usuario;
-          localStorage.setItem('scout_user', JSON.stringify(resMe.data.usuario));
           if (Array.isArray(resMe.data.asignaciones)) {
             asignacionesMe = resMe.data.asignaciones;
-            localStorage.setItem('scout_asignaciones', JSON.stringify(resMe.data.asignaciones));
           }
+          useAuthStore.getState().setSesion({
+            accessToken: resMe.data.accessToken || useAuthStore.getState().token || '',
+            usuario: resMe.data.usuario,
+            requiereCambioClave: Boolean(
+              resMe.data.requiereCambioClave ?? useAuthStore.getState().requiereCambioClave,
+            ),
+            asignaciones: Array.isArray(resMe.data.asignaciones)
+              ? resMe.data.asignaciones
+              : useAuthStore.getState().asignaciones,
+          });
         }
       } catch {
         // Fallback al usuario en sesión
