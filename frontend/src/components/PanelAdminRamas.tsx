@@ -159,10 +159,10 @@ export const PanelAdminRamas: React.FC<Props> = ({
     setProcesandoRamaId(r.id);
     try {
       const res = await api.delete(`/organizacion/ramas/${r.id}`);
-      onToast(res.data?.mensaje || `Rama "${r.nombre}" quitada.`);
+      onToast(res.data?.mensaje || `Rama "${r.nombre}" desactivada.`);
       await onRecargar();
     } catch (err) {
-      onToast(traducirErrorAmigable(err, 'No se pudo quitar la rama.'), 'error');
+      onToast(traducirErrorAmigable(err, 'No se pudo desactivar la rama.'), 'error');
     } finally {
       setProcesandoRamaId(null);
     }
@@ -238,10 +238,10 @@ export const PanelAdminRamas: React.FC<Props> = ({
     setProcesandoUnidadId(u.id);
     try {
       const res = await api.delete(`/organizacion/unidades/${u.id}`);
-      onToast(res.data?.mensaje || `Sección "${u.nombre}" quitada.`);
+      onToast(res.data?.mensaje || `Sección "${u.nombre}" desactivada.`);
       await onRecargar();
     } catch (err) {
-      onToast(traducirErrorAmigable(err, 'No se pudo quitar la sección.'), 'error');
+      onToast(traducirErrorAmigable(err, 'No se pudo desactivar la sección.'), 'error');
     } finally {
       setProcesandoUnidadId(null);
     }
@@ -372,11 +372,11 @@ export const PanelAdminRamas: React.FC<Props> = ({
                           type="button"
                           disabled={enProceso}
                           onClick={() => handleQuitarRama(r)}
-                          title="Quitar o desactivar rama"
+                          title="Desactivar rama"
                           className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
                         >
                           {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                          <span>Quitar</span>
+                          <span>Desactivar</span>
                         </button>
                       )}
                     </div>
@@ -469,10 +469,11 @@ export const PanelAdminRamas: React.FC<Props> = ({
                           type="button"
                           disabled={enProceso}
                           onClick={() => handleQuitarUnidad(u)}
+                          title="Desactivar sección"
                           className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
                         >
                           {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                          <span>Quitar</span>
+                          <span>Desactivar</span>
                         </button>
                       )}
                     </div>

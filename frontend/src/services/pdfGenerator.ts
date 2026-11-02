@@ -49,11 +49,22 @@ export function prepararRespuestasParaImpresion(
     resp.adulto_hijo_nombre = `${usuario.nombre} ${usuario.apellido}`;
 
     if (usuario.fechaNacimiento) {
-      const d = new Date(usuario.fechaNacimiento);
-      if (!isNaN(d.getTime())) {
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = String(d.getFullYear());
+      let dd = '';
+      let mm = '';
+      let yyyy = '';
+
+      if (typeof usuario.fechaNacimiento === 'string' && /^\d{4}-\d{2}-\d{2}/.test(usuario.fechaNacimiento)) {
+        [yyyy, mm, dd] = usuario.fechaNacimiento.slice(0, 10).split('-');
+      } else {
+        const d = new Date(usuario.fechaNacimiento);
+        if (!isNaN(d.getTime())) {
+          dd = String(d.getUTCDate()).padStart(2, '0');
+          mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+          yyyy = String(d.getUTCFullYear());
+        }
+      }
+
+      if (dd && mm && yyyy) {
         resp.protagonista_fecha_nac = `${dd} / ${mm} / ${yyyy}`;
         resp.salud_fecha_nac = `${dd} / ${mm} / ${yyyy}`;
         resp.menor_nac_dia_p3 = dd;

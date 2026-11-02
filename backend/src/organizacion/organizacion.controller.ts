@@ -66,8 +66,12 @@ export class OrganizacionController {
 
   @RequirePermission(GESTIONAR)
   @Delete('ramas/:id')
-  eliminarRama(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
-    return this.org.eliminarRama(a, id);
+  eliminarRama(
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+    @Query('definitivo', new ParseBoolPipe({ optional: true })) definitivo?: boolean,
+  ) {
+    return this.org.eliminarRama(a, id, definitivo ?? false);
   }
 
   // ---------------- Unidades ----------------
@@ -95,8 +99,12 @@ export class OrganizacionController {
 
   @RequirePermission(GESTIONAR)
   @Delete('unidades/:id')
-  eliminarUnidad(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
-    return this.org.eliminarUnidad(a, id);
+  eliminarUnidad(
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+    @Query('definitivo', new ParseBoolPipe({ optional: true })) definitivo?: boolean,
+  ) {
+    return this.org.eliminarUnidad(a, id, definitivo ?? false);
   }
 
   // ---------------- Roles ----------------

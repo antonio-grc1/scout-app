@@ -71,7 +71,7 @@ export class OrganizacionService {
     });
   }
 
-  async eliminarRama(alcance: AlcanceAcceso, id: number) {
+  async eliminarRama(alcance: AlcanceAcceso, id: number, definitivo: boolean = false) {
     this.assertGlobal(alcance);
     const rama = await this.prisma.rama.findUnique({
       where: { id },
@@ -91,35 +91,55 @@ export class OrganizacionService {
     });
     if (!rama) throw new NotFoundException('Rama no encontrada');
 
-    const asignacionesActivas = await this.prisma.asignacionMiembro.count({
-      where: { activo: true, usuario: { activo: true }, unidad: { ramaId: id } },
-    });
-    if (asignacionesActivas > 0) {
-      throw new ConflictException(
-        `La rama "${rama.nombre}" tiene ${asignacionesActivas} miembro(s) activo(s). Pasalos a otra rama antes de quitarla.`,
-      );
+    if (definitivo) {
+      const totalAsignaciones = rama.unidades.reduce((acc, u) => acc + (u._count?.asignaciones ?? 0), 0);
+      const totalConceptos = rama.unidades.reduce((acc, u) => acc + (u._count?.conceptos ?? 0), 0);
+      const totalPlanes = rama.unidades.reduce((acc, u) => acc + (u._count?.planesCuota ?? 0), 0);
+      if (totalAsignaciones > 0 || totalConceptos > 0 || totalPlanes > 0) {
+        throw new ConflictException(
+          `No se puede eliminar definitivamente la rama "${rama.nombre}": posee registros asociados (${totalAsignaciones} asignaciones, ${totalConceptos} conceptos, ${totalPlanes} planes). Desactivala en su lugar.`,
+        );
+      }
+
+      const idsUnidades = rama.unidades.map((u) => u.id);
+      await this.prisma.$transaction([
+        ...(idsUnidades.length > 0
+          ? [
+              this.prisma.unidadOrganizativa.deleteMany({
+                where: { id: { in: idsUnidades } },
+              }),
+            ]
+          : []),
+        this.prisma.rama.delete({ where: { id } }),
+      ]);
+
+      return {
+        eliminada: true,
+        desactivada: false,
+        mensaje: `Rama "${rama.nombre}" eliminada definitivamente.`,
+      };
     }
 
     const idsUnidades = rama.unidades.map((u) => u.id);
-
     await this.prisma.$transaction([
       ...(idsUnidades.length > 0
         ? [
-            this.prisma.asignacionMiembro.deleteMany({
-              where: { unidadId: { in: idsUnidades } },
-            }),
-            this.prisma.unidadOrganizativa.deleteMany({
+            this.prisma.unidadOrganizativa.updateMany({
               where: { id: { in: idsUnidades } },
+              data: { activa: false },
             }),
           ]
         : []),
-      this.prisma.rama.delete({ where: { id } }),
+      this.prisma.rama.update({
+        where: { id },
+        data: { activa: false },
+      }),
     ]);
 
     return {
-      eliminada: true,
-      desactivada: false,
-      mensaje: `Rama "${rama.nombre}" eliminada definitivamente.`,
+      eliminada: false,
+      desactivada: true,
+      mensaje: `Rama "${rama.nombre}" desactivada.`,
     };
   }
 
@@ -161,7 +181,7 @@ export class OrganizacionService {
     return this.prisma.unidadOrganizativa.update({ where: { id }, data: { ...dto, ramaId } });
   }
 
-  async eliminarUnidad(alcance: AlcanceAcceso, id: number) {
+  async eliminarUnidad(alcance: AlcanceAcceso, id: number, definitivo: boolean = false) {
     this.assertGlobal(alcance);
     const unidad = await this.prisma.unidadOrganizativa.findUnique({
       where: { id },
@@ -177,24 +197,33 @@ export class OrganizacionService {
     });
     if (!unidad) throw new NotFoundException('Sección no encontrada');
 
-    const activas = await this.prisma.asignacionMiembro.count({
-      where: { unidadId: id, activo: true, usuario: { activo: true } },
-    });
-    if (activas > 0) {
-      throw new ConflictException(
-        `La sección "${unidad.nombre}" tiene ${activas} miembro(s) activo(s). Movelos a otra sección antes de quitarla.`,
-      );
+    if (definitivo) {
+      const totalAsignaciones = unidad._count.asignaciones;
+      const totalConceptos = unidad._count.conceptos;
+      const totalPlanes = unidad._count.planesCuota;
+      if (totalAsignaciones > 0 || totalConceptos > 0 || totalPlanes > 0) {
+        throw new ConflictException(
+          `No se puede eliminar definitivamente la sección "${unidad.nombre}": posee registros asociados (${totalAsignaciones} asignaciones, ${totalConceptos} conceptos, ${totalPlanes} planes). Desactivala en su lugar.`,
+        );
+      }
+
+      await this.prisma.unidadOrganizativa.delete({ where: { id } });
+      return {
+        eliminada: true,
+        desactivada: false,
+        mensaje: `Sección "${unidad.nombre}" eliminada definitivamente.`,
+      };
     }
 
-    await this.prisma.$transaction([
-      this.prisma.asignacionMiembro.deleteMany({ where: { unidadId: id } }),
-      this.prisma.unidadOrganizativa.delete({ where: { id } }),
-    ]);
+    await this.prisma.unidadOrganizativa.update({
+      where: { id },
+      data: { activa: false },
+    });
 
     return {
-      eliminada: true,
-      desactivada: false,
-      mensaje: `Sección "${unidad.nombre}" eliminada.`,
+      eliminada: false,
+      desactivada: true,
+      mensaje: `Sección "${unidad.nombre}" desactivada.`,
     };
   }
 

@@ -26,6 +26,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
       },
       unidadOrganizativa: {
         findUnique: vi.fn(),
+        update: vi.fn(),
         delete: vi.fn(),
       },
       $transaction: vi.fn(async (arg: any) => {
@@ -118,7 +119,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
     await expect(service.eliminarRol({ tipo: 'GLOBAL' }, 5)).rejects.toThrow(ConflictException);
   });
 
-  it('elimina una sección operativa sin miembros activos limpiando historial huérfano', async () => {
+  it('eliminarUnidad: por defecto ejecuta borrado lógico (soft-delete activa=false)', async () => {
     const prisma = crearMockPrisma();
     const service = new OrganizacionService(prisma);
 
@@ -127,11 +128,39 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
       nombre: 'Manada Impeesa',
       _count: { asignaciones: 1, conceptos: 0, planesCuota: 0 },
     });
-    prisma.asignacionMiembro.count.mockResolvedValueOnce(0);
-    prisma.asignacionMiembro.deleteMany.mockResolvedValueOnce({ count: 1 });
-    prisma.unidadOrganizativa.delete.mockResolvedValueOnce({ id: 10 });
+    prisma.unidadOrganizativa.update.mockResolvedValueOnce({ id: 10, activa: false });
 
     const res = await service.eliminarUnidad({ tipo: 'GLOBAL' }, 10);
+    expect(res.desactivada).toBe(true);
+    expect(res.eliminada).toBe(false);
+    expect(prisma.unidadOrganizativa.update).toHaveBeenCalledWith({ where: { id: 10 }, data: { activa: false } });
+  });
+
+  it('eliminarUnidad: borrado definitivo rechaza con ConflictException si tiene dependencias asociadas', async () => {
+    const prisma = crearMockPrisma();
+    const service = new OrganizacionService(prisma);
+
+    prisma.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 10,
+      nombre: 'Manada Impeesa',
+      _count: { asignaciones: 3, conceptos: 0, planesCuota: 0 },
+    });
+
+    await expect(service.eliminarUnidad({ tipo: 'GLOBAL' }, 10, true)).rejects.toThrow(ConflictException);
+  });
+
+  it('eliminarUnidad: borrado definitivo elimina físicamente solo si tiene 0 dependencias', async () => {
+    const prisma = crearMockPrisma();
+    const service = new OrganizacionService(prisma);
+
+    prisma.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 10,
+      nombre: 'Manada Impeesa',
+      _count: { asignaciones: 0, conceptos: 0, planesCuota: 0 },
+    });
+    prisma.unidadOrganizativa.delete.mockResolvedValueOnce({ id: 10 });
+
+    const res = await service.eliminarUnidad({ tipo: 'GLOBAL' }, 10, true);
     expect(res.eliminada).toBe(true);
     expect(prisma.unidadOrganizativa.delete).toHaveBeenCalledWith({ where: { id: 10 } });
   });
