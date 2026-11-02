@@ -445,15 +445,10 @@ export class TesoreriaService {
 
     const unidadesMiembro = new Set(usuario.asignaciones.map((a) => a.unidadId));
     const esEducador = usuario.asignaciones.some(
-      (a) =>
-        a.rol.alcancePorDefecto !== AlcanceRol.PROPIO ||
-        a.rol.nombre.toLowerCase().includes('educador') ||
-        a.rol.nombre.toLowerCase().includes('jefe'),
+      (a) => a.rol.tipoMiembro === 'EDUCADOR' || a.rol.alcancePorDefecto !== AlcanceRol.PROPIO,
     );
     const esProtagonista = usuario.asignaciones.some(
-      (a) =>
-        a.rol.alcancePorDefecto === AlcanceRol.PROPIO ||
-        a.rol.nombre.toLowerCase() === 'protagonista',
+      (a) => a.rol.tipoMiembro === 'PROTAGONISTA' || a.rol.alcancePorDefecto === AlcanceRol.PROPIO,
     );
 
     const conceptosVigentes = await tx.conceptoCuota.findMany({
@@ -554,6 +549,10 @@ export class TesoreriaService {
   // ===========================================================================
 
   async listarPlanesCuotaMensual(alcance: AlcanceAcceso, cicloAnio?: number) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver planes generales');
+    }
+
     const where: Prisma.PlanCuotaMensualWhereInput = {
       ...(cicloAnio ? { cicloAnio } : {}),
       ...(alcance.tipo === 'UNIDAD'
@@ -811,6 +810,10 @@ export class TesoreriaService {
   // ===========================================================================
 
   async listarConceptos(alcance: AlcanceAcceso, cicloAnio?: number) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver conceptos generales');
+    }
+
     const where: Prisma.ConceptoCuotaWhereInput = {
       ...(cicloAnio ? { cicloAnio } : {}),
       destinatarioTipo: { not: 'INDIVIDUAL' },
@@ -1987,6 +1990,7 @@ export class TesoreriaService {
         return {
           ...pago,
           saldoAFavorAplicado: saldoAAplicar,
+          saldoAFavorUsado: saldoAAplicar,
           excedenteAcreditado: excedente,
         };
       }
@@ -1994,6 +1998,7 @@ export class TesoreriaService {
       return {
         ...pagoSaldoCreado,
         saldoAFavorAplicado: saldoAAplicar,
+        saldoAFavorUsado: saldoAAplicar,
         excedenteAcreditado: excedente,
       };
     });

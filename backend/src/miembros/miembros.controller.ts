@@ -40,7 +40,7 @@ export class MiembrosController {
   }
 
   /** Búsqueda flexible de hermanos por DNI, Apellido o Nombre en todo el padrón activo. */
-  @RequirePermission('miembros.ver')
+  @RequirePermission('miembros.editar')
   @Get('hermanos/buscar')
   buscarHermanosPorCriterio(@Query('q') q?: string) {
     return this.miembros.buscarHermanosPorCriterio(q ?? '');
@@ -65,7 +65,7 @@ export class MiembrosController {
     return this.miembros.crear(a, dto);
   }
 
-  @RequirePermission('miembros.editar')
+  @RequirePermission(['miembros.editar', 'miembros.editar_identidad', 'miembros.baja'])
   @Patch(':id')
   editar(
     @CurrentUser() u: AuthUser,

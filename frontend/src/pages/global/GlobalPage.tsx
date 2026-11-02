@@ -155,7 +155,7 @@ export const GlobalPage: React.FC = () => {
   };
 
   const handleSolicitarEliminarPlan = (plan: any) => {
-    const cobrado = Number(plan.recaudacion?.totalRecaudado ?? 0);
+    const cobrado = Number(plan.resumenRecaudacion?.totalRecaudado ?? 0);
     setModalConf({
       abierto: true,
       titulo: 'Eliminar Cuadro de Cuota',
@@ -220,7 +220,7 @@ export const GlobalPage: React.FC = () => {
   };
 
   const handleSolicitarEliminarConcepto = (con: any) => {
-    const cobrado = Number(con.recaudacion?.totalRecaudado ?? 0);
+    const cobrado = Number(con.resumenRecaudacion?.totalRecaudado ?? 0);
     setModalConf({
       abierto: true,
       titulo: 'Eliminar Cobro / Campamento',
@@ -457,8 +457,9 @@ export const GlobalPage: React.FC = () => {
                           </div>
 
                           {/* CASILLEROS DE MESES DEL AÑO (1 al 12) */}
-                          <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 pt-1">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
+                          <div className="w-full overflow-x-auto pb-1">
+                            <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 pt-1 min-w-[420px] sm:min-w-0">
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
                               const activo = mesesHabilitados.includes(num);
                               const cargandoMes = sincronizandoPlanId === `${plan.id}-${num}`;
                               return (
@@ -487,6 +488,7 @@ export const GlobalPage: React.FC = () => {
                               );
                             })}
                           </div>
+                        </div>
 
                           {/* Métricas de Recaudación */}
                           {rec && rec.totalCargos > 0 && (

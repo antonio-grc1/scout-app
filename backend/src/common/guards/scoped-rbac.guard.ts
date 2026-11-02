@@ -21,17 +21,20 @@ export class ScopedRbacGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(ctx: ExecutionContext): boolean {
-    const permiso = this.reflector.getAllAndOverride<string | undefined>(REQUIRED_PERMISSION_KEY, [
+    const permiso = this.reflector.getAllAndOverride<string | string[] | undefined>(REQUIRED_PERMISSION_KEY, [
       ctx.getHandler(),
       ctx.getClass(),
     ]);
-    if (!permiso) return true;
+    if (!permiso || (Array.isArray(permiso) && permiso.length === 0)) return true;
 
     const req = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
     if (!req.user) throw new UnauthorizedException();
 
     const alcance = resolverAlcance(req.user, permiso);
-    if (!alcance) throw new ForbiddenException(`Permiso requerido: ${permiso}`);
+    if (!alcance) {
+      const desc = Array.isArray(permiso) ? permiso.join(' | ') : permiso;
+      throw new ForbiddenException(`Permiso requerido: ${desc}`);
+    }
 
     req.alcance = alcance;
     return true;

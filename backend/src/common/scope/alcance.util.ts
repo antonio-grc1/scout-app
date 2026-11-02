@@ -14,10 +14,13 @@ const PERMISOS_AUTOGESTION_PROPIA = new Set([
   'miembros.ver',
 ]);
 
-export function resolverAlcance(user: AuthUser, permiso: string): AlcanceAcceso | null {
-  const conPermiso = user.asignaciones.filter((a) => a.permisos.includes(permiso));
+export function resolverAlcance(user: AuthUser, permiso: string | string[]): AlcanceAcceso | null {
+  const listaPermisos = Array.isArray(permiso) ? permiso : [permiso];
+  const conPermiso = user.asignaciones.filter((a) =>
+    a.permisos.some((p) => listaPermisos.includes(p)),
+  );
   if (conPermiso.length === 0) {
-    if (PERMISOS_AUTOGESTION_PROPIA.has(permiso)) {
+    if (listaPermisos.some((p) => PERMISOS_AUTOGESTION_PROPIA.has(p))) {
       return { tipo: 'PROPIO', usuarioId: user.sub };
     }
     return null;

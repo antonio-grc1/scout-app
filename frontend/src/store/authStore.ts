@@ -77,7 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       const currentToken = get().token;
       if (!currentToken) return;
       try {
-        const res = await api.get('/auth/perfil');
+        const res = await api.get('/auth/me');
         const data = res.data;
         if (data?.usuario && Array.isArray(data?.asignaciones)) {
           const nuevoToken = data.accessToken || currentToken;

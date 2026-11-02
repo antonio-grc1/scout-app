@@ -236,7 +236,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       });
 
       const excedente = Number(res.data?.excedenteAcreditado ?? 0);
-      const saldoUsado = Number(res.data?.saldoAFavorUsado ?? 0);
+      const saldoUsado = Number(res.data?.saldoAFavorAplicado ?? 0);
       const partes: string[] = [];
 
       if (montoEfectivoFinal > 0) {

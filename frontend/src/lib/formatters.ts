@@ -131,12 +131,32 @@ export function formatearMoneda(valor: number | string | null | undefined): stri
 
 export function calcularEdad(fechaNacStr?: string | null): number | null {
   if (!fechaNacStr) return null;
-  const nac = new Date(fechaNacStr);
-  if (isNaN(nac.getTime())) return null;
+  let nacAnio: number;
+  let nacMes: number;
+  let nacDia: number;
+
+  if (typeof fechaNacStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaNacStr)) {
+    nacAnio = Number(fechaNacStr.slice(0, 4));
+    nacMes = Number(fechaNacStr.slice(5, 7));
+    nacDia = Number(fechaNacStr.slice(8, 10));
+  } else {
+    const nac = new Date(fechaNacStr);
+    if (isNaN(nac.getTime())) return null;
+    nacAnio = nac.getUTCFullYear();
+    nacMes = nac.getUTCMonth() + 1;
+    nacDia = nac.getUTCDate();
+  }
+
   const hoy = new Date();
-  let edad = hoy.getFullYear() - nac.getFullYear();
-  const m = hoy.getMonth() - nac.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
+  const hoyAnio = hoy.getFullYear();
+  const hoyMes = hoy.getMonth() + 1;
+  const hoyDia = hoy.getDate();
+
+  let edad = hoyAnio - nacAnio;
+  const m = hoyMes - nacMes;
+  if (m < 0 || (m === 0 && hoyDia < nacDia)) {
+    edad--;
+  }
   return edad;
 }
 

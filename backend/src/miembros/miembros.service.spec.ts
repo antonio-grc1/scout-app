@@ -90,6 +90,42 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     expect(res.nombre).toBe('Juan Carlos');
   });
 
+  it('permite a un usuario con permiso miembros.editar_identidad cambiar el nombre de un miembro de su unidad sin error 403', async () => {
+    const prisma = crearMockPrisma();
+    prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
+    prisma.usuario.update.mockResolvedValueOnce({ ...usuarioObjetivo, nombre: 'Juan Modificado' });
+
+    const service = new MiembrosService(prisma);
+    const actorEducadorUnidad: AuthUser = {
+      sub: 88,
+      dni: '88888888',
+      nombre: 'Educador',
+      apellido: 'Rama',
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Manada',
+          rol: 'Dirigente',
+          alcance: 'UNIDAD',
+          permisos: ['miembros.ver', 'miembros.editar', 'miembros.editar_identidad'],
+        },
+      ],
+    };
+
+    const alcanceUnidad: AlcanceAcceso = {
+      tipo: 'UNIDAD',
+      unidadId: 1,
+      unidadIds: [1],
+    };
+
+    const res = await service.editar(actorEducadorUnidad, alcanceUnidad, 10, {
+      nombre: 'Juan Modificado',
+    });
+
+    expect(prisma.usuario.update).toHaveBeenCalled();
+    expect(res.nombre).toBe('Juan Modificado');
+  });
+
   it('no exige miembros.editar_identidad si el DNI o nombre enviado es idéntico al actual', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
@@ -178,5 +214,92 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
 
     expect(prisma.usuario.update).toHaveBeenCalled();
     expect(res.activo).toBe(false);
+  });
+
+  it('verifica que el último administrador activo no pueda darse de baja a sí mismo (Anti-Lockout)', async () => {
+    const prisma = crearMockPrisma();
+    const adminObjetivo = {
+      ...usuarioObjetivo,
+      id: 1,
+      asignaciones: [
+        {
+          id: 10,
+          unidadId: 1,
+          rolId: 1,
+          activo: true,
+          alcanceOverride: null,
+          rol: {
+            alcancePorDefecto: 'GLOBAL',
+            permisos: [{ permiso: { clave: 'organizacion.gestionar' } }],
+          },
+        },
+      ],
+    };
+    prisma.usuario.findFirst.mockResolvedValueOnce(adminObjetivo);
+    prisma.asignacionMiembro = {
+      findMany: vi.fn().mockResolvedValue([]),
+    };
+
+    const service = new MiembrosService(prisma);
+    const actor: AuthUser = {
+      sub: 1,
+      dni: '11111111',
+      nombre: 'Admin',
+      apellido: 'Global',
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Admin',
+          alcance: 'GLOBAL',
+          permisos: ['miembros.ver', 'miembros.baja', 'organizacion.gestionar'],
+        },
+      ],
+    };
+
+    await expect(
+      service.editar(actor, alcanceGlobal, 1, {
+        activo: false,
+      }),
+    ).rejects.toThrow(/último administrador global activo/);
+  });
+
+  it('impide cerrar la asignación del último administrador global activo (Anti-Lockout)', async () => {
+    const prisma = crearMockPrisma();
+    prisma.asignacionMiembro = {
+      findFirst: vi.fn().mockResolvedValueOnce({
+        id: 10,
+        usuarioId: 1,
+        unidadId: 1,
+        activo: true,
+        alcanceOverride: null,
+        rol: {
+          alcancePorDefecto: 'GLOBAL',
+          permisos: [{ permiso: { clave: 'organizacion.gestionar' } }],
+        },
+      }),
+      findMany: vi.fn().mockResolvedValue([]),
+    };
+
+    const service = new MiembrosService(prisma);
+    const actor: AuthUser = {
+      sub: 1,
+      dni: '11111111',
+      nombre: 'Admin',
+      apellido: 'Global',
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Admin',
+          alcance: 'GLOBAL',
+          permisos: ['miembros.ver', 'miembros.editar', 'organizacion.gestionar'],
+        },
+      ],
+    };
+
+    await expect(service.cerrarAsignacion(actor, alcanceGlobal, 1, 10)).rejects.toThrow(
+      /último administrador global activo/,
+    );
   });
 });
