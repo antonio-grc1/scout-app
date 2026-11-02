@@ -80,7 +80,7 @@ describe('filtroUsuariosPorAlcance', () => {
 });
 
 describe('ScopedRbacGuard', () => {
-  const ctxCon = (req: Partial<AuthenticatedRequest>, permiso?: string): ExecutionContext => {
+  const ctxCon = (req: Partial<AuthenticatedRequest>, permiso?: string | string[]): ExecutionContext => {
     const handler = () => undefined;
     if (permiso) Reflect.defineMetadata(REQUIRED_PERMISSION_KEY, permiso, handler);
     return {
@@ -104,5 +104,18 @@ describe('ScopedRbacGuard', () => {
     const req: Partial<AuthenticatedRequest> = { user: user(asig(2, AlcanceRol.UNIDAD, ['miembros.ver'])) };
     expect(guard.canActivate(ctxCon(req, 'miembros.ver'))).toBe(true);
     expect(req.alcance).toEqual({ tipo: 'UNIDAD', unidadIds: [2], usuarioIdPropio: 104 });
+  });
+
+  it('permite acceso si tiene al menos uno de los permisos requeridos (alternativos)', () => {
+    const req: Partial<AuthenticatedRequest> = { user: user(asig(3, AlcanceRol.UNIDAD, ['miembros.baja'])) };
+    expect(guard.canActivate(ctxCon(req, ['miembros.editar', 'miembros.editar_identidad', 'miembros.baja']))).toBe(true);
+    expect(req.alcance).toEqual({ tipo: 'UNIDAD', unidadIds: [3], usuarioIdPropio: 104 });
+  });
+
+  it('rechaza si no tiene ninguno de los permisos alternativos', () => {
+    const req = { user: user(asig(3, AlcanceRol.UNIDAD, ['miembros.ver'])) };
+    expect(() =>
+      guard.canActivate(ctxCon(req, ['miembros.editar', 'miembros.editar_identidad', 'miembros.baja'])),
+    ).toThrow(ForbiddenException);
   });
 });

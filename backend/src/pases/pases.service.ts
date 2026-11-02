@@ -164,51 +164,30 @@ export class PasesService {
 
       if (!rolDestino) {
         if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && tx.rol.findFirst) {
-          rolDestino =
-            (await tx.rol.findFirst({
-              where: {
-                requiereRama: false,
-                tipoMiembro: 'EDUCADOR',
-                nombre: { contains: 'Sin Rama', mode: 'insensitive' },
-              },
-            })) ??
-            (await tx.rol.findFirst({
-              where: {
-                requiereRama: false,
-                tipoMiembro: 'EDUCADOR',
-                nombre: { not: { contains: 'Jefe', mode: 'insensitive' } },
-              },
-            })) ??
-            (await tx.rol.findFirst({
-              where: { requiereRama: false, tipoMiembro: 'EDUCADOR' },
-            }));
+          rolDestino = await tx.rol.findFirst({
+            where: {
+              tipoMiembro: 'EDUCADOR',
+              requiereRama: false,
+            },
+          });
         } else if (unidadDestino.tipo === TipoUnidad.JEFATURA && tx.rol.findFirst) {
-          rolDestino =
-            (await tx.rol.findFirst({
-              where: {
-                requiereRama: false,
-                tipoMiembro: 'EDUCADOR',
-                nombre: { contains: 'Jefe', mode: 'insensitive' },
-              },
-            })) ??
-            (await tx.rol.findFirst({
-              where: { requiereRama: false, alcancePorDefecto: AlcanceRol.GLOBAL },
-            }));
+          rolDestino = await tx.rol.findFirst({
+            where: {
+              tipoMiembro: 'EDUCADOR',
+              requiereRama: false,
+              alcancePorDefecto: AlcanceRol.GLOBAL,
+            },
+          });
         } else if (unidadDestino.tipo === TipoUnidad.SECCION_RAMA && origen.rol.tipoMiembro === 'PROTAGONISTA') {
           const edad = calcularEdad(origen.usuario.fechaNacimiento, hoy);
           // Si el protagonista tiene edad de pase a educador (>= 21 años, egreso de Rover)
           if (edad >= 21 && tx.rol.findFirst) {
-            rolDestino =
-              (await tx.rol.findFirst({
-                where: {
-                  requiereRama: true,
-                  tipoMiembro: 'EDUCADOR',
-                  nombre: { contains: 'Educador', mode: 'insensitive' },
-                },
-              })) ??
-              (await tx.rol.findFirst({
-                where: { requiereRama: true, tipoMiembro: 'EDUCADOR' },
-              }));
+            rolDestino = await tx.rol.findFirst({
+              where: {
+                tipoMiembro: 'EDUCADOR',
+                requiereRama: true,
+              },
+            });
           } else {
             rolDestino = origen.rol;
           }

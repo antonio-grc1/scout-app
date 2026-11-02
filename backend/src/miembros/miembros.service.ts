@@ -439,7 +439,12 @@ export class MiembrosService {
   async editar(actor: AuthUser, alcance: AlcanceAcceso, id: number, dto: EditarMiembroDto) {
     const objetivo = await this.prisma.usuario.findFirst({
       where: { AND: [{ id }, filtroUsuariosPorAlcance(alcance)] },
-      include: { asignaciones: { where: { activo: true }, include: { rol: true } } },
+      include: {
+        asignaciones: {
+          where: { activo: true },
+          include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+        },
+      },
     });
     if (!objetivo) throw new NotFoundException('Miembro no encontrado en su alcance');
 
@@ -493,6 +498,13 @@ export class MiembrosService {
     }
 
     const cambioEstadoActivo = dto.activo !== undefined && dto.activo !== objetivo.activo;
+
+    if (dto.activo === false && objetivo.activo) {
+      const tieneAsignacionAdmin = objetivo.asignaciones.some((a) => this.esAsignacionAdminGlobal(a));
+      if (tieneAsignacionAdmin) {
+        await this.asegurarNoDesactivarUltimoAdmin(id);
+      }
+    }
 
     if (cambioEstadoActivo && this.tesoreria && this.prisma.$transaction) {
       return this.prisma.$transaction(async (tx) => {
@@ -559,7 +571,7 @@ export class MiembrosService {
     if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede gestionar asignaciones');
     const asig = await this.prisma.asignacionMiembro.findFirst({
       where: { id: asignacionId, usuarioId, activo: true },
-      include: { rol: true },
+      include: { rol: { include: { permisos: { include: { permiso: true } } } } },
     });
     if (!asig) throw new NotFoundException('Asignación activa no encontrada');
     assertUnidadEnAlcance(alcance, asig.unidadId);
@@ -568,11 +580,69 @@ export class MiembrosService {
       throw new ForbiddenException('No puede cerrar su propia asignación');
     }
 
+    if (this.esAsignacionAdminGlobal(asig)) {
+      await this.asegurarNoDesactivarUltimoAdmin(usuarioId, asignacionId);
+    }
+
     await this.prisma.asignacionMiembro.update({
       where: { id: asignacionId },
       data: { activo: false, fechaFin: hoyUtc() },
     });
     return this.prisma.usuario.findUniqueOrThrow({ where: { id: usuarioId }, select: MIEMBRO_SELECT });
+  }
+
+  // ---------------- Anti-Lockout Helpers ----------------
+  private esAsignacionAdminGlobal(asig: {
+    alcanceOverride?: AlcanceRol | null;
+    rol?: { alcancePorDefecto: AlcanceRol; permisos?: Array<{ permiso?: { clave: string } } | string> };
+  }): boolean {
+    if (!asig.rol) return false;
+    const alcance = asig.alcanceOverride ?? asig.rol.alcancePorDefecto;
+    if (alcance !== AlcanceRol.GLOBAL) return false;
+    if (!asig.rol.permisos || asig.rol.permisos.length === 0) {
+      return true;
+    }
+    return asig.rol.permisos.some((p) => {
+      const clave = typeof p === 'string' ? p : p.permiso?.clave;
+      return clave === 'organizacion.gestionar';
+    });
+  }
+
+  private async asegurarNoDesactivarUltimoAdmin(usuarioId: number, asignacionIdACerrar?: number): Promise<void> {
+    if (!this.prisma.asignacionMiembro) return;
+    const where: Prisma.AsignacionMiembroWhereInput = {
+      activo: true,
+      usuario: { activo: true },
+      OR: [
+        { alcanceOverride: AlcanceRol.GLOBAL },
+        { alcanceOverride: null, rol: { alcancePorDefecto: AlcanceRol.GLOBAL } },
+      ],
+      ...(asignacionIdACerrar !== undefined ? { id: { not: asignacionIdACerrar } } : {}),
+      ...(asignacionIdACerrar === undefined ? { usuarioId: { not: usuarioId } } : {}),
+    };
+
+    let candidatos: any[] = [];
+    if (this.prisma.asignacionMiembro.findMany) {
+      candidatos = await this.prisma.asignacionMiembro.findMany({
+        where,
+        include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+      });
+    } else if (this.prisma.asignacionMiembro.findFirst) {
+      const uno = await this.prisma.asignacionMiembro.findFirst({
+        where,
+        include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+      });
+      if (uno) candidatos = [uno];
+    }
+
+    const hayOtroAdmin = Array.isArray(candidatos) && candidatos.some((a) => this.esAsignacionAdminGlobal(a));
+    if (!hayOtroAdmin) {
+      throw new BadRequestException(
+        asignacionIdACerrar !== undefined
+          ? 'No se puede cerrar la asignación del último administrador global activo del sistema'
+          : 'No se puede desactivar al último administrador global activo del sistema',
+      );
+    }
   }
 
   // ---------------- Helpers ----------------

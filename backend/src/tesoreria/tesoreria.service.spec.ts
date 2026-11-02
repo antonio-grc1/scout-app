@@ -23,6 +23,29 @@ describe('TesoreriaService - Flujo Completo Reversible y Modificable', () => {
     await expect(service.eliminarConcepto(alcancePropio, 1)).rejects.toThrow(ForbiddenException);
   });
 
+  it('confirma que un usuario con alcance PROPIO no pueda acceder al listado general de planes ni a la facturación total del grupo', async () => {
+    const mockPrisma = {} as any;
+    const service = new TesoreriaService(mockPrisma);
+
+    // Listar planes incluye resumenRecaudacion con la facturación y recaudación global del grupo
+    await expect(service.listarPlanesCuotaMensual(alcancePropio)).rejects.toThrow(ForbiddenException);
+    await expect(service.listarConceptos(alcancePropio)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('listarPlanesCuotaMensual: rechaza acceso si alcance es PROPIO', async () => {
+    const mockPrisma = {} as any;
+    const service = new TesoreriaService(mockPrisma);
+
+    await expect(service.listarPlanesCuotaMensual(alcancePropio)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('listarConceptos: rechaza acceso si alcance es PROPIO', async () => {
+    const mockPrisma = {} as any;
+    const service = new TesoreriaService(mockPrisma);
+
+    await expect(service.listarConceptos(alcancePropio)).rejects.toThrow(ForbiddenException);
+  });
+
   it('eliminarConcepto: lanza NotFoundException si el concepto no existe', async () => {
     const mockPrisma = {
       conceptoCuota: {
