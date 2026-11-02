@@ -87,22 +87,33 @@ export const MIEMBRO_SELECT = {
     },
   },
   asignaciones: {
-    where: { activo: true },
-    orderBy: { fechaInicio: 'desc' },
+    orderBy: [{ activo: 'desc' }, { fechaInicio: 'desc' }, { id: 'desc' }],
     select: {
       id: true,
       unidadId: true,
       rolId: true,
       cicloAnio: true,
       fechaInicio: true,
+      fechaFin: true,
+      activo: true,
       alcanceOverride: true,
       unidad: {
         select: {
           id: true,
           nombre: true,
           tipo: true,
+          activa: true,
           ramaId: true,
-          rama: { select: { id: true, nombre: true, ordenProgresion: true, edadMinima: true, edadMaxima: true } },
+          rama: {
+            select: {
+              id: true,
+              nombre: true,
+              ordenProgresion: true,
+              edadMinima: true,
+              edadMaxima: true,
+              activa: true,
+            },
+          },
         },
       },
       rol: {

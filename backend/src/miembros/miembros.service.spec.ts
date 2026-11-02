@@ -1,7 +1,7 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
-import { MiembrosService } from './miembros.service.js';
+import { MIEMBRO_SELECT, MiembrosService } from './miembros.service.js';
 
 describe('MiembrosService - Permisos Granulares por Campo', () => {
   const crearMockPrisma = () => {
@@ -303,3 +303,115 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     );
   });
 });
+
+describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
+  it('la proyección MIEMBRO_SELECT no filtra asignaciones inactivas y ordena activos primero', () => {
+    const asigSelect = MIEMBRO_SELECT.asignaciones;
+    expect(asigSelect).toBeDefined();
+
+    // No debe contener where: { activo: true } ni ningún filtro excluyente de asignaciones históricas
+    expect((asigSelect as any).where).toBeUndefined();
+
+    // Debe ordenar con activos primero, luego fechaInicio desc, y desempate por id desc
+    expect((asigSelect as any).orderBy).toEqual([
+      { activo: 'desc' },
+      { fechaInicio: 'desc' },
+      { id: 'desc' },
+    ]);
+
+    // Debe incluir fechaFin y activo en asignación
+    expect((asigSelect as any).select.fechaFin).toBe(true);
+    expect((asigSelect as any).select.activo).toBe(true);
+    expect((asigSelect as any).select.cicloAnio).toBe(true);
+    expect((asigSelect as any).select.fechaInicio).toBe(true);
+
+    // Debe incluir activa en unidad y rama para advertencias de secciones/ramas inactivas
+    expect((asigSelect as any).select.unidad.select.activa).toBe(true);
+    expect((asigSelect as any).select.unidad.select.rama.select.activa).toBe(true);
+  });
+
+  it('obtener() invoca findFirst con MIEMBRO_SELECT y retorna trayectoria completa con asignaciones activas e inactivas', async () => {
+    const mockPrisma: any = {
+      usuario: {
+        findFirst: vi.fn(),
+      },
+    };
+
+    const miembroMock = {
+      id: 5,
+      nombre: 'Lucía',
+      apellido: 'Gómez',
+      asignaciones: [
+        {
+          id: 102,
+          unidadId: 3,
+          rolId: 2,
+          cicloAnio: 2025,
+          fechaInicio: new Date('2025-03-01'),
+          fechaFin: null,
+          activo: true,
+          alcanceOverride: null,
+          unidad: {
+            id: 3,
+            nombre: 'Comunidad Rover',
+            tipo: 'ROVER',
+            activa: true,
+            ramaId: 4,
+            rama: { id: 4, nombre: 'Rover', ordenProgresion: 4, edadMinima: 17, edadMaxima: 21, activa: true },
+          },
+          rol: { id: 2, nombre: 'Beneficiario', alcancePorDefecto: 'UNIDAD', tipoMiembro: 'JOVEN', requiereRama: true },
+        },
+        {
+          id: 85,
+          unidadId: 2,
+          rolId: 2,
+          cicloAnio: 2023,
+          fechaInicio: new Date('2023-03-01'),
+          fechaFin: new Date('2024-12-15'),
+          activo: false,
+          alcanceOverride: null,
+          unidad: {
+            id: 2,
+            nombre: 'Comunidad Caminantes',
+            tipo: 'CAMINANTES',
+            activa: true,
+            ramaId: 3,
+            rama: { id: 3, nombre: 'Caminantes', ordenProgresion: 3, edadMinima: 14, edadMaxima: 17, activa: true },
+          },
+          rol: { id: 2, nombre: 'Beneficiario', alcancePorDefecto: 'UNIDAD', tipoMiembro: 'JOVEN', requiereRama: true },
+        },
+      ],
+    };
+
+    mockPrisma.usuario.findFirst.mockResolvedValue(miembroMock);
+    const service = new MiembrosService(mockPrisma);
+
+    const alcance: AlcanceAcceso = { tipo: 'GLOBAL' };
+    const resultado = await service.obtener(alcance, 5);
+
+    expect(mockPrisma.usuario.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        AND: expect.arrayContaining([{ id: 5 }]),
+      }),
+      select: MIEMBRO_SELECT,
+    });
+    expect(resultado).toEqual(miembroMock);
+    expect(resultado.asignaciones).toHaveLength(2);
+    expect(resultado.asignaciones[0].activo).toBe(true);
+    expect(resultado.asignaciones[1].activo).toBe(false);
+    expect(resultado.asignaciones[1].fechaFin).toBeDefined();
+  });
+
+  it('obtener() respeta alcance y lanza NotFoundException si el miembro no está en el alcance del usuario', async () => {
+    const mockPrisma: any = {
+      usuario: {
+        findFirst: vi.fn().mockResolvedValue(null),
+      },
+    };
+    const service = new MiembrosService(mockPrisma);
+    const alcanceUnidad: AlcanceAcceso = { tipo: 'UNIDAD', unidadId: 99, unidadIds: [99] };
+
+    await expect(service.obtener(alcanceUnidad, 5)).rejects.toThrow(NotFoundException);
+  });
+});
+

@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { AlcanceRol, TipoUnidad, type Prisma } from '@prisma/client';
+import { assertUnidadEnAlcance } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso } from '../common/types/auth.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
@@ -155,6 +156,117 @@ export class OrganizacionService {
     });
   }
 
+  async obtenerHistorialUnidad(alcance: AlcanceAcceso, id: number) {
+    assertUnidadEnAlcance(alcance, id);
+
+    const unidad = await this.prisma.unidadOrganizativa.findUnique({
+      where: { id },
+      include: {
+        rama: {
+          select: {
+            id: true,
+            nombre: true,
+            edadMinima: true,
+            edadMaxima: true,
+            ordenProgresion: true,
+            activa: true,
+          },
+        },
+        asignaciones: {
+          orderBy: [{ cicloAnio: 'desc' }, { fechaInicio: 'desc' }, { id: 'desc' }],
+          include: {
+            usuario: {
+              select: {
+                id: true,
+                nombre: true,
+                apellido: true,
+                dni: true,
+                activo: true,
+              },
+            },
+            rol: {
+              select: {
+                id: true,
+                nombre: true,
+                tipoMiembro: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!unidad) {
+      throw new NotFoundException('Sección no encontrada');
+    }
+
+    const asignaciones = unidad.asignaciones.map((a) => {
+      const miembroData = {
+        id: a.usuario.id,
+        nombre: a.usuario.nombre,
+        apellido: a.usuario.apellido,
+        dni: a.usuario.dni,
+        activo: a.usuario.activo,
+      };
+      return {
+        id: a.id,
+        usuarioId: a.usuarioId,
+        rolId: a.rolId,
+        cicloAnio: a.cicloAnio,
+        fechaInicio: a.fechaInicio,
+        fechaFin: a.fechaFin,
+        activo: a.activo,
+        miembro: miembroData,
+        usuario: miembroData,
+        rol: {
+          id: a.rol.id,
+          nombre: a.rol.nombre,
+          tipoMiembro: a.rol.tipoMiembro || 'EDUCADOR',
+        },
+      };
+    });
+
+    const ciclos = [...new Set(asignaciones.map((a) => a.cicloAnio))].sort((a, b) => b - a);
+
+    const educadoresIds = new Set(
+      asignaciones
+        .filter((a) => {
+          const tm = (a.rol.tipoMiembro || '').toUpperCase();
+          return tm === 'EDUCADOR' || tm === 'ADULTO';
+        })
+        .map((a) => a.usuarioId),
+    );
+    const protagonistasIds = new Set(
+      asignaciones
+        .filter((a) => (a.rol.tipoMiembro || '').toUpperCase() === 'PROTAGONISTA')
+        .map((a) => a.usuarioId),
+    );
+    const miembrosTotalesIds = new Set(asignaciones.map((a) => a.usuarioId));
+
+    const resumen = {
+      ciclos,
+      ciclosOperativos: ciclos,
+      totalCiclos: ciclos.length,
+      totalAsignaciones: asignaciones.length,
+      totalEducadores: educadoresIds.size,
+      totalEducadoresUnicos: educadoresIds.size,
+      totalProtagonistas: protagonistasIds.size,
+      totalProtagonistasUnicos: protagonistasIds.size,
+      totalMiembros: miembrosTotalesIds.size,
+    };
+
+    return {
+      id: unidad.id,
+      nombre: unidad.nombre,
+      tipo: unidad.tipo,
+      activa: unidad.activa,
+      ramaId: unidad.ramaId,
+      rama: unidad.rama,
+      asignaciones,
+      resumen,
+    };
+  }
+
   private async validarRamaDeUnidad(tipo: TipoUnidad, ramaId: number | null | undefined) {
     if (tipo === TipoUnidad.SECCION_RAMA) {
       if (ramaId == null) throw new BadRequestException('SECCION_RAMA requiere ramaId');
@@ -198,9 +310,9 @@ export class OrganizacionService {
     if (!unidad) throw new NotFoundException('Sección no encontrada');
 
     if (definitivo) {
-      const totalAsignaciones = unidad._count.asignaciones;
-      const totalConceptos = unidad._count.conceptos;
-      const totalPlanes = unidad._count.planesCuota;
+      const totalAsignaciones = unidad._count?.asignaciones ?? 0;
+      const totalConceptos = unidad._count?.conceptos ?? 0;
+      const totalPlanes = unidad._count?.planesCuota ?? 0;
       if (totalAsignaciones > 0 || totalConceptos > 0 || totalPlanes > 0) {
         throw new ConflictException(
           `No se puede eliminar definitivamente la sección "${unidad.nombre}": posee registros asociados (${totalAsignaciones} asignaciones, ${totalConceptos} conceptos, ${totalPlanes} planes). Desactivala en su lugar.`,
