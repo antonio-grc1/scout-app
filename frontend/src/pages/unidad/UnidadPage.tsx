@@ -159,7 +159,7 @@ export const UnidadPage: React.FC = () => {
 
   // Acción rápida 1-Tap: Recibir y validar ficha física sin abrir modales
   const handleValidarFichaDirecto = async (entrega: any) => {
-    if (!entrega?.hashVerificacion) return;
+    if (!entrega?.hashVerificacion || validandoId) return;
     setValidandoId(entrega.id);
     try {
       await api.post(`/legajos/qr/validar/${entrega.hashVerificacion}`);
@@ -471,6 +471,7 @@ export const UnidadPage: React.FC = () => {
     unidadesDestino: Array<{ id: number; nombre: string }>;
     miembros: any[];
   }) => {
+    if (ejecutandoCamadaKey) return;
     const destinoId =
       destinoPorCamada[grupo.key] ||
       grupo.unidadesDestino?.[0]?.id ||
@@ -507,6 +508,8 @@ export const UnidadPage: React.FC = () => {
       setEjecutandoCamadaKey(null);
     }
   };
+
+  const handlePasarCamada = handleEjecutarPaseCamada;
 
   // Contadores rápidos para los chips
   const conteos = useMemo(() => {
@@ -1199,8 +1202,8 @@ export const UnidadPage: React.FC = () => {
                       {puedeEjecutarPases ? (
                         <button
                           type="button"
-                          disabled={ejecutando}
-                          onClick={() => handleEjecutarPaseCamada(g)}
+                          disabled={Boolean(ejecutandoCamadaKey)}
+                          onClick={() => handlePasarCamada(g)}
                           className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
                         >
                           {ejecutando ? (
@@ -1455,7 +1458,7 @@ export const UnidadPage: React.FC = () => {
                             {esPendienteFirma && puedeValidarFisico && (
                               <button
                                 type="button"
-                                disabled={validandoId === entrega.id}
+                                disabled={Boolean(validandoId)}
                                 onClick={() => handleValidarFichaDirecto(entrega)}
                                 className="min-h-[36px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
                                 title="Confirmar que entregó la ficha en papel firmada"

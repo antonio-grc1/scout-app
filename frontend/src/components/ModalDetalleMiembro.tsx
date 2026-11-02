@@ -57,8 +57,11 @@ import {
   crearUrlPdfBlob,
   type MapeoPdf,
 } from '../services/pdfGenerator';
-import { DynamicFormRenderer, type EsquemaCampos } from './DynamicFormRenderer';
-import { VisorFichaMiembro } from './VisorFichaMiembro';
+import { PestanaDatosMiembro } from './detalle-miembro/PestanaDatosMiembro';
+import { PestanaPaseRol } from './detalle-miembro/PestanaPaseRol';
+import { PestanaSeguridad } from './detalle-miembro/PestanaSeguridad';
+import { PestanaLegajosFichas } from './detalle-miembro/PestanaLegajosFichas';
+import { PestanaCuotasTesoreria } from './detalle-miembro/PestanaCuotasTesoreria';
 
 interface Props {
   usuarioId: number | null;
@@ -410,7 +413,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       if (puedeEditarContacto) {
         payload.emailContacto = formData.emailContacto.trim() || null;
         payload.telefonoContacto = formData.telefonoContacto.trim() || null;
-        payload.datosFijosJson = {
+
+        const datosFijosPrevios =
+          miembro.datosFijosJson && typeof miembro.datosFijosJson === 'object'
+            ? miembro.datosFijosJson
+            : {};
+
+        const camposEditados: Record<string, string> = {
           protagonista_telefono: formData.telefonoContacto.trim(),
           madre_nombres: formData.madreNombres.trim(),
           madre_telefono: formData.madreTelefono.trim(),
@@ -423,6 +432,15 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           telefono_urgencias: formData.telefonoUrgencias.trim(),
           alergias: formData.alergias.trim(),
         };
+
+        const datosFijosMergeados: Record<string, any> = { ...datosFijosPrevios };
+        for (const [k, v] of Object.entries(camposEditados)) {
+          if (v !== '' || datosFijosPrevios[k] !== undefined) {
+            datosFijosMergeados[k] = v;
+          }
+        }
+
+        payload.datosFijosJson = datosFijosMergeados;
       }
       await api.patch(`/miembros/${miembro.id}`, payload);
 
@@ -1176,1168 +1194,134 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               {/* PESTAÑA 1: DATOS PERSONALES, FAMILIA Y SALUD              */}
               {/* ======================================================== */}
               {tab === 'datos' && (
-                <form onSubmit={handleGuardarDatos} className="space-y-4">
-                  {(() => {
-                    type Campo = {
-                      key: keyof typeof formData;
-                      label: string;
-                      editable: boolean;
-                      type?: string;
-                      placeholder?: string;
-                      full?: boolean;
-                      multiline?: boolean;
-                      required?: boolean;
-                    };
-                    const campos: Campo[] = [
-                      { key: 'nombre', label: 'Nombre', editable: puedeEditarIdentidad, required: true },
-                      { key: 'apellido', label: 'Apellido', editable: puedeEditarIdentidad, required: true },
-                      { key: 'dni', label: 'DNI', editable: puedeEditarIdentidad, required: true },
-                      { key: 'fechaNacimiento', label: 'Fecha de Nacimiento', editable: puedeEditarIdentidad, type: 'date', required: true },
-                      { key: 'telefonoContacto', label: 'Teléfono del Miembro', editable: puedeEditarContacto, type: 'tel', placeholder: 'Ej: 3511234567' },
-                      { key: 'emailContacto', label: 'Email', editable: puedeEditarContacto, type: 'email', placeholder: 'correo@ejemplo.com' },
-                      { key: 'madreNombres', label: 'Nombre y Apellido Madre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido de la madre' },
-                      { key: 'madreTelefono', label: 'Teléfono Madre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular madre' },
-                      { key: 'padreNombres', label: 'Nombre y Apellido Padre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del padre' },
-                      { key: 'padreTelefono', label: 'Teléfono Padre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular padre' },
-                      { key: 'tutorNombres', label: 'Nombre y Apellido Tutor/a', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del tutor/a' },
-                      { key: 'tutorTelefono', label: 'Teléfono Tutor/a', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular tutor/a' },
-                      { key: 'telefonoUrgencias', label: 'Teléfono de Urgencias', editable: puedeEditarContacto, type: 'tel', placeholder: 'Alternativo para emergencias' },
-                      { key: 'domicilio', label: 'Domicilio', editable: puedeEditarContacto, placeholder: 'Calle y número' },
-                      { key: 'obraSocial', label: 'Obra Social / Prepaga', editable: puedeEditarContacto, placeholder: 'OSDE, Apross, etc.', full: true },
-                      { key: 'alergias', label: 'Alergias o Cuidados Médicos', editable: puedeEditarContacto, placeholder: 'Alergias, medicación habitual o dieta especial', full: true, multiline: true },
-                    ];
-                    const claseInput =
-                      'w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors';
-                    const mostrarValor = (c: Campo) => {
-                      const v = String(formData[c.key] ?? '');
-                      if (!v) return null;
-                      if (c.type === 'date') return new Date(`${v}T00:00:00`).toLocaleDateString('es-AR');
-                      return v;
-                    };
-                    return (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {campos.map((c) => {
-                          const valor = mostrarValor(c);
-                          // Solo lectura limpio: si no puede editar y no hay dato, no mostrar el campo
-                          if (!c.editable && !valor) return null;
-                          return (
-                            <div key={c.key} className={c.full ? 'sm:col-span-2' : ''}>
-                              <label className="block text-ink-2 font-bold mb-1">
-                                {c.label}
-                                {c.editable && c.required ? ' *' : ''}
-                              </label>
-                              {c.editable ? (
-                                c.multiline ? (
-                                  <textarea
-                                    rows={2}
-                                    placeholder={c.placeholder}
-                                    value={String(formData[c.key] ?? '')}
-                                    onChange={(e) => setFormData({ ...formData, [c.key]: e.target.value })}
-                                    className={claseInput}
-                                  />
-                                ) : (
-                                  <input
-                                    type={c.type || 'text'}
-                                    inputMode={c.type === 'tel' ? 'tel' : c.key === 'dni' ? 'numeric' : undefined}
-                                    required={c.required}
-                                    placeholder={c.placeholder}
-                                    value={String(formData[c.key] ?? '')}
-                                    onChange={(e) => setFormData({ ...formData, [c.key]: e.target.value })}
-                                    className={`${claseInput} ${c.key === 'dni' ? 'font-mono' : ''}`}
-                                  />
-                                )
-                              ) : (
-                                <p className="min-h-[42px] px-1 py-2 text-sm font-semibold text-ink whitespace-pre-wrap break-words">
-                                  {valor}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Grupo Familiar */}
-                  {(() => {
-                    const familiar = miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar;
-                    const integrantesFamilia = familiar?.miembros || [];
-                    const pctDesc = familiar ? Number(familiar.porcentajeDescuentoHermanos ?? 0) : 0;
-
-                    return (
-                      <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 space-y-2.5">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Users className="w-4 h-4 text-brand" />
-                            <span className="font-bold text-ink">
-                              {familiar ? familiar.nombreFamilia : 'Sin hermanos vinculados'}
-                            </span>
-                            {familiar && pctDesc > 0 && (
-                              <span className="px-2 py-0.5 rounded-full bg-brand/20 text-brand font-bold text-[10px] font-bold">
-                                -{pctDesc}% cuota
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {familiar && (
-                              <button
-                                type="button"
-                                onClick={() => setModalEditarFamiliaAbierto(true)}
-                                className="min-h-[38px] px-3 rounded-xl border border-brand/40 bg-surface text-brand font-bold text-xs cursor-pointer"
-                              >
-                                Descuento ({pctDesc}%)
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setModalVincularHermanoAbierto(true)}
-                              className="min-h-[38px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
-                            >
-                              + Hermano
-                            </button>
-                          </div>
-                        </div>
-
-                        {integrantesFamilia.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rule">
-                            <span className="text-[11px] font-bold text-ink-muted mr-1">
-                              Integrantes:
-                            </span>
-                            {integrantesFamilia.map((h: any) => (
-                              <span
-                                key={h.id}
-                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl bg-surface border border-brand/30 text-xs font-bold text-ink"
-                              >
-                                <span>
-                                  {h.nombre} {h.apellido}
-                                </span>
-                                <button
-                                  type="button"
-                                  disabled={desvinculandoMiembroId === h.id}
-                                  onClick={() =>
-                                    handleDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)
-                                  }
-                                  title={`Quitar a ${h.nombre} del grupo familiar`}
-                                  className="px-1.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
-                                >
-                                  {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Estado Activo / Baja y Botón Guardar */}
-                  {puedeEditarMiembro && (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-rule">
-                      <label className="flex items-center gap-2.5 cursor-pointer min-h-[42px]">
-                        <input
-                          type="checkbox"
-                          checked={formData.activo}
-                          onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-                          className="w-5 h-5 text-brand rounded border-rule cursor-pointer focus:ring-brand/20"
-                        />
-                        <span className="font-bold text-ink-2">
-                          {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
-                        </span>
-                      </label>
-
-                      <button
-                        type="submit"
-                        disabled={guardando}
-                        className="min-h-[44px] px-5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
-                      >
-                        <Save className="w-4 h-4" />
-                        <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
-                      </button>
-                    </div>
-                  )}
-                </form>
+                <PestanaDatosMiembro
+                  miembro={miembro}
+                  estadoCuenta={estadoCuenta}
+                  formData={formData}
+                  setFormData={setFormData}
+                  guardando={guardando}
+                  desvinculandoMiembroId={desvinculandoMiembroId}
+                  puedeEditarIdentidad={puedeEditarIdentidad}
+                  puedeEditarContacto={puedeEditarContacto}
+                  puedeDarBaja={puedeDarBaja}
+                  puedeEditarMiembro={puedeEditarMiembro}
+                  onGuardarDatos={handleGuardarDatos}
+                  onDesvincularRapido={handleDesvincularRapido}
+                  onAbrirEditarFamilia={() => setModalEditarFamiliaAbierto(true)}
+                  onAbrirVincularHermano={() => setModalVincularHermanoAbierto(true)}
+                />
               )}
 
               {/* ======================================================== */}
               {/* PESTAÑA 2: CUOTAS Y PAGOS (Tarjetas Mobile-First + 1-Tap) */}
               {/* ======================================================== */}
               {tab === 'cuotas' && (
-                <div className="space-y-4">
-                  {/* Resumen Financiero + Botones de Acción Directa */}
-                  <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-4 flex-wrap">
-                      <div>
-                        <span className="text-xs font-semibold text-ink-muted block">
-                          Deuda Total
-                        </span>
-                        <span
-                          className={`text-xl font-black ${
-                            saldoPendiente > 0
-                              ? 'text-rose-600 dark:text-rose-400'
-                              : 'text-ink'
-                          }`}
-                        >
-                          {formatearMoneda(saldoPendiente)}
-                        </span>
-                      </div>
-
-                      <div className="pl-4 border-l border-rule">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">
-                            Saldo a Favor
-                          </span>
-                          {puedeGestionarTesoreria && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setAjustandoSaldo(!ajustandoSaldo);
-                                setMontoAjusteSaldo('');
-                                setMotivoAjusteSaldo('');
-                              }}
-                              className="text-[10px] font-bold text-teal-700 dark:text-teal-300 underline hover:opacity-80 cursor-pointer"
-                            >
-                              {ajustandoSaldo ? 'Cerrar' : 'Ajustar'}
-                            </button>
-                          )}
-                        </div>
-                        <span className="text-xl font-black text-teal-600 dark:text-teal-400">
-                          {formatearMoneda(saldoAFavor)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      {puedeGestionarTesoreria && (
-                        <button
-                          type="button"
-                          onClick={() => setModalGenerarDeudaAbierto(true)}
-                          className="min-h-[42px] px-3.5 rounded-xl border border-rule bg-surface text-ink-2 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <PlusCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                          <span>+ Cargo</span>
-                        </button>
-                      )}
-
-                      {puedeCobrarCuotas && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCargoIdACobrar(null);
-                            setModalCobrarAbierto(true);
-                          }}
-                          className="min-h-[42px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          <span>{saldoPendiente > 0 ? 'Cobrar / Pagar' : 'Registrar Adelanto'}</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Panel desplegable de Ajuste Manual de Saldo a Favor */}
-                  {ajustandoSaldo && (
-                    <form
-                      onSubmit={handleGuardarAjusteSaldo}
-                      className="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 space-y-3 animate-in fade-in"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold text-teal-950 dark:text-teal-100 flex items-center gap-1.5">
-                          <Wallet className="w-4 h-4 text-teal-600" />
-                          Ajustar Saldo a Favor Manualmente
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setAjustandoSaldo(false)}
-                          className="text-ink-muted hover:text-ink cursor-pointer"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {([
-                          { k: 'CARGAR', label: '+ Cargar saldo' },
-                          { k: 'DESCONTAR', label: '- Devolver / Descontar' },
-                          { k: 'FIJAR', label: '= Fijar saldo exacto' },
-                        ] as const).map((opt) => (
-                          <button
-                            key={opt.k}
-                            type="button"
-                            onClick={() => setTipoAjusteSaldo(opt.k)}
-                            className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
-                              tipoAjusteSaldo === opt.k
-                                ? 'bg-teal-600 text-white border-teal-600'
-                                : 'bg-surface text-ink-2 border-rule'
-                            }`}
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div>
-                          <label className="block text-[11px] font-bold text-teal-900 dark:text-teal-200 mb-1">
-                            {tipoAjusteSaldo === 'FIJAR' ? 'Nuevo Saldo ($)' : 'Monto ($)'} *
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min={tipoAjusteSaldo === 'FIJAR' ? 0 : 0.01}
-                            required
-                            value={montoAjusteSaldo}
-                            onChange={(e) => setMontoAjusteSaldo(e.target.value)}
-                            placeholder="Ej: 5000"
-                            className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-xs font-bold text-ink"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-teal-900 dark:text-teal-200 mb-1">
-                            Motivo / Nota (opcional)
-                          </label>
-                          <input
-                            type="text"
-                            value={motivoAjusteSaldo}
-                            onChange={(e) => setMotivoAjusteSaldo(e.target.value)}
-                            placeholder="Ej: Devolución en mano, saldo año anterior..."
-                            className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-xs text-ink"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setAjustandoSaldo(false)}
-                          className="px-3 py-1.5 rounded-xl border border-rule text-xs font-semibold text-ink-2 cursor-pointer"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={procesandoAccionCuota || montoAjusteSaldo === ''}
-                          className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
-                        >
-                          {procesandoAccionCuota ? 'Guardando...' : 'Aplicar Ajuste'}
-                        </button>
-                      </div>
-                    </form>
-                  )}
-
-                  {/* Barra rápida de Grupo Familiar y Descuento Hermanos */}
-                  {(() => {
-                    const familiar = miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar;
-                    const integrantesFamilia = familiar?.miembros || [];
-                    const pctDesc = familiar ? Number(familiar.porcentajeDescuentoHermanos ?? 0) : 0;
-
-                    return (
-                      <div className="p-3 rounded-2xl bg-brand/10 border border-brand/30 space-y-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Users className="w-4 h-4 text-brand shrink-0" />
-                            <span className="font-bold text-ink text-xs">
-                              {familiar ? familiar.nombreFamilia : 'Sin grupo familiar'}
-                            </span>
-                            {familiar && (
-                              <span className="px-2 py-0.5 rounded-full bg-brand/15 text-brand text-[10px] font-bold">
-                                {pctDesc > 0 ? `-${pctDesc}% desc. hermanos` : '0% desc.'}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            {familiar && (
-                              <button
-                                type="button"
-                                onClick={() => setModalEditarFamiliaAbierto(true)}
-                                className="px-2.5 py-1 rounded-lg bg-surface border border-brand/40 text-brand font-bold text-[11px] cursor-pointer"
-                              >
-                                Editar Familia ({pctDesc}%)
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => setModalVincularHermanoAbierto(true)}
-                              className="px-2.5 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[11px] cursor-pointer transition-colors"
-                            >
-                              + Hermano
-                            </button>
-                          </div>
-                        </div>
-
-                        {integrantesFamilia.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rule">
-                            <span className="text-[11px] font-bold text-ink-muted mr-1">
-                              Integrantes:
-                            </span>
-                            {integrantesFamilia.map((h: any) => (
-                              <span
-                                key={h.id}
-                                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-0.5 rounded-lg bg-surface border border-brand/30 text-[11px] font-bold text-ink"
-                              >
-                                <span>
-                                  {h.nombre} {h.apellido}
-                                </span>
-                                <button
-                                  type="button"
-                                  disabled={desvinculandoMiembroId === h.id}
-                                  onClick={() =>
-                                    handleDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)
-                                  }
-                                  title={`Quitar a ${h.nombre} del grupo familiar`}
-                                  className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
-                                >
-                                  {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
-                                </button>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Lista de Cuotas / Cargos en Tarjetas Mobile-First */}
-                  <div className="space-y-2">
-                    <span className="text-xs font-semibold text-ink-muted block">
-                      Cuotas y Conceptos Activos ({estadoCuenta?.cargos?.length || 0})
-                    </span>
-
-                    {estadoCuenta?.cargos?.length > 0 ? (
-                      <div className="space-y-2">
-                        {estadoCuenta.cargos.map((c: any) => {
-                          const pendiente = Math.max(
-                            0,
-                            Number(c.montoFinal) - Number(c.montoPagado),
-                          );
-                          const desc = Number(c.montoDescuento ?? 0);
-                          const cfgEstado =
-                            ESTADO_CARGO_CONFIG[c.estado] || ESTADO_CARGO_CONFIG.PENDIENTE;
-                          const puedeCobrar = c.estado !== 'PAGADO' && c.estado !== 'ANULADO';
-                          const estaEditandoEste = cargoEditando?.id === c.id;
-
-                          return (
-                            <div
-                              key={c.id}
-                              className="p-3.5 rounded-2xl bg-surface border border-rule space-y-3"
-                            >
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-ink text-sm">
-                                      {c.concepto?.nombre || 'Cuota'}
-                                    </span>
-                                    {c.concepto?.mes && (
-                                      <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
-                                        {NOMBRES_MESES_CORTOS[c.concepto.mes]}
-                                      </span>
-                                    )}
-                                    <span
-                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfgEstado.badgeClass}`}
-                                    >
-                                      {cfgEstado.label}
-                                    </span>
-                                  </div>
-
-                                  <div className="text-xs text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
-                                    <span>
-                                      Total: <strong>{formatearMoneda(c.montoFinal)}</strong>
-                                    </span>
-                                    {desc > 0 && (
-                                      <span className="text-brand font-semibold">
-                                        (Base {formatearMoneda(c.montoOriginal)} • Desc. -{formatearMoneda(desc)})
-                                      </span>
-                                    )}
-                                    {Number(c.montoPagado) > 0 && (
-                                      <span className="text-teal-700 dark:text-teal-300 font-semibold">
-                                        Abonado: {formatearMoneda(c.montoPagado)}
-                                      </span>
-                                    )}
-                                    {pendiente > 0 && c.estado !== 'ANULADO' && (
-                                      <span className="text-rose-600 dark:text-rose-400 font-bold">
-                                        Resta: {formatearMoneda(pendiente)}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Acciones 1-Tap por Cuota */}
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                  {puedeCobrar && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setCargoIdACobrar(c.id);
-                                        setModalCobrarAbierto(true);
-                                      }}
-                                      className="min-h-[38px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
-                                    >
-                                      <CreditCard className="w-3.5 h-3.5" />
-                                      <span>Cobrar {formatearMoneda(pendiente)}</span>
-                                    </button>
-                                  )}
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      estaEditandoEste
-                                        ? setCargoEditando(null)
-                                        : handleIniciarEdicionCargo(c)
-                                    }
-                                    title="Editar monto o descuento de esta cuota"
-                                    className="min-h-[38px] px-2.5 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-xs flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => handleAnularCargo(c)}
-                                    title="Anular cuota (si tiene pagos, pasan a Saldo a Favor)"
-                                    className="min-h-[38px] px-2.5 rounded-xl border border-rose-200/70 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold text-xs flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <Ban className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Editor en línea de la cuota */}
-                              {estaEditandoEste && cargoEditando && (
-                                <form
-                                  onSubmit={handleGuardarEdicionCargo}
-                                  className="pt-3 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-2.5 animate-in fade-in"
-                                >
-                                  {cargoEditando.esIndividual && (
-                                    <div className="sm:col-span-3">
-                                      <label className="block text-[11px] font-bold text-ink-2 mb-1">
-                                        Concepto / Motivo
-                                      </label>
-                                      <input
-                                        type="text"
-                                        required
-                                        value={cargoEditando.nombreConcepto}
-                                        onChange={(e) =>
-                                          setCargoEditando({
-                                            ...cargoEditando,
-                                            nombreConcepto: e.target.value,
-                                          })
-                                        }
-                                        className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs"
-                                      />
-                                    </div>
-                                  )}
-                                  <div>
-                                    <label className="block text-[11px] font-bold text-ink-2 mb-1">
-                                      Monto Original ($)
-                                    </label>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      required
-                                      value={cargoEditando.montoOriginal}
-                                      onChange={(e) =>
-                                        setCargoEditando({
-                                          ...cargoEditando,
-                                          montoOriginal: e.target.value,
-                                        })
-                                      }
-                                      className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs font-bold"
-                                    />
-                                  </div>
-                                  <div>
-                                    <label className="block text-[11px] font-bold text-ink-2 mb-1">
-                                      Descuento ($)
-                                    </label>
-                                    <input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={cargoEditando.montoDescuento}
-                                      onChange={(e) =>
-                                        setCargoEditando({
-                                          ...cargoEditando,
-                                          montoDescuento: e.target.value,
-                                        })
-                                      }
-                                      className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs font-bold text-brand"
-                                    />
-                                  </div>
-                                  <div className="flex items-end justify-end gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => setCargoEditando(null)}
-                                      className="px-3 py-1.5 rounded-xl border border-rule text-xs font-semibold cursor-pointer"
-                                    >
-                                      Cancelar
-                                    </button>
-                                    <button
-                                      type="submit"
-                                      disabled={procesandoAccionCuota}
-                                      className="px-3.5 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold cursor-pointer disabled:opacity-50 transition-colors"
-                                    >
-                                      Guardar
-                                    </button>
-                                  </div>
-                                </form>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="p-6 text-center bg-paper-2 rounded-2xl border border-rule text-ink-muted">
-                        Sin cuotas activas asignadas.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cuotas Anuladas (Colapsable, permite Reactivar o Eliminar definitivamente) */}
-                  {estadoCuenta?.cargosAnulados?.length > 0 && (
-                    <div className="border border-rule rounded-2xl overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => setMostrarAnulados(!mostrarAnulados)}
-                        className="w-full p-3 bg-paper-2 flex items-center justify-between text-xs font-bold text-ink-2 cursor-pointer"
-                      >
-                        <span>
-                          Cuotas anuladas ({estadoCuenta.cargosAnulados.length})
-                        </span>
-                        {mostrarAnulados ? (
-                          <ChevronUp className="w-4 h-4" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4" />
-                        )}
-                      </button>
-
-                      {mostrarAnulados && (
-                        <div className="p-3 space-y-2 bg-surface divide-y divide-rule">
-                          {estadoCuenta.cargosAnulados.map((ca: any) => (
-                            <div
-                              key={ca.id}
-                              className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
-                            >
-                              <div>
-                                <span className="font-bold text-ink-2 line-through">
-                                  {ca.concepto?.nombre || 'Cuota'}
-                                </span>
-                                <span className="ml-2 text-ink-muted">
-                                  ({formatearMoneda(ca.montoFinal)})
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  disabled={procesandoAccionCuota}
-                                  onClick={() =>
-                                    handleReactivarCargo(ca.id, ca.concepto?.nombre || 'Cuota')
-                                  }
-                                  className="px-2.5 py-1 rounded-lg bg-brand/10 text-brand border border-brand/30 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
-                                >
-                                  <RotateCcw className="w-3 h-3" />
-                                  <span>Reactivar</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={procesandoAccionCuota}
-                                  onClick={() =>
-                                    handleEliminarCargoDefinitivo(
-                                      ca.id,
-                                      ca.concepto?.nombre || 'Cuota',
-                                    )
-                                  }
-                                  title="Eliminar definitivamente"
-                                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Historial de Pagos (con Edición y Reversión) */}
-                  {estadoCuenta?.pagos?.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-rule">
-                      <span className="text-xs font-semibold text-ink-muted flex items-center gap-1.5">
-                        <Receipt className="w-3.5 h-3.5" />
-                        <span>Pagos Registrados ({estadoCuenta.pagos.length})</span>
-                      </span>
-
-                      <div className="space-y-2">
-                        {estadoCuenta.pagos.map((p: any) => {
-                          const editandoEstePago = pagoEditando?.id === p.id;
-                          const conceptosImputados =
-                            p.imputaciones
-                              ?.map((imp: any) => imp.cargo?.concepto?.nombre)
-                              .filter(Boolean)
-                              .join(', ') || 'Pago a cuenta / Saldo a favor';
-
-                          return (
-                            <div
-                              key={p.id}
-                              className="p-3 rounded-xl bg-paper-2 border border-rule space-y-2"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-extrabold text-brand text-sm">
-                                      +{formatearMoneda(p.montoTotal)}
-                                    </span>
-                                    <span className="px-2 py-0.5 rounded-md bg-surface text-ink-2 text-[10px] font-bold border border-rule">
-                                      {METODO_PAGO_LABELS[p.metodoPago] || p.metodoPago}
-                                    </span>
-                                    <span className="text-[11px] text-ink-muted font-semibold truncate">
-                                      {conceptosImputados}
-                                    </span>
-                                  </div>
-                                  <span className="text-[11px] text-ink-muted block mt-0.5">
-                                    {new Date(p.fechaPago).toLocaleDateString('es-AR')}
-                                    {p.referenciaComprobante &&
-                                      ` • Comprobante: ${p.referenciaComprobante}`}
-                                    {p.observaciones && ` • ${p.observaciones}`}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      editandoEstePago
-                                        ? setPagoEditando(null)
-                                        : setPagoEditando({
-                                            id: p.id,
-                                            metodoPago: p.metodoPago || 'EFECTIVO',
-                                            referenciaComprobante: p.referenciaComprobante || '',
-                                            observaciones: p.observaciones || '',
-                                          })
-                                    }
-                                    title="Editar método o comprobante"
-                                    className="p-1.5 rounded-lg text-ink-muted hover:bg-paper-3 cursor-pointer"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRevertirPago(p)}
-                                    title="Revertir / Anular este pago"
-                                    className="px-2 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <RotateCcw className="w-3 h-3" />
-                                    <span>Revertir</span>
-                                  </button>
-                                </div>
-                              </div>
-
-                              {editandoEstePago && pagoEditando && (
-                                <form
-                                  onSubmit={handleGuardarEdicionPago}
-                                  className="pt-2 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-2 animate-in fade-in"
-                                >
-                                  <select
-                                    value={pagoEditando.metodoPago}
-                                    onChange={(e) =>
-                                      setPagoEditando({
-                                        ...pagoEditando,
-                                        metodoPago: e.target.value as any,
-                                      })
-                                    }
-                                    className="px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs font-semibold"
-                                  >
-                                    <option value="EFECTIVO">Efectivo</option>
-                                    <option value="TRANSFERENCIA">Transferencia</option>
-                                    <option value="OTRO">Otro</option>
-                                  </select>
-                                  <input
-                                    type="text"
-                                    value={pagoEditando.referenciaComprobante}
-                                    onChange={(e) =>
-                                      setPagoEditando({
-                                        ...pagoEditando,
-                                        referenciaComprobante: e.target.value,
-                                      })
-                                    }
-                                    placeholder="N° Comprobante"
-                                    className="px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs"
-                                  />
-                                  <div className="flex items-center gap-1.5">
-                                    <input
-                                      type="text"
-                                      value={pagoEditando.observaciones}
-                                      onChange={(e) =>
-                                        setPagoEditando({
-                                          ...pagoEditando,
-                                          observaciones: e.target.value,
-                                        })
-                                      }
-                                      placeholder="Observaciones"
-                                      className="flex-1 px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs"
-                                    />
-                                    <button
-                                      type="submit"
-                                      disabled={procesandoAccionCuota}
-                                      className="px-3 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold cursor-pointer transition-colors"
-                                    >
-                                      OK
-                                    </button>
-                                  </div>
-                                </form>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <PestanaCuotasTesoreria
+                  miembro={miembro}
+                  estadoCuenta={estadoCuenta}
+                  saldoPendiente={saldoPendiente}
+                  saldoAFavor={saldoAFavor}
+                  puedeGestionarTesoreria={puedeGestionarTesoreria}
+                  puedeCobrarCuotas={puedeCobrarCuotas}
+                  ajustandoSaldo={ajustandoSaldo}
+                  setAjustandoSaldo={setAjustandoSaldo}
+                  tipoAjusteSaldo={tipoAjusteSaldo}
+                  setTipoAjusteSaldo={setTipoAjusteSaldo}
+                  montoAjusteSaldo={montoAjusteSaldo}
+                  setMontoAjusteSaldo={setMontoAjusteSaldo}
+                  motivoAjusteSaldo={motivoAjusteSaldo}
+                  setMotivoAjusteSaldo={setMotivoAjusteSaldo}
+                  procesandoAccionCuota={procesandoAccionCuota}
+                  desvinculandoMiembroId={desvinculandoMiembroId}
+                  cargoEditando={cargoEditando}
+                  setCargoEditando={setCargoEditando}
+                  mostrarAnulados={mostrarAnulados}
+                  setMostrarAnulados={setMostrarAnulados}
+                  pagoEditando={pagoEditando}
+                  setPagoEditando={setPagoEditando}
+                  onGuardarAjusteSaldo={handleGuardarAjusteSaldo}
+                  onIniciarEdicionCargo={handleIniciarEdicionCargo}
+                  onGuardarEdicionCargo={handleGuardarEdicionCargo}
+                  onAnularCargo={handleAnularCargo}
+                  onReactivarCargo={handleReactivarCargo}
+                  onEliminarCargoDefinitivo={handleEliminarCargoDefinitivo}
+                  onRevertirPago={handleRevertirPago}
+                  onGuardarEdicionPago={handleGuardarEdicionPago}
+                  onDesvincularRapido={handleDesvincularRapido}
+                  onCobrarCargo={(cId) => {
+                    setCargoIdACobrar(cId ?? null);
+                    setModalCobrarAbierto(true);
+                  }}
+                  onAbrirModalGenerarDeuda={() => setModalGenerarDeudaAbierto(true)}
+                  onAbrirModalEditarFamilia={() => setModalEditarFamiliaAbierto(true)}
+                  onAbrirModalVincularHermano={() => setModalVincularHermanoAbierto(true)}
+                />
               )}
 
               {/* ======================================================== */}
               {/* PESTAÑA 3: FICHA MÉDICA (1-Tap Validación, Descarga y Relleno) */}
               {/* ======================================================== */}
               {tab === 'ficha' && (
-                <div className="space-y-3">
-                  {editandoFicha && plantillaActiva && precargaFicha ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-extrabold text-ink-2">
-                          Completando Ficha 2026
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setEditandoFicha(false)}
-                          className="min-h-[36px] px-3 rounded-xl bg-paper-3 text-ink-2 font-bold text-xs cursor-pointer"
-                        >
-                          Volver al resumen
-                        </button>
-                      </div>
-
-                      <DynamicFormRenderer
-                        esquema={plantillaActiva.esquemaCamposJson as EsquemaCampos}
-                        valoresIniciales={{
-                          protagonista_telefono: precargaFicha.usuario?.telefonoContacto || '',
-                          protagonista_domicilio:
-                            (precargaFicha.usuario?.datosFijosJson as any)?.protagonista_domicilio ||
-                            (precargaFicha.usuario?.datosFijosJson as any)?.domicilio ||
-                            '',
-                          ...(precargaFicha.datosFamiliaresSugeridos || {}),
-                          ...(precargaFicha.usuario?.datosFijosJson || {}),
-                          ...(precargaFicha.ultimaEntrega?.respuestasSnapshotJson || {}),
-                        }}
-                        onSubmit={handleGuardarFichaEducador}
-                        cargando={guardando}
-                      />
-                    </div>
-                  ) : (
-                    (() => {
-                      const ent = entregas[0] || null;
-                      const estadoKey = ent?.estado || 'SIN_FICHA';
-                      const cfgEstado =
-                        ESTADO_FICHA_CONFIG[estadoKey] || ESTADO_FICHA_CONFIG.SIN_FICHA;
-                      const esPendiente = ent?.estado === 'PENDIENTE_FIRMA_FISICA';
-
-                      return (
-                        <div className="space-y-3">
-                          <div className="p-4 bg-surface rounded-2xl border border-rule space-y-3.5">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="space-y-1">
-                                <span className="font-extrabold text-ink text-sm block">
-                                  Ficha Médica y Autorizaciones 2026
-                                </span>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span
-                                    className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${cfgEstado.badgeClass}`}
-                                  >
-                                    {cfgEstado.label}
-                                  </span>
-                                </div>
-                                {ent?.validadoPor && (
-                                  <span className="block text-[11px] text-brand font-bold pt-0.5">
-                                    ✓ Papel recibido por {ent.validadoPor.nombre}{' '}
-                                    {ent.validadoPor.apellido}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Acciones Táctiles 1-Tap */}
-                            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-                              {esPendiente && puedeValidarFisico && (
-                                <button
-                                  type="button"
-                                  disabled={validandoFichaId === ent.id}
-                                  onClick={() => handleValidarFisicoDirecto(ent)}
-                                  className="col-span-2 sm:flex-1 min-h-[44px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
-                                >
-                                  <FileCheck2 className="w-4 h-4" />
-                                  <span>
-                                    {validandoFichaId === ent.id
-                                      ? 'Guardando...'
-                                      : 'Recibir Papel'}
-                                  </span>
-                                </button>
-                              )}
-
-                              <button
-                                type="button"
-                                disabled={generandoVistaPrevia}
-                                onClick={() => handleVerPdfEducador(ent)}
-                                className="min-h-[44px] px-3.5 rounded-xl bg-brand/10 hover:bg-brand/15 text-brand border border-brand/30 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                              >
-                                {generandoVistaPrevia ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Eye className="w-4 h-4 text-brand" />
-                                )}
-                                <span>Ver Planilla PDF</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={descargandoPdfId !== null}
-                                onClick={() => handleDescargarPdfEducador(ent)}
-                                className="min-h-[44px] px-3.5 rounded-xl bg-paper-3 hover:opacity-90 text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-                              >
-                                {descargandoPdfId !== null ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Download className="w-4 h-4" />
-                                )}
-                                <span>Descargar PDF</span>
-                              </button>
-
-                              {puedeCompletarFicha && (
-                                <button
-                                  type="button"
-                                  disabled={cargandoFichaEditor}
-                                  onClick={handleAbrirEditorFicha}
-                                  className="col-span-2 sm:col-span-1 min-h-[44px] px-3.5 rounded-xl border border-rule bg-surface text-ink-2 hover:bg-paper-2 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-                                >
-                                  {cargandoFichaEditor ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Pencil className="w-4 h-4 text-brand" />
-                                  )}
-                                  <span>{ent ? 'Editar Ficha' : 'Rellenar Ficha'}</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Visualización Completa de la Ficha en Pantalla (Sin Descarga) */}
-                          <VisorFichaMiembro
-                            miembro={miembro}
-                            entrega={ent}
-                            pdfPreviewUrl={pdfPreviewUrl}
-                            onCerrarPdfPreview={cerrarVistaPreviaPdf}
-                            onDescargarPdf={() => handleDescargarPdfEducador(ent)}
-                          />
-                        </div>
-                      );
-                    })()
-                  )}
-                </div>
+                <PestanaLegajosFichas
+                  miembro={miembro}
+                  entregas={entregas}
+                  editandoFicha={editandoFicha}
+                  setEditandoFicha={setEditandoFicha}
+                  plantillaActiva={plantillaActiva}
+                  precargaFicha={precargaFicha}
+                  guardando={guardando}
+                  validandoFichaId={validandoFichaId}
+                  descargandoPdfId={descargandoPdfId}
+                  generandoVistaPrevia={generandoVistaPrevia}
+                  pdfPreviewUrl={pdfPreviewUrl}
+                  cargandoFichaEditor={cargandoFichaEditor}
+                  puedeValidarFisico={puedeValidarFisico}
+                  puedeCompletarFicha={puedeCompletarFicha}
+                  onGuardarFichaEducador={handleGuardarFichaEducador}
+                  onValidarFisicoDirecto={handleValidarFisicoDirecto}
+                  onVerPdfEducador={handleVerPdfEducador}
+                  onDescargarPdfEducador={handleDescargarPdfEducador}
+                  onAbrirEditorFicha={handleAbrirEditorFicha}
+                  onCerrarPdfPreview={cerrarVistaPreviaPdf}
+                />
               )}
 
               {/* ======================================================== */}
               {/* PESTAÑA 4: PASE DE RAMA / CAMBIO DE SECCIÓN              */}
               {/* ======================================================== */}
               {tab === 'pase' && (
-                <div className="space-y-4">
-                  {candidatoPase && (
-                    <div className="bg-brand/10 border border-brand/30 p-3.5 rounded-2xl flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <Sparkles className="w-5 h-5 text-brand shrink-0" />
-                        <div>
-                          <span className="font-bold text-ink text-xs block">
-                            Cumplió {candidatoPase.edad} años
-                          </span>
-                          <span className="text-[11px] text-ink-2">
-                            Sugerido:{' '}
-                            {candidatoPase.tipo === 'PROGRESION'
-                              ? `Pasar a ${candidatoPase.ramaSugerida?.nombre}`
-                              : 'Pasar a Educador (con rama o sin rama / apoyo)'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Tipo de Destino */}
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleCambioCategoria('RAMA')}
-                      className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
-                        categoriaDestino === 'RAMA'
-                          ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30 font-bold'
-                          : 'border-rule text-ink-2'
-                      }`}
-                    >
-                      Rama
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCambioCategoria('SIN_RAMA')}
-                      className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
-                        categoriaDestino === 'SIN_RAMA'
-                          ? 'border-neutral-900 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 ring-2 ring-neutral-400/30 font-bold'
-                          : 'border-rule text-ink-2'
-                      }`}
-                    >
-                      Sin Rama / Apoyo
-                    </button>
-                    {tieneGlobal() && (
-                      <button
-                        type="button"
-                        onClick={() => handleCambioCategoria('JEFATURA')}
-                        className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
-                          categoriaDestino === 'JEFATURA'
-                            ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30'
-                            : 'border-rule text-ink-2'
-                        }`}
-                      >
-                        Jefatura / Global
-                      </button>
-                    )}
-                  </div>
-
-                  {categoriaDestino === 'RAMA' && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {ramas.map((rama) => {
-                          const config = getRamaColorConfig(rama.nombre);
-                          const seleccionada = ramaSeleccionadaId === rama.id;
-                          return (
-                            <button
-                              key={rama.id}
-                              type="button"
-                              onClick={() => handleSeleccionarRama(rama)}
-                              className={`p-3 rounded-xl border text-left transition cursor-pointer ${
-                                seleccionada
-                                  ? 'border-brand bg-brand/10 ring-2 ring-brand/40'
-                                  : 'border-rule bg-surface'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-bold text-xs text-ink">
-                                  {rama.nombre}
-                                </span>
-                                <span className={`w-2.5 h-2.5 rounded-full ${config.dotColor}`} />
-                              </div>
-                              <span className="text-[10px] text-ink-muted block">
-                                {rama.edadMinima}-{rama.edadMaxima} años
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {unidadesRamaSeleccionada.length > 1 && (
-                        <div className="space-y-1.5">
-                          <span className="text-xs font-bold text-ink-2 block">
-                            Sección de {ramaSeleccionadaObj?.nombre}:
-                          </span>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {unidadesRamaSeleccionada.map((u) => {
-                              const activa = Number(unidadDestinoId) === u.id;
-                              return (
-                                <button
-                                  key={u.id}
-                                  type="button"
-                                  onClick={() => setUnidadDestinoId(String(u.id))}
-                                  className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                                    activa
-                                      ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
-                                      : 'bg-surface text-ink-2 border-rule'
-                                  }`}
-                                >
-                                  {u.nombre}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Selector de Rol Dinámico para la categoría seleccionada */}
-                  <div className="space-y-1.5">
-                    <span className="text-xs font-bold text-ink-2 block">
-                      Función / Rol:
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {(categoriaDestino === 'RAMA'
-                        ? rolesRama
-                        : categoriaDestino === 'SIN_RAMA'
-                          ? rolesSinRama
-                          : rolesJefatura
-                      ).map((r) => {
-                        const activo = Number(rolDestinoId) === r.id;
-                        return (
-                          <button
-                            key={r.id}
-                            type="button"
-                            onClick={() => setRolDestinoId(String(r.id))}
-                            className={`min-h-[42px] px-3 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                              activo
-                                ? 'border-brand bg-brand/10 text-brand font-bold'
-                                : 'border-rule text-ink-2'
-                            }`}
-                          >
-                            {r.nombre}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={ejecutandoPase || (!unidadDestinoId && !rolDestinoId) || esMismoDestino}
-                    onClick={handleEjecutarPase}
-                    className="w-full min-h-[46px] rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs disabled:opacity-40"
-                  >
-                    <ArrowRightLeft className="w-4 h-4" />
-                    <span>
-                      {ejecutandoPase
-                        ? 'Procesando pase...'
-                        : esMismoDestino
-                          ? 'Ya pertenece a esta sección y rol'
-                          : 'Confirmar Pase / Cambio de Rol'}
-                    </span>
-                  </button>
-                </div>
+                <PestanaPaseRol
+                  candidatoPase={candidatoPase}
+                  categoriaDestino={categoriaDestino}
+                  onCambioCategoria={handleCambioCategoria}
+                  tieneGlobal={tieneGlobal}
+                  ramas={ramas}
+                  ramaSeleccionadaId={ramaSeleccionadaId}
+                  ramaSeleccionadaObj={ramaSeleccionadaObj}
+                  unidadesRamaSeleccionada={unidadesRamaSeleccionada}
+                  unidadDestinoId={unidadDestinoId}
+                  setUnidadDestinoId={setUnidadDestinoId}
+                  rolDestinoId={rolDestinoId}
+                  setRolDestinoId={setRolDestinoId}
+                  rolesRama={rolesRama}
+                  rolesSinRama={rolesSinRama}
+                  rolesJefatura={rolesJefatura}
+                  onSeleccionarRama={handleSeleccionarRama}
+                  onEjecutarPase={handleEjecutarPase}
+                  ejecutandoPase={ejecutandoPase}
+                  esMismoDestino={esMismoDestino}
+                />
               )}
 
               {/* ======================================================== */}
               {/* PESTAÑA 5: SEGURIDAD Y CONTRASEÑA                        */}
               {/* ======================================================== */}
               {tab === 'seguridad' && (
-                <div className="p-4 rounded-2xl bg-brand/10 border border-brand/30 space-y-3">
-                  <span className="font-bold text-ink text-sm block">
-                    ¿Olvidó su contraseña?
-                  </span>
-                  <p className="text-ink-2 text-xs">
-                    Restablece su clave para que vuelva a ser su número de DNI (
-                    <strong>{miembro.dni}</strong>).
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleResetClave}
-                    disabled={reseteandoClave}
-                    className="min-h-[44px] px-4 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
-                  >
-                    <KeyRound className="w-4 h-4" />
-                    <span>
-                      {reseteandoClave ? 'Restableciendo...' : `Volver clave a DNI (${miembro.dni})`}
-                    </span>
-                  </button>
-                </div>
+                <PestanaSeguridad
+                  miembro={miembro}
+                  reseteandoClave={reseteandoClave}
+                  onResetClave={handleResetClave}
+                />
               )}
             </>
           ) : null}

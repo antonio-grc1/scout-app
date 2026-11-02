@@ -7,7 +7,6 @@ import { CambiarClave } from './pages/CambiarClave';
 import { AutogestionPage } from './pages/autogestion/AutogestionPage';
 import { UnidadPage } from './pages/unidad/UnidadPage';
 import { GlobalPage } from './pages/global/GlobalPage';
-import { PadronPage } from './pages/padron/PadronPage';
 import { PerfilPage } from './pages/perfil/PerfilPage';
 import { BarraDeCarga } from './components/ui/BarraDeCarga';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
@@ -117,14 +116,7 @@ export function App() {
             }
           />
           <Route path="/unidad" element={<Navigate to="/rama" replace />} />
-          <Route
-            path="/padron"
-            element={
-              <RutaProtegida requiereAlcance="UNIDAD">
-                <PadronPage />
-              </RutaProtegida>
-            }
-          />
+          <Route path="/padron" element={<Navigate to="/rama" replace />} />
           <Route
             path="/global"
             element={
