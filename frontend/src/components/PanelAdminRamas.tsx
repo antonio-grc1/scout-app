@@ -14,7 +14,10 @@ import {
   GitBranch,
   Eye,
   EyeOff,
+  History,
 } from 'lucide-react';
+import { ModalHistorialSeccion } from './ModalHistorialSeccion';
+import { ModalConfirmacion, type ModalConfirmacionProps } from './ModalConfirmacion';
 
 interface Props {
   ramas: any[];
@@ -62,6 +65,8 @@ export const PanelAdminRamas: React.FC<Props> = ({
   });
   const [guardandoUnidad, setGuardandoUnidad] = useState(false);
   const [procesandoUnidadId, setProcesandoUnidadId] = useState<number | null>(null);
+  const [seccionHistorial, setSeccionHistorial] = useState<any | null>(null);
+  const [modalConfirmacion, setModalConfirmacion] = useState<ModalConfirmacionProps | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -181,6 +186,55 @@ export const PanelAdminRamas: React.FC<Props> = ({
     }
   };
 
+  const solicitarEliminarRama = (r: any) => {
+    setModalConfirmacion({
+      abierto: true,
+      tipo: 'peligro',
+      titulo: `Eliminar definitivamente rama "${r.nombre}"`,
+      mensaje: `¿Estás seguro de que deseas eliminar permanentemente la rama "${r.nombre}"?\n\nEsta acción es irreversible y solo se completará si nunca tuvo historial registrado en el Grupo (asignaciones de miembros, conceptos o planes de cuotas). Si posee registros asociados, la eliminación será rechazada para salvaguardar el legajo histórico.`,
+      textoConfirmar: 'Eliminar definitivamente',
+      textoCancelar: 'Cancelar',
+      cargando: false,
+      onCerrar: () => setModalConfirmacion(null),
+      onConfirmar: () => handleEjecutarEliminarRama(r),
+    });
+  };
+
+  const handleEjecutarEliminarRama = async (r: any) => {
+    setProcesandoRamaId(r.id);
+    setModalConfirmacion((prev) => (prev ? { ...prev, cargando: true } : null));
+    try {
+      const res = await api.delete(`/organizacion/ramas/${r.id}`, {
+        params: { definitivo: true },
+      });
+      setModalConfirmacion(null);
+      onToast(res.data?.mensaje || `Rama "${r.nombre}" eliminada definitivamente.`, 'exito');
+      await onRecargar();
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        const msg =
+          err.response?.data?.message ||
+          'No se puede eliminar la rama porque posee registros asociados.';
+        setModalConfirmacion({
+          abierto: true,
+          tipo: 'alerta',
+          titulo: 'No se puede eliminar definitivamente',
+          mensaje: `${msg}\n\nPara proteger el legajo histórico y la integridad contable del Grupo, este registro debe permanecer en estado inactivo.`,
+          textoConfirmar: 'Entendido',
+          textoCancelar: null,
+          cargando: false,
+          onCerrar: () => setModalConfirmacion(null),
+          onConfirmar: () => setModalConfirmacion(null),
+        });
+      } else {
+        setModalConfirmacion(null);
+        onToast(traducirErrorAmigable(err, 'No se pudo eliminar la rama.'), 'error');
+      }
+    } finally {
+      setProcesandoRamaId(null);
+    }
+  };
+
   const abrirCrearUnidad = () => {
     const primeraRama = ramas.find((r) => r.activa !== false);
     setEditandoUnidad(null);
@@ -255,6 +309,55 @@ export const PanelAdminRamas: React.FC<Props> = ({
       await onRecargar();
     } catch (err) {
       onToast(traducirErrorAmigable(err, 'No se pudo reactivar la sección.'), 'error');
+    } finally {
+      setProcesandoUnidadId(null);
+    }
+  };
+
+  const solicitarEliminarUnidad = (u: any) => {
+    setModalConfirmacion({
+      abierto: true,
+      tipo: 'peligro',
+      titulo: `Eliminar definitivamente sección "${u.nombre}"`,
+      mensaje: `¿Estás seguro de que deseas eliminar permanentemente la sección "${u.nombre}"?\n\nEsta acción es irreversible y solo se completará si nunca tuvo historial registrado en el Grupo (asignaciones de miembros, conceptos o planes de cuotas). Si posee registros asociados, la eliminación será rechazada para salvaguardar el legajo histórico.`,
+      textoConfirmar: 'Eliminar definitivamente',
+      textoCancelar: 'Cancelar',
+      cargando: false,
+      onCerrar: () => setModalConfirmacion(null),
+      onConfirmar: () => handleEjecutarEliminarUnidad(u),
+    });
+  };
+
+  const handleEjecutarEliminarUnidad = async (u: any) => {
+    setProcesandoUnidadId(u.id);
+    setModalConfirmacion((prev) => (prev ? { ...prev, cargando: true } : null));
+    try {
+      const res = await api.delete(`/organizacion/unidades/${u.id}`, {
+        params: { definitivo: true },
+      });
+      setModalConfirmacion(null);
+      onToast(res.data?.mensaje || `Sección "${u.nombre}" eliminada definitivamente.`, 'exito');
+      await onRecargar();
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        const msg =
+          err.response?.data?.message ||
+          'No se puede eliminar la sección porque posee registros asociados.';
+        setModalConfirmacion({
+          abierto: true,
+          tipo: 'alerta',
+          titulo: 'No se puede eliminar definitivamente',
+          mensaje: `${msg}\n\nPara proteger el legajo histórico y la integridad contable del Grupo, este registro debe permanecer en estado inactivo.`,
+          textoConfirmar: 'Entendido',
+          textoCancelar: null,
+          cargando: false,
+          onCerrar: () => setModalConfirmacion(null),
+          onConfirmar: () => setModalConfirmacion(null),
+        });
+      } else {
+        setModalConfirmacion(null);
+        onToast(traducirErrorAmigable(err, 'No se pudo eliminar la sección.'), 'error');
+      }
     } finally {
       setProcesandoUnidadId(null);
     }
@@ -358,15 +461,28 @@ export const PanelAdminRamas: React.FC<Props> = ({
                       </button>
 
                       {inactiva ? (
-                        <button
-                          type="button"
-                          disabled={enProceso}
-                          onClick={() => handleReactivarRama(r)}
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
-                        >
-                          {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                          <span>Activar</span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            disabled={enProceso}
+                            onClick={() => handleReactivarRama(r)}
+                            className="min-h-[34px] px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
+                          >
+                            {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                            <span>Activar</span>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={enProceso}
+                            onClick={() => solicitarEliminarRama(r)}
+                            title="Eliminar definitivamente del sistema"
+                            aria-label={`Eliminar definitivamente rama ${r.nombre}`}
+                            className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors shadow-2xs focus-visible:ring-2 focus-visible:ring-rose-500 outline-none"
+                          >
+                            {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                            <span>Eliminar</span>
+                          </button>
+                        </>
                       ) : (
                         <button
                           type="button"
@@ -443,41 +559,67 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     </span>
                   </div>
 
-                  {puedeGestionar && (
-                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => abrirEditarUnidad(u)}
-                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span>Editar</span>
-                      </button>
+                  <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setSeccionHistorial(u)}
+                      title="Ver historial de miembros y educadores"
+                      aria-label={`Ver historial de ${u.nombre}`}
+                      className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 hover:text-ink border border-rule font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-2xs focus-visible:ring-2 focus-visible:ring-brand outline-none"
+                    >
+                      <History className="w-3.5 h-3.5 text-brand" />
+                      <span>Historial</span>
+                    </button>
 
-                      {inactiva ? (
+                    {puedeGestionar && (
+                      <>
                         <button
                           type="button"
-                          disabled={enProceso}
-                          onClick={() => handleReactivarUnidad(u)}
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
+                          onClick={() => abrirEditarUnidad(u)}
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold flex items-center gap-1 cursor-pointer transition-colors"
                         >
-                          {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                          <span>Activar</span>
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Editar</span>
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={enProceso}
-                          onClick={() => handleQuitarUnidad(u)}
-                          title="Desactivar sección"
-                          className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                        >
-                          {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-                          <span>Desactivar</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
+
+                        {inactiva ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={enProceso}
+                              onClick={() => handleReactivarUnidad(u)}
+                              className="min-h-[34px] px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors"
+                            >
+                              {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                              <span>Activar</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={enProceso}
+                              onClick={() => solicitarEliminarUnidad(u)}
+                              title="Eliminar definitivamente del sistema"
+                              aria-label={`Eliminar definitivamente sección ${u.nombre}`}
+                              className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50 transition-colors shadow-2xs focus-visible:ring-2 focus-visible:ring-rose-500 outline-none"
+                            >
+                              {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                              <span>Eliminar</span>
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={enProceso}
+                            onClick={() => handleQuitarUnidad(u)}
+                            title="Desactivar sección"
+                            className="min-h-[34px] px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                            <span>Desactivar</span>
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -794,6 +936,18 @@ export const PanelAdminRamas: React.FC<Props> = ({
           </div>
         </div>
       )}
+
+      {/* Modal Historial de Sección */}
+      {seccionHistorial && (
+        <ModalHistorialSeccion
+          unidadId={seccionHistorial.id}
+          seccionInicial={seccionHistorial}
+          onCerrar={() => setSeccionHistorial(null)}
+        />
+      )}
+
+      {/* Modal de Confirmación para Eliminación Definitiva o Alertas */}
+      {modalConfirmacion && <ModalConfirmacion {...modalConfirmacion} />}
     </div>
   );
 };

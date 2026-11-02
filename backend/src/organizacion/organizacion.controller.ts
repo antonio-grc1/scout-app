@@ -81,6 +81,15 @@ export class OrganizacionController {
     return this.org.listarUnidades(inc ?? false);
   }
 
+  @RequirePermission(VER)
+  @Get('unidades/:id/historial')
+  obtenerHistorialUnidad(
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.org.obtenerHistorialUnidad(a, id);
+  }
+
   @RequirePermission(GESTIONAR)
   @Post('unidades')
   crearUnidad(@Alcance() a: AlcanceAcceso, @Body(new ZodValidationPipe(CrearUnidadSchema)) dto: CrearUnidadDto) {

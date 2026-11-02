@@ -207,7 +207,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const esEgreso = useMemo(() => {
     if (candidatoPase?.tipo === 'EGRESO' || candidatoPase?.tipo === 'EGRESO_SIN_RAMA') return true;
     const edad = miembro?.fechaNacimiento ? calcularEdad(miembro.fechaNacimiento) : 0;
-    const esRover = miembro?.asignaciones?.[0]?.unidad?.rama?.nombre?.toLowerCase().includes('rover');
+    const asigActiva = miembro?.asignaciones?.find((a: any) => a.activo) ?? miembro?.asignaciones?.[0];
+    const esRover = asigActiva?.unidad?.rama?.nombre?.toLowerCase().includes('rover');
     return Boolean(esRover && (edad ?? 0) >= 21);
   }, [candidatoPase, miembro]);
 
@@ -227,7 +228,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     return jf.length > 0 ? jf : roles.filter((r) => !rolRequiereRama(r));
   }, [roles]);
 
-  const asignacionPrincipal = miembro?.asignaciones?.[0];
+  const asignacionPrincipal =
+    miembro?.asignaciones?.find((a: any) => a.activo) ?? miembro?.asignaciones?.[0];
 
   const esMismoDestino = useMemo(() => {
     if (!asignacionPrincipal) return false;
@@ -519,7 +521,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
       const currentRol = roles.find((r) => r.id === Number(rolDestinoId));
       if (!currentRol || !esRolRama(currentRol) || (esEgreso && !esRolDeEducador(currentRol))) {
-        const asig = miembro?.asignaciones?.[0];
+        const asig = asignacionPrincipal;
         const eraEdu = esRolDeEducador(asig?.rol);
         const rolDefecto = (eraEdu || esEgreso)
           ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
@@ -545,7 +547,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
     const currentRol = roles.find((r) => r.id === Number(rolDestinoId));
     if (!currentRol || !esRolRama(currentRol) || (esEgreso && !esRolDeEducador(currentRol))) {
-      const asig = miembro?.asignaciones?.[0];
+      const asig = asignacionPrincipal;
       const eraEdu = esRolDeEducador(asig?.rol);
       const rolDefecto = (eraEdu || esEgreso)
         ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))

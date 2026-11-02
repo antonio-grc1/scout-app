@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users, Save } from 'lucide-react';
+import { TrayectoriaMiembro } from './TrayectoriaMiembro';
 
 export interface FormDatosMiembro {
   nombre: string;
@@ -203,6 +204,9 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
           </div>
         )}
       </div>
+
+      {/* Trayectoria en el Grupo */}
+      <TrayectoriaMiembro asignaciones={miembro?.asignaciones} />
 
       {/* Estado Activo / Baja y Botón Guardar */}
       {puedeEditarMiembro && (
