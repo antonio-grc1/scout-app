@@ -10,8 +10,10 @@ import {
   Users2,
   Percent,
   HelpCircle,
+  PlusCircle,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { ModalCrearRubro } from './ModalCrearRubro';
 
 export interface ConceptoData {
   id?: number;
@@ -24,6 +26,8 @@ export interface ConceptoData {
   porcentajeDescuentoHermanos?: number | string | null;
   esParaEducadores?: boolean;
   unidadId?: number | null;
+  rubroId?: number | null;
+  rubro?: { id: number; nombre: string } | null;
   unidad?: { id: number; nombre: string } | null;
   _count?: { cargos: number };
 }
@@ -54,6 +58,9 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
 }) => {
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('CUOTA_MENSUAL');
+  const [rubroId, setRubroId] = useState<number | ''>('');
+  const [rubros, setRubros] = useState<Array<{ id: number; nombre: string; permiteDescuentoDefault: boolean }>>([]);
+  const [modalNuevoRubro, setModalNuevoRubro] = useState(false);
   const [montoBase, setMontoBase] = useState('');
   const [cicloAnio, setCicloAnio] = useState(new Date().getFullYear());
   const [fechaVencimiento, setFechaVencimiento] = useState('');
@@ -74,9 +81,17 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
   useEffect(() => {
     if (abierto) {
       setError(null);
+      api
+        .get('/tesoreria/rubros?tipo=INGRESO')
+        .then((res) => {
+          setRubros(Array.isArray(res.data) ? res.data : []);
+        })
+        .catch(() => {});
+
       if (concepto) {
         setNombre(concepto.nombre || '');
         setTipo(concepto.tipo || 'CUOTA_MENSUAL');
+        setRubroId(concepto.rubroId || '');
         setMontoBase(concepto.montoBase !== undefined ? String(concepto.montoBase) : '');
         setCicloAnio(concepto.cicloAnio || new Date().getFullYear());
         setFechaVencimiento(
@@ -109,6 +124,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
       } else {
         setNombre('');
         setTipo('CUOTA_MENSUAL');
+        setRubroId('');
         setMontoBase('');
         setCicloAnio(new Date().getFullYear());
         setFechaVencimiento('');
@@ -196,6 +212,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
         porcentajeDescuentoHermanos: pctDescuentoFinal,
         esParaEducadores: esParaEducadoresFinal,
         unidadId: unidadIdFinal,
+        rubroId: rubroId ? Number(rubroId) : undefined,
       };
 
       if (esEdicion && concepto?.id) {
@@ -261,21 +278,58 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-ink-2 mb-1.5">
-                Tipo de Concepto *
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-ink-2">
+                  Categoría / Tipo de Cobro *
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setModalNuevoRubro(true)}
+                  className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>+ Nueva Categoría</span>
+                </button>
+              </div>
               <div className="relative">
                 <Tag className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                 <select
-                  value={tipo}
-                  onChange={(e) => handleTipoChange(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  value={rubroId ? `RUBRO_${rubroId}` : tipo}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.startsWith('RUBRO_')) {
+                      const rId = Number(val.replace('RUBRO_', ''));
+                      setRubroId(rId);
+                      const r = rubros.find((x) => x.id === rId);
+                      if (r) {
+                        setTipo(r.nombre.toUpperCase().replace(/\s+/g, '_'));
+                        if (!esEdicion) {
+                          setPermiteDescuentoHermanos(r.permiteDescuentoDefault);
+                        }
+                      }
+                    } else {
+                      setRubroId('');
+                      handleTipoChange(val);
+                    }
+                  }}
+                  className="w-full pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors font-medium"
                 >
-                  {TIPOS_CONCEPTO.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
+                  {rubros.length > 0 && (
+                    <optgroup label="Categorías Personalizadas">
+                      {rubros.map((r) => (
+                        <option key={`rubro_${r.id}`} value={`RUBRO_${r.id}`}>
+                          {r.nombre} {r.permiteDescuentoDefault ? '(Con Desc.)' : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="Tipos Estándar">
+                    {TIPOS_CONCEPTO.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             </div>
@@ -498,6 +552,18 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
           </div>
         </form>
       </div>
+
+      <ModalCrearRubro
+        abierto={modalNuevoRubro}
+        tipoDefault="INGRESO"
+        onCerrar={() => setModalNuevoRubro(false)}
+        onRubroCreado={(nuevo) => {
+          setRubros((prev) => [...prev, { id: nuevo.id, nombre: nuevo.nombre, permiteDescuentoDefault: true }]);
+          setRubroId(nuevo.id);
+          setTipo(nuevo.nombre.toUpperCase().replace(/\s+/g, '_'));
+          setPermiteDescuentoHermanos(true);
+        }}
+      />
     </div>
   );
 };

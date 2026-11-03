@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Sparkles,
   Wallet,
+  Landmark,
 } from 'lucide-react';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 
@@ -53,6 +54,14 @@ const NOMBRES_MESES = [
   'Diciembre',
 ];
 
+interface CuentaSimple {
+  id: number;
+  nombre: string;
+  tipo: 'CAJA_EFECTIVO' | 'BANCO';
+  activa: boolean;
+  saldoActual: number;
+}
+
 export const ModalCobrarDeuda: React.FC<Props> = ({
   abierto,
   miembro,
@@ -65,6 +74,8 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
   const [usarSaldoAFavor, setUsarSaldoAFavor] = useState(false);
   const [montoTotalIngresado, setMontoTotalIngresado] = useState<number | ''>('');
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TRANSFERENCIA' | 'OTRO'>('EFECTIVO');
+  const [cuentas, setCuentas] = useState<CuentaSimple[]>([]);
+  const [cuentaId, setCuentaId] = useState<number | ''>('');
   const [referenciaComprobante, setReferenciaComprobante] = useState('');
   const [observaciones, setObservaciones] = useState('');
 
@@ -119,6 +130,50 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       recalcularMontoRecibidoPorDefecto(nuevaImputacion, tieneSaldo);
     }
   }, [abierto, cargoInicialId, cargosPendientes, saldoAFavorDisponible]);
+
+  // Cargar cuentas financieras activas
+  useEffect(() => {
+    if (abierto) {
+      api
+        .get('/tesoreria/cuentas')
+        .then((res) => {
+          const activas: CuentaSimple[] = (res.data || []).filter((c: CuentaSimple) => c.activa);
+          setCuentas(activas);
+        })
+        .catch(() => {
+          // Fallback silencioso
+        });
+    }
+  }, [abierto]);
+
+  // Seleccionar automáticamente la cuenta financiera según el método de pago
+  useEffect(() => {
+    if (metodoPago === 'TRANSFERENCIA') {
+      const bancos = cuentas.filter((c) => c.tipo === 'BANCO');
+      const principal =
+        bancos.find((c) => c.nombre.toLowerCase().includes('principal')) || bancos[0];
+      if (principal) {
+        setCuentaId(principal.id);
+      } else {
+        setCuentaId('');
+      }
+    } else if (metodoPago === 'EFECTIVO') {
+      const cajas = cuentas.filter((c) => c.tipo === 'CAJA_EFECTIVO');
+      const central =
+        cajas.find(
+          (c) =>
+            c.nombre.toLowerCase().includes('central') ||
+            c.nombre.toLowerCase().includes('chica'),
+        ) || cajas[0];
+      if (central) {
+        setCuentaId(central.id);
+      } else {
+        setCuentaId('');
+      }
+    } else {
+      setCuentaId('');
+    }
+  }, [metodoPago, cuentas]);
 
   if (!abierto) return null;
 
@@ -228,6 +283,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
         usuarioId: miembro.id,
         montoTotal: montoEfectivoFinal,
         metodoPago,
+        cuentaId: cuentaId ? Number(cuentaId) : undefined,
         usarSaldoAFavor: saldoAFavorAUsar > 0,
         montoSaldoAFavor: saldoAFavorAUsar,
         referenciaComprobante: referenciaComprobante.trim() || undefined,
@@ -493,6 +549,73 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                 </select>
               </div>
             </div>
+
+            {/* Selector o indicador de Cuenta Financiera según método de pago */}
+            {montoEfectivoFinal > 0 && metodoPago === 'TRANSFERENCIA' && (
+              <div className="p-3 rounded-xl bg-paper-2 border border-rule space-y-1.5 animate-in fade-in">
+                <label className="block text-xs font-bold text-ink-2 flex items-center gap-1.5">
+                  <Landmark className="w-3.5 h-3.5 text-brand" />
+                  <span>Cuenta Bancaria Destino</span>
+                </label>
+                <select
+                  value={cuentaId}
+                  onChange={(e) => setCuentaId(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full min-h-[38px] rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                >
+                  {cuentas
+                    .filter((c) => c.tipo === 'BANCO')
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre} (Saldo: {formatearMoneda(c.saldoActual)})
+                      </option>
+                    ))}
+                  {cuentas.filter((c) => c.tipo === 'BANCO').length === 0 && (
+                    <option value="">Banco Principal (por defecto)</option>
+                  )}
+                </select>
+                <p className="text-[11px] text-ink-muted">
+                  El cobro se acreditará como ingreso en el libro diario de esta cuenta bancaria.
+                </p>
+              </div>
+            )}
+
+            {montoEfectivoFinal > 0 && metodoPago === 'EFECTIVO' && (
+              <div className="p-3 rounded-xl bg-paper-2 border border-rule space-y-1.5 animate-in fade-in">
+                <label className="block text-xs font-bold text-ink-2 flex items-center gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-brand" />
+                  <span>Cuenta de Efectivo / Caja Chica</span>
+                </label>
+                {cuentas.filter((c) => c.tipo === 'CAJA_EFECTIVO').length > 1 ? (
+                  <select
+                    value={cuentaId}
+                    onChange={(e) => setCuentaId(e.target.value === '' ? '' : Number(e.target.value))}
+                    className="w-full min-h-[38px] rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  >
+                    {cuentas
+                      .filter((c) => c.tipo === 'CAJA_EFECTIVO')
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.nombre} (Saldo: {formatearMoneda(c.saldoActual)})
+                        </option>
+                      ))}
+                  </select>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-ink bg-surface p-2 rounded-lg border border-rule">
+                    <span className="font-bold">
+                      {cuentas.find((c) => c.id === cuentaId)?.nombre || 'Caja Chica Central'}
+                    </span>
+                    {cuentas.find((c) => c.id === cuentaId)?.saldoActual !== undefined && (
+                      <span className="text-ink-muted text-[11px]">
+                        Saldo: {formatearMoneda(cuentas.find((c) => c.id === cuentaId)?.saldoActual)}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <p className="text-[11px] text-ink-muted">
+                  El cobro se acreditará en el libro diario de la caja física.
+                </p>
+              </div>
+            )}
 
             {/* Banner de Excedente o Adelanto como Saldo a Favor */}
             {excedenteSaldoAFavor > 0 && (

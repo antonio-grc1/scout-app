@@ -39,6 +39,19 @@ enum MetodoPago {
   OTRO
 }
 
+enum TipoCuenta {
+  CAJA_EFECTIVO
+  BANCO
+}
+
+enum TipoMovimientoFinanciero {
+  INGRESO_COBRANZA
+  INGRESO_OTRO
+  EGRESO_GASTO
+  TRANSFERENCIA_SALIDA
+  TRANSFERENCIA_ENTRADA
+}
+
 model Rama {
   id               Int                  @id @default(autoincrement())
   nombre           String               @db.VarChar(100)
@@ -61,6 +74,7 @@ model UnidadOrganizativa {
   asignaciones AsignacionMiembro[]
   conceptos    ConceptoCuota[]
   planesCuota  PlanCuotaMensual[]
+  rubros       RubroContable[]
 
   @@map("unidades_organizativas")
 }
@@ -96,8 +110,14 @@ model Usuario {
   entregas            EntregaFormulario[] @relation("EntregasPropias")
   entregasValidadas   EntregaFormulario[] @relation("EntregasValidadas")
   cargos              CargoMiembro[]
-  pagosRegistrados    Pago[]              @relation("PagosRegistrados")
-  pagosTitular        Pago[]              @relation("PagosTitular")
+  pagosRegistrados    Pago[]                 @relation("PagosRegistrados")
+  pagosTitular        Pago[]                 @relation("PagosTitular")
+  movimientosCreados  MovimientoFinanciero[] @relation("MovimientosCreados")
+  gastosRegistrados   Gasto[]                @relation("GastosRegistrados")
+  eventosCreados      Evento[]               @relation("EventosCreados")
+  pedidosVendidos     PedidoEvento[]         @relation("PedidosVendidos")
+  pedidosRegistrados  PedidoEvento[]         @relation("PedidosRegistrados")
+  ticketsValidados    TicketEvento[]         @relation("TicketsValidados")
 
   @@index([dni])
   @@map("usuarios")
@@ -141,6 +161,7 @@ model AsignacionMiembro {
   unidadId        Int                @map("unidad_id")
   rolId           Int                @map("rol_id")
   alcanceOverride AlcanceRol?        @map("alcance_override")
+  camada          Int?
   cicloAnio       Int                @map("ciclo_anio")
   fechaInicio     DateTime           @default(now()) @map("fecha_inicio") @db.Date
   fechaFin        DateTime?          @map("fecha_fin") @db.Date
@@ -204,7 +225,9 @@ model ConceptoCuota {
   destinatarioTipo            String              @default("TODOS") @map("destinatario_tipo") @db.VarChar(30)
   excepcionesJson             Json                @default("[]") @map("excepciones_json")
   unidadId                    Int?                @map("unidad_id")
+  rubroId                     Int?                @map("rubro_id")
   unidad                      UnidadOrganizativa? @relation(fields: [unidadId], references: [id])
+  rubro                       RubroContable?      @relation(fields: [rubroId], references: [id], onDelete: SetNull)
   planCuotaMensual            PlanCuotaMensual?   @relation(fields: [planCuotaMensualId], references: [id], onDelete: Cascade)
   cargos                      CargoMiembro[]
 
@@ -239,8 +262,9 @@ model Pago {
   observaciones          String?          @db.Text
 
   registradoPor          Usuario          @relation("PagosRegistrados", fields: [registradoPorUsuarioId], references: [id])
-  usuario                Usuario?         @relation("PagosTitular", fields: [usuarioId], references: [id])
+  usuario                Usuario?               @relation("PagosTitular", fields: [usuarioId], references: [id])
   imputaciones           PagoImputacion[]
+  movimientos            MovimientoFinanciero[]
 
   @@map("pagos")
 }
@@ -270,11 +294,245 @@ model PlanCuotaMensual {
   porcentajeDescuentoHermanos Decimal?            @map("porcentaje_descuento_hermanos") @db.Decimal(5, 2)
   excepcionesJson             Json                @default("[]") @map("excepciones_json")
   activa                      Boolean             @default(true)
+  rubroId                     Int?                @map("rubro_id")
   createdAt                   DateTime            @default(now()) @map("created_at")
   updatedAt                   DateTime            @updatedAt @map("updated_at")
 
   unidad                      UnidadOrganizativa? @relation(fields: [unidadId], references: [id])
+  rubro                       RubroContable?      @relation(fields: [rubroId], references: [id], onDelete: SetNull)
   conceptos                   ConceptoCuota[]
 
   @@map("planes_cuota_mensual")
+}
+
+model CuentaFinanciera {
+  id            Int                    @id @default(autoincrement())
+  nombre        String                 @db.VarChar(100)
+  tipo          TipoCuenta
+  activa        Boolean                @default(true)
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  movimientos   MovimientoFinanciero[]
+  gastos        Gasto[]
+  eventos       Evento[]
+  pedidosEvento PedidoEvento[]
+
+  @@map("cuentas_financieras")
+}
+
+model MovimientoFinanciero {
+  id                 Int                      @id @default(autoincrement())
+  cuentaId           Int                      @map("cuenta_id")
+  fecha              DateTime                 @default(now()) @map("fecha")
+  tipo               TipoMovimientoFinanciero
+  montoIngreso       Decimal                  @default(0.00) @map("monto_ingreso") @db.Decimal(12, 2)
+  montoEgreso        Decimal                  @default(0.00) @map("monto_egreso") @db.Decimal(12, 2)
+  conceptoTexto      String                   @map("concepto_texto") @db.VarChar(300)
+  pagoId             Int?                     @map("pago_id")
+  gastoId            Int?                     @map("gasto_id")
+  rubroId            Int?                     @map("rubro_id")
+  pedidoEventoId     Int?                     @map("pedido_evento_id")
+  creadoPorUsuarioId Int                      @map("creado_por_usuario_id")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+
+  cuenta             CuentaFinanciera         @relation(fields: [cuentaId], references: [id], onDelete: Restrict)
+  pago               Pago?                    @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  gasto              Gasto?                   @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  rubro              RubroContable?           @relation(fields: [rubroId], references: [id], onDelete: SetNull)
+  pedidoEvento       PedidoEvento?            @relation(fields: [pedidoEventoId], references: [id], onDelete: Cascade)
+  creadoPor          Usuario                  @relation("MovimientosCreados", fields: [creadoPorUsuarioId], references: [id])
+
+  @@index([cuentaId, fecha])
+  @@index([pagoId])
+  @@index([gastoId])
+  @@index([rubroId])
+  @@index([pedidoEventoId])
+  @@map("movimientos_financieros")
+}
+
+enum TipoRubro {
+  INGRESO
+  EGRESO
+}
+
+model RubroContable {
+  id                      Int                    @id @default(autoincrement())
+  nombre                  String                 @db.VarChar(100)
+  tipo                    TipoRubro
+  unidadId                Int?                   @map("unidad_id")
+  permiteDescuentoDefault Boolean                @default(false) @map("permite_descuento_default")
+  activo                  Boolean                @default(true)
+  createdAt               DateTime               @default(now()) @map("created_at")
+  updatedAt               DateTime               @updatedAt @map("updated_at")
+
+  unidad                  UnidadOrganizativa?    @relation(fields: [unidadId], references: [id], onDelete: SetNull)
+  conceptos               ConceptoCuota[]
+  planesCuota             PlanCuotaMensual[]
+  gastos                  Gasto[]
+  movimientos             MovimientoFinanciero[]
+  eventos                 Evento[]
+
+  @@unique([nombre, tipo])
+  @@map("rubros_contables")
+}
+
+model Gasto {
+  id                 Int                    @id @default(autoincrement())
+  fecha              DateTime               @default(now()) @map("fecha")
+  monto              Decimal                @db.Decimal(12, 2)
+  descripcion        String                 @db.VarChar(300)
+  rubroId            Int                    @map("rubro_id")
+  cuentaId           Int                    @map("cuenta_id")
+  comprobanteNro     String?                @map("comprobante_nro") @db.VarChar(100)
+  comprobanteUrl     String?                @map("comprobante_url") @db.VarChar(500)
+  anulado            Boolean                @default(false)
+  registradoPorId    Int                    @map("registrado_por_id")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @updatedAt @map("updated_at")
+
+  rubro              RubroContable          @relation(fields: [rubroId], references: [id], onDelete: Restrict)
+  cuenta             CuentaFinanciera       @relation(fields: [cuentaId], references: [id], onDelete: Restrict)
+  registradoPor      Usuario                @relation("GastosRegistrados", fields: [registradoPorId], references: [id])
+  movimientos        MovimientoFinanciero[]
+
+  @@index([fecha])
+  @@index([rubroId])
+  @@index([cuentaId])
+  @@map("gastos")
+}
+
+// -------------------------------------------------------------
+// EVENTOS ECONÓMICOS, PEDIDOS Y TICKETS QR (FASE 4)
+// -------------------------------------------------------------
+
+enum TipoEvento {
+  RECAUDACION_PEDIDOS
+  FESTIVAL_ENTRADAS
+}
+
+enum EstadoEvento {
+  BORRADOR
+  PUBLICADO
+  FINALIZADO
+  CANCELADO
+}
+
+enum EstadoPedidoEvento {
+  PENDIENTE
+  PAGADO
+  CANCELADO
+}
+
+enum EstadoTicketEvento {
+  ACTIVO
+  UTILIZADO
+  CANCELADO
+}
+
+model Evento {
+  id                 Int              @id @default(autoincrement())
+  titulo             String           @db.VarChar(150)
+  descripcion        String?          @db.Text
+  tipo               TipoEvento       @default(RECAUDACION_PEDIDOS)
+  estado             EstadoEvento     @default(BORRADOR)
+  fechaEvento        DateTime         @map("fecha_evento")
+  fechaFin           DateTime?        @map("fecha_fin")
+  lugarEntrega       String?          @map("lugar_entrega") @db.VarChar(200)
+  rubroId            Int?             @map("rubro_id")
+  cuentaId           Int?             @map("cuenta_id")
+  creadoPorUsuarioId Int              @map("creado_por_usuario_id")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  rubro              RubroContable?   @relation(fields: [rubroId], references: [id], onDelete: SetNull)
+  cuenta             CuentaFinanciera? @relation(fields: [cuentaId], references: [id], onDelete: SetNull)
+  creadoPor          Usuario          @relation("EventosCreados", fields: [creadoPorUsuarioId], references: [id])
+  items              ItemEvento[]
+  pedidos            PedidoEvento[]
+
+  @@map("eventos")
+}
+
+model ItemEvento {
+  id               Int                   @id @default(autoincrement())
+  eventoId         Int                   @map("evento_id")
+  nombre           String                @db.VarChar(100)
+  descripcion      String?               @db.Text
+  precioVenta      Decimal               @map("precio_venta") @db.Decimal(12, 2)
+  costoUnitario    Decimal               @default(0.00) @map("costo_unitario") @db.Decimal(12, 2)
+  gananciaUnitaria Decimal               @default(0.00) @map("ganancia_unitaria") @db.Decimal(12, 2)
+  stockTotal       Int?                  @map("stock_total")
+  stockDisponible  Int?                  @map("stock_disponible")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  evento           Evento                @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  detallesPedido   DetallePedidoEvento[]
+  tickets          TicketEvento[]
+
+  @@map("items_evento")
+}
+
+model PedidoEvento {
+  id                     Int                   @id @default(autoincrement())
+  eventoId               Int                   @map("evento_id")
+  compradorNombre        String                @map("comprador_nombre") @db.VarChar(120)
+  compradorContacto      String?               @map("comprador_contacto") @db.VarChar(100)
+  vendedorUsuarioId      Int?                  @map("vendedor_usuario_id")
+  total                  Decimal               @db.Decimal(12, 2)
+  totalGanancia          Decimal               @default(0.00) @map("total_ganancia") @db.Decimal(12, 2)
+  gananciaAcreditada     Boolean               @default(false) @map("ganancia_acreditada")
+  fechaAcreditacion      DateTime?             @map("fecha_acreditacion")
+  estado                 EstadoPedidoEvento    @default(PENDIENTE)
+  metodoPago             MetodoPago?           @map("metodo_pago")
+  cuentaId               Int?                  @map("cuenta_id")
+  registradoPorUsuarioId Int                   @map("registrado_por_usuario_id")
+  observaciones          String?               @db.Text
+  createdAt              DateTime              @default(now()) @map("created_at")
+  updatedAt              DateTime              @updatedAt @map("updated_at")
+
+  evento                 Evento                @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  vendedorUsuario        Usuario?              @relation("PedidosVendidos", fields: [vendedorUsuarioId], references: [id])
+  registradoPor          Usuario               @relation("PedidosRegistrados", fields: [registradoPorUsuarioId], references: [id])
+  cuenta                 CuentaFinanciera?     @relation(fields: [cuentaId], references: [id], onDelete: SetNull)
+  detalles               DetallePedidoEvento[]
+  tickets                TicketEvento[]
+  movimientos            MovimientoFinanciero[]
+
+  @@map("pedidos_evento")
+}
+
+model DetallePedidoEvento {
+  id               Int          @id @default(autoincrement())
+  pedidoId         Int          @map("pedido_id")
+  itemId           Int          @map("item_id")
+  cantidad         Int
+  precioUnitario   Decimal      @map("precio_unitario") @db.Decimal(12, 2)
+  subtotal         Decimal      @db.Decimal(12, 2)
+  gananciaUnitaria Decimal      @default(0.00) @map("ganancia_unitaria") @db.Decimal(12, 2)
+  subtotalGanancia Decimal      @default(0.00) @map("subtotal_ganancia") @db.Decimal(12, 2)
+
+  pedido           PedidoEvento @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  item             ItemEvento   @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@map("detalles_pedido_evento")
+}
+
+model TicketEvento {
+  id                 Int                @id @default(autoincrement())
+  pedidoId           Int                @map("pedido_id")
+  itemId             Int                @map("item_id")
+  tokenQr            String             @unique @map("token_qr") @db.VarChar(120)
+  cantidad           Int                @default(1)
+  estado             EstadoTicketEvento @default(ACTIVO)
+  fechaUso           DateTime?          @map("fecha_uso")
+  validadorUsuarioId Int?               @map("validador_usuario_id")
+  createdAt          DateTime           @default(now()) @map("created_at")
+
+  pedido             PedidoEvento       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  item               ItemEvento         @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  validador          Usuario?           @relation("TicketsValidados", fields: [validadorUsuarioId], references: [id])
+
+  @@map("tickets_evento")
 }
