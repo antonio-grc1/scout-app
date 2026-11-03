@@ -8,7 +8,7 @@
  * Ejecutar con: npx prisma db seed
  */
 import 'dotenv/config';
-import { AlcanceRol, PrismaClient, TipoUnidad } from '@prisma/client';
+import { AlcanceRol, PrismaClient, TipoCuenta, TipoRubro, TipoUnidad } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { seedPlantillaOficial } from './plantilla-oficial-2026.js';
 import { seedDemo } from './seed-demo.js';
@@ -270,6 +270,86 @@ async function seedAdmin(unidadIds: Map<string, number>, rolIds: Map<string, num
   console.log(`👤 Jefe de Grupo inicial: DNI ${dni}`);
 }
 
+// ---------------------------------------------------------------------------
+// 8. Cuentas Financieras Base (Tesorería - Fase 1)
+// ---------------------------------------------------------------------------
+const CUENTAS_BASE = [
+  { nombre: 'Caja Chica Central', tipo: TipoCuenta.CAJA_EFECTIVO, activa: true },
+  { nombre: 'Banco Principal', tipo: TipoCuenta.BANCO, activa: true },
+] as const;
+
+async function seedCuentasFinancieras(): Promise<number> {
+  let creadas = 0;
+  for (const c of CUENTAS_BASE) {
+    const existe = await prisma.cuentaFinanciera.findFirst({
+      where: { nombre: c.nombre },
+    });
+    if (!existe) {
+      await prisma.cuentaFinanciera.create({
+        data: {
+          nombre: c.nombre,
+          tipo: c.tipo,
+          activa: c.activa,
+        },
+      });
+      creadas++;
+    }
+  }
+  return creadas;
+}
+
+// ---------------------------------------------------------------------------
+// 9. Rubros Contables Base (Tesorería - Fase 2)
+// ---------------------------------------------------------------------------
+const RUBROS_BASE = [
+  // Rubros de Ingreso (Categorías de Cobro)
+  { nombre: 'Cuota Social', tipo: TipoRubro.INGRESO, permiteDescuentoDefault: true },
+  { nombre: 'Campamento', tipo: TipoRubro.INGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Afiliación Nacional', tipo: TipoRubro.INGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Inscripción y Matrícula', tipo: TipoRubro.INGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Indumentaria e Insignias', tipo: TipoRubro.INGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Bono Contribución', tipo: TipoRubro.INGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Otro Ingreso', tipo: TipoRubro.INGRESO, permiteDescuentoDefault: false },
+
+  // Rubros de Egreso (Gastos Operativos)
+  { nombre: 'Programa Manada', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Programa Scout', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Programa Caminante', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Programa Rover', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Mantenimiento y Sede', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Comida e Insumos', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Transporte y Logística', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Administración y Papelería', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Afiliación Nacional (Gasto Central)', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+  { nombre: 'Otro Gasto', tipo: TipoRubro.EGRESO, permiteDescuentoDefault: false },
+] as const;
+
+async function seedRubrosContables(): Promise<number> {
+  let creados = 0;
+  for (const r of RUBROS_BASE) {
+    const existe = await prisma.rubroContable.findUnique({
+      where: {
+        nombre_tipo: {
+          nombre: r.nombre,
+          tipo: r.tipo,
+        },
+      },
+    });
+    if (!existe) {
+      await prisma.rubroContable.create({
+        data: {
+          nombre: r.nombre,
+          tipo: r.tipo,
+          permiteDescuentoDefault: r.permiteDescuentoDefault,
+          activo: true,
+        },
+      });
+      creados++;
+    }
+  }
+  return creados;
+}
+
 async function main(): Promise<void> {
   const ramaIds = await seedRamas();
   console.log(`🌿 Ramas: ${ramaIds.size}`);
@@ -281,6 +361,10 @@ async function main(): Promise<void> {
   console.log(`🎖️  Roles: ${rolIds.size}`);
   await seedAdmin(unidadIds, rolIds);
   await seedPlantillaOficial(prisma);
+  const cuentasCreadas = await seedCuentasFinancieras();
+  console.log(`💰 Cuentas financieras base inicializadas (nuevas: ${cuentasCreadas})`);
+  const rubrosCreados = await seedRubrosContables();
+  console.log(`📑 Rubros contables base inicializados (nuevos: ${rubrosCreados})`);
   if (process.env.SEED_DEMO === 'true') {
     await seedDemo(prisma);
   }

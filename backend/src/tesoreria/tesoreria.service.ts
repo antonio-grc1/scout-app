@@ -5,16 +5,41 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { AlcanceRol, EstadoCargo, MetodoPago, Prisma } from '@prisma/client';
+import {
+  AlcanceRol,
+  EstadoCargo,
+  EstadoEvento,
+  EstadoPedidoEvento,
+  EstadoTicketEvento,
+  MetodoPago,
+  Prisma,
+  TipoCuenta,
+  TipoEvento,
+  TipoMovimientoFinanciero,
+  TipoRubro,
+} from '@prisma/client';
+import { generateTokenQR, verifyTokenQR } from '../common/utils/qr-token.util.js';
 import { assertUnidadEnAlcance, filtroUsuariosPorAlcance } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
+  AcreditarGananciasEventoDto,
+  ActualizarCuentaFinancieraDto,
   ActualizarDescuentoFamiliaDto,
+  ActualizarEventoDto,
+  ActualizarPedidoEventoDto,
+  ActualizarRubroContableDto,
   AjustarSaldoAFavorDto,
   AplicarSaldoAFavorDto,
+  ConsultaCuadroResultadosQueryDto,
+  ConsultaLibroDiarioQueryDto,
   CrearConceptoDto,
+  CrearCuentaFinancieraDto,
+  CrearEventoDto,
+  CrearPedidoEventoDto,
   CrearPlanCuotaMensualDto,
+  CrearRubroContableDto,
+  CrearTransferenciaDto,
   DesvincularHermanoDto,
   EditarCargoIndividualDto,
   EditarConceptoDto,
@@ -23,8 +48,12 @@ import type {
   GenerarCargoIndividualDto,
   GenerarCargosDto,
   ListarCargosQueryDto,
+  ListarGastosQueryDto,
+  ListarRubrosQueryDto,
+  RegistrarGastoDto,
   RegistrarPagoDto,
   SincronizarMesesPlanDto,
+  ValidarTicketQrDto,
   VincularHermanoDto,
 } from './tesoreria.dto.js';
 
@@ -565,6 +594,7 @@ export class TesoreriaService {
       orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
       include: {
         unidad: { select: { id: true, nombre: true } },
+        rubro: { select: { id: true, nombre: true } },
         conceptos: {
           orderBy: { mes: 'asc' },
           include: {
@@ -616,6 +646,7 @@ export class TesoreriaService {
           mesesHabilitadosJson: mesesUnicos,
           destinatarioTipo: dto.destinatarioTipo,
           unidadId: dto.unidadId ?? null,
+          rubroId: dto.rubroId ?? null,
           permiteDescuentoHermanos: dto.permiteDescuentoHermanos ?? true,
           porcentajeDescuentoHermanos:
             dto.porcentajeDescuentoHermanos !== undefined && dto.porcentajeDescuentoHermanos !== null
@@ -712,6 +743,7 @@ export class TesoreriaService {
           mesesHabilitadosJson: mesesFinales,
           destinatarioTipo: dto.destinatarioTipo,
           unidadId: dto.unidadId !== undefined ? dto.unidadId : undefined,
+          rubroId: dto.rubroId !== undefined ? dto.rubroId : undefined,
           permiteDescuentoHermanos: dto.permiteDescuentoHermanos,
           porcentajeDescuentoHermanos:
             dto.porcentajeDescuentoHermanos !== undefined
@@ -785,6 +817,7 @@ export class TesoreriaService {
       planCuotaMensualId: plan.id,
       destinatarioTipo: plan.destinatarioTipo,
       unidadId: plan.unidadId,
+      rubroId: plan.rubroId ?? null,
       permiteDescuentoHermanos: plan.permiteDescuentoHermanos,
       porcentajeDescuentoHermanos: plan.porcentajeDescuentoHermanos,
       excepcionesJson: plan.excepcionesJson,
@@ -827,6 +860,7 @@ export class TesoreriaService {
       orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
       include: {
         unidad: { select: { id: true, nombre: true } },
+        rubro: { select: { id: true, nombre: true } },
         _count: { select: { cargos: true } },
         cargos: {
           select: {
@@ -877,6 +911,7 @@ export class TesoreriaService {
             mes: dto.mes ?? null,
             planCuotaMensualId: dto.planCuotaMensualId ?? null,
             unidadId: dto.unidadId ?? null,
+            rubroId: dto.rubroId ?? null,
           },
           include: { unidad: { select: { id: true, nombre: true } } },
         });
@@ -904,6 +939,7 @@ export class TesoreriaService {
         mes: dto.mes ?? null,
         planCuotaMensualId: dto.planCuotaMensualId ?? null,
         unidadId: dto.unidadId ?? null,
+        rubroId: dto.rubroId ?? null,
       },
       include: { unidad: { select: { id: true, nombre: true } } },
     });
@@ -956,6 +992,9 @@ export class TesoreriaService {
     }
     if (dto.unidadId !== undefined) {
       data.unidad = dto.unidadId ? { connect: { id: dto.unidadId } } : { disconnect: true };
+    }
+    if (dto.rubroId !== undefined) {
+      data.rubro = dto.rubroId ? { connect: { id: dto.rubroId } } : { disconnect: true };
     }
 
     if (this.prisma.$transaction && dto.sincronizarCargos !== false) {
@@ -1978,7 +2017,7 @@ export class TesoreriaService {
                     montoFinal: true,
                     montoPagado: true,
                     estado: true,
-                    concepto: { select: { id: true, nombre: true } },
+                    concepto: { select: { id: true, nombre: true, rubroId: true } },
                     usuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
                   },
                 },
@@ -1986,6 +2025,119 @@ export class TesoreriaService {
             },
           },
         });
+
+        // Generar movimiento financiero si ingresó dinero físico o bancario
+        if (montoTotalRedondeado > 0 && tx.movimientoFinanciero?.create) {
+          let targetCuentaId: number | null = null;
+          if (tx.cuentaFinanciera?.findFirst) {
+            if (dto.metodoPago === MetodoPago.EFECTIVO) {
+              if (dto.cuentaId) {
+                const c = await tx.cuentaFinanciera.findFirst({
+                  where: { id: dto.cuentaId, activa: true, tipo: TipoCuenta.CAJA_EFECTIVO },
+                });
+                if (!c) throw new BadRequestException('La cuenta seleccionada no corresponde a una caja de efectivo activa');
+                targetCuentaId = c.id;
+              } else {
+                let c = await tx.cuentaFinanciera.findFirst({
+                  where: { activa: true, tipo: TipoCuenta.CAJA_EFECTIVO },
+                  orderBy: { id: 'asc' },
+                });
+                if (!c && tx.cuentaFinanciera.create) {
+                  c = await tx.cuentaFinanciera.create({
+                    data: { nombre: 'Caja Chica Central', tipo: TipoCuenta.CAJA_EFECTIVO, activa: true },
+                  });
+                }
+                if (c) targetCuentaId = c.id;
+              }
+            } else if (dto.metodoPago === MetodoPago.TRANSFERENCIA) {
+              if (dto.cuentaId) {
+                const c = await tx.cuentaFinanciera.findFirst({
+                  where: { id: dto.cuentaId, activa: true, tipo: TipoCuenta.BANCO },
+                });
+                if (!c) throw new BadRequestException('La cuenta bancaria seleccionada no es válida o no está activa');
+                targetCuentaId = c.id;
+              } else {
+                let c = await tx.cuentaFinanciera.findFirst({
+                  where: { activa: true, tipo: TipoCuenta.BANCO },
+                  orderBy: { id: 'asc' },
+                });
+                if (!c && tx.cuentaFinanciera.create) {
+                  c = await tx.cuentaFinanciera.create({
+                    data: { nombre: 'Banco Principal', tipo: TipoCuenta.BANCO, activa: true },
+                  });
+                }
+                if (c) targetCuentaId = c.id;
+              }
+            } else {
+              if (dto.cuentaId) {
+                const c = await tx.cuentaFinanciera.findFirst({
+                  where: { id: dto.cuentaId, activa: true },
+                });
+                if (!c) throw new BadRequestException('La cuenta seleccionada no es válida o no está activa');
+                targetCuentaId = c.id;
+              } else {
+                const c = await tx.cuentaFinanciera.findFirst({
+                  where: { activa: true, tipo: TipoCuenta.CAJA_EFECTIVO },
+                  orderBy: { id: 'asc' },
+                });
+                if (c) targetCuentaId = c.id;
+              }
+            }
+          }
+
+          if (targetCuentaId) {
+            let nombreMiembro = '';
+            if (targetUsuarioId && tx.usuario?.findUnique) {
+              const u = await tx.usuario.findUnique({
+                where: { id: targetUsuarioId },
+                select: { id: true, nombre: true, apellido: true },
+              });
+              if (u?.nombre) {
+                nombreMiembro = `${u.nombre} ${u.apellido ?? ''}`.trim();
+              }
+            }
+
+            const imputacionesList: any[] = Array.isArray(pago.imputaciones)
+              ? pago.imputaciones
+              : Array.isArray((pago.imputaciones as any)?.create)
+              ? (pago.imputaciones as any).create
+              : [];
+
+            if (!nombreMiembro && imputacionesList[0]?.cargo?.usuario?.nombre) {
+              const cu = imputacionesList[0].cargo.usuario;
+              nombreMiembro = `${cu.nombre} ${cu.apellido ?? ''}`.trim();
+            }
+
+            const nombresConceptos = Array.from(
+              new Set(
+                imputacionesList
+                  .map((imp: any) => imp.cargo?.concepto?.nombre)
+                  .filter(Boolean),
+              ),
+            );
+
+            const detalleConcepto =
+              nombresConceptos.length > 0
+                ? `Cobro: ${nombresConceptos.join(', ')}`
+                : 'Cobro cuota';
+
+            const titularTexto = nombreMiembro ? ` - ${nombreMiembro}` : '';
+            const refTexto = dto.referenciaComprobante ? ` - Ref: ${dto.referenciaComprobante}` : '';
+            await tx.movimientoFinanciero.create({
+              data: {
+                cuentaId: targetCuentaId,
+                fecha: pago.fechaPago ?? new Date(),
+                tipo: TipoMovimientoFinanciero.INGRESO_COBRANZA,
+                montoIngreso: redondearDosDecimales(montoTotalRedondeado),
+                montoEgreso: 0,
+                conceptoTexto: `${detalleConcepto}${titularTexto}${refTexto}`,
+                pagoId: pago.id,
+                rubroId: imputacionesList[0]?.cargo?.concepto?.rubroId ?? null,
+                creadoPorUsuarioId: actor.sub,
+              },
+            });
+          }
+        }
 
         return {
           ...pago,
@@ -2214,7 +2366,14 @@ export class TesoreriaService {
         }
       }
 
-      // 3. Eliminar el pago (cascada borra sus PagoImputacion)
+      // 3. Eliminar explícitamente cualquier movimiento financiero asociado al pago
+      if (tx.movimientoFinanciero?.deleteMany) {
+        await tx.movimientoFinanciero.deleteMany({
+          where: { pagoId: pago.id },
+        });
+      }
+
+      // 4. Eliminar el pago (cascada borra sus PagoImputacion)
       await tx.pago.delete({ where: { id: pago.id } });
 
       return {
@@ -2427,6 +2586,1660 @@ export class TesoreriaService {
           },
         },
       },
+    });
+  }
+
+  // ===========================================================================
+  // 7. MOTOR FINANCIERO: CUENTAS, LIBRO DIARIO Y TRANSFERENCIAS (FASE 1)
+  // ===========================================================================
+
+  async listarCuentasFinancieras(alcance: AlcanceAcceso, incluirInactivas?: boolean) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver las cuentas de tesorería');
+    }
+
+    const cuentas = await this.prisma.cuentaFinanciera.findMany({
+      where: incluirInactivas ? {} : { activa: true },
+      orderBy: { id: 'asc' },
+    });
+
+    const agregados = await this.prisma.movimientoFinanciero.groupBy({
+      by: ['cuentaId'],
+      _sum: { montoIngreso: true, montoEgreso: true },
+      _count: { id: true },
+    });
+
+    const aggMap = new Map(
+      agregados.map((a) => [
+        a.cuentaId,
+        {
+          ingreso: Number(a._sum.montoIngreso ?? 0),
+          egreso: Number(a._sum.montoEgreso ?? 0),
+          cantidad: a._count.id,
+        },
+      ]),
+    );
+
+    return cuentas.map((c) => {
+      const agg = aggMap.get(c.id) ?? { ingreso: 0, egreso: 0, cantidad: 0 };
+      const totalIngresos = round2(agg.ingreso);
+      const totalEgresos = round2(agg.egreso);
+      const saldoActual = round2(totalIngresos - totalEgresos);
+
+      return {
+        id: c.id,
+        nombre: c.nombre,
+        tipo: c.tipo,
+        activa: c.activa,
+        saldoActual,
+        totalIngresos,
+        totalEgresos,
+        cantidadMovimientos: agg.cantidad,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      };
+    });
+  }
+
+  async crearCuentaFinanciera(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearCuentaFinancieraDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para administrar cuentas');
+    }
+
+    const existe = await this.prisma.cuentaFinanciera.findFirst({
+      where: { nombre: { equals: dto.nombre, mode: 'insensitive' } },
+    });
+    if (existe) {
+      throw new ConflictException(`Ya existe una cuenta con el nombre "${dto.nombre}"`);
+    }
+
+    return this.prisma.cuentaFinanciera.create({
+      data: {
+        nombre: dto.nombre,
+        tipo: dto.tipo,
+        activa: true,
+      },
+    });
+  }
+
+  async actualizarCuentaFinanciera(
+    actor: AuthUser,
+    alcance: AlcanceAcceso,
+    id: number,
+    dto: ActualizarCuentaFinancieraDto,
+  ) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para administrar cuentas');
+    }
+
+    const cuenta = await this.prisma.cuentaFinanciera.findUnique({ where: { id } });
+    if (!cuenta) {
+      throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
+    }
+
+    if (dto.activa === false && cuenta.activa) {
+      const agg = await this.prisma.movimientoFinanciero.aggregate({
+        where: { cuentaId: id },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      const saldo = round2(Number(agg._sum.montoIngreso ?? 0) - Number(agg._sum.montoEgreso ?? 0));
+      if (Math.abs(saldo) > 0.001) {
+        throw new BadRequestException(
+          'No se puede desactivar una cuenta con saldo no nulo. Transfiera los fondos antes de desactivarla',
+        );
+      }
+    }
+
+    if (dto.nombre && dto.nombre.toLowerCase() !== cuenta.nombre.toLowerCase()) {
+      const existe = await this.prisma.cuentaFinanciera.findFirst({
+        where: { id: { not: id }, nombre: { equals: dto.nombre, mode: 'insensitive' } },
+      });
+      if (existe) {
+        throw new ConflictException(`Ya existe otra cuenta con el nombre "${dto.nombre}"`);
+      }
+    }
+
+    return this.prisma.cuentaFinanciera.update({
+      where: { id },
+      data: {
+        ...(dto.nombre ? { nombre: dto.nombre } : {}),
+        ...(dto.activa !== undefined ? { activa: dto.activa } : {}),
+      },
+    });
+  }
+
+  async obtenerLibroDiario(alcance: AlcanceAcceso, cuentaId: number, query: ConsultaLibroDiarioQueryDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver libro diario');
+    }
+
+    const cuenta = await this.prisma.cuentaFinanciera.findUnique({ where: { id: cuentaId } });
+    if (!cuenta) {
+      throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
+    }
+
+    const fechaDesdeStr = query.fecha || query.desde;
+    const fechaHastaStr = query.fecha || query.hasta;
+
+    let fechaDesde: Date | undefined;
+    let fechaHasta: Date | undefined;
+
+    if (fechaDesdeStr) {
+      fechaDesde = new Date(fechaDesdeStr.includes('T') ? fechaDesdeStr : `${fechaDesdeStr}T00:00:00.000Z`);
+      if (isNaN(fechaDesde.getTime())) {
+        throw new BadRequestException('Fecha desde no es válida');
+      }
+    }
+
+    if (fechaHastaStr) {
+      fechaHasta = new Date(fechaHastaStr.includes('T') ? fechaHastaStr : `${fechaHastaStr}T23:59:59.999Z`);
+      if (isNaN(fechaHasta.getTime())) {
+        throw new BadRequestException('Fecha hasta no es válida');
+      }
+    }
+
+    let saldoAnterior = 0;
+    if (fechaDesde) {
+      const aggAnterior = await this.prisma.movimientoFinanciero.aggregate({
+        where: {
+          cuentaId,
+          fecha: { lt: fechaDesde },
+        },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      saldoAnterior = round2(
+        Number(aggAnterior._sum.montoIngreso ?? 0) - Number(aggAnterior._sum.montoEgreso ?? 0),
+      );
+    }
+
+    const fechaFilter: Prisma.DateTimeFilter = {};
+    if (fechaDesde) fechaFilter.gte = fechaDesde;
+    if (fechaHasta) fechaFilter.lte = fechaHasta;
+
+    const movimientos = await this.prisma.movimientoFinanciero.findMany({
+      where: {
+        cuentaId,
+        ...(fechaDesde || fechaHasta ? { fecha: fechaFilter } : {}),
+      },
+      orderBy: [{ fecha: 'asc' }, { id: 'asc' }],
+      include: {
+        creadoPor: { select: { id: true, nombre: true, apellido: true } },
+        pago: {
+          select: {
+            id: true,
+            usuarioId: true,
+            usuario: { select: { id: true, nombre: true, apellido: true } },
+            imputaciones: {
+              select: {
+                cargo: {
+                  select: {
+                    concepto: { select: { nombre: true } },
+                    usuario: { select: { id: true, nombre: true, apellido: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
+        pedidoEvento: {
+          select: {
+            id: true,
+            compradorNombre: true,
+            evento: { select: { titulo: true } },
+            vendedorUsuario: { select: { id: true, nombre: true, apellido: true } },
+          },
+        },
+      },
+    });
+
+    let saldoAcumulado = saldoAnterior;
+    let totalIngresosPeriodo = 0;
+    let totalEgresosPeriodo = 0;
+
+    const movimientosConSaldo = movimientos.map((m: any) => {
+      const ingreso = Number(m.montoIngreso);
+      const egreso = Number(m.montoEgreso);
+      saldoAcumulado = round2(saldoAcumulado + ingreso - egreso);
+      totalIngresosPeriodo = round2(totalIngresosPeriodo + ingreso);
+      totalEgresosPeriodo = round2(totalEgresosPeriodo + egreso);
+
+      let conceptoTextoFinal = m.conceptoTexto;
+      let miembroNombre: string | null = null;
+      if (m.pago?.usuario?.nombre) {
+        miembroNombre = `${m.pago.usuario.nombre} ${m.pago.usuario.apellido ?? ''}`.trim();
+      } else if (m.pago?.imputaciones?.[0]?.cargo?.usuario?.nombre) {
+        const cu = m.pago.imputaciones[0].cargo.usuario;
+        miembroNombre = `${cu.nombre} ${cu.apellido ?? ''}`.trim();
+      } else if (m.pedidoEvento?.vendedorUsuario?.nombre) {
+        const vu = m.pedidoEvento.vendedorUsuario;
+        miembroNombre = `${vu.nombre} ${vu.apellido ?? ''}`.trim();
+      }
+
+      if (miembroNombre) {
+        if (/Miembro ID #\d+/i.test(conceptoTextoFinal)) {
+          conceptoTextoFinal = conceptoTextoFinal.replace(/Miembro ID #\d+/gi, miembroNombre);
+        } else if (/ID #\d+/i.test(conceptoTextoFinal)) {
+          conceptoTextoFinal = conceptoTextoFinal.replace(/ID #\d+/gi, miembroNombre);
+        }
+      }
+
+      return {
+        id: m.id,
+        cuentaId: m.cuentaId,
+        fecha: m.fecha instanceof Date ? m.fecha.toISOString() : String(m.fecha),
+        tipo: m.tipo,
+        montoIngreso: ingreso,
+        montoEgreso: egreso,
+        conceptoTexto: conceptoTextoFinal,
+        miembroNombre,
+        pagoId: m.pagoId,
+        gastoId: m.gastoId,
+        creadoPorUsuarioId: m.creadoPorUsuarioId,
+        creadoPor: m.creadoPor,
+        saldoAcumulado,
+      };
+    });
+
+    const saldoFinalPeriodo = saldoAcumulado;
+
+    const aggConsolidado = await this.prisma.movimientoFinanciero.aggregate({
+      where: { cuentaId },
+      _sum: { montoIngreso: true, montoEgreso: true },
+    });
+    const saldoActualConsolidado = round2(
+      Number(aggConsolidado._sum.montoIngreso ?? 0) - Number(aggConsolidado._sum.montoEgreso ?? 0),
+    );
+
+    return {
+      cuenta: {
+        id: cuenta.id,
+        nombre: cuenta.nombre,
+        tipo: cuenta.tipo,
+        activa: cuenta.activa,
+      },
+      saldoAnterior,
+      movimientos: movimientosConSaldo,
+      totalIngresosPeriodo,
+      totalEgresosPeriodo,
+      saldoFinalPeriodo,
+      saldoActualConsolidado,
+    };
+  }
+
+  async transferirEntreCuentas(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearTransferenciaDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para transferir fondos');
+    }
+
+    if (dto.origenCuentaId === dto.destinoCuentaId) {
+      throw new BadRequestException('La cuenta de origen y destino deben ser distintas');
+    }
+
+    const monto = round2(dto.monto);
+    if (monto <= 0) {
+      throw new BadRequestException('El monto a transferir debe ser mayor a 0');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const [origen, destino] = await Promise.all([
+        tx.cuentaFinanciera.findUnique({ where: { id: dto.origenCuentaId } }),
+        tx.cuentaFinanciera.findUnique({ where: { id: dto.destinoCuentaId } }),
+      ]);
+
+      if (!origen || !destino) {
+        throw new NotFoundException('Una o ambas cuentas no existen');
+      }
+
+      if (!origen.activa || !destino.activa) {
+        throw new BadRequestException('Ambas cuentas deben estar activas para realizar la transferencia');
+      }
+
+      const aggOrigen = await tx.movimientoFinanciero.aggregate({
+        where: { cuentaId: origen.id },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      const saldoOrigen = round2(
+        Number(aggOrigen._sum.montoIngreso ?? 0) - Number(aggOrigen._sum.montoEgreso ?? 0),
+      );
+
+      if (saldoOrigen < monto - 0.001) {
+        throw new BadRequestException(
+          `Saldo insuficiente en ${origen.nombre}. Saldo disponible: $${saldoOrigen}`,
+        );
+      }
+
+      const fechaOperacion = dto.fecha ? new Date(dto.fecha) : new Date();
+
+      const movSalida = await tx.movimientoFinanciero.create({
+        data: {
+          cuentaId: origen.id,
+          fecha: fechaOperacion,
+          tipo: TipoMovimientoFinanciero.TRANSFERENCIA_SALIDA,
+          montoIngreso: 0,
+          montoEgreso: redondearDosDecimales(monto),
+          conceptoTexto: `Transferencia a ${destino.nombre}: ${dto.concepto}`,
+          creadoPorUsuarioId: actor.sub,
+        },
+      });
+
+      const movEntrada = await tx.movimientoFinanciero.create({
+        data: {
+          cuentaId: destino.id,
+          fecha: fechaOperacion,
+          tipo: TipoMovimientoFinanciero.TRANSFERENCIA_ENTRADA,
+          montoIngreso: redondearDosDecimales(monto),
+          montoEgreso: 0,
+          conceptoTexto: `Transferencia desde ${origen.nombre}: ${dto.concepto}`,
+          creadoPorUsuarioId: actor.sub,
+        },
+      });
+
+      const aggDestino = await tx.movimientoFinanciero.aggregate({
+        where: { cuentaId: destino.id },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      const saldoDestino = round2(
+        Number(aggDestino._sum.montoIngreso ?? 0) - Number(aggDestino._sum.montoEgreso ?? 0),
+      );
+
+      return {
+        mensaje: 'Transferencia realizada exitosamente',
+        monto,
+        saldoOrigen: round2(saldoOrigen - monto),
+        saldoDestino,
+        movimientos: [movSalida.id, movEntrada.id],
+      };
+    });
+  }
+
+  // ===========================================================================
+  // RUBROS CONTABLES (PLAN DE CUENTAS / CATEGORÍAS DE COBRO Y GASTO - FASE 2)
+  // ===========================================================================
+
+  async listarRubrosContables(alcance: AlcanceAcceso, query: ListarRubrosQueryDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver rubros contables');
+    }
+
+    const where: Prisma.RubroContableWhereInput = {
+      ...(query.tipo ? { tipo: query.tipo } : {}),
+      ...(query.incluirInactivos ? {} : { activo: true }),
+      ...(alcance.tipo === 'UNIDAD'
+        ? { OR: [{ unidadId: null }, { unidadId: { in: alcance.unidadIds } }] }
+        : {}),
+    };
+
+    return this.prisma.rubroContable.findMany({
+      where,
+      orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
+      include: {
+        unidad: { select: { id: true, nombre: true } },
+        _count: { select: { conceptos: true, planesCuota: true, gastos: true } },
+      },
+    });
+  }
+
+  async crearRubroContable(alcance: AlcanceAcceso, dto: CrearRubroContableDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para crear rubros contables');
+    }
+    if (dto.unidadId) {
+      assertUnidadEnAlcance(alcance, dto.unidadId);
+    } else if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo usuarios con alcance global pueden crear rubros generales');
+    }
+
+    const existente = await this.prisma.rubroContable.findUnique({
+      where: {
+        nombre_tipo: {
+          nombre: dto.nombre,
+          tipo: dto.tipo,
+        },
+      },
+    });
+    if (existente) {
+      if (!existente.activo) {
+        return this.prisma.rubroContable.update({
+          where: { id: existente.id },
+          data: {
+            activo: true,
+            unidadId: dto.unidadId ?? null,
+            permiteDescuentoDefault: dto.permiteDescuentoDefault ?? existente.permiteDescuentoDefault,
+          },
+          include: { unidad: { select: { id: true, nombre: true } } },
+        });
+      }
+      throw new ConflictException(`Ya existe un rubro de ${dto.tipo.toLowerCase()} llamado "${dto.nombre}"`);
+    }
+
+    return this.prisma.rubroContable.create({
+      data: {
+        nombre: dto.nombre,
+        tipo: dto.tipo,
+        unidadId: dto.unidadId ?? null,
+        permiteDescuentoDefault: dto.permiteDescuentoDefault ?? false,
+        activo: dto.activo ?? true,
+      },
+      include: { unidad: { select: { id: true, nombre: true } } },
+    });
+  }
+
+  async actualizarRubroContable(alcance: AlcanceAcceso, id: number, dto: ActualizarRubroContableDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para editar rubros contables');
+    }
+
+    const rubro = await this.prisma.rubroContable.findUnique({ where: { id } });
+    if (!rubro) throw new NotFoundException('Rubro contable no encontrado');
+
+    if (rubro.unidadId) {
+      assertUnidadEnAlcance(alcance, rubro.unidadId);
+    } else if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo usuarios con alcance global pueden editar rubros generales');
+    }
+
+    if (dto.unidadId !== undefined && dto.unidadId !== null) {
+      assertUnidadEnAlcance(alcance, dto.unidadId);
+    }
+
+    return this.prisma.rubroContable.update({
+      where: { id },
+      data: {
+        ...(dto.nombre !== undefined ? { nombre: dto.nombre } : {}),
+        ...(dto.unidadId !== undefined ? { unidadId: dto.unidadId } : {}),
+        ...(dto.permiteDescuentoDefault !== undefined
+          ? { permiteDescuentoDefault: dto.permiteDescuentoDefault }
+          : {}),
+        ...(dto.activo !== undefined ? { activo: dto.activo } : {}),
+      },
+      include: { unidad: { select: { id: true, nombre: true } } },
+    });
+  }
+
+  async eliminarRubroContable(alcance: AlcanceAcceso, id: number) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para eliminar rubros contables');
+    }
+
+    const rubro = await this.prisma.rubroContable.findUnique({
+      where: { id },
+      include: {
+        _count: { select: { conceptos: true, planesCuota: true, gastos: true, movimientos: true } },
+      },
+    });
+    if (!rubro) throw new NotFoundException('Rubro contable no encontrado');
+
+    if (rubro.unidadId) {
+      assertUnidadEnAlcance(alcance, rubro.unidadId);
+    } else if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo usuarios con alcance global pueden eliminar rubros generales');
+    }
+
+    const tieneRelaciones =
+      (rubro._count.conceptos ?? 0) > 0 ||
+      (rubro._count.planesCuota ?? 0) > 0 ||
+      (rubro._count.gastos ?? 0) > 0 ||
+      (rubro._count.movimientos ?? 0) > 0;
+
+    if (tieneRelaciones) {
+      return this.prisma.rubroContable.update({
+        where: { id },
+        data: { activo: false },
+      });
+    }
+
+    return this.prisma.rubroContable.delete({ where: { id } });
+  }
+
+  // ===========================================================================
+  // GASTOS Y EGRESOS OPERATIVOS (FASE 2)
+  // ===========================================================================
+
+  async listarGastos(alcance: AlcanceAcceso, query: ListarGastosQueryDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver gastos');
+    }
+
+    const where: Prisma.GastoWhereInput = {
+      ...(query.cuentaId ? { cuentaId: query.cuentaId } : {}),
+      ...(query.rubroId ? { rubroId: query.rubroId } : {}),
+      ...(query.incluirAnulados ? {} : { anulado: false }),
+      ...(query.desde || query.hasta
+        ? {
+            fecha: {
+              ...(query.desde ? { gte: new Date(query.desde) } : {}),
+              ...(query.hasta ? { lte: new Date(query.hasta) } : {}),
+            },
+          }
+        : {}),
+    };
+
+    return this.prisma.gasto.findMany({
+      where,
+      orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
+      include: {
+        rubro: { select: { id: true, nombre: true, tipo: true } },
+        cuenta: { select: { id: true, nombre: true, tipo: true } },
+        registradoPor: { select: { id: true, nombre: true, apellido: true } },
+      },
+    });
+  }
+
+  async registrarGasto(actor: AuthUser, alcance: AlcanceAcceso, dto: RegistrarGastoDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para registrar gastos');
+    }
+
+    const monto = round2(dto.monto);
+    if (monto <= 0) {
+      throw new BadRequestException('El monto del gasto debe ser mayor a 0');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const [cuenta, rubro] = await Promise.all([
+        tx.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } }),
+        tx.rubroContable.findUnique({ where: { id: dto.rubroId } }),
+      ]);
+
+      if (!cuenta) throw new NotFoundException('La cuenta financiera especificada no existe');
+      if (!cuenta.activa) throw new BadRequestException('La cuenta financiera se encuentra inactiva');
+      if (!rubro) throw new NotFoundException('El rubro de gasto especificado no existe');
+      if (!rubro.activo) throw new BadRequestException('El rubro contable se encuentra inactivo');
+      if (rubro.tipo !== TipoRubro.EGRESO) {
+        throw new BadRequestException('El rubro seleccionado debe ser de tipo EGRESO');
+      }
+
+      // Validar saldo disponible en la cuenta
+      const aggCuenta = await tx.movimientoFinanciero.aggregate({
+        where: { cuentaId: cuenta.id },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      const saldoDisponible = round2(
+        Number(aggCuenta._sum.montoIngreso ?? 0) - Number(aggCuenta._sum.montoEgreso ?? 0),
+      );
+
+      if (saldoDisponible < monto - 0.001) {
+        throw new BadRequestException(
+          `Saldo insuficiente en ${cuenta.nombre}. Saldo actual: $${saldoDisponible}, Gasto solicitado: $${monto}`,
+        );
+      }
+
+      const fechaOperacion = dto.fecha ? new Date(dto.fecha) : new Date();
+
+      const gasto = await tx.gasto.create({
+        data: {
+          fecha: fechaOperacion,
+          monto: redondearDosDecimales(monto),
+          descripcion: dto.descripcion,
+          rubroId: rubro.id,
+          cuentaId: cuenta.id,
+          comprobanteNro: dto.comprobanteNro ?? null,
+          comprobanteUrl: dto.comprobanteUrl ?? null,
+          anulado: false,
+          registradoPorId: actor.sub,
+        },
+        include: {
+          rubro: { select: { id: true, nombre: true } },
+          cuenta: { select: { id: true, nombre: true, tipo: true } },
+          registradoPor: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+
+      const refTexto = dto.comprobanteNro ? ` (Comp. #${dto.comprobanteNro})` : '';
+      await tx.movimientoFinanciero.create({
+        data: {
+          cuentaId: cuenta.id,
+          fecha: fechaOperacion,
+          tipo: TipoMovimientoFinanciero.EGRESO_GASTO,
+          montoIngreso: 0,
+          montoEgreso: redondearDosDecimales(monto),
+          conceptoTexto: `Gasto: ${dto.descripcion} - ${rubro.nombre}${refTexto}`,
+          gastoId: gasto.id,
+          rubroId: rubro.id,
+          creadoPorUsuarioId: actor.sub,
+        },
+      });
+
+      return gasto;
+    });
+  }
+
+  async anularGasto(actor: AuthUser, alcance: AlcanceAcceso, id: number) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para anular gastos');
+    }
+
+    const gasto = await this.prisma.gasto.findUnique({
+      where: { id },
+      include: { cuenta: true, rubro: true },
+    });
+    if (!gasto) throw new NotFoundException('Gasto no encontrado');
+    if (gasto.anulado) throw new BadRequestException('El gasto ya se encuentra anulado');
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.movimientoFinanciero.deleteMany({
+        where: { gastoId: gasto.id },
+      });
+
+      return tx.gasto.update({
+        where: { id: gasto.id },
+        data: { anulado: true },
+        include: {
+          rubro: { select: { id: true, nombre: true } },
+          cuenta: { select: { id: true, nombre: true, tipo: true } },
+          registradoPor: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+    });
+  }
+
+  // ===========================================================================
+  // CUADRO DE RESULTADOS / BALANCE CONTABLE (FASE 3)
+  // ===========================================================================
+
+  async obtenerCuadroResultados(
+    alcance: AlcanceAcceso,
+    query: ConsultaCuadroResultadosQueryDto,
+  ) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para consultar el cuadro de resultados');
+    }
+
+    const anio = query.anio || new Date().getFullYear();
+    const mesFiltro = query.mes ?? null;
+
+    const desdeAnio = new Date(Date.UTC(anio, 0, 1, 0, 0, 0, 0));
+    const hastaAnio = new Date(Date.UTC(anio, 11, 31, 23, 59, 59, 999));
+
+    // 1. Obtener rubros contables
+    const rubrosDb = await this.prisma.rubroContable.findMany({
+      orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
+    });
+
+    // 2. Obtener pagos reales del año
+    const pagos = await this.prisma.pago.findMany({
+      where: {
+        fechaPago: { gte: desdeAnio, lte: hastaAnio },
+        referenciaComprobante: { not: 'APLICACION_SALDO_A_FAVOR' },
+      },
+      include: {
+        imputaciones: {
+          include: {
+            cargo: {
+              include: {
+                concepto: {
+                  include: {
+                    rubro: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // 3. Obtener otros ingresos registrados directamente
+    const otrosIngresos = await this.prisma.movimientoFinanciero.findMany({
+      where: {
+        tipo: TipoMovimientoFinanciero.INGRESO_OTRO,
+        fecha: { gte: desdeAnio, lte: hastaAnio },
+      },
+      include: { rubro: true },
+    });
+
+    // 4. Obtener gastos operativos del año
+    const gastos = await this.prisma.gasto.findMany({
+      where: {
+        anulado: false,
+        fecha: { gte: desdeAnio, lte: hastaAnio },
+      },
+      include: {
+        rubro: true,
+      },
+    });
+
+    // 5. Obtener saldos disponibles actuales en cuentas
+    const cuentas = await this.listarCuentasFinancieras(alcance, false);
+    let totalCaja = 0;
+    let totalBanco = 0;
+    for (const c of cuentas) {
+      if (c.tipo === TipoCuenta.CAJA_EFECTIVO) {
+        totalCaja = round2(totalCaja + c.saldoActual);
+      } else if (c.tipo === TipoCuenta.BANCO) {
+        totalBanco = round2(totalBanco + c.saldoActual);
+      }
+    }
+    const totalDisponible = round2(totalCaja + totalBanco);
+
+    // Helpers para meses en horario Argentina (GMT-3)
+    const obtenerMesYAnioArg = (fecha: Date) => {
+      const str = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric',
+        month: '2-digit',
+      }).format(fecha);
+      const [y, m] = str.split('-').map(Number);
+      return { anio: y, mes: m };
+    };
+
+    const emptyMeses = (): Record<number, number> => ({
+      1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0, 10: 0, 11: 0, 12: 0,
+    });
+
+    interface RubroAcumulador {
+      rubroId: number | null;
+      rubroNombre: string;
+      meses: Record<number, number>;
+    }
+
+    const ingresosMap = new Map<string, RubroAcumulador>();
+    const egresosMap = new Map<string, RubroAcumulador>();
+
+    // Inicializar mapas con los rubros contables registrados
+    for (const r of rubrosDb) {
+      if (r.tipo === TipoRubro.INGRESO) {
+        ingresosMap.set(r.nombre, {
+          rubroId: r.id,
+          rubroNombre: r.nombre,
+          meses: emptyMeses(),
+        });
+      } else {
+        egresosMap.set(r.nombre, {
+          rubroId: r.id,
+          rubroNombre: r.nombre,
+          meses: emptyMeses(),
+        });
+      }
+    }
+
+    // Procesar Cobranzas
+    for (const pago of pagos) {
+      const { anio: a, mes: m } = obtenerMesYAnioArg(pago.fechaPago);
+      if (a === anio && m >= 1 && m <= 12) {
+        let totalImputado = 0;
+        for (const imp of pago.imputaciones) {
+          const montoImp = Number(imp.montoImputado);
+          totalImputado += montoImp;
+          const concepto = imp.cargo?.concepto;
+          const rubroId = concepto?.rubro?.id ?? concepto?.rubroId ?? null;
+          let rubroNombre = concepto?.rubro?.nombre;
+
+          if (!rubroNombre) {
+            const nomLower = (concepto?.nombre || '').toLowerCase();
+            if (nomLower.includes('campa')) {
+              rubroNombre = 'Campamentos y Salidas';
+            } else if (nomLower.includes('afilia')) {
+              rubroNombre = 'Afiliación Nacional';
+            } else if (nomLower.includes('bono') || nomLower.includes('evento')) {
+              rubroNombre = 'Eventos y Festivales';
+            } else {
+              rubroNombre = 'Cuota Social';
+            }
+          }
+
+          if (!ingresosMap.has(rubroNombre)) {
+            ingresosMap.set(rubroNombre, {
+              rubroId,
+              rubroNombre,
+              meses: emptyMeses(),
+            });
+          }
+          const item = ingresosMap.get(rubroNombre)!;
+          item.meses[m] = round2(item.meses[m] + montoImp);
+        }
+
+        // Remanente / pago a cuenta que ingresó a saldo a favor
+        const remanente = round2(Number(pago.montoTotal) - totalImputado);
+        if (remanente > 0) {
+          const rubroNombre = 'Adelanto / Saldo a Favor';
+          if (!ingresosMap.has(rubroNombre)) {
+            ingresosMap.set(rubroNombre, {
+              rubroId: null,
+              rubroNombre,
+              meses: emptyMeses(),
+            });
+          }
+          const item = ingresosMap.get(rubroNombre)!;
+          item.meses[m] = round2(item.meses[m] + remanente);
+        }
+      }
+    }
+
+    // Procesar otros ingresos directos
+    for (const aj of otrosIngresos) {
+      const { anio: a, mes: m } = obtenerMesYAnioArg(aj.fecha);
+      if (a === anio && m >= 1 && m <= 12) {
+        const rubroNombre = aj.rubro?.nombre || 'Otros Ingresos';
+        if (!ingresosMap.has(rubroNombre)) {
+          ingresosMap.set(rubroNombre, {
+            rubroId: aj.rubroId,
+            rubroNombre,
+            meses: emptyMeses(),
+          });
+        }
+        const item = ingresosMap.get(rubroNombre)!;
+        item.meses[m] = round2(item.meses[m] + Number(aj.montoIngreso));
+      }
+    }
+
+    // Procesar Gastos
+    for (const g of gastos) {
+      const { anio: a, mes: m } = obtenerMesYAnioArg(g.fecha);
+      if (a === anio && m >= 1 && m <= 12) {
+        const rubroNombre = g.rubro.nombre;
+        if (!egresosMap.has(rubroNombre)) {
+          egresosMap.set(rubroNombre, {
+            rubroId: g.rubroId,
+            rubroNombre,
+            meses: emptyMeses(),
+          });
+        }
+        const item = egresosMap.get(rubroNombre)!;
+        item.meses[m] = round2(item.meses[m] + Number(g.monto));
+      }
+    }
+
+    // Evolución Mensual (Ene .. Dic)
+    const evolucionMensual = Array.from({ length: 12 }, (_, i) => {
+      const mesNum = i + 1;
+      let ingMes = 0;
+      for (const item of ingresosMap.values()) {
+        ingMes += item.meses[mesNum] || 0;
+      }
+      let egrMes = 0;
+      for (const item of egresosMap.values()) {
+        egrMes += item.meses[mesNum] || 0;
+      }
+      return {
+        mes: mesNum,
+        nombreMes: NOMBRES_MESES[i],
+        ingresos: round2(ingMes),
+        egresos: round2(egrMes),
+        resultadoNeto: round2(ingMes - egrMes),
+      };
+    });
+
+    // Calcular totales de período según filtro mensual o año completo
+    let totalIngresosPeriodo = 0;
+    let totalEgresosPeriodo = 0;
+
+    const ingresosPorRubro = Array.from(ingresosMap.values()).map((item) => {
+      const total = mesFiltro
+        ? round2(item.meses[mesFiltro] || 0)
+        : round2(Object.values(item.meses).reduce((acc, v) => acc + v, 0));
+      totalIngresosPeriodo = round2(totalIngresosPeriodo + total);
+      return {
+        rubroId: item.rubroId,
+        rubroNombre: item.rubroNombre,
+        meses: item.meses,
+        total,
+        porcentaje: 0,
+      };
+    });
+
+    const egresosPorRubro = Array.from(egresosMap.values()).map((item) => {
+      const total = mesFiltro
+        ? round2(item.meses[mesFiltro] || 0)
+        : round2(Object.values(item.meses).reduce((acc, v) => acc + v, 0));
+      totalEgresosPeriodo = round2(totalEgresosPeriodo + total);
+      return {
+        rubroId: item.rubroId,
+        rubroNombre: item.rubroNombre,
+        meses: item.meses,
+        total,
+        porcentaje: 0,
+      };
+    });
+
+    // Asignar porcentajes relativos
+    for (const r of ingresosPorRubro) {
+      r.porcentaje = totalIngresosPeriodo > 0 ? round2((r.total / totalIngresosPeriodo) * 100) : 0;
+    }
+    for (const r of egresosPorRubro) {
+      r.porcentaje = totalEgresosPeriodo > 0 ? round2((r.total / totalEgresosPeriodo) * 100) : 0;
+    }
+
+    // Ordenar de mayor a menor recaudación/gasto
+    ingresosPorRubro.sort((a, b) => b.total - a.total);
+    egresosPorRubro.sort((a, b) => b.total - a.total);
+
+    const resultadoNeto = round2(totalIngresosPeriodo - totalEgresosPeriodo);
+    const margenOperativoPorcentaje =
+      totalIngresosPeriodo > 0 ? round2((resultadoNeto / totalIngresosPeriodo) * 100) : 0;
+
+    return {
+      anio,
+      mesFiltro,
+      resumen: {
+        totalIngresos: totalIngresosPeriodo,
+        totalEgresos: totalEgresosPeriodo,
+        resultadoNeto,
+        margenOperativoPorcentaje,
+      },
+      ingresosPorRubro,
+      egresosPorRubro,
+      evolucionMensual,
+      disponibilidadActual: {
+        totalCaja,
+        totalBanco,
+        totalDisponible,
+      },
+    };
+  }
+
+  // ===========================================================================
+  // EVENTOS ECONÓMICOS, PEDIDOS Y TICKETS QR (FASE 4)
+  // ===========================================================================
+
+  async listarEventos(alcance: AlcanceAcceso, tipo?: TipoEvento) {
+    const where: Prisma.EventoWhereInput = {
+      ...(tipo ? { tipo } : {}),
+      ...(alcance.tipo === 'PROPIO' ? { estado: EstadoEvento.PUBLICADO } : {}),
+    };
+
+    const eventos = await this.prisma.evento.findMany({
+      where,
+      include: {
+        rubro: { select: { id: true, nombre: true } },
+        cuenta: { select: { id: true, nombre: true, tipo: true } },
+        creadoPor: { select: { id: true, nombre: true, apellido: true } },
+        items: { orderBy: { id: 'asc' } },
+        pedidos: {
+          select: {
+            id: true,
+            total: true,
+            totalGanancia: true,
+            gananciaAcreditada: true,
+            estado: true,
+            tickets: {
+              select: { id: true, estado: true, cantidad: true },
+            },
+          },
+        },
+      },
+      orderBy: { fechaEvento: 'desc' },
+    });
+
+    return eventos.map((ev) => {
+      let totalVenta = 0;
+      let totalGanancia = 0;
+      let totalTickets = 0;
+      let ticketsRetirados = 0;
+
+      for (const p of ev.pedidos) {
+        if (p.estado !== EstadoPedidoEvento.CANCELADO) {
+          totalVenta += Number(p.total);
+          totalGanancia += Number(p.totalGanancia);
+          for (const t of p.tickets) {
+            totalTickets += t.cantidad;
+            if (t.estado === EstadoTicketEvento.UTILIZADO) {
+              ticketsRetirados += t.cantidad;
+            }
+          }
+        }
+      }
+
+      return {
+        id: ev.id,
+        titulo: ev.titulo,
+        descripcion: ev.descripcion,
+        tipo: ev.tipo,
+        estado: ev.estado,
+        fechaEvento: ev.fechaEvento,
+        fechaFin: ev.fechaFin,
+        lugarEntrega: ev.lugarEntrega,
+        rubro: ev.rubro,
+        cuenta: ev.cuenta,
+        creadoPor: ev.creadoPor,
+        items: ev.items,
+        metricas: {
+          cantidadPedidos: ev.pedidos.length,
+          totalVenta: round2(totalVenta),
+          totalGanancia: round2(totalGanancia),
+          totalTickets,
+          ticketsRetirados,
+          porcentajeRetirado: totalTickets > 0 ? round2((ticketsRetirados / totalTickets) * 100) : 0,
+        },
+      };
+    });
+  }
+
+  async obtenerEventoPorId(alcance: AlcanceAcceso, id: number) {
+    const ev = await this.prisma.evento.findUnique({
+      where: { id },
+      include: {
+        rubro: { select: { id: true, nombre: true } },
+        cuenta: { select: { id: true, nombre: true, tipo: true } },
+        creadoPor: { select: { id: true, nombre: true, apellido: true } },
+        items: { orderBy: { id: 'asc' } },
+        pedidos: {
+          where: alcance.tipo === 'PROPIO' ? { vendedorUsuarioId: alcance.usuarioId } : {},
+          include: {
+            vendedorUsuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
+            registradoPor: { select: { id: true, nombre: true, apellido: true } },
+            detalles: { include: { item: true } },
+            tickets: {
+              include: {
+                item: true,
+                validador: { select: { id: true, nombre: true, apellido: true } },
+              },
+              orderBy: { id: 'asc' },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!ev) throw new NotFoundException('Evento no encontrado');
+    return ev;
+  }
+
+  async crearEvento(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearEventoDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para crear eventos');
+    }
+
+    if (dto.rubroId) {
+      const rubro = await this.prisma.rubroContable.findUnique({ where: { id: dto.rubroId } });
+      if (!rubro) throw new NotFoundException('El rubro contable indicado no existe');
+    }
+
+    if (dto.cuentaId) {
+      const cuenta = await this.prisma.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } });
+      if (!cuenta) throw new NotFoundException('La cuenta financiera indicada no existe');
+    }
+
+    return this.prisma.evento.create({
+      data: {
+        titulo: dto.titulo,
+        descripcion: dto.descripcion,
+        tipo: dto.tipo as TipoEvento,
+        estado: (dto.estado || EstadoEvento.PUBLICADO) as EstadoEvento,
+        fechaEvento: new Date(dto.fechaEvento),
+        fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null,
+        lugarEntrega: dto.lugarEntrega,
+        rubroId: dto.rubroId ?? null,
+        cuentaId: dto.cuentaId ?? null,
+        creadoPorUsuarioId: actor.sub,
+        items: {
+          create: dto.items.map((it) => ({
+            nombre: it.nombre,
+            descripcion: it.descripcion,
+            precioVenta: redondearDosDecimales(Number(it.precioVenta)),
+            costoUnitario: redondearDosDecimales(Number(it.costoUnitario ?? 0)),
+            gananciaUnitaria: redondearDosDecimales(
+              Number(it.gananciaUnitaria ?? (Number(it.precioVenta) - Number(it.costoUnitario ?? 0))),
+            ),
+            stockTotal: it.stockTotal ?? null,
+            stockDisponible: it.stockTotal ?? null,
+          })),
+        },
+      },
+      include: {
+        items: true,
+        rubro: true,
+        cuenta: true,
+      },
+    });
+  }
+
+  async actualizarEvento(actor: AuthUser, alcance: AlcanceAcceso, id: number, dto: ActualizarEventoDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para editar eventos');
+    }
+
+    const evento = await this.prisma.evento.findUnique({ where: { id } });
+    if (!evento) throw new NotFoundException('Evento no encontrado');
+
+    if (dto.items && dto.items.length > 0) {
+      const tienePedidos = await this.prisma.pedidoEvento.count({ where: { eventoId: id } });
+      if (tienePedidos === 0) {
+        await this.prisma.itemEvento.deleteMany({ where: { eventoId: id } });
+        await this.prisma.itemEvento.createMany({
+          data: dto.items.map((it) => ({
+            eventoId: id,
+            nombre: it.nombre,
+            descripcion: it.descripcion,
+            precioVenta: redondearDosDecimales(Number(it.precioVenta)),
+            costoUnitario: redondearDosDecimales(Number(it.costoUnitario ?? 0)),
+            gananciaUnitaria: redondearDosDecimales(
+              Number(it.gananciaUnitaria ?? (Number(it.precioVenta) - Number(it.costoUnitario ?? 0))),
+            ),
+            stockTotal: it.stockTotal ?? null,
+            stockDisponible: it.stockTotal ?? null,
+          })),
+        });
+      }
+    }
+
+    return this.prisma.evento.update({
+      where: { id },
+      data: {
+        ...(dto.titulo ? { titulo: dto.titulo } : {}),
+        ...(dto.descripcion !== undefined ? { descripcion: dto.descripcion } : {}),
+        ...(dto.tipo ? { tipo: dto.tipo as TipoEvento } : {}),
+        ...(dto.estado ? { estado: dto.estado as EstadoEvento } : {}),
+        ...(dto.fechaEvento ? { fechaEvento: new Date(dto.fechaEvento) } : {}),
+        ...(dto.fechaFin !== undefined ? { fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null } : {}),
+        ...(dto.lugarEntrega !== undefined ? { lugarEntrega: dto.lugarEntrega } : {}),
+        ...(dto.rubroId !== undefined ? { rubroId: dto.rubroId } : {}),
+        ...(dto.cuentaId !== undefined ? { cuentaId: dto.cuentaId } : {}),
+      },
+      include: {
+        items: true,
+        rubro: true,
+        cuenta: true,
+      },
+    });
+  }
+
+  async crearPedidoEvento(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearPedidoEventoDto) {
+    if (alcance.tipo === 'PROPIO') {
+      if (dto.vendedorUsuarioId && dto.vendedorUsuarioId !== actor.sub) {
+        throw new ForbiddenException('Solo puedes cargar pedidos a tu propio nombre');
+      }
+      dto.vendedorUsuarioId = actor.sub;
+      dto.cuentaId = undefined;
+    }
+
+    const evento = await this.prisma.evento.findUnique({
+      where: { id: dto.eventoId },
+      include: { items: true },
+    });
+    if (!evento) throw new NotFoundException('Evento no encontrado');
+    if (evento.estado === EstadoEvento.CANCELADO || evento.estado === EstadoEvento.FINALIZADO) {
+      throw new BadRequestException('El evento no está disponible para recibir nuevos pedidos');
+    }
+
+    const itemsMap = new Map(evento.items.map((i) => [i.id, i]));
+    let totalVentaNum = 0;
+    let totalGananciaNum = 0;
+
+    const itemsCalculados: Array<{
+      item: (typeof evento.items)[0];
+      cantidad: number;
+      precioUnitario: number;
+      subtotal: number;
+      gananciaUnitaria: number;
+      subtotalGanancia: number;
+    }> = [];
+
+    for (const pItem of dto.items) {
+      const dbItem = itemsMap.get(pItem.itemId);
+      if (!dbItem) {
+        throw new BadRequestException(`El producto con ID ${pItem.itemId} no pertenece a este evento`);
+      }
+      if (dbItem.stockDisponible !== null && dbItem.stockDisponible < pItem.cantidad) {
+        throw new BadRequestException(
+          `Stock insuficiente para "${dbItem.nombre}". Disponibles: ${dbItem.stockDisponible}`,
+        );
+      }
+
+      const pUnit = Number(dbItem.precioVenta);
+      const sub = round2(pUnit * pItem.cantidad);
+      const gUnit = Number(dbItem.gananciaUnitaria);
+      const subG = round2(gUnit * pItem.cantidad);
+
+      totalVentaNum = round2(totalVentaNum + sub);
+      totalGananciaNum = round2(totalGananciaNum + subG);
+
+      itemsCalculados.push({
+        item: dbItem,
+        cantidad: pItem.cantidad,
+        precioUnitario: pUnit,
+        subtotal: sub,
+        gananciaUnitaria: gUnit,
+        subtotalGanancia: subG,
+      });
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Crear Pedido
+      const pedido = await tx.pedidoEvento.create({
+        data: {
+          eventoId: evento.id,
+          compradorNombre: dto.compradorNombre,
+          compradorContacto: dto.compradorContacto,
+          vendedorUsuarioId: dto.vendedorUsuarioId ?? null,
+          total: redondearDosDecimales(totalVentaNum),
+          totalGanancia: redondearDosDecimales(totalGananciaNum),
+          estado: dto.cuentaId ? EstadoPedidoEvento.PAGADO : EstadoPedidoEvento.PENDIENTE,
+          metodoPago: (dto.metodoPago as MetodoPago) ?? null,
+          cuentaId: dto.cuentaId ?? null,
+          registradoPorUsuarioId: actor.sub,
+          observaciones: dto.observaciones,
+          detalles: {
+            create: itemsCalculados.map((it) => ({
+              itemId: it.item.id,
+              cantidad: it.cantidad,
+              precioUnitario: redondearDosDecimales(it.precioUnitario),
+              subtotal: redondearDosDecimales(it.subtotal),
+              gananciaUnitaria: redondearDosDecimales(it.gananciaUnitaria),
+              subtotalGanancia: redondearDosDecimales(it.subtotalGanancia),
+            })),
+          },
+        },
+      });
+
+      // 2. Generar Tickets QR (1 ticket por cada item solicitado con su cantidad)
+      for (const it of itemsCalculados) {
+        await tx.ticketEvento.create({
+          data: {
+            pedidoId: pedido.id,
+            itemId: it.item.id,
+            tokenQr: generateTokenQR(),
+            cantidad: it.cantidad,
+            estado: EstadoTicketEvento.ACTIVO,
+          },
+        });
+
+        // Actualizar stock si correspondiese
+        if (it.item.stockDisponible !== null) {
+          await tx.itemEvento.update({
+            where: { id: it.item.id },
+            data: { stockDisponible: { decrement: it.cantidad } },
+          });
+        }
+      }
+
+      // 3. Si se cobra en el acto en Caja o Banco, asentar en libro diario
+      if (dto.cuentaId && totalVentaNum > 0) {
+        await tx.movimientoFinanciero.create({
+          data: {
+            cuentaId: dto.cuentaId,
+            fecha: new Date(),
+            tipo: TipoMovimientoFinanciero.INGRESO_COBRANZA,
+            montoIngreso: redondearDosDecimales(totalVentaNum),
+            montoEgreso: 0,
+            conceptoTexto: `Cobro Pedido #${pedido.id} (${evento.titulo}) - ${dto.compradorNombre}`,
+            pedidoEventoId: pedido.id,
+            rubroId: evento.rubroId ?? null,
+            creadoPorUsuarioId: actor.sub,
+          },
+        });
+      }
+
+      return tx.pedidoEvento.findUnique({
+        where: { id: pedido.id },
+        include: {
+          detalles: { include: { item: true } },
+          tickets: { include: { item: true } },
+          vendedorUsuario: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+    });
+  }
+
+  async actualizarPedidoEvento(
+    actor: AuthUser,
+    alcance: AlcanceAcceso,
+    id: number,
+    dto: ActualizarPedidoEventoDto,
+  ) {
+    const pedido = await this.prisma.pedidoEvento.findUnique({
+      where: { id },
+      include: {
+        evento: { include: { items: true } },
+        detalles: true,
+        tickets: true,
+      },
+    });
+    if (!pedido) throw new NotFoundException('Pedido no encontrado');
+
+    if (alcance.tipo === 'PROPIO') {
+      if (pedido.vendedorUsuarioId !== actor.sub && pedido.registradoPorUsuarioId !== actor.sub) {
+        throw new ForbiddenException('No tienes permisos para modificar este pedido');
+      }
+      if (dto.vendedorUsuarioId && dto.vendedorUsuarioId !== actor.sub) {
+        throw new ForbiddenException('Solo puedes asignar pedidos a tu propio usuario');
+      }
+      dto.cuentaId = undefined;
+    }
+
+    const tieneTicketUtilizado = pedido.tickets.some((t) => t.estado === EstadoTicketEvento.UTILIZADO);
+    if (tieneTicketUtilizado) {
+      throw new BadRequestException('No se puede modificar un pedido cuyos vales QR ya fueron utilizados');
+    }
+
+    if (pedido.gananciaAcreditada) {
+      throw new BadRequestException('No se puede modificar un pedido cuyas ganancias ya fueron acreditadas');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      let totalVentaNum = Number(pedido.total);
+      let totalGananciaNum = Number(pedido.totalGanancia);
+
+      if (dto.items && dto.items.length > 0) {
+        // 1. Restaurar stock anterior si correspondía
+        for (const det of pedido.detalles) {
+          const itDb = pedido.evento.items.find((i) => i.id === det.itemId);
+          if (itDb && itDb.stockTotal !== null) {
+            await tx.itemEvento.update({
+              where: { id: det.itemId },
+              data: { stockDisponible: { increment: det.cantidad } },
+            });
+          }
+        }
+
+        // 2. Eliminar tickets y detalles existentes
+        await tx.ticketEvento.deleteMany({ where: { pedidoId: pedido.id } });
+        await tx.detallePedidoEvento.deleteMany({ where: { pedidoId: pedido.id } });
+
+        // 3. Obtener items actualizados con su stock actual en DB
+        const itemsDb = await tx.itemEvento.findMany({
+          where: { eventoId: pedido.eventoId },
+        });
+        const itemsMap = new Map(itemsDb.map((i) => [i.id, i]));
+
+        totalVentaNum = 0;
+        totalGananciaNum = 0;
+        const itemsCalculados: Array<{
+          item: (typeof itemsDb)[0];
+          cantidad: number;
+          precioUnitario: number;
+          subtotal: number;
+          gananciaUnitaria: number;
+          subtotalGanancia: number;
+        }> = [];
+
+        for (const pItem of dto.items) {
+          const dbItem = itemsMap.get(pItem.itemId);
+          if (!dbItem) {
+            throw new BadRequestException(`El producto con ID ${pItem.itemId} no pertenece a este evento`);
+          }
+          if (dbItem.stockDisponible !== null && dbItem.stockDisponible < pItem.cantidad) {
+            throw new BadRequestException(
+              `Stock insuficiente para "${dbItem.nombre}". Disponibles: ${dbItem.stockDisponible}`,
+            );
+          }
+
+          const pUnit = Number(dbItem.precioVenta);
+          const sub = round2(pUnit * pItem.cantidad);
+          const gUnit = Number(dbItem.gananciaUnitaria);
+          const subG = round2(gUnit * pItem.cantidad);
+
+          totalVentaNum = round2(totalVentaNum + sub);
+          totalGananciaNum = round2(totalGananciaNum + subG);
+
+          itemsCalculados.push({
+            item: dbItem,
+            cantidad: pItem.cantidad,
+            precioUnitario: pUnit,
+            subtotal: sub,
+            gananciaUnitaria: gUnit,
+            subtotalGanancia: subG,
+          });
+        }
+
+        // 4. Crear nuevos detalles y tickets
+        for (const it of itemsCalculados) {
+          await tx.detallePedidoEvento.create({
+            data: {
+              pedidoId: pedido.id,
+              itemId: it.item.id,
+              cantidad: it.cantidad,
+              precioUnitario: redondearDosDecimales(it.precioUnitario),
+              subtotal: redondearDosDecimales(it.subtotal),
+              gananciaUnitaria: redondearDosDecimales(it.gananciaUnitaria),
+              subtotalGanancia: redondearDosDecimales(it.subtotalGanancia),
+            },
+          });
+
+          await tx.ticketEvento.create({
+            data: {
+              pedidoId: pedido.id,
+              itemId: it.item.id,
+              tokenQr: generateTokenQR(),
+              cantidad: it.cantidad,
+              estado: EstadoTicketEvento.ACTIVO,
+            },
+          });
+
+          if (it.item.stockDisponible !== null) {
+            await tx.itemEvento.update({
+              where: { id: it.item.id },
+              data: { stockDisponible: { decrement: it.cantidad } },
+            });
+          }
+        }
+      }
+
+      // 5. Actualizar cabecera del pedido
+      return tx.pedidoEvento.update({
+        where: { id: pedido.id },
+        data: {
+          ...(dto.compradorNombre ? { compradorNombre: dto.compradorNombre } : {}),
+          ...(dto.compradorContacto !== undefined ? { compradorContacto: dto.compradorContacto } : {}),
+          ...(dto.vendedorUsuarioId !== undefined ? { vendedorUsuarioId: dto.vendedorUsuarioId } : {}),
+          ...(dto.observaciones !== undefined ? { observaciones: dto.observaciones } : {}),
+          ...(dto.metodoPago !== undefined ? { metodoPago: dto.metodoPago as MetodoPago } : {}),
+          ...(dto.cuentaId !== undefined ? { cuentaId: dto.cuentaId } : {}),
+          ...(dto.items ? {
+            total: redondearDosDecimales(totalVentaNum),
+            totalGanancia: redondearDosDecimales(totalGananciaNum),
+          } : {}),
+        },
+        include: {
+          detalles: { include: { item: true } },
+          tickets: { include: { item: true } },
+          vendedorUsuario: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+    });
+  }
+
+  async validarTicketQr(actor: AuthUser, alcance: AlcanceAcceso, dto: ValidarTicketQrDto) {
+    const verification = verifyTokenQR(dto.tokenQr);
+    if (!verification.valid) {
+      throw new BadRequestException('El código QR es inválido o no corresponde a una entrada auténtica');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticketEvento.findUnique({
+        where: { tokenQr: dto.tokenQr },
+        include: {
+          item: true,
+          pedido: {
+            include: {
+              evento: true,
+              vendedorUsuario: { select: { id: true, nombre: true, apellido: true } },
+            },
+          },
+        },
+      });
+
+      if (!ticket) {
+        throw new NotFoundException('Vale o entrada no encontrada en el sistema');
+      }
+
+      if (ticket.estado === EstadoTicketEvento.UTILIZADO) {
+        return {
+          ok: false,
+          estado: 'YA_UTILIZADO',
+          mensaje: `Este vale ya fue retirado/utilizado el ${ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString('es-AR') : 'previamente'}.`,
+          ticket: {
+            id: ticket.id,
+            producto: ticket.item.nombre,
+            cantidad: ticket.cantidad,
+            comprador: ticket.pedido.compradorNombre,
+            vendedor: ticket.pedido.vendedorUsuario
+              ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
+              : null,
+            evento: ticket.pedido.evento.titulo,
+            fechaUso: ticket.fechaUso,
+          },
+        };
+      }
+
+      if (ticket.estado !== EstadoTicketEvento.ACTIVO) {
+        return {
+          ok: false,
+          estado: ticket.estado,
+          mensaje: `El vale no se encuentra activo (Estado actual: ${ticket.estado}).`,
+        };
+      }
+
+      // Actualización atómica con control de concurrencia
+      const updateRes = await tx.ticketEvento.updateMany({
+        where: { id: ticket.id, estado: EstadoTicketEvento.ACTIVO },
+        data: {
+          estado: EstadoTicketEvento.UTILIZADO,
+          fechaUso: new Date(),
+          validadorUsuarioId: actor.sub,
+        },
+      });
+
+      if (updateRes.count !== 1) {
+        return {
+          ok: false,
+          estado: 'CONCURRENCIA',
+          mensaje: 'El vale acaba de ser escaneado y procesado por otro dispositivo.',
+        };
+      }
+
+      return {
+        ok: true,
+        estado: 'VALIDADO',
+        mensaje: `¡Entrega confirmada! Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`,
+        ticket: {
+          id: ticket.id,
+          producto: ticket.item.nombre,
+          cantidad: ticket.cantidad,
+          comprador: ticket.pedido.compradorNombre,
+          vendedor: ticket.pedido.vendedorUsuario
+            ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
+            : null,
+          evento: ticket.pedido.evento.titulo,
+          fechaUso: new Date(),
+        },
+      };
+    });
+  }
+
+  async acreditarGananciasEvento(actor: AuthUser, alcance: AlcanceAcceso, dto: AcreditarGananciasEventoDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para liquidar ganancias de eventos');
+    }
+
+    const evento = await this.prisma.evento.findUnique({
+      where: { id: dto.eventoId },
+      include: {
+        pedidos: {
+          where: {
+            vendedorUsuarioId: { not: null },
+            gananciaAcreditada: false,
+            estado: { not: EstadoPedidoEvento.CANCELADO },
+          },
+          include: {
+            tickets: true,
+            vendedorUsuario: true,
+          },
+        },
+      },
+    });
+
+    if (!evento) throw new NotFoundException('Evento no encontrado');
+
+    const pedidosParaAcreditar = evento.pedidos.filter((p) => {
+      if (Number(p.totalGanancia) < 0) return false;
+      if (!dto.soloRetirados) return true;
+      // Validar que todos sus tickets estén en estado UTILIZADO
+      return p.tickets.length > 0 && p.tickets.every((t) => t.estado === EstadoTicketEvento.UTILIZADO);
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      let totalGananciaAcreditada = 0;
+      let pedidosAcreditadosCount = 0;
+
+      for (const pedido of pedidosParaAcreditar) {
+        const ganancia = Number(pedido.totalGanancia);
+        if (pedido.vendedorUsuarioId) {
+          if (ganancia > 0) {
+            await tx.usuario.update({
+              where: { id: pedido.vendedorUsuarioId },
+              data: {
+                saldoAFavor: { increment: redondearDosDecimales(ganancia) },
+              },
+            });
+          }
+
+          await tx.pedidoEvento.update({
+            where: { id: pedido.id },
+            data: {
+              gananciaAcreditada: true,
+              fechaAcreditacion: new Date(),
+            },
+          });
+
+          totalGananciaAcreditada = round2(totalGananciaAcreditada + ganancia);
+          pedidosAcreditadosCount++;
+        }
+      }
+
+      return {
+        eventoId: evento.id,
+        pedidosAcreditados: pedidosAcreditadosCount,
+        totalGananciaAcreditada: round2(totalGananciaAcreditada),
+      };
+    });
+  }
+
+  async obtenerMisTickets(actor: AuthUser) {
+    return this.prisma.ticketEvento.findMany({
+      where: {
+        pedido: {
+          OR: [
+            { vendedorUsuarioId: actor.sub },
+            { registradoPorUsuarioId: actor.sub },
+          ],
+        },
+      },
+      include: {
+        item: true,
+        pedido: {
+          include: {
+            evento: true,
+            vendedorUsuario: { select: { id: true, nombre: true, apellido: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async obtenerMisPedidos(actor: AuthUser) {
+    return this.prisma.pedidoEvento.findMany({
+      where: {
+        OR: [
+          { vendedorUsuarioId: actor.sub },
+          { registradoPorUsuarioId: actor.sub },
+        ],
+      },
+      include: {
+        evento: {
+          select: {
+            id: true,
+            titulo: true,
+            fechaEvento: true,
+            lugarEntrega: true,
+            estado: true,
+            tipo: true,
+            items: true,
+          },
+        },
+        vendedorUsuario: { select: { id: true, nombre: true, apellido: true } },
+        detalles: { include: { item: true } },
+        tickets: {
+          include: {
+            item: true,
+            validador: { select: { id: true, nombre: true, apellido: true } },
+          },
+          orderBy: { id: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }

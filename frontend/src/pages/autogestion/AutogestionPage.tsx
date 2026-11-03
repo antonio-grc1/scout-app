@@ -27,12 +27,21 @@ import {
   Loader2,
   AlertCircle,
   Eye,
+  ShoppingBag,
+  Sparkles,
+  PlusCircle,
+  QrCode,
+  Edit2,
+  CheckCircle2,
+  Clock,
 } from 'lucide-react';
 import { PdfViewerModal } from '../../components/PdfViewerModal';
+import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
+import { ModalTicketQR } from '../../components/ModalTicketQR';
 
 export const AutogestionPage: React.FC = () => {
   const { usuario, asignaciones } = useAuthStore();
-  const [vistaActiva, setVistaActiva] = useState<'papeles' | 'cuotas'>('papeles');
+  const [vistaActiva, setVistaActiva] = useState<'papeles' | 'cuotas' | 'eventos'>('papeles');
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<any | null>(null);
   const [precarga, setPrecarga] = useState<any | null>(null);
   const [cargandoInicial, setCargandoInicial] = useState(true);
@@ -42,6 +51,18 @@ export const AutogestionPage: React.FC = () => {
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [toast, setToast] = useState<{ texto: string; tipo: 'exito' | 'error' } | null>(null);
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
+
+  // Estados para Eventos y Vales QR
+  const [misPedidos, setMisPedidos] = useState<any[]>([]);
+  const [eventosActivos, setEventosActivos] = useState<any[]>([]);
+  const [cargandoEventos, setCargandoEventos] = useState(false);
+  const [modalCargarPedidoAbierto, setModalCargarPedidoAbierto] = useState(false);
+  const [pedidoAEditar, setPedidoAEditar] = useState<any | null>(null);
+  const [eventoParaCargar, setEventoParaCargar] = useState<any | null>(null);
+  const [modalTicketQR, setModalTicketQR] = useState<{ abierto: boolean; ticket: any | null }>({
+    abierto: false,
+    ticket: null,
+  });
 
   const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
     setToast({ texto, tipo });
@@ -135,6 +156,34 @@ export const AutogestionPage: React.FC = () => {
   useEffect(() => {
     inicializarAutogestion();
   }, [inicializarAutogestion]);
+
+  const cargarMisPedidosYEventos = useCallback(async () => {
+    setCargandoEventos(true);
+    try {
+      const [resPedidos, resEventos] = await Promise.all([
+        api.get('/tesoreria/mis-pedidos').catch(() => ({ data: [] })),
+        api.get('/tesoreria/eventos').catch(() => ({ data: [] })),
+      ]);
+      const pedList = Array.isArray(resPedidos.data) ? resPedidos.data : [];
+      setMisPedidos(pedList);
+
+      const evList = Array.isArray(resEventos.data) ? resEventos.data : [];
+      setEventosActivos(evList);
+      if (evList.length > 0 && !eventoParaCargar) {
+        setEventoParaCargar(evList[0]);
+      }
+    } catch {
+      // Ignorar
+    } finally {
+      setCargandoEventos(false);
+    }
+  }, [eventoParaCargar]);
+
+  useEffect(() => {
+    if (vistaActiva === 'eventos') {
+      cargarMisPedidosYEventos();
+    }
+  }, [vistaActiva, cargarMisPedidosYEventos]);
 
   const obtenerDatosUsuarioPdf = () => ({
     nombre: precarga?.usuario?.nombre || usuario?.nombre || '',
@@ -356,8 +405,8 @@ export const AutogestionPage: React.FC = () => {
             )}
           </div>
 
-          {/* Selector Rápido de Vista (Papeles vs Cuotas) */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-rule">
+          {/* Selector Rápido de Vista (Papeles vs Cuotas vs Eventos) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-rule">
             <button
               type="button"
               onClick={() => setVistaActiva('papeles')}
@@ -391,6 +440,30 @@ export const AutogestionPage: React.FC = () => {
                   }`}
                 >
                   {formatearMoneda(saldoPendiente)}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setVistaActiva('eventos')}
+              className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                vistaActiva === 'eventos'
+                  ? 'bg-brand text-brand-contrast shadow-2xs'
+                  : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Eventos y Vales QR</span>
+              {misPedidos.length > 0 && (
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                    vistaActiva === 'eventos'
+                      ? 'bg-brand-contrast text-brand'
+                      : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                  }`}
+                >
+                  {misPedidos.length}
                 </span>
               )}
             </button>
@@ -527,6 +600,265 @@ export const AutogestionPage: React.FC = () => {
             )}
           </div>
         )}
+
+        {/* VISTA 3: MIS VENTAS Y VALES QR */}
+        {vistaActiva === 'eventos' && (
+          <div className="bg-surface rounded-2xl p-4 sm:p-5 border border-rule shadow-2xs space-y-4 transition-colors">
+            {/* Header de la sección */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule pb-3">
+              <div>
+                <span className="text-sm font-extrabold text-ink flex items-center gap-1.5">
+                  <ShoppingBag className="w-4 h-4 text-brand" />
+                  Mis Ventas y Vales QR
+                </span>
+                <p className="text-[11px] text-ink-muted mt-0.5">
+                  Cargá tus ventas para sumar ganancia a tu saldo personal y compartí los vales con tus clientes.
+                </p>
+              </div>
+
+              {eventosActivos.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPedidoAEditar(null);
+                    setModalCargarPedidoAbierto(true);
+                  }}
+                  className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Cargar Nueva Venta</span>
+                </button>
+              )}
+            </div>
+
+            {/* Selector de Evento Activo si hay más de 1 */}
+            {eventosActivos.length > 1 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <span className="text-xs font-bold text-ink-muted shrink-0">Evento:</span>
+                {eventosActivos.map((ev) => (
+                  <button
+                    key={ev.id}
+                    type="button"
+                    onClick={() => setEventoParaCargar(ev)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
+                      eventoParaCargar?.id === ev.id
+                        ? 'bg-brand/10 text-brand border border-brand/30'
+                        : 'bg-paper-2 text-ink-muted hover:bg-paper-3'
+                    }`}
+                  >
+                    {ev.titulo}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Tarjetas Resumen */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
+                <span className="text-xs font-semibold text-ink-muted">Pedidos Registrados</span>
+                <span className="text-2xl font-black text-ink mt-1">
+                  {misPedidos.length}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
+                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                  Ganancia de Ventas
+                </span>
+                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                  +{formatearMoneda(
+                    misPedidos.reduce((acc, p) => acc + Number(p.totalGanancia || 0), 0),
+                  )}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
+                <span className="text-xs font-semibold text-ink-muted">Saldo a Favor en Grupo</span>
+                <span className="text-2xl font-black text-ink mt-1">
+                  {formatearMoneda(estadoCuenta?.resumen?.saldoAFavor || 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* Listado de Pedidos y Vales */}
+            {cargandoEventos ? (
+              <div className="p-8 flex flex-col items-center justify-center gap-2 text-ink-muted">
+                <Loader2 className="w-6 h-6 animate-spin text-brand" />
+                <span className="text-xs font-bold">Cargando tus ventas...</span>
+              </div>
+            ) : misPedidos.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-paper-2/60 border border-rule text-center space-y-3">
+                <ShoppingBag className="w-8 h-8 text-ink-muted mx-auto" />
+                <p className="text-xs font-medium text-ink-muted max-w-sm mx-auto">
+                  Aún no registraste ventas para los eventos activos. Hacé clic en "Cargar Nueva Venta" para empezar a sumar ganancia a tu saldo.
+                </p>
+                {eventosActivos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPedidoAEditar(null);
+                      setModalCargarPedidoAbierto(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-brand text-brand-contrast text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-2xs hover:opacity-90"
+                  >
+                    <PlusCircle className="w-4 h-4" />
+                    <span>Cargar Primer Pedido</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {misPedidos.map((p: any) => {
+                  const algunoRetirado = p.tickets?.some((t: any) => t.estado === 'UTILIZADO');
+
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-black text-ink">
+                            Pedido #{p.id}
+                          </span>
+                          <span className="text-[11px] text-ink-muted">
+                            • {p.evento?.titulo}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                              p.estado === 'PAGADO'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200'
+                                : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
+                            }`}
+                          >
+                            {p.estado === 'PAGADO' ? 'Pagado' : 'Pendiente de cobro'}
+                          </span>
+                        </div>
+
+                        <p className="text-xs font-bold text-ink">
+                          Cliente: {p.compradorNombre}
+                          {p.compradorContacto && (
+                            <span className="text-ink-muted font-normal ml-1">
+                              ({p.compradorContacto})
+                            </span>
+                          )}
+                        </p>
+
+                        <div className="text-xs text-ink-muted space-x-2">
+                          {p.detalles?.map((d: any) => (
+                            <span key={d.id} className="inline-block">
+                              <strong className="text-ink font-bold">{d.cantidad}x</strong> {d.item?.nombre}
+                            </span>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-1 text-xs">
+                          <span className="font-black text-ink">
+                            Total: {formatearMoneda(Number(p.total))}
+                          </span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                            Tu Ganancia: +{formatearMoneda(Number(p.totalGanancia))}
+                            {p.gananciaAcreditada && (
+                              <span className="ml-1 text-[10px] text-emerald-500 font-normal">
+                                (Acreditada en tu saldo ✓)
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Vales QR y Acciones */}
+                      <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {p.tickets?.map((t: any, idx: number) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() =>
+                                setModalTicketQR({
+                                  abierto: true,
+                                  ticket: {
+                                    id: t.id,
+                                    tokenQr: t.tokenQr,
+                                    cantidad: t.cantidad,
+                                    estado: t.estado,
+                                    fechaUso: t.fechaUso,
+                                    item: t.item,
+                                    pedido: {
+                                      id: p.id,
+                                      compradorNombre: p.compradorNombre,
+                                      compradorContacto: p.compradorContacto,
+                                      evento: p.evento,
+                                      vendedorUsuario: p.vendedorUsuario,
+                                    },
+                                  },
+                                })
+                              }
+                              className={`px-2.5 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 border transition cursor-pointer ${
+                                t.estado === 'UTILIZADO'
+                                  ? 'bg-slate-100 text-slate-500 border-slate-300 dark:bg-slate-900 dark:border-slate-800 line-through'
+                                  : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-2xs'
+                              }`}
+                              title={t.estado === 'UTILIZADO' ? 'Vale ya retirado' : 'Ver y compartir vale QR'}
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                              <span>{t.estado === 'UTILIZADO' ? `Retirado #${idx + 1}` : `Vale QR #${idx + 1}`}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {!algunoRetirado && !p.gananciaAcreditada && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPedidoAEditar(p);
+                              setEventoParaCargar(p.evento);
+                              setModalCargarPedidoAbierto(true);
+                            }}
+                            className="px-2.5 py-1 rounded-lg text-xs font-bold text-ink-muted hover:text-brand hover:bg-paper-3 transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                            <span>Editar Pedido</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Modales de Eventos para Beneficiarios */}
+        {eventoParaCargar && (
+          <ModalCargarPedidoEvento
+            abierto={modalCargarPedidoAbierto}
+            onCerrar={() => {
+              setModalCargarPedidoAbierto(false);
+              setPedidoAEditar(null);
+            }}
+            onGuardado={() => {
+              cargarMisPedidosYEventos();
+              inicializarAutogestion();
+            }}
+            eventoId={eventoParaCargar.id}
+            eventoTitulo={eventoParaCargar.titulo}
+            itemsEvento={eventoParaCargar.items || []}
+            pedidoAEditar={pedidoAEditar}
+            bloquearVendedor={true}
+            vendedorFijoId={usuario?.id}
+            vendedorFijoNombre={usuario ? `${usuario.nombre} ${usuario.apellido}` : ''}
+            onToast={mostrarToast}
+          />
+        )}
+
+        <ModalTicketQR
+          abierto={modalTicketQR.abierto}
+          onCerrar={() => setModalTicketQR({ abierto: false, ticket: null })}
+          ticket={modalTicketQR.ticket}
+        />
       </main>
     </div>
   );

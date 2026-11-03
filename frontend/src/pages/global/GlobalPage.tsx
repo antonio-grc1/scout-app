@@ -11,6 +11,10 @@ import { PanelAdminRamas } from '../../components/PanelAdminRamas';
 import { PanelGestorRoles } from '../../components/PanelGestorRoles';
 import { PanelPasesPorCamada } from '../../components/PanelPasesPorCamada';
 import { PanelAdminPlantillas } from '../../components/PanelAdminPlantillas';
+import { PanelTesoreriaCajaBanco } from '../../components/PanelTesoreriaCajaBanco';
+import { PanelGastosTesoreria } from '../../components/PanelGastosTesoreria';
+import { PanelCuadroResultados } from '../../components/PanelCuadroResultados';
+import { PanelEventosEconomicos } from '../../components/PanelEventosEconomicos';
 import {
   NOMBRES_MESES_CORTOS,
   NOMBRES_MESES_LARGOS,
@@ -19,6 +23,7 @@ import {
 } from '../../lib/formatters';
 import {
   Shield,
+  Landmark,
   PlusCircle,
   Users,
   Pencil,
@@ -31,6 +36,9 @@ import {
   Phone,
   Layers,
   Tent,
+  Receipt,
+  Scale,
+  Sparkles,
   Check,
   Loader2,
   X,
@@ -61,7 +69,7 @@ export const GlobalPage: React.FC = () => {
   const [conceptos, setConceptos] = useState<any[]>([]);
   const [planesMensuales, setPlanesMensuales] = useState<any[]>([]);
   const [familias, setFamilias] = useState<any[]>([]);
-  const [subTabTesoreria, setSubTabTesoreria] = useState<'planes' | 'campamentos' | 'familias'>('planes');
+  const [subTabTesoreria, setSubTabTesoreria] = useState<'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias'>('caja-banco');
   const [ramas, setRamas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [mostrarInactivasOrg, setMostrarInactivasOrg] = useState(false);
@@ -363,6 +371,58 @@ export const GlobalPage: React.FC = () => {
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-rule pb-3">
               <button
                 type="button"
+                onClick={() => setSubTabTesoreria('caja-banco')}
+                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  subTabTesoreria === 'caja-banco'
+                    ? 'bg-brand/10 text-brand border border-brand/30'
+                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                }`}
+              >
+                <Landmark className="w-4 h-4" />
+                <span>Caja y Banco</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTabTesoreria('gastos')}
+                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  subTabTesoreria === 'gastos'
+                    ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                }`}
+              >
+                <Receipt className="w-4 h-4" />
+                <span>Gastos / Egresos</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTabTesoreria('balance')}
+                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  subTabTesoreria === 'balance'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                }`}
+              >
+                <Scale className="w-4 h-4" />
+                <span>Balance de Resultados</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubTabTesoreria('eventos-qr')}
+                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  subTabTesoreria === 'eventos-qr'
+                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                }`}
+              >
+                <Sparkles className="w-4 h-4 text-amber-500" />
+                <span>Eventos y Vales QR</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setSubTabTesoreria('planes')}
                 className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   subTabTesoreria === 'planes'
@@ -400,6 +460,26 @@ export const GlobalPage: React.FC = () => {
                 <span>Descuento Hermanos ({familias.length})</span>
               </button>
             </div>
+
+            {/* SUB-TAB 0: CAJA Y BANCO (LIBRO DIARIO) */}
+            {subTabTesoreria === 'caja-banco' && (
+              <PanelTesoreriaCajaBanco onToast={mostrarToast} />
+            )}
+
+            {/* SUB-TAB 0.5: GASTOS Y EGRESOS */}
+            {subTabTesoreria === 'gastos' && (
+              <PanelGastosTesoreria onToast={mostrarToast} />
+            )}
+
+            {/* SUB-TAB 0.7: BALANCE Y CUADRO DE RESULTADOS */}
+            {subTabTesoreria === 'balance' && (
+              <PanelCuadroResultados onToast={mostrarToast} />
+            )}
+
+            {/* SUB-TAB 0.8: EVENTOS ECONÓMICOS Y VALES QR */}
+            {subTabTesoreria === 'eventos-qr' && (
+              <PanelEventosEconomicos onToast={mostrarToast} />
+            )}
 
             {/* SUB-TAB 1: PLANES DE CUOTA MENSUAL */}
             {subTabTesoreria === 'planes' && (

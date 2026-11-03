@@ -1,4 +1,4 @@
-import { EstadoCargo, MetodoPago } from '@prisma/client';
+import { EstadoCargo, MetodoPago, TipoCuenta, TipoRubro } from '@prisma/client';
 import { z } from 'zod';
 
 const montoDecimal = z.number().positive().max(99999999.99);
@@ -18,6 +18,7 @@ export const CrearConceptoSchema = z.object({
   excepcionesIds: z.array(z.number().int().positive()).default([]).optional(),
   mes: z.number().int().min(1).max(12).nullable().optional(),
   planCuotaMensualId: z.number().int().positive().nullable().optional(),
+  rubroId: z.number().int().positive().nullable().optional(),
   /** Si se especifica, el concepto es exclusivo para miembros de esa unidad; si no, es para todo el grupo */
   unidadId: z.number().int().positive().nullable().optional(),
   /** Si es true, genera automáticamente los cargos a los destinatarios al crear el concepto */
@@ -38,6 +39,7 @@ export const EditarConceptoSchema = z.object({
   excepcionesIds: z.array(z.number().int().positive()).optional(),
   mes: z.number().int().min(1).max(12).nullable().optional(),
   planCuotaMensualId: z.number().int().positive().nullable().optional(),
+  rubroId: z.number().int().positive().nullable().optional(),
   unidadId: z.number().int().positive().nullable().optional(),
   sincronizarCargos: z.boolean().default(true).optional(),
 });
@@ -52,6 +54,7 @@ export const CrearPlanCuotaMensualSchema = z.object({
   mesesHabilitados: z.array(z.number().int().min(1).max(12)).default([]),
   destinatarioTipo: z.enum(['TODOS', 'PROTAGONISTAS', 'EDUCADORES']).default('PROTAGONISTAS'),
   unidadId: z.number().int().positive().nullable().optional(),
+  rubroId: z.number().int().positive().nullable().optional(),
   permiteDescuentoHermanos: z.boolean().default(true).optional(),
   porcentajeDescuentoHermanos: z.number().min(0).max(100).nullable().optional(),
   excepcionesIds: z.array(z.number().int().positive()).default([]).optional(),
@@ -121,6 +124,7 @@ export const ImputacionItemSchema = z.object({
 
 export const RegistrarPagoSchema = z.object({
   usuarioId: z.number().int().positive().optional(),
+  cuentaId: z.number().int().positive().optional(),
   montoTotal: montoNoNegativo,
   usarSaldoAFavor: z.boolean().default(false).optional(),
   montoSaldoAFavor: montoNoNegativo.optional(),
@@ -171,5 +175,172 @@ export const DesvincularHermanoSchema = z.object({
   usuarioId: z.number().int().positive(),
 });
 export type DesvincularHermanoDto = z.infer<typeof DesvincularHermanoSchema>;
+
+// ---------------- Cuentas Financieras, Transferencias y Libro Diario (Fase 1) ----------------
+export const CrearCuentaFinancieraSchema = z.object({
+  nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
+  tipo: z.enum(TipoCuenta),
+});
+export type CrearCuentaFinancieraDto = z.infer<typeof CrearCuentaFinancieraSchema>;
+
+export const ActualizarCuentaFinancieraSchema = z.object({
+  nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100).optional(),
+  activa: z.boolean().optional(),
+});
+export type ActualizarCuentaFinancieraDto = z.infer<typeof ActualizarCuentaFinancieraSchema>;
+
+export const CrearTransferenciaSchema = z.object({
+  origenCuentaId: z.number().int().positive('La cuenta de origen es obligatoria'),
+  destinoCuentaId: z.number().int().positive('La cuenta de destino es obligatoria'),
+  monto: montoDecimal,
+  concepto: z.string().trim().min(3, 'El concepto debe tener al menos 3 caracteres').max(300),
+  fecha: z.string().optional(),
+});
+export type CrearTransferenciaDto = z.infer<typeof CrearTransferenciaSchema>;
+
+export const ConsultaLibroDiarioQuerySchema = z.object({
+  desde: z.string().optional(),
+  hasta: z.string().optional(),
+  fecha: z.string().optional(),
+});
+export type ConsultaLibroDiarioQueryDto = z.infer<typeof ConsultaLibroDiarioQuerySchema>;
+
+// ---------------- Rubros Contables (Fase 2) ----------------
+export const CrearRubroContableSchema = z.object({
+  nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
+  tipo: z.enum(TipoRubro),
+  unidadId: z.number().int().positive().nullable().optional(),
+  permiteDescuentoDefault: z.boolean().default(false).optional(),
+  activo: z.boolean().default(true).optional(),
+});
+export type CrearRubroContableDto = z.infer<typeof CrearRubroContableSchema>;
+
+export const ActualizarRubroContableSchema = z.object({
+  nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100).optional(),
+  unidadId: z.number().int().positive().nullable().optional(),
+  permiteDescuentoDefault: z.boolean().optional(),
+  activo: z.boolean().optional(),
+});
+export type ActualizarRubroContableDto = z.infer<typeof ActualizarRubroContableSchema>;
+
+export const ListarRubrosQuerySchema = z.object({
+  tipo: z.enum(TipoRubro).optional(),
+  incluirInactivos: z
+    .preprocess((val) => (val === 'true' || val === true ? true : false), z.boolean())
+    .optional(),
+});
+export type ListarRubrosQueryDto = z.infer<typeof ListarRubrosQuerySchema>;
+
+// ---------------- Gastos / Egresos Operativos (Fase 2) ----------------
+export const RegistrarGastoSchema = z.object({
+  fecha: z.string().optional(),
+  monto: montoDecimal,
+  descripcion: z.string().trim().min(2, 'La descripción debe tener al menos 2 caracteres').max(300),
+  rubroId: z.number().int().positive('Debe seleccionar un rubro de egreso'),
+  cuentaId: z.number().int().positive('Debe seleccionar la cuenta de pago (Caja o Banco)'),
+  comprobanteNro: z.string().trim().max(100).optional(),
+  comprobanteUrl: z.string().trim().max(500).optional(),
+});
+export type RegistrarGastoDto = z.infer<typeof RegistrarGastoSchema>;
+
+export const ListarGastosQuerySchema = z.object({
+  cuentaId: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().positive().optional()),
+  rubroId: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().positive().optional()),
+  desde: z.string().optional(),
+  hasta: z.string().optional(),
+  incluirAnulados: z
+    .preprocess((val) => (val === 'true' || val === true ? true : false), z.boolean())
+    .optional(),
+});
+export type ListarGastosQueryDto = z.infer<typeof ListarGastosQuerySchema>;
+
+// ---------------- Cuadro de Resultados (Fase 3) ----------------
+export const ConsultaCuadroResultadosQuerySchema = z.object({
+  anio: z
+    .preprocess((val) => (val ? Number(val) : new Date().getFullYear()), z.number().int().min(2020).max(2100))
+    .optional(),
+  mes: z
+    .preprocess((val) => (val ? Number(val) : undefined), z.number().int().min(1).max(12).optional()),
+});
+export type ConsultaCuadroResultadosQueryDto = z.infer<typeof ConsultaCuadroResultadosQuerySchema>;
+
+// ---------------- Eventos Económicos y Entradas con QR (Fase 4) ----------------
+export const CrearItemEventoSchema = z.object({
+  nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
+  descripcion: z.string().trim().max(300).optional(),
+  precioVenta: montoDecimal,
+  costoUnitario: montoNoNegativo.default(0).optional(),
+  gananciaUnitaria: montoNoNegativo.default(0).optional(),
+  stockTotal: z.number().int().positive().nullable().optional(),
+});
+export type CrearItemEventoDto = z.infer<typeof CrearItemEventoSchema>;
+
+export const CrearEventoSchema = z.object({
+  titulo: z.string().trim().min(3, 'El título debe tener al menos 3 caracteres').max(150),
+  descripcion: z.string().trim().max(1000).optional(),
+  tipo: z.enum(['RECAUDACION_PEDIDOS', 'FESTIVAL_ENTRADAS']).default('RECAUDACION_PEDIDOS'),
+  estado: z.enum(['BORRADOR', 'PUBLICADO', 'FINALIZADO', 'CANCELADO']).default('PUBLICADO').optional(),
+  fechaEvento: z.string().min(1, 'Debe especificar la fecha del evento o retiro'),
+  fechaFin: z.string().optional(),
+  lugarEntrega: z.string().trim().max(200).optional(),
+  rubroId: z.number().int().positive().nullable().optional(),
+  cuentaId: z.number().int().positive().nullable().optional(),
+  items: z.array(CrearItemEventoSchema).min(1, 'Debe incluir al menos un producto o tipo de entrada'),
+});
+export type CrearEventoDto = z.infer<typeof CrearEventoSchema>;
+
+export const ActualizarEventoSchema = z.object({
+  titulo: z.string().trim().min(3).max(150).optional(),
+  descripcion: z.string().trim().max(1000).optional(),
+  tipo: z.enum(['RECAUDACION_PEDIDOS', 'FESTIVAL_ENTRADAS']).optional(),
+  estado: z.enum(['BORRADOR', 'PUBLICADO', 'FINALIZADO', 'CANCELADO']).optional(),
+  fechaEvento: z.string().optional(),
+  fechaFin: z.string().optional(),
+  lugarEntrega: z.string().trim().max(200).optional(),
+  rubroId: z.number().int().positive().nullable().optional(),
+  cuentaId: z.number().int().positive().nullable().optional(),
+  items: z.array(CrearItemEventoSchema).optional(),
+});
+export type ActualizarEventoDto = z.infer<typeof ActualizarEventoSchema>;
+
+export const ItemPedidoSchema = z.object({
+  itemId: z.number().int().positive(),
+  cantidad: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
+});
+
+export const CrearPedidoEventoSchema = z.object({
+  eventoId: z.number().int().positive(),
+  compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120),
+  compradorContacto: z.string().trim().max(100).optional(),
+  vendedorUsuarioId: z.number().int().positive().nullable().optional(),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'MERCADOPAGO', 'OTRO']).optional(),
+  cuentaId: z.number().int().positive().nullable().optional(),
+  observaciones: z.string().trim().max(300).optional(),
+  items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto'),
+});
+export type CrearPedidoEventoDto = z.infer<typeof CrearPedidoEventoSchema>;
+
+export const ActualizarPedidoEventoSchema = z.object({
+  compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120).optional(),
+  compradorContacto: z.string().trim().max(100).optional(),
+  vendedorUsuarioId: z.number().int().positive().nullable().optional(),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'MERCADOPAGO', 'OTRO']).optional(),
+  cuentaId: z.number().int().positive().nullable().optional(),
+  observaciones: z.string().trim().max(300).optional(),
+  items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto').optional(),
+});
+export type ActualizarPedidoEventoDto = z.infer<typeof ActualizarPedidoEventoSchema>;
+
+export const ValidarTicketQrSchema = z.object({
+  tokenQr: z.string().trim().min(10, 'Código QR no válido'),
+});
+export type ValidarTicketQrDto = z.infer<typeof ValidarTicketQrSchema>;
+
+export const AcreditarGananciasEventoSchema = z.object({
+  eventoId: z.number().int().positive(),
+  soloRetirados: z.boolean().default(true).optional(),
+});
+export type AcreditarGananciasEventoDto = z.infer<typeof AcreditarGananciasEventoSchema>;
+
 
 

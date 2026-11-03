@@ -21,6 +21,8 @@ export interface PlanCuotaMensualData {
   mesesHabilitados: number[];
   destinatarioTipo: 'TODOS' | 'PROTAGONISTAS' | 'EDUCADORES';
   unidadId: number | null;
+  rubroId?: number | null;
+  rubro?: { id: number; nombre: string } | null;
   permiteDescuentoHermanos?: boolean;
   porcentajeDescuentoHermanos?: number | null;
   excepcionesIds?: number[];
@@ -65,6 +67,8 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   const [mesesHabilitados, setMesesHabilitados] = useState<number[]>([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
   const [destinatarioTipo, setDestinatarioTipo] = useState<'TODOS' | 'PROTAGONISTAS' | 'EDUCADORES'>('PROTAGONISTAS');
   const [unidadId, setUnidadId] = useState<number | null>(null);
+  const [rubroId, setRubroId] = useState<number | ''>('');
+  const [rubros, setRubros] = useState<Array<{ id: number; nombre: string }>>([]);
   const [permiteDescuentoHermanos, setPermiteDescuentoHermanos] = useState(true);
   const [usarPorcentajePersonalizado, setUsarPorcentajePersonalizado] = useState(false);
   const [porcentajeDescuentoHermanos, setPorcentajeDescuentoHermanos] = useState<number | ''>('');
@@ -74,6 +78,11 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    api
+      .get('/tesoreria/rubros?tipo=INGRESO')
+      .then((res) => setRubros(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
+
     if (planAEditar) {
       setNombre(planAEditar.nombre || '');
       setCicloAnio(planAEditar.cicloAnio || anioActual);
@@ -85,6 +94,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
       setMesesHabilitados(meses);
       setDestinatarioTipo(planAEditar.destinatarioTipo || 'PROTAGONISTAS');
       setUnidadId(planAEditar.unidadId ?? null);
+      setRubroId(planAEditar.rubroId || '');
       setPermiteDescuentoHermanos(planAEditar.permiteDescuentoHermanos ?? true);
       if (planAEditar.porcentajeDescuentoHermanos !== null && planAEditar.porcentajeDescuentoHermanos !== undefined) {
         setUsarPorcentajePersonalizado(true);
@@ -102,6 +112,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
       setMesesHabilitados([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
       setDestinatarioTipo('PROTAGONISTAS');
       setUnidadId(null);
+      setRubroId('');
       setPermiteDescuentoHermanos(true);
       setUsarPorcentajePersonalizado(false);
       setPorcentajeDescuentoHermanos('');
@@ -156,6 +167,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
         mesesHabilitados,
         destinatarioTipo,
         unidadId: unidadId ?? null,
+        rubroId: rubroId ? Number(rubroId) : null,
         permiteDescuentoHermanos,
         porcentajeDescuentoHermanos:
           permiteDescuentoHermanos && usarPorcentajePersonalizado && porcentajeDescuentoHermanos !== ''
@@ -245,6 +257,27 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
               />
             </div>
           </div>
+
+          {/* Categoría / Rubro de Ingreso */}
+          {rubros.length > 0 && (
+            <div>
+              <label className="block text-xs font-bold text-ink-2 mb-1">
+                Categoría / Rubro Contable (Opcional)
+              </label>
+              <select
+                value={rubroId}
+                onChange={(e) => setRubroId(Number(e.target.value) || '')}
+                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+              >
+                <option value="">Sin categoría específica (Cuota General)</option>
+                {rubros.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Monto Mensual y Día de Vencimiento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
