@@ -63,7 +63,12 @@ interface EventoItem {
 }
 
 export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ onToast }) => {
-  const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermiso('tesoreria.gestionar'));
+  const puedeGestionarEventos = useAuthStore(
+    (s) =>
+      s.tienePermiso('eventos.gestionar') ||
+      s.tienePermiso('tesoreria.gestionar') ||
+      s.tienePermiso('tesoreria.conceptos_planes'),
+  );
   const [eventos, setEventos] = useState<EventoItem[]>([]);
   const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState<number | null>(null);
   const [eventoDetalle, setEventoDetalle] = useState<any | null>(null);
@@ -369,22 +374,22 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
             </Button>
           )}
 
-          {puedeGestionarTesoreria && (
+          {puedeGestionarEventos && (
             <Button
-              variant="secondary"
+              variant={eventos.length === 0 ? 'primary' : 'secondary'}
               size="sm"
               onClick={() => {
                 setEventoAEditar(null);
                 setModalCrearEventoAbierto(true);
               }}
-              className="gap-1.5 justify-center"
+              className="gap-1.5 justify-center font-bold"
             >
-              <PlusCircle className="w-3.5 h-3.5 shrink-0" />
-              <span>Nuevo Evento</span>
+              <PlusCircle className="w-4 h-4 shrink-0" />
+              <span>+ Nuevo Evento</span>
             </Button>
           )}
 
-          {puedeGestionarTesoreria && eventoActivo && (
+          {puedeGestionarEventos && eventoActivo && (
             <Button
               variant="secondary"
               size="sm"
@@ -399,7 +404,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
             </Button>
           )}
 
-          {puedeGestionarTesoreria && eventoActivo && (
+          {puedeGestionarEventos && eventoActivo && (
             <Button
               variant="secondary"
               size="sm"
@@ -498,7 +503,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
           </div>
 
           {/* Acción de Liquidación */}
-          {puedeGestionarTesoreria && (
+          {puedeGestionarEventos && (
             <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
               <div>
                 <span className="text-xs font-semibold text-ink-muted block">Liquidación a Familias</span>
@@ -519,7 +524,39 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
         </div>
       )}
 
+      {/* Estado vacío cuando no hay eventos creados */}
+      {eventos.length === 0 && !cargando && (
+        <div className="p-8 sm:p-12 text-center rounded-2xl border border-dashed border-rule bg-surface space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+            <Sparkles className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-base font-bold text-ink">
+              No hay eventos económicos creados aún
+            </h3>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Los eventos económicos te permiten organizar ventas de recaudación (empanadas, pizzas, rifas, locro o festivales), generar vales digitales con código QR para retiro y liquidar ganancias para saldo a favor de las familias.
+            </p>
+          </div>
+          {puedeGestionarEventos && (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => {
+                setEventoAEditar(null);
+                setModalCrearEventoAbierto(true);
+              }}
+              leftIcon={<PlusCircle className="w-4 h-4" />}
+              className="gap-1.5 font-bold mx-auto"
+            >
+              Crear Primer Evento Económico
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* TABLA DE PEDIDOS Y VALES DEL EVENTO */}
+      {eventos.length > 0 && (
       <div className="rounded-2xl border border-rule bg-surface overflow-hidden shadow-2xs">
         <div className="px-4 py-3 bg-paper-2 border-b border-rule flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -820,6 +857,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
           )}
         </div>
       </div>
+      )}
 
       {/* Modales */}
       <ModalCrearEventoEconomico
