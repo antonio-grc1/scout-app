@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { ModalConfirmacion, type ModalConfirmacionProps } from './ModalConfirmacion';
@@ -13,7 +14,9 @@ import {
   METODO_PAGO_LABELS,
   NOMBRES_MESES_CORTOS,
   calcularEdad,
-
+  obtenerAsignacionesActivas,
+  obtenerRolPrincipal,
+  obtenerRolesSecundarios,
   esRolDeEducador,
   esRolDeProtagonista,
   esRolJefe,
@@ -142,6 +145,20 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const [modalEditarFamiliaAbierto, setModalEditarFamiliaAbierto] = useState(false);
   const [modalVincularHermanoAbierto, setModalVincularHermanoAbierto] = useState(false);
 
+  const hayModalHijoAbierto = Boolean(
+    modalConf ||
+      modalCobrarAbierto ||
+      modalGenerarDeudaAbierto ||
+      modalEditarFamiliaAbierto ||
+      modalVincularHermanoAbierto,
+  );
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto: Boolean(usuarioId),
+    onCerrar,
+    bloqueado: hayModalHijoAbierto,
+  });
+
   // Estados de edición y reversión en pestaña Cuotas
   const [mostrarAnulados, setMostrarAnulados] = useState(false);
   const [cargoEditando, setCargoEditando] = useState<{
@@ -228,8 +245,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     return jf.length > 0 ? jf : roles.filter((r) => !rolRequiereRama(r));
   }, [roles]);
 
-  const asignacionPrincipal =
-    miembro?.asignaciones?.find((a: any) => a.activo) ?? miembro?.asignaciones?.[0];
+  const asignacionPrincipal = miembro ? obtenerRolPrincipal(miembro) : null;
+  const asignacionesActivas = useMemo(() => obtenerAsignacionesActivas(miembro), [miembro]);
+  const rolesSecundarios = useMemo(() => obtenerRolesSecundarios(miembro), [miembro]);
 
   const esMismoDestino = useMemo(() => {
     if (!asignacionPrincipal) return false;
@@ -584,6 +602,52 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       setAlerta({
         tipo: 'error',
         texto: traducirErrorAmigable(err, 'No se pudo realizar el pase.'),
+      });
+    } finally {
+      setEjecutandoPase(false);
+    }
+  };
+
+  const handleAgregarAsignacion = async (datos: { rolId: number; unidadId?: number }) => {
+    if (!miembro) return;
+    setEjecutandoPase(true);
+    setAlerta(null);
+    try {
+      await api.post(`/miembros/${miembro.id}/asignaciones`, datos);
+      setAlerta({
+        tipo: 'exito',
+        texto: 'Rol adicional asignado correctamente al miembro.',
+      });
+      await refrescarSesionDesdeServidor();
+      if (onActualizado) onActualizado();
+      cargarDatos(miembro.id);
+    } catch (err: any) {
+      setAlerta({
+        tipo: 'error',
+        texto: traducirErrorAmigable(err, 'No se pudo asignar el rol adicional.'),
+      });
+    } finally {
+      setEjecutandoPase(false);
+    }
+  };
+
+  const handleCerrarAsignacion = async (asigId: number) => {
+    if (!miembro) return;
+    setEjecutandoPase(true);
+    setAlerta(null);
+    try {
+      await api.delete(`/miembros/${miembro.id}/asignaciones/${asigId}`);
+      setAlerta({
+        tipo: 'exito',
+        texto: 'Asignación de rol finalizada.',
+      });
+      await refrescarSesionDesdeServidor();
+      if (onActualizado) onActualizado();
+      cargarDatos(miembro.id);
+    } catch (err: any) {
+      setAlerta({
+        tipo: 'error',
+        texto: traducirErrorAmigable(err, 'No se pudo finalizar la asignación.'),
       });
     } finally {
       setEjecutandoPase(false);
@@ -1036,8 +1100,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const saldoAFavor = Number(estadoCuenta?.resumen?.saldoAFavor ?? 0);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center sm:p-4">
-      <div className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-md flex flex-col max-h-[92vh] border border-rule transition-colors animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center sm:p-4"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-md flex flex-col max-h-[92vh] border border-rule transition-colors animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
+        {...contentProps}
+      >
         {/* Cabecera Compacta */}
         <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0 text-ink">
           <div className="flex items-center gap-3 min-w-0">
@@ -1067,10 +1137,24 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-ink-muted truncate">
-                DNI {miembro?.dni || '—'} • {calcularEdad(miembro?.fechaNacimiento) ?? '—'} años •{' '}
-                {asignacionPrincipal?.unidad?.nombre || 'Sin Sección'}
-              </p>
+              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span className="text-xs text-ink-muted">
+                  DNI {miembro?.dni || '—'} • {calcularEdad(miembro?.fechaNacimiento) ?? '—'} años
+                </span>
+                {asignacionPrincipal && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
+                    {asignacionPrincipal.rol?.nombre} ({asignacionPrincipal.unidad?.nombre})
+                  </span>
+                )}
+                {rolesSecundarios.map((sec: any) => (
+                  <span
+                    key={sec.id}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-paper-3 text-ink-2 border border-rule"
+                  >
+                    +{sec.rol?.nombre} ({sec.unidad?.nombre || 'Global'})
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -1207,6 +1291,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   puedeEditarContacto={puedeEditarContacto}
                   puedeDarBaja={puedeDarBaja}
                   puedeEditarMiembro={puedeEditarMiembro}
+                  puedeGestionarTesoreria={puedeGestionarTesoreria}
                   onGuardarDatos={handleGuardarDatos}
                   onDesvincularRapido={handleDesvincularRapido}
                   onAbrirEditarFamilia={() => setModalEditarFamiliaAbierto(true)}
@@ -1312,6 +1397,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   onEjecutarPase={handleEjecutarPase}
                   ejecutandoPase={ejecutandoPase}
                   esMismoDestino={esMismoDestino}
+                  asignacionesActivas={asignacionesActivas}
+                  onCerrarAsignacion={handleCerrarAsignacion}
+                  onAgregarAsignacion={handleAgregarAsignacion}
+                  asignacionPrincipalId={asignacionPrincipal?.id}
                 />
               )}
 

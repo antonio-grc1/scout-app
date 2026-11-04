@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { ModalConfirmacion, type ModalConfirmacionProps } from './ModalConfirmacion';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import {
   ShieldCheck,
   PlusCircle,
@@ -126,10 +127,45 @@ const ETIQUETAS_PERMISOS_HUMANAS: Record<
     detalle: 'Permite cobrar cuotas en efectivo o transferencia y emitir comprobantes.',
     categoria: 'Pagos y Tesorería',
   },
-  'tesoreria.gestionar': {
-    titulo: 'Puede administrar planes de cuotas, campamentos y descuentos',
-    detalle: 'Permite lanzar cuadros de cuotas anuales, crear cobros especiales, anular cargos y ajustar saldos.',
+  'cuotas.ajustar': {
+    titulo: 'Puede anular cargos y ajustar saldos',
+    detalle: 'Permite condonar o anular cargos individuales, revertir cobros erróneos y realizar ajustes de saldo.',
     categoria: 'Pagos y Tesorería',
+  },
+  'tesoreria.conceptos_planes': {
+    titulo: 'Puede diseñar planes de cuotas y campamentos',
+    detalle: 'Permite crear conceptos cobrables, cronogramas de cuotas anuales y eventos con arancel.',
+    categoria: 'Pagos y Tesorería',
+  },
+  'tesoreria.caja_ver': {
+    titulo: 'Puede consultar caja física y cuentas bancarias',
+    detalle: 'Permite ver saldos, movimientos de caja, extractos bancarios y el cuadro de resultados.',
+    categoria: 'Pagos y Tesorería',
+  },
+  'tesoreria.gastos_registrar': {
+    titulo: 'Puede asentar gastos y salidas de caja',
+    detalle: 'Permite registrar comprobantes de egreso, compras y salidas de dinero de caja o banco.',
+    categoria: 'Pagos y Tesorería',
+  },
+  'tesoreria.gestionar': {
+    titulo: 'Control total de finanzas y tesorería',
+    detalle: 'Permite arqueo y cierre de caja, conciliación bancaria, configuración de descuentos familiares y tesorería general.',
+    categoria: 'Pagos y Tesorería',
+  },
+  'eventos.ver': {
+    titulo: 'Puede ver eventos y pedidos',
+    detalle: 'Permite consultar los eventos económicos activos, catálogo de productos y pedidos registrados.',
+    categoria: 'Eventos Económicos y Ventas',
+  },
+  'eventos.vender': {
+    titulo: 'Puede tomar pedidos y cobrar ventas',
+    detalle: 'Permite cargar pedidos de ventas benéficas, cobrar y entregar órdenes mediante escaneo QR.',
+    categoria: 'Eventos Económicos y Ventas',
+  },
+  'eventos.gestionar': {
+    titulo: 'Puede crear y coordinar eventos económicos',
+    detalle: 'Permite dar de alta eventos benéficos, definir productos, precios, metas y balances de cierre.',
+    categoria: 'Eventos Económicos y Ventas',
   },
   'pases.ver': {
     titulo: 'Puede ver sugerencias de pases y progresiones por edad',
@@ -147,8 +183,13 @@ const ETIQUETAS_PERMISOS_HUMANAS: Record<
     categoria: 'Configuración del Sistema',
   },
   'organizacion.gestionar': {
-    titulo: 'Puede administrar roles, permisos y ramas del sistema',
-    detalle: 'Permite crear, modificar o eliminar roles, configurar edades de ramas y administrar el grupo.',
+    titulo: 'Puede administrar ramas y unidades del sistema',
+    detalle: 'Permite crear o modificar ramas, unidades y parámetros organizativos del grupo.',
+    categoria: 'Configuración del Sistema',
+  },
+  'roles.gestionar': {
+    titulo: 'Puede administrar roles y permisos',
+    detalle: 'Permite crear, modificar o eliminar roles y configurar qué permisos tiene cada rol.',
     categoria: 'Configuración del Sistema',
   },
 };
@@ -159,7 +200,9 @@ export const PanelGestorRoles: React.FC<Props> = ({
   onRecargar,
   onToast,
 }) => {
-  const puedeGestionarRoles = useAuthStore((s) => s.tienePermiso('organizacion.gestionar'));
+  const puedeGestionarRoles = useAuthStore(
+    (s) => s.tienePermiso('roles.gestionar') || s.tienePermiso('organizacion.gestionar'),
+  );
   const [rolEditando, setRolEditando] = useState<any | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);
 
@@ -180,7 +223,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
         (r) =>
           r.alcancePorDefecto === 'GLOBAL' &&
           Array.isArray(r.permisos) &&
-          r.permisos.includes('organizacion.gestionar'),
+          (r.permisos.includes('organizacion.gestionar') || r.permisos.includes('roles.gestionar')),
       )
       .map((r) => r.id);
   }, [roles]);
@@ -241,6 +284,12 @@ export const PanelGestorRoles: React.FC<Props> = ({
     setRolEditando(null);
   };
 
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto: Boolean(puedeGestionarRoles && modalAbierto),
+    onCerrar: cerrarModal,
+    bloqueado: guardando || Boolean(eliminandoId) || Boolean(modalConfirmacion),
+  });
+
   const handleCambiarTipoMiembro = (nuevoTipo: 'PROTAGONISTA' | 'EDUCADOR') => {
     setTipoMiembro(nuevoTipo);
     if (nuevoTipo === 'PROTAGONISTA') {
@@ -287,14 +336,24 @@ export const PanelGestorRoles: React.FC<Props> = ({
 
     // Asegurar que si tiene organizar roles también pueda ver la estructura
     const permisosFinales = new Set(permisosSeleccionados);
-    if (permisosFinales.has('organizacion.gestionar')) {
+    if (permisosFinales.has('organizacion.gestionar') || permisosFinales.has('roles.gestionar')) {
       permisosFinales.add('organizacion.ver');
     }
     if (permisosFinales.has('miembros.crear') || permisosFinales.has('miembros.editar')) {
       permisosFinales.add('miembros.ver');
     }
-    if (permisosFinales.has('cuotas.cobrar') || permisosFinales.has('tesoreria.gestionar')) {
+    if (
+      permisosFinales.has('cuotas.cobrar') ||
+      permisosFinales.has('cuotas.ajustar') ||
+      permisosFinales.has('tesoreria.conceptos_planes') ||
+      permisosFinales.has('tesoreria.caja_ver') ||
+      permisosFinales.has('tesoreria.gastos_registrar') ||
+      permisosFinales.has('tesoreria.gestionar')
+    ) {
       permisosFinales.add('cuotas.ver');
+    }
+    if (permisosFinales.has('eventos.vender') || permisosFinales.has('eventos.gestionar')) {
+      permisosFinales.add('eventos.ver');
     }
     if (permisosFinales.has('legajos.completar') || permisosFinales.has('legajos.validar_fisico')) {
       permisosFinales.add('legajos.ver');
@@ -537,8 +596,14 @@ export const PanelGestorRoles: React.FC<Props> = ({
 
       {/* Bottom Sheet (Móvil) / Modal (Escritorio) para Crear o Editar Rol */}
       {puedeGestionarRoles && modalAbierto && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-          <div className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+          {...backdropProps}
+        >
+          <div
+            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+            {...contentProps}
+          >
             {/* Cabecera del Bottom Sheet */}
             <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
               <div>

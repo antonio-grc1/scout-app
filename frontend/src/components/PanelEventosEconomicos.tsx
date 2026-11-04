@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Sparkles,
   PlusCircle,
@@ -16,8 +16,14 @@ import {
   ChevronRight,
   Filter,
   Edit2,
+  Trash2,
+  Landmark,
+  AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
+import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalCrearEventoEconomico } from './ModalCrearEventoEconomico';
@@ -57,6 +63,7 @@ interface EventoItem {
 }
 
 export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ onToast }) => {
+  const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermiso('tesoreria.gestionar'));
   const [eventos, setEventos] = useState<EventoItem[]>([]);
   const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState<number | null>(null);
   const [eventoDetalle, setEventoDetalle] = useState<any | null>(null);
@@ -78,6 +85,10 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   const [modalAcreditarAbierto, setModalAcreditarAbierto] = useState(false);
   const [acreditando, setAcreditando] = useState(false);
 
+  // Eliminar evento
+  const [modalEliminarEventoAbierto, setModalEliminarEventoAbierto] = useState(false);
+  const [eliminandoEvento, setEliminandoEvento] = useState(false);
+
   const cargarEventos = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -86,7 +97,9 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
       const lista: EventoItem[] = res.data || [];
       setEventos(lista);
       if (lista.length > 0 && !eventoSeleccionadoId) {
-        setEventoSeleccionadoId(lista[0].id);
+        // Priorizar el primer evento habilitado / publicado
+        const primerHabilitado = lista.find((e) => e.estado === 'PUBLICADO');
+        setEventoSeleccionadoId(primerHabilitado ? primerHabilitado.id : lista[0].id);
       }
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudieron cargar los eventos económicos.');
@@ -119,6 +132,16 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   }, [eventoSeleccionadoId, cargarDetalleEvento]);
 
   const eventoActivo = eventos.find((e) => e.id === eventoSeleccionadoId) || eventos[0];
+
+  const eventosHabilitados = useMemo(
+    () => eventos.filter((e) => e.estado === 'PUBLICADO'),
+    [eventos],
+  );
+  const eventosFinalizados = useMemo(
+    () => eventos.filter((e) => e.estado !== 'PUBLICADO'),
+    [eventos],
+  );
+
 
   const pedidosPendientesAcreditar = (eventoDetalle?.pedidos || []).filter(
     (p: any) =>
@@ -162,6 +185,54 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
     }
   };
 
+  const ejecutarEliminarEvento = async () => {
+    if (!eventoActivo) return;
+    const eventoAEliminar = { ...eventoActivo };
+
+    setEliminandoEvento(true);
+    try {
+      await api.delete(`/tesoreria/eventos/${eventoAEliminar.id}`);
+      setModalEliminarEventoAbierto(false);
+      setEventoSeleccionadoId(null);
+      setEventoDetalle(null);
+      await cargarEventos();
+
+      mostrarToastConDeshacer(
+        `Evento "${eventoAEliminar.titulo}" eliminado.`,
+        async () => {
+          try {
+            await api.post('/tesoreria/eventos', {
+              titulo: eventoAEliminar.titulo,
+              descripcion: eventoAEliminar.descripcion || undefined,
+              tipo: eventoAEliminar.tipo,
+              fechaEvento: eventoAEliminar.fechaEvento,
+              lugarEntrega: eventoAEliminar.lugarEntrega || undefined,
+              rubroId: eventoDetalle?.rubroId || undefined,
+              cuentaId: eventoDetalle?.cuentaId || undefined,
+              items: (eventoAEliminar.items || []).map((it) => ({
+                nombre: it.nombre,
+                precioVenta: Number(it.precioVenta),
+                costoUnitario: Number(it.costoUnitario || 0),
+                gananciaUnitaria: Number(it.gananciaUnitaria || 0),
+                stockTotal: it.stockDisponible,
+              })),
+            });
+            await cargarEventos();
+            useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" restaurado.`);
+          } catch (err: any) {
+            const msg = traducirErrorAmigable(err, 'No se pudo restaurar el evento.');
+            useToastStore.getState().mostrarToast(msg, 'error');
+          }
+        },
+      );
+    } catch (err) {
+      const msg = traducirErrorAmigable(err, 'No se pudo eliminar el evento.');
+      if (onToast) onToast(msg, 'error');
+    } finally {
+      setEliminandoEvento(false);
+    }
+  };
+
   const handleVerTicket = (ticket: any, pedido: any) => {
     setModalTicketQR({
       abierto: true,
@@ -194,42 +265,86 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   return (
     <div className="space-y-4">
       {/* Barra Superior con Selector de Evento y Acciones Principales */}
-      <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3 flex-wrap">
+      <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 flex-wrap flex-1">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-brand" />
+            <Sparkles className="w-5 h-5 text-brand shrink-0" />
             <h2 className="text-base font-black text-ink">Eventos Económicos y Vales QR</h2>
           </div>
 
           {/* Selector de Evento */}
           {eventos.length > 0 && (
-            <div className="flex items-center gap-1.5 pl-2 border-l border-rule">
-              <span className="text-xs font-bold text-ink-muted">Evento:</span>
+            <div className="flex items-center gap-2 pl-0 sm:pl-2 border-l-0 sm:border-l border-rule flex-wrap w-full sm:w-auto">
+              <label htmlFor="selector-evento-tesoreria" className="text-xs font-bold text-ink-muted shrink-0">
+                Evento:
+              </label>
               <select
+                id="selector-evento-tesoreria"
                 value={eventoSeleccionadoId || ''}
                 onChange={(e) => setEventoSeleccionadoId(Number(e.target.value))}
-                className="py-1 px-3 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer"
+                className="py-1.5 px-3 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer w-full sm:w-auto sm:max-w-[280px] truncate"
               >
-                {eventos.map((ev) => (
-                  <option key={ev.id} value={ev.id}>
-                    {ev.titulo} ({new Date(ev.fechaEvento).toLocaleDateString('es-AR')})
-                  </option>
-                ))}
+                {eventosHabilitados.length > 0 && (
+                  <optgroup label="🟢 Habilitados para venta">
+                    {eventosHabilitados.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.titulo} ({new Date(ev.fechaEvento).toLocaleDateString('es-AR')})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {eventosFinalizados.length > 0 && (
+                  <optgroup label="⚪ Finalizados / Cerrados">
+                    {eventosFinalizados.map((ev) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.titulo} ({ev.estado === 'FINALIZADO' ? 'Finalizado' : ev.estado})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
+
+              {eventoActivo && (
+                <span
+                  className={`px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border shrink-0 ${
+                    eventoActivo.estado === 'PUBLICADO'
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800'
+                      : eventoActivo.estado === 'FINALIZADO'
+                      ? 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-slate-300 dark:border-slate-800'
+                      : eventoActivo.estado === 'BORRADOR'
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200 border-amber-300 dark:border-amber-800'
+                      : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200 border-rose-300 dark:border-rose-800'
+                  }`}
+                >
+                  {eventoActivo.estado === 'PUBLICADO' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                  {eventoActivo.estado === 'FINALIZADO' && <Clock className="w-3.5 h-3.5 text-slate-500" />}
+                  {eventoActivo.estado === 'BORRADOR' && <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />}
+                  {eventoActivo.estado === 'CANCELADO' && <XCircle className="w-3.5 h-3.5 text-rose-600" />}
+                  <span>
+                    {eventoActivo.estado === 'PUBLICADO'
+                      ? 'Habilitado'
+                      : eventoActivo.estado === 'FINALIZADO'
+                      ? 'Finalizado (Cerrado)'
+                      : eventoActivo.estado === 'BORRADOR'
+                      ? 'Borrador'
+                      : 'Cancelado'}
+                  </span>
+                </span>
+              )}
             </div>
           )}
         </div>
 
         {/* Botones de Acción */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto">
           <Button
             variant="primary"
             size="sm"
             onClick={() => setModalScannerAbierto(true)}
-            className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold"
+            className="col-span-2 sm:col-span-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold justify-center"
             title="Escanear con cámara los vales QR"
           >
-            <Camera className="w-4 h-4" />
+            <Camera className="w-4 h-4 shrink-0" />
             <span>Escanear QR / Validar</span>
           </Button>
 
@@ -237,50 +352,94 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
             <Button
               variant="secondary"
               size="sm"
+              disabled={eventoActivo.estado !== 'PUBLICADO'}
               onClick={() => {
                 setPedidoAEditar(null);
                 setModalCargarPedidoAbierto(true);
               }}
-              className="gap-1.5"
+              className="gap-1.5 justify-center"
+              title={
+                eventoActivo.estado !== 'PUBLICADO'
+                  ? 'El evento está finalizado/cerrado: no se pueden ingresar nuevos pedidos'
+                  : 'Cargar un nuevo pedido para este evento'
+              }
             >
-              <ShoppingBag className="w-3.5 h-3.5 text-brand" />
+              <ShoppingBag className="w-3.5 h-3.5 text-brand shrink-0" />
               <span>Cargar Pedido</span>
             </Button>
           )}
 
-          {eventoActivo && (
+          {puedeGestionarTesoreria && (
             <Button
               variant="secondary"
               size="sm"
               onClick={() => {
-                setEventoAEditar(eventoActivo);
+                setEventoAEditar(null);
                 setModalCrearEventoAbierto(true);
               }}
-              className="gap-1.5"
+              className="gap-1.5 justify-center"
             >
-              <Edit2 className="w-3.5 h-3.5 text-ink-muted hover:text-brand" />
-              <span>Editar Evento</span>
+              <PlusCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>Nuevo Evento</span>
             </Button>
           )}
 
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setEventoAEditar(null);
-              setModalCrearEventoAbierto(true);
-            }}
-            className="gap-1.5"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>Nuevo Evento</span>
-          </Button>
+          {puedeGestionarTesoreria && eventoActivo && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setEventoAEditar(eventoDetalle || eventoActivo);
+                setModalCrearEventoAbierto(true);
+              }}
+              className="gap-1.5 justify-center"
+            >
+              <Edit2 className="w-3.5 h-3.5 text-ink-muted hover:text-brand shrink-0" />
+              <span>Editar</span>
+            </Button>
+          )}
+
+          {puedeGestionarTesoreria && eventoActivo && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setModalEliminarEventoAbierto(true)}
+              className="gap-1.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 justify-center"
+              title="Eliminar este evento económico"
+            >
+              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Eliminar</span>
+            </Button>
+          )}
         </div>
       </div>
 
       {error && (
         <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs">
           {error}
+        </div>
+      )}
+
+      {/* Alerta si el evento está finalizado o en borrador */}
+      {eventoActivo?.estado === 'FINALIZADO' && (
+        <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-4 h-4 text-slate-500 shrink-0" />
+            <span>
+              <strong>Evento Finalizado:</strong> Cerrado a la carga de nuevos pedidos. Podés continuar registrando cobros pendientes, validando vales QR en puerta y acreditando ganancias a las familias.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {eventoActivo?.estado === 'BORRADOR' && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Evento en Borrador:</strong> Este evento está oculto para miembros y familias. Podés editarlo para publicarlo cuando esté listo para recibir ventas.
+            </span>
+          </div>
         </div>
       )}
 
@@ -339,22 +498,24 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
           </div>
 
           {/* Acción de Liquidación */}
-          <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
-            <div>
-              <span className="text-xs font-semibold text-ink-muted block">Liquidación a Familias</span>
-              <span className="text-[11px] text-ink-muted block mt-0.5">Acredita en Saldo a Favor</span>
+          {puedeGestionarTesoreria && (
+            <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
+              <div>
+                <span className="text-xs font-semibold text-ink-muted block">Liquidación a Familias</span>
+                <span className="text-[11px] text-ink-muted block mt-0.5">Acredita en Saldo a Favor</span>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setModalAcreditarAbierto(true)}
+                disabled={acreditando || eventoActivo.metricas.cantidadPedidos <= 0}
+                className="mt-2 w-full gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-bold border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950"
+              >
+                <Award className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Acreditar Ganancias</span>
+              </Button>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setModalAcreditarAbierto(true)}
-              disabled={acreditando || eventoActivo.metricas.cantidadPedidos <= 0}
-              className="mt-2 w-full gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 font-bold border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950"
-            >
-              <Award className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Acreditar Ganancias</span>
-            </Button>
-          </div>
+          )}
         </div>
       )}
 
@@ -379,7 +540,8 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
           </Button>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="border-b border-rule bg-paper-2/60 text-ink-muted">
@@ -443,10 +605,12 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
                         className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black ${
                           p.estado === 'PAGADO'
                             ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
+                            : algunoRetirado
+                            ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-800'
                             : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200'
                         }`}
                       >
-                        {p.estado}
+                        {p.estado === 'PENDIENTE' && algunoRetirado ? 'PENDIENTE (RETIRADO)' : p.estado}
                       </span>
                     </td>
 
@@ -472,26 +636,49 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
                     </td>
 
                     <td className="py-2.5 px-4 text-center">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={algunoRetirado || p.gananciaAcreditada}
-                        onClick={() => {
-                          setPedidoAEditar(p);
-                          setModalCargarPedidoAbierto(true);
-                        }}
-                        className="gap-1 text-xs"
-                        title={
-                          algunoRetirado
-                            ? 'No se puede editar: ya tiene vales retirados'
-                            : p.gananciaAcreditada
-                            ? 'No se puede editar: ganancias ya acreditadas'
-                            : 'Editar datos o cantidades del pedido'
-                        }
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Editar</span>
-                      </Button>
+                      <div className="flex items-center justify-center gap-1.5">
+                        {p.estado === 'PENDIENTE' ? (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={p.gananciaAcreditada}
+                            onClick={() => {
+                              setPedidoAEditar({ ...p, algunoRetirado });
+                              setModalCargarPedidoAbierto(true);
+                            }}
+                            className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                            title={
+                              algunoRetirado
+                                ? 'Pedido retirado pendiente de cobro: registrar cobro'
+                                : 'Registrar cobro de este pedido'
+                            }
+                          >
+                            <Landmark className="w-3.5 h-3.5" />
+                            <span>Cobrar</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={algunoRetirado || p.gananciaAcreditada}
+                            onClick={() => {
+                              setPedidoAEditar({ ...p, algunoRetirado });
+                              setModalCargarPedidoAbierto(true);
+                            }}
+                            className="gap-1 text-xs"
+                            title={
+                              algunoRetirado
+                                ? 'No se puede editar: ya tiene vales retirados'
+                                : p.gananciaAcreditada
+                                ? 'No se puede editar: ganancias ya acreditadas'
+                                : 'Editar datos o cantidades del pedido'
+                            }
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
@@ -506,6 +693,131 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Responsive Cards View */}
+        <div className="md:hidden divide-y divide-rule">
+          {(!eventoDetalle?.pedidos || eventoDetalle.pedidos.length === 0) ? (
+            <div className="p-8 text-center text-xs text-ink-muted">
+              No hay pedidos registrados para este evento. Hacé clic en "Cargar Pedido" para registrar la primera venta.
+            </div>
+          ) : (
+            eventoDetalle.pedidos.map((p: any) => {
+              const algunoRetirado = p.tickets?.some((t: any) => t.estado === 'UTILIZADO');
+              return (
+                <div key={p.id} className="p-3.5 space-y-2 hover:bg-paper-2/40 transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h5 className="font-bold text-ink text-sm leading-snug">
+                        {p.compradorNombre}
+                      </h5>
+                      {p.compradorContacto && (
+                        <span className="text-[11px] text-ink-muted block mt-0.5">
+                          {p.compradorContacto}
+                        </span>
+                      )}
+                      <div className="text-[11px] text-ink-muted mt-1">
+                        Vendido por:{' '}
+                        <span className="font-semibold text-ink">
+                          {p.vendedorUsuario
+                            ? `${p.vendedorUsuario.nombre} ${p.vendedorUsuario.apellido}`
+                            : 'Venta General'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="font-black text-sm text-ink block">
+                        {formatearMoneda(Number(p.total))}
+                      </span>
+                      <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block">
+                        +{formatearMoneda(Number(p.totalGanancia))}
+                      </span>
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black mt-1 ${
+                          p.estado === 'PAGADO'
+                            ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-200'
+                            : algunoRetirado
+                            ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-200 border border-rose-300 dark:border-rose-800'
+                            : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-200'
+                        }`}
+                      >
+                        {p.estado === 'PENDIENTE' && algunoRetirado ? 'PENDIENTE (RETIRADO)' : p.estado}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Items detalle */}
+                  <div className="p-2 rounded-xl bg-paper-2 text-xs space-y-1">
+                    {p.detalles?.map((d: any) => (
+                      <div key={d.id} className="flex justify-between items-center text-xs">
+                        <span className="text-ink">
+                          <strong className="text-brand">{d.cantidad}x</strong> {d.item?.nombre}
+                        </span>
+                        <span className="text-ink-muted text-[11px]">
+                          {formatearMoneda(Number(d.subtotal))}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Vales QR y Acciones */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-rule/50">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {p.tickets?.map((t: any, idx: number) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => handleVerTicket(t, p)}
+                          className={`min-h-[34px] px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1 border transition cursor-pointer ${
+                            t.estado === 'UTILIZADO'
+                              ? 'bg-slate-100 dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-800 line-through'
+                              : 'bg-brand/10 text-brand border-brand/30 hover:bg-brand/20'
+                          }`}
+                          title={t.estado === 'UTILIZADO' ? 'Retirado' : 'Click para ver vale con QR'}
+                        >
+                          <QrCode className="w-3.5 h-3.5 shrink-0" />
+                          <span>Vale #{idx + 1}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      {p.estado === 'PENDIENTE' ? (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={p.gananciaAcreditada}
+                          onClick={() => {
+                            setPedidoAEditar({ ...p, algunoRetirado });
+                            setModalCargarPedidoAbierto(true);
+                          }}
+                          className="gap-1 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                        >
+                          <Landmark className="w-3.5 h-3.5" />
+                          <span>Cobrar</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={algunoRetirado || p.gananciaAcreditada}
+                          onClick={() => {
+                            setPedidoAEditar({ ...p, algunoRetirado });
+                            setModalCargarPedidoAbierto(true);
+                          }}
+                          className="gap-1 text-xs"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span>Editar</span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -624,6 +936,37 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
                   </p>
                 </>
               )}
+            </div>
+          }
+        />
+      )}
+
+      {modalEliminarEventoAbierto && eventoActivo && (
+        <ModalConfirmacion
+          abierto={modalEliminarEventoAbierto}
+          onCerrar={() => !eliminandoEvento && setModalEliminarEventoAbierto(false)}
+          onConfirmar={ejecutarEliminarEvento}
+          titulo="Eliminar Evento Económico"
+          tipo="peligro"
+          textoConfirmar={eliminandoEvento ? 'Eliminando...' : 'Sí, Eliminar Evento'}
+          textoCancelar="Cancelar"
+          cargando={eliminandoEvento}
+          mensaje={
+            <div className="space-y-3">
+              <p className="text-sm text-ink leading-relaxed">
+                ¿Estás seguro de que deseas eliminar permanentemente el evento{' '}
+                <strong className="text-ink font-bold">"{eventoActivo.titulo}"</strong>?
+              </p>
+
+              {eventoActivo.metricas.cantidadPedidos > 0 && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl text-xs text-amber-800 dark:text-amber-200">
+                  Este evento tiene <strong>{eventoActivo.metricas.cantidadPedidos} pedidos</strong> asociados que también serán eliminados.
+                </div>
+              )}
+
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Esta acción no se puede deshacer. Los eventos con vales ya canjeados o ganancias liquidadas a familias no pueden ser eliminados.
+              </p>
             </div>
           }
         />

@@ -3,6 +3,8 @@ import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { Navbar } from '../../components/Navbar';
 import { QrScannerModal } from '../../components/QrScannerModal';
+import { ModalScannerQR } from '../../components/ModalScannerQR';
+import { ModalEventosUnidad } from '../../components/ModalEventosUnidad';
 import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
 import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
 import { MiembroCard } from '../../components/MiembroCard';
@@ -41,6 +43,12 @@ import {
   Calendar,
   ChevronDown,
   RotateCcw,
+  Ticket,
+  ShoppingBag,
+  HeartHandshake,
+  Utensils,
+  Truck,
+  Phone,
 } from 'lucide-react';
 
 type CampoOrden = 'miembro' | 'edad' | 'seccion' | 'ficha';
@@ -55,7 +63,8 @@ type ChipFiltro =
 const calcularDeudaMiembro = (m: any): number =>
   Math.round(
     (m?.cargos || []).reduce(
-      (acc: number, c: any) => acc + Math.max(0, Number(c.montoFinal) - Number(c.montoPagado)),
+      (acc: number, c: any) =>
+        c.estado === 'ANULADO' ? acc : acc + Math.max(0, Number(c.montoFinal) - Number(c.montoPagado)),
       0,
     ) * 100,
   ) / 100;
@@ -80,11 +89,32 @@ export const UnidadPage: React.FC = () => {
 
   // Modales
   const [scannerAbierto, setScannerAbierto] = useState(false);
+  const [modalEventosAbierto, setModalEventosAbierto] = useState(false);
+  const [modalScannerEventosAbierto, setModalScannerEventosAbierto] = useState(false);
   const [modalAltaAbierto, setModalAltaAbierto] = useState(false);
   const [miembroSeleccionadoId, setMiembroSeleccionadoId] = useState<number | null>(null);
   const [tabInicialModal, setTabInicialModal] = useState<
     'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'
   >('datos');
+  const [modalFamiliasVoluntariasAbierto, setModalFamiliasVoluntariasAbierto] = useState(false);
+  const [familiasVoluntarias, setFamiliasVoluntarias] = useState<any[]>([]);
+  const [cargandoVoluntarias, setCargandoVoluntarias] = useState(false);
+
+  const handleAbrirFamiliasVoluntarias = async () => {
+    setModalFamiliasVoluntariasAbierto(true);
+    setCargandoVoluntarias(true);
+    try {
+      const res = await api.get('/legajos/colaboradores-adultos?cicloAnio=2026');
+      setFamiliasVoluntarias(res.data || []);
+    } catch (err) {
+      setToast({
+        texto: traducirErrorAmigable(err, 'No se pudieron cargar las familias voluntarias.'),
+        tipo: 'error',
+      });
+    } finally {
+      setCargandoVoluntarias(false);
+    }
+  };
 
   // Filtros rápidos (1-Tap) y selectores con multi-selección de Checkboxes
   const [busqueda, setBusqueda] = useState('');
@@ -573,13 +603,47 @@ export const UnidadPage: React.FC = () => {
 
           {/* Botones de Acción Principal según capacidades del rol (Touch target >= 44px) */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+            {(tienePermiso('eventos.ver') || tienePermiso('eventos.vender') || tienePermiso('cuotas.cobrar')) && (
+              <button
+                onClick={() => setModalEventosAbierto(true)}
+                title="Ver eventos económicos y ventas de recaudación de la rama"
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+              >
+                <ShoppingBag className="w-4 h-4 text-brand shrink-0" />
+                <span>Eventos</span>
+              </button>
+            )}
+
+            {(tienePermiso('eventos.vender') || tienePermiso('cuotas.cobrar')) && (
+              <button
+                onClick={() => setModalScannerEventosAbierto(true)}
+                title="Escanear y validar vales o entradas QR de eventos económicos"
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+              >
+                <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>QR Vales</span>
+              </button>
+            )}
+
+            {tienePermiso('legajos.ver') && (
+              <button
+                onClick={handleAbrirFamiliasVoluntarias}
+                title="Ver familias voluntarias y oficios"
+                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+              >
+                <HeartHandshake className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>Familias</span>
+              </button>
+            )}
+
             {tienePermiso('legajos.validar_fisico') && (
               <button
                 onClick={() => setScannerAbierto(true)}
+                title="Validar entrega física de Ficha Médica escaneando el QR"
                 className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
               >
                 <QrCode className="w-4 h-4 text-ink-2 shrink-0" />
-                <span>Escanear QR</span>
+                <span>QR Ficha Médica</span>
               </button>
             )}
 
@@ -1563,6 +1627,123 @@ export const UnidadPage: React.FC = () => {
           cargarDatos();
         }}
       />
+
+      {/* Modal Eventos Económicos de Rama */}
+      <ModalEventosUnidad
+        abierto={modalEventosAbierto}
+        onCerrar={() => setModalEventosAbierto(false)}
+        onToast={(msg, tipo) => mostrarToast(msg, tipo)}
+      />
+
+      {/* Modal Escáner QR de Vales de Eventos */}
+      <ModalScannerQR
+        abierto={modalScannerEventosAbierto}
+        onCerrar={() => setModalScannerEventosAbierto(false)}
+        onTicketValidado={() => mostrarToast('Vale validado exitosamente')}
+      />
+
+      {/* Modal Familias Voluntarias de la Unidad */}
+      {modalFamiliasVoluntariasAbierto && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface rounded-3xl border border-rule shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2">
+              <div className="flex items-center gap-2.5">
+                <HeartHandshake className="w-5 h-5 text-rose-500" />
+                <div>
+                  <h3 className="font-extrabold text-base text-ink">
+                    Familias Voluntarias y Oficios
+                  </h3>
+                  <p className="text-xs text-ink-muted">
+                    Ofrecimientos de ayuda y oficios declarados en las fichas médicas del ciclo actual
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalFamiliasVoluntariasAbierto(false)}
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 overflow-y-auto space-y-3 flex-1">
+              {cargandoVoluntarias ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-ink-muted">
+                  <Loader2 className="w-6 h-6 animate-spin text-brand" />
+                  <span className="text-xs font-semibold">Cargando familias voluntarias...</span>
+                </div>
+              ) : familiasVoluntarias.length === 0 ? (
+                <div className="py-12 text-center text-ink-muted space-y-2">
+                  <HeartHandshake className="w-10 h-10 mx-auto opacity-40 text-rose-500" />
+                  <p className="text-sm font-semibold text-ink-2">
+                    Aún no hay familias voluntarias registradas este ciclo.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {familiasVoluntarias.map((col, idx) => (
+                    <div
+                      key={col.entregaId || idx}
+                      className="bg-paper-2 rounded-2xl p-4 border border-rule shadow-xs space-y-2.5"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <h4 className="font-bold text-sm text-ink">{col.adulto.nombre}</h4>
+                          <p className="text-xs text-ink-muted">
+                            {col.adulto.profesion || 'Familiar'} • Familia de{' '}
+                            <strong className="text-brand">
+                              {col.protagonista.nombre} {col.protagonista.apellido}
+                            </strong>{' '}
+                            ({col.protagonista.unidad})
+                          </p>
+                        </div>
+                        {col.adulto.telefono && col.adulto.telefono !== '-' && (
+                          <a
+                            href={`tel:${col.adulto.telefono}`}
+                            className="min-h-[38px] px-3 py-1.5 rounded-xl bg-brand/10 text-brand border border-brand/30 font-bold text-xs flex items-center gap-1.5 shrink-0 hover:bg-brand/20 transition-colors"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                            <span>Llamar</span>
+                          </a>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {col.areas.cocinaCampamento && (
+                          <span className="text-[11px] bg-brand/10 text-brand border border-brand/30 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                            <Utensils className="w-3 h-3" /> Cocina
+                          </span>
+                        )}
+                        {col.areas.campamento && (
+                          <span className="text-[11px] bg-paper text-ink border border-rule px-2 py-0.5 rounded-md font-medium">
+                            Apoyo en Campamento
+                          </span>
+                        )}
+                        {(col.areas.transporte || col.areas.camion || col.areas.camioneta || col.areas.colectivo) && (
+                          <span className="text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                            <Truck className="w-3 h-3" /> Transporte
+                          </span>
+                        )}
+                        {col.areas.manoObra && (
+                          <span className="text-[11px] bg-paper text-ink border border-rule px-2 py-0.5 rounded-md font-medium">
+                            Mano de obra
+                          </span>
+                        )}
+                        {col.areas.donaciones && (
+                          <span className="text-[11px] bg-paper text-ink border border-rule px-2 py-0.5 rounded-md font-medium">
+                            Donaciones / Materiales
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

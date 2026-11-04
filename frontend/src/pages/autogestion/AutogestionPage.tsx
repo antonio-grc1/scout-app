@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '../../api/client';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
 import { Navbar } from '../../components/Navbar';
@@ -63,6 +63,22 @@ export const AutogestionPage: React.FC = () => {
     abierto: false,
     ticket: null,
   });
+
+  const eventosHabilitados = useMemo(
+    () => eventosActivos.filter((e) => e.estado === 'PUBLICADO'),
+    [eventosActivos],
+  );
+  const eventosFinalizados = useMemo(
+    () => eventosActivos.filter((e) => e.estado !== 'PUBLICADO'),
+    [eventosActivos],
+  );
+
+  const pedidosEventoSeleccionado = useMemo(() => {
+    if (!eventoParaCargar) return misPedidos;
+    return misPedidos.filter(
+      (p) => p.eventoId === eventoParaCargar.id || p.evento?.id === eventoParaCargar.id,
+    );
+  }, [misPedidos, eventoParaCargar]);
 
   const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
     setToast({ texto, tipo });
@@ -170,7 +186,8 @@ export const AutogestionPage: React.FC = () => {
       const evList = Array.isArray(resEventos.data) ? resEventos.data : [];
       setEventosActivos(evList);
       if (evList.length > 0 && !eventoParaCargar) {
-        setEventoParaCargar(evList[0]);
+        const primerPublicado = evList.find((e: any) => e.estado === 'PUBLICADO');
+        setEventoParaCargar(primerPublicado || evList[0]);
       }
     } catch {
       // Ignorar
@@ -616,7 +633,7 @@ export const AutogestionPage: React.FC = () => {
                 </p>
               </div>
 
-              {eventosActivos.length > 0 && (
+              {eventosActivos.length > 0 && eventoParaCargar?.estado === 'PUBLICADO' && (
                 <button
                   type="button"
                   onClick={() => {
@@ -629,26 +646,81 @@ export const AutogestionPage: React.FC = () => {
                   <span>Cargar Nueva Venta</span>
                 </button>
               )}
+              {eventosActivos.length > 0 && eventoParaCargar && eventoParaCargar.estado !== 'PUBLICADO' && (
+                <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Evento Finalizado (Cerrado a ventas)</span>
+                </span>
+              )}
             </div>
 
-            {/* Selector de Evento Activo si hay más de 1 */}
-            {eventosActivos.length > 1 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                <span className="text-xs font-bold text-ink-muted shrink-0">Evento:</span>
-                {eventosActivos.map((ev) => (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    onClick={() => setEventoParaCargar(ev)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 ${
-                      eventoParaCargar?.id === ev.id
-                        ? 'bg-brand/10 text-brand border border-brand/30'
-                        : 'bg-paper-2 text-ink-muted hover:bg-paper-3'
+            {/* Selector Desplegable de Evento */}
+            {eventosActivos.length > 0 && (
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <label htmlFor="selector-evento-autogestion" className="text-xs font-bold text-ink-muted shrink-0">
+                  Evento:
+                </label>
+                <select
+                  id="selector-evento-autogestion"
+                  value={eventoParaCargar?.id || ''}
+                  onChange={(e) => {
+                    const idSel = Number(e.target.value);
+                    const encontrado = eventosActivos.find((ev) => ev.id === idSel);
+                    if (encontrado) setEventoParaCargar(encontrado);
+                  }}
+                  className="py-1.5 px-3 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer max-w-[280px] truncate"
+                >
+                  {eventosHabilitados.length > 0 && (
+                    <optgroup label="🟢 Habilitados para venta">
+                      {eventosHabilitados.map((ev) => (
+                        <option key={ev.id} value={ev.id}>
+                          {ev.titulo}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {eventosFinalizados.length > 0 && (
+                    <optgroup label="⚪ Finalizados / Cerrados">
+                      {eventosFinalizados.map((ev) => (
+                        <option key={ev.id} value={ev.id}>
+                          {ev.titulo} (Finalizado)
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+
+                {eventoParaCargar && (
+                  <span
+                    className={`px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border shrink-0 ${
+                      eventoParaCargar.estado === 'PUBLICADO'
+                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200 border-emerald-300 dark:border-emerald-800'
+                        : 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-slate-300 dark:border-slate-800'
                     }`}
                   >
-                    {ev.titulo}
-                  </button>
-                ))}
+                    {eventoParaCargar.estado === 'PUBLICADO' ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>Habilitado</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Finalizado</span>
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Aviso si el evento seleccionado está finalizado */}
+            {eventoParaCargar && eventoParaCargar.estado !== 'PUBLICADO' && (
+              <div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-slate-500 shrink-0" />
+                <span>
+                  <strong>Evento Finalizado:</strong> Este evento ya no recibe nuevas ventas. Podés consultar tus pedidos registrados y descargar o ver los vales QR ya generados.
+                </span>
               </div>
             )}
 
@@ -657,7 +729,7 @@ export const AutogestionPage: React.FC = () => {
               <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
                 <span className="text-xs font-semibold text-ink-muted">Pedidos Registrados</span>
                 <span className="text-2xl font-black text-ink mt-1">
-                  {misPedidos.length}
+                  {pedidosEventoSeleccionado.length}
                 </span>
               </div>
 
@@ -668,7 +740,7 @@ export const AutogestionPage: React.FC = () => {
                 </span>
                 <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
                   +{formatearMoneda(
-                    misPedidos.reduce((acc, p) => acc + Number(p.totalGanancia || 0), 0),
+                    pedidosEventoSeleccionado.reduce((acc, p) => acc + Number(p.totalGanancia || 0), 0),
                   )}
                 </span>
               </div>
@@ -687,13 +759,15 @@ export const AutogestionPage: React.FC = () => {
                 <Loader2 className="w-6 h-6 animate-spin text-brand" />
                 <span className="text-xs font-bold">Cargando tus ventas...</span>
               </div>
-            ) : misPedidos.length === 0 ? (
+            ) : pedidosEventoSeleccionado.length === 0 ? (
               <div className="p-8 rounded-2xl bg-paper-2/60 border border-rule text-center space-y-3">
                 <ShoppingBag className="w-8 h-8 text-ink-muted mx-auto" />
                 <p className="text-xs font-medium text-ink-muted max-w-sm mx-auto">
-                  Aún no registraste ventas para los eventos activos. Hacé clic en "Cargar Nueva Venta" para empezar a sumar ganancia a tu saldo.
+                  {eventoParaCargar?.estado === 'PUBLICADO'
+                    ? 'Aún no registraste ventas para este evento. Hacé clic en "Cargar Nueva Venta" para empezar a sumar ganancia a tu saldo.'
+                    : 'No tenés pedidos registrados en este evento finalizado.'}
                 </p>
-                {eventosActivos.length > 0 && (
+                {eventoParaCargar?.estado === 'PUBLICADO' && (
                   <button
                     type="button"
                     onClick={() => {
@@ -709,7 +783,7 @@ export const AutogestionPage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {misPedidos.map((p: any) => {
+                {pedidosEventoSeleccionado.map((p: any) => {
                   const algunoRetirado = p.tickets?.some((t: any) => t.estado === 'UTILIZADO');
 
                   return (
@@ -800,7 +874,7 @@ export const AutogestionPage: React.FC = () => {
                                   ? 'bg-slate-100 text-slate-500 border-slate-300 dark:bg-slate-900 dark:border-slate-800 line-through'
                                   : 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700 shadow-2xs'
                               }`}
-                              title={t.estado === 'UTILIZADO' ? 'Vale ya retirado' : 'Ver y compartir vale QR'}
+                              title={t.estado === 'UTILIZADO' ? 'Vale ya retirado' : 'Ver vale QR'}
                             >
                               <QrCode className="w-3.5 h-3.5" />
                               <span>{t.estado === 'UTILIZADO' ? `Retirado #${idx + 1}` : `Vale QR #${idx + 1}`}</span>

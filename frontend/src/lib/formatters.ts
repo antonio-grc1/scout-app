@@ -129,6 +129,79 @@ export function formatearMoneda(valor: number | string | null | undefined): stri
   });
 }
 
+export function ahoraLocalDatetime(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${day}T${h}:${min}`;
+}
+
+export function fechaAFormatoDatetimeLocal(fechaIso?: string | null): string {
+  if (!fechaIso) return ahoraLocalDatetime();
+  try {
+    if (/^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z?)?$/.test(fechaIso)) {
+      const parteFecha = fechaIso.split('T')[0];
+      return `${parteFecha}T12:00`;
+    }
+    const d = new Date(fechaIso);
+    if (isNaN(d.getTime())) return ahoraLocalDatetime();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${day}T${h}:${min}`;
+  } catch {
+    return ahoraLocalDatetime();
+  }
+}
+
+export function formatearFecha(fechaIso?: string | null): string {
+  if (!fechaIso) return '-';
+  try {
+    if (/^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z?)?$/.test(fechaIso)) {
+      const partes = fechaIso.split('T')[0].split('-');
+      if (partes.length === 3) {
+        const [y, m, d] = partes;
+        return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+      }
+    }
+    const d = new Date(fechaIso);
+    if (isNaN(d.getTime())) return fechaIso;
+    return d.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  } catch {
+    return fechaIso;
+  }
+}
+
+export function formatearFechaHora(fechaIso?: string | null): string {
+  if (!fechaIso) return '-';
+  try {
+    if (/^\d{4}-\d{2}-\d{2}(T00:00:00(\.000)?Z?)?$/.test(fechaIso)) {
+      return formatearFecha(fechaIso);
+    }
+    const d = new Date(fechaIso);
+    if (isNaN(d.getTime())) return fechaIso;
+    return d.toLocaleString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return fechaIso;
+  }
+}
+
 export function calcularEdad(fechaNacStr?: string | null): number | null {
   if (!fechaNacStr) return null;
   let nacAnio: number;
@@ -435,6 +508,45 @@ export function esRolRama(rol: any): boolean {
 }
 
 /**
+ * Retorna todas las asignaciones activas de un miembro.
+ */
+export function obtenerAsignacionesActivas(miembro: any): any[] {
+  if (!miembro || !Array.isArray(miembro.asignaciones)) return [];
+  return miembro.asignaciones.filter((a: any) => a.activo);
+}
+
+/**
+ * Determina la asignación principal de un miembro:
+ * 1. Prioriza asignación activa con unidad de tipo SECCION_RAMA o rol de PROTAGONISTA.
+ * 2. Si no, la primera asignación activa.
+ * 3. Si no hay activas, la primera asignación del historial o null.
+ */
+export function obtenerRolPrincipal(miembro: any): any | null {
+  const activas = obtenerAsignacionesActivas(miembro);
+  if (activas.length === 0) {
+    return miembro?.asignaciones?.[0] || null;
+  }
+  const principal =
+    activas.find(
+      (a: any) =>
+        a.unidad?.tipo === 'SECCION_RAMA' ||
+        esRolDeProtagonista(a.rol) ||
+        a.rol?.tipoMiembro === 'PROTAGONISTA',
+    ) || activas[0];
+  return principal;
+}
+
+/**
+ * Retorna las asignaciones secundarias activas (todas las activas excepto la principal).
+ */
+export function obtenerRolesSecundarios(miembro: any): any[] {
+  const activas = obtenerAsignacionesActivas(miembro);
+  if (activas.length <= 1) return [];
+  const principal = obtenerRolPrincipal(miembro);
+  return activas.filter((a: any) => a.id !== principal?.id);
+}
+
+/**
  * Selecciona automáticamente la plantilla de legajo adecuada según la naturaleza dinámica del rol, rama y edad:
  * - Rol de naturaleza EDUCADOR -> LEGAJO_EDUCADORES_2026
  * - Protagonista mayor de 18 años (o en rama con edad >= 18) -> LEGAJO_ROVERS_2026
@@ -447,7 +559,10 @@ export function seleccionarPlantillaPorMiembro(
 ): any | null {
   if (!Array.isArray(plantillas) || plantillas.length === 0) return null;
 
-  const asig = miembro?.asignaciones?.[0] || asignacionesFallback?.[0];
+  const asig =
+    obtenerRolPrincipal(miembro) ||
+    miembro?.asignaciones?.[0] ||
+    asignacionesFallback?.[0];
   const rolObj = asig?.rol && typeof asig.rol === 'object' ? asig.rol : asig;
   const unidadTipo = String(asig?.unidad?.tipo || '').toUpperCase();
   const edadMinRama = Number(asig?.unidad?.rama?.edadMinima ?? 0);

@@ -64,7 +64,7 @@ export const ListarMiembrosSchema = z
 export type ListarMiembrosDto = z.infer<typeof ListarMiembrosSchema>;
 
 export const CrearAsignacionSchema = z.object({
-  unidadId: z.number().int().positive(),
+  unidadId: z.number().int().positive().optional(),
   rolId: z.number().int().positive(),
   alcanceOverride: z.enum(AlcanceRol).nullish(),
   cicloAnio: z.number().int().min(2000).max(2100).optional(),

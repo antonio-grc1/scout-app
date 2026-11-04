@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, Smartphone, Share, MoreVertical, PlusSquare, CheckCircle2, X } from 'lucide-react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -27,6 +28,11 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
   );
   const [instalada, setInstalada] = useState(false);
   const [modalGuiaAbierto, setModalGuiaAbierto] = useState(false);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto: modalGuiaAbierto,
+    onCerrar: () => setModalGuiaAbierto(false),
+  });
 
   const esIos =
     typeof navigator !== 'undefined' &&
@@ -130,12 +136,12 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
       {modalGuiaAbierto &&
         createPortal(
           <div
-            onClick={() => setModalGuiaAbierto(false)}
             className="fixed inset-0 z-[100] bg-black/70 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150 motion-reduce:animate-none"
+            {...backdropProps}
           >
             <div
-              onClick={(e) => e.stopPropagation()}
               className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden transition-colors"
+              {...contentProps}
             >
               <div className="p-4 border-b border-rule flex items-center justify-between bg-paper-2">
                 <div className="flex items-center gap-2.5">

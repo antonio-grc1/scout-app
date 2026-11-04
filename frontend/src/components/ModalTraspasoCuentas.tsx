@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
+import { formatearMoneda, traducirErrorAmigable, ahoraLocalDatetime } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { Input, Select, Textarea } from './ui/Input';
 import { ArrowLeftRight, X, AlertTriangle } from 'lucide-react';
@@ -43,8 +44,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
   // Inicializar formulario al abrir
   useEffect(() => {
     if (abierto) {
-      const hoy = new Date().toISOString().slice(0, 10);
-      setFecha(hoy);
+      setFecha(ahoraLocalDatetime());
       setMonto('');
       setConcepto('');
       setError(null);
@@ -62,16 +62,11 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
     }
   }, [abierto, cuentaOrigenInicialId, cuentasActivas]);
 
-  // Manejo de tecla Escape
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && abierto && !enviando) {
-        onCerrar();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [abierto, enviando, onCerrar]);
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: enviando,
+  });
 
   if (!abierto) return null;
 
@@ -143,17 +138,14 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !enviando) {
-          onCerrar();
-        }
-      }}
+      {...backdropProps}
     >
       <div
         className="bg-surface border border-rule rounded-2xl w-full max-w-lg shadow-md overflow-hidden transition-colors"
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-traspaso-title"
+        {...contentProps}
       >
         <div className="p-5 sm:p-6">
           {/* Encabezado */}
@@ -262,12 +254,12 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
 
               <div>
                 <Input
-                  label="Fecha de la Operación"
-                  type="date"
+                  label="Fecha y Hora de la Operación"
+                  type="datetime-local"
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
                   disabled={enviando}
-                  helperText="Fecha en que se realizó el movimiento."
+                  helperText="Fecha y hora en que se realizó el movimiento."
                 />
               </div>
             </div>

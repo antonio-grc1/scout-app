@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import {
   agruparCandidatosPorFamilia,
@@ -37,6 +38,12 @@ export const ModalVincularHermano: React.FC<Props> = ({
   const [buscando, setBuscando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando,
+  });
 
   useEffect(() => {
     if (!abierto) {
@@ -106,8 +113,14 @@ export const ModalVincularHermano: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-      <div className="bg-surface border border-rule rounded-3xl max-w-lg w-full shadow-md overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface border border-rule rounded-3xl max-w-lg w-full shadow-md overflow-hidden flex flex-col max-h-[90vh]"
+        {...contentProps}
+      >
         {/* Encabezado */}
         <div className="flex items-center justify-between p-5 border-b border-rule bg-paper-2 shrink-0">
           <div className="flex items-center gap-3">

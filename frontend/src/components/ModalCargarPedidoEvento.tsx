@@ -12,23 +12,32 @@ import {
   Search,
   Lock,
   Edit2,
+  Trash2,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
+import { ModalConfirmacion } from './ModalConfirmacion';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface PedidoAEditar {
   id: number;
   compradorNombre: string;
   compradorContacto?: string | null;
   vendedorUsuarioId?: number | null;
-  vendedorUsuario?: { id: number; nombre: string; apellido: string } | null;
+  vendedorUsuario?: { id: number; nombre: string; apellido: string; dni?: string } | null;
   metodoPago?: string | null;
   cuentaId?: number | null;
   observaciones?: string | null;
   detalles?: Array<{
     itemId: number;
     cantidad: number;
+  }>;
+  algunoRetirado?: boolean;
+  tickets?: Array<{
+    id: number;
+    estado: string;
   }>;
 }
 
@@ -74,6 +83,14 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
   const [cuentaId, setCuentaId] = useState<string>('');
   const [observaciones, setObservaciones] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando || eliminando,
+  });
+  const [modalConfirmarEliminar, setModalConfirmarEliminar] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Buscador de miembros
@@ -86,6 +103,10 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
   const safeItems = Array.isArray(itemsEvento) ? itemsEvento : [];
   const esModoEdicion = Boolean(pedidoAEditar);
+  const valesRetirados = Boolean(
+    pedidoAEditar?.algunoRetirado ||
+      pedidoAEditar?.tickets?.some((t) => t.estado === 'UTILIZADO'),
+  );
 
   useEffect(() => {
     if (abierto) {
@@ -101,9 +122,12 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         if (pedidoAEditar.metodoPago === 'EFECTIVO' || pedidoAEditar.metodoPago === 'TRANSFERENCIA') {
           setMetodoPago(pedidoAEditar.metodoPago);
         } else {
-          setMetodoPago('PENDIENTE');
+          // Pre-seleccionar EFECTIVO para agilizar el cobro directo de pedidos pendientes
+          setMetodoPago('EFECTIVO');
         }
-        setCuentaId(pedidoAEditar.cuentaId ? String(pedidoAEditar.cuentaId) : '');
+        if (pedidoAEditar.cuentaId) {
+          setCuentaId(String(pedidoAEditar.cuentaId));
+        }
 
         const cMap: Record<number, number> = {};
         if (Array.isArray(pedidoAEditar.detalles)) {
@@ -137,9 +161,14 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
   }, [abierto, pedidoAEditar, itemsEvento, bloquearVendedor, vendedorFijoId]);
 
   const cargarDatos = async () => {
+    if (bloquearVendedor) {
+      setMiembros([]);
+      setCuentas([]);
+      return;
+    }
     try {
       const [resMiembros, resCuentas] = await Promise.all([
-        api.get('/miembros?porPagina=300').catch(() => ({ data: { items: [] } })),
+        api.get('/miembros?porPagina=200').catch(() => ({ data: { items: [] } })),
         api.get('/tesoreria/cuentas').catch(() => ({ data: [] })),
       ]);
       const mData = resMiembros.data;
@@ -153,29 +182,83 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
       const cData = resCuentas.data;
       const cList = Array.isArray(cData) ? cData : [];
       setCuentas(cList);
-      if (cList.length > 0 && !cuentaId) setCuentaId(String(cList[0].id));
+      if (cList.length > 0) {
+        setCuentaId((prev) => {
+          if (prev && cList.some((c) => String(c.id) === String(prev))) return prev;
+          if (pedidoAEditar?.cuentaId && cList.some((c) => c.id === pedidoAEditar.cuentaId)) {
+            return String(pedidoAEditar.cuentaId);
+          }
+          return String(cList[0].id);
+        });
+      }
     } catch {
       // Ignorar
     }
   };
 
-  // Miembros filtrados por el buscador
+  // Búsqueda dinámica de miembros con debounce
+  useEffect(() => {
+    const q = busquedaMiembro.trim();
+    if (!q || bloquearVendedor) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get('/miembros', { params: { q, porPagina: 50 } });
+        const data = res.data;
+        const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+        if (items.length > 0) {
+          setMiembros((prev) => {
+            const map = new Map(prev.map((m) => [m.id, m]));
+            for (const item of items) {
+              map.set(item.id, item);
+            }
+            return Array.from(map.values());
+          });
+        }
+      } catch {
+        // Ignorar
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [busquedaMiembro, bloquearVendedor]);
+
+  // Miembros filtrados por el buscador con soporte de tildes
   const miembrosFiltrados = useMemo(() => {
-    const q = busquedaMiembro.trim().toLowerCase();
+    const q = busquedaMiembro
+      .trim()
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
     if (!q) return miembros.slice(0, 15);
     return miembros
       .filter((m) => {
-        const full = `${m.nombre} ${m.apellido}`.toLowerCase();
+        const full = `${m.nombre} ${m.apellido}`
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
+        const inv = `${m.apellido} ${m.nombre}`
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
         const dni = String(m.dni || '');
-        return full.includes(q) || dni.includes(q);
+        return full.includes(q) || inv.includes(q) || dni.includes(q);
       })
-      .slice(0, 20);
+      .slice(0, 25);
   }, [miembros, busquedaMiembro]);
 
   const miembroSeleccionado = useMemo(() => {
     if (!vendedorUsuarioId) return null;
-    return miembros.find((m) => String(m.id) === String(vendedorUsuarioId)) || null;
-  }, [miembros, vendedorUsuarioId]);
+    const encontrado = miembros.find((m) => String(m.id) === String(vendedorUsuarioId));
+    if (encontrado) return encontrado;
+    if (
+      pedidoAEditar?.vendedorUsuario &&
+      String(pedidoAEditar.vendedorUsuario.id) === String(vendedorUsuarioId)
+    ) {
+      return pedidoAEditar.vendedorUsuario;
+    }
+    return null;
+  }, [miembros, vendedorUsuarioId, pedidoAEditar]);
 
   if (!abierto) return null;
 
@@ -215,6 +298,11 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
       return;
     }
 
+    if (metodoPago !== 'PENDIENTE' && !cuentaId) {
+      setError('Por favor seleccioná en qué cuenta financiera ingresa el cobro');
+      return;
+    }
+
     setGuardando(true);
     try {
       const itemsPayload = Object.entries(cantidades)
@@ -224,6 +312,16 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           cantidad: cant,
         }));
 
+      // Detectar si los items o cantidades cambiaron respecto a los detalles originales
+      const detallesOriginales = pedidoAEditar?.detalles || [];
+      const itemsCambiaron =
+        !pedidoAEditar ||
+        itemsPayload.length !== detallesOriginales.length ||
+        itemsPayload.some((it) => {
+          const orig = detallesOriginales.find((d) => d.itemId === it.itemId);
+          return !orig || orig.cantidad !== it.cantidad;
+        });
+
       const payload: any = {
         compradorNombre: compradorNombre.trim(),
         compradorContacto: compradorContacto.trim() || undefined,
@@ -231,14 +329,18 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         metodoPago: metodoPago === 'PENDIENTE' ? undefined : metodoPago,
         cuentaId: metodoPago !== 'PENDIENTE' && cuentaId ? Number(cuentaId) : undefined,
         observaciones: observaciones.trim() || undefined,
-        items: itemsPayload,
       };
+
+      if (!valesRetirados && itemsCambiaron) {
+        payload.items = itemsPayload;
+      }
 
       if (esModoEdicion && pedidoAEditar) {
         await api.patch(`/tesoreria/eventos/pedidos/${pedidoAEditar.id}`, payload);
         if (onToast) onToast('Pedido actualizado exitosamente', 'exito');
       } else {
         payload.eventoId = eventoId;
+        payload.items = itemsPayload;
         await api.post('/tesoreria/eventos/pedidos', payload);
         if (onToast) onToast('Pedido registrado y vales QR generados correctamente', 'exito');
       }
@@ -257,9 +359,59 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
     }
   };
 
+  const handleEliminarPedido = async () => {
+    if (!pedidoAEditar) return;
+    const pedidoAEliminar = { ...pedidoAEditar };
+    setEliminando(true);
+    try {
+      await api.delete(`/tesoreria/eventos/pedidos/${pedidoAEliminar.id}`);
+      setModalConfirmarEliminar(false);
+      onCerrar();
+      onGuardado();
+
+      mostrarToastConDeshacer(
+        `Pedido #${pedidoAEliminar.id} (${pedidoAEliminar.compradorNombre}) eliminado.`,
+        async () => {
+          try {
+            await api.post('/tesoreria/eventos/pedidos', {
+              eventoId,
+              compradorNombre: pedidoAEliminar.compradorNombre,
+              compradorContacto: pedidoAEliminar.compradorContacto,
+              vendedorUsuarioId: pedidoAEliminar.vendedorUsuarioId,
+              metodoPago: pedidoAEliminar.metodoPago,
+              cuentaId: pedidoAEliminar.cuentaId,
+              observaciones: pedidoAEliminar.observaciones,
+              items: (pedidoAEliminar.detalles || []).map((d) => ({
+                itemId: d.itemId,
+                cantidad: d.cantidad,
+              })),
+            });
+            onGuardado();
+            useToastStore.getState().mostrarToast(`Pedido #${pedidoAEliminar.id} restaurado.`);
+          } catch (err: any) {
+            const msg = traducirErrorAmigable(err, 'No se pudo restaurar el pedido.');
+            useToastStore.getState().mostrarToast(msg, 'error');
+          }
+        },
+      );
+    } catch (err) {
+      const msg = traducirErrorAmigable(err, 'No se pudo eliminar el pedido.');
+      setError(msg);
+      if (onToast) onToast(msg, 'error');
+    } finally {
+      setEliminando(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-lg rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      {...backdropProps}
+    >
+      <div
+        className="relative w-full max-w-lg rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        {...contentProps}
+      >
         {/* Header */}
         <div className="p-4 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
@@ -303,7 +455,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 type="text"
                 value={compradorNombre}
                 onChange={(e) => setCompradorNombre(e.target.value)}
-                placeholder="Ej: Tía Marta / Juan Pérez"
+                placeholder="Ej: Juan Pérez"
                 className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
                 required
               />
@@ -312,13 +464,13 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             <div>
               <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-brand" />
-                Teléfono / WhatsApp
+                Teléfono de quien retira
               </label>
               <input
                 type="text"
                 value={compradorContacto}
                 onChange={(e) => setCompradorContacto(e.target.value)}
-                placeholder="Para enviar el vale QR"
+                placeholder="Ej: 11 2345-6789"
                 className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
               />
             </div>
@@ -439,7 +591,24 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
           {/* Selección de Productos y Cantidades */}
           <div className="space-y-2 pt-2 border-t border-rule">
-            <span className="text-xs font-bold text-ink block">Productos solicitados:</span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-ink block">Productos solicitados:</span>
+              {valesRetirados && (
+                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Vales retirados (solo lectura)
+                </span>
+              )}
+            </div>
+
+            {valesRetirados && (
+              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                <Lock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                <span>
+                  <strong>Vales ya retirados:</strong> Los productos y cantidades quedan fijos para preservar la entrega. Podés registrar el cobro, cambiar la cuenta o actualizar observaciones.
+                </span>
+              </div>
+            )}
 
             {safeItems.length === 0 ? (
               <div className="p-3 text-center text-xs text-ink-muted bg-paper-2 rounded-xl">
@@ -465,8 +634,9 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                         <button
                           type="button"
                           onClick={() => handleCambiarCantidad(it.id, -1)}
-                          disabled={cant <= 0}
+                          disabled={valesRetirados || cant <= 0}
                           className="w-7 h-7 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 disabled:opacity-30 cursor-pointer"
+                          title={valesRetirados ? 'No se puede modificar: vales ya retirados' : undefined}
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
@@ -474,7 +644,9 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                         <button
                           type="button"
                           onClick={() => handleCambiarCantidad(it.id, 1)}
-                          className="w-7 h-7 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 cursor-pointer"
+                          disabled={valesRetirados}
+                          className="w-7 h-7 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 disabled:opacity-30 cursor-pointer"
+                          title={valesRetirados ? 'No se puede modificar: vales ya retirados' : undefined}
                         >
                           <Plus className="w-3.5 h-3.5" />
                         </button>
@@ -510,7 +682,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
               type="text"
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
-              placeholder="Ej: Retira el sábado al mediodía / Sin cebolla"
+              placeholder="Aclaraciones u observaciones"
               className="w-full py-1.5 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
             />
           </div>
@@ -581,23 +753,73 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             </div>
           )}
 
-          <div className="pt-3 flex justify-end gap-2 border-t border-rule shrink-0">
-            <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando}>
-              Cancelar
-            </Button>
-            <Button type="submit" variant="primary" disabled={guardando || totalUnidades <= 0} className="gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>
-                {guardando
-                  ? 'Guardando...'
-                  : esModoEdicion
-                  ? 'Guardar Modificaciones'
-                  : 'Confirmar Pedido y Generar Vales QR'}
-              </span>
-            </Button>
+          <div className="pt-3 flex items-center justify-between gap-2 border-t border-rule shrink-0">
+            {esModoEdicion ? (
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => setModalConfirmarEliminar(true)}
+                disabled={guardando || eliminando || valesRetirados}
+                className="gap-1.5 text-xs"
+                title={valesRetirados ? 'No se puede eliminar un pedido con vales ya retirados' : undefined}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Eliminar Pedido</span>
+              </Button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando || eliminando}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={guardando || eliminando || totalUnidades <= 0}
+                className="gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>
+                  {guardando
+                    ? 'Guardando...'
+                    : esModoEdicion
+                    ? metodoPago !== 'PENDIENTE' && (!pedidoAEditar?.metodoPago || pedidoAEditar.metodoPago === 'PENDIENTE')
+                      ? 'Confirmar Cobro'
+                      : 'Guardar Modificaciones'
+                    : 'Confirmar Pedido y Generar Vales QR'}
+                </span>
+              </Button>
+            </div>
           </div>
         </form>
       </div>
+
+      {modalConfirmarEliminar && pedidoAEditar && (
+        <ModalConfirmacion
+          abierto={modalConfirmarEliminar}
+          onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
+          onConfirmar={handleEliminarPedido}
+          titulo="Eliminar Pedido de Evento"
+          tipo="peligro"
+          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Pedido'}
+          textoCancelar="Cancelar"
+          cargando={eliminando}
+          mensaje={
+            <div className="space-y-3">
+              <p className="text-sm text-ink leading-relaxed">
+                ¿Estás seguro de que deseas eliminar el pedido #{pedidoAEditar.id} de{' '}
+                <strong className="text-ink font-bold">{pedidoAEditar.compradorNombre}</strong>?
+              </p>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Se anularán los vales QR emitidos y se restituirá el stock disponible. Podrás deshacer esta acción durante unos segundos.
+              </p>
+            </div>
+          }
+        />
+      )}
     </div>
   );
 };

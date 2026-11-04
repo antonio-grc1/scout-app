@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import {
   X,
@@ -38,6 +39,12 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando,
+  });
 
   useEffect(() => {
     if (abierto) {
@@ -100,8 +107,14 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="bg-surface rounded-3xl border border-rule shadow-2xl w-full max-w-lg overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface rounded-3xl border border-rule shadow-2xl w-full max-w-lg overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+        {...contentProps}
+      >
         {/* Header */}
         <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
           <div className="flex items-center gap-3">

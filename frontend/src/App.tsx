@@ -9,6 +9,7 @@ import { UnidadPage } from './pages/unidad/UnidadPage';
 import { GlobalPage } from './pages/global/GlobalPage';
 import { PerfilPage } from './pages/perfil/PerfilPage';
 import { BarraDeCarga } from './components/ui/BarraDeCarga';
+import { ToastGlobal } from './components/ui/ToastGlobal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 
 const queryClient = new QueryClient({
@@ -127,6 +128,7 @@ export function App() {
           />
           <Route path="*" element={<Navigate to={rutaDefault()} replace />} />
         </Routes>
+        <ToastGlobal />
       </BrowserRouter>
     </QueryClientProvider>
   );

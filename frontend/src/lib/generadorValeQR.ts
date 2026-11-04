@@ -74,7 +74,7 @@ function formatearFecha(f?: string): string {
 
 /**
  * Genera una tarjeta digital completa (vale con QR y detalles de compra)
- * lista para compartir por WhatsApp, descargar o copiar como imagen PNG.
+ * lista para ver en pantalla, descargar o copiar como imagen PNG.
  */
 export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> {
   // 1. Generar imagen base del QR

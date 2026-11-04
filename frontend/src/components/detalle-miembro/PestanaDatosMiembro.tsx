@@ -33,6 +33,7 @@ export interface PestanaDatosMiembroProps {
   puedeEditarContacto: boolean;
   puedeDarBaja: boolean;
   puedeEditarMiembro: boolean;
+  puedeGestionarTesoreria?: boolean;
   onGuardarDatos: (e: React.FormEvent) => Promise<void>;
   onDesvincularRapido: (targetUserId: number, targetNombre: string) => Promise<void>;
   onAbrirEditarFamilia: () => void;
@@ -50,6 +51,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   puedeEditarContacto,
   puedeDarBaja,
   puedeEditarMiembro,
+  puedeGestionarTesoreria,
   onGuardarDatos,
   onDesvincularRapido,
   onAbrirEditarFamilia,
@@ -157,24 +159,26 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
-            {familiar && (
+          {puedeGestionarTesoreria && (
+            <div className="flex items-center gap-2">
+              {familiar && (
+                <button
+                  type="button"
+                  onClick={onAbrirEditarFamilia}
+                  className="min-h-[38px] px-3 rounded-xl border border-brand/40 bg-surface text-brand font-bold text-xs cursor-pointer"
+                >
+                  Descuento ({pctDesc}%)
+                </button>
+              )}
               <button
                 type="button"
-                onClick={onAbrirEditarFamilia}
-                className="min-h-[38px] px-3 rounded-xl border border-brand/40 bg-surface text-brand font-bold text-xs cursor-pointer"
+                onClick={onAbrirVincularHermano}
+                className="min-h-[38px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
               >
-                Descuento ({pctDesc}%)
+                + Hermano
               </button>
-            )}
-            <button
-              type="button"
-              onClick={onAbrirVincularHermano}
-              className="min-h-[38px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
-            >
-              + Hermano
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         {integrantesFamilia.length > 0 && (

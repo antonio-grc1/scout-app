@@ -27,6 +27,7 @@ import type {
   ActualizarCuentaFinancieraDto,
   ActualizarDescuentoFamiliaDto,
   ActualizarEventoDto,
+  ActualizarGastoDto,
   ActualizarPedidoEventoDto,
   ActualizarRubroContableDto,
   AjustarSaldoAFavorDto,
@@ -49,8 +50,11 @@ import type {
   GenerarCargosDto,
   ListarCargosQueryDto,
   ListarGastosQueryDto,
+  ListarIngresosQueryDto,
   ListarRubrosQueryDto,
   RegistrarGastoDto,
+  RegistrarIngresoDto,
+  ActualizarIngresoDto,
   RegistrarPagoDto,
   SincronizarMesesPlanDto,
   ValidarTicketQrDto,
@@ -63,6 +67,37 @@ function round2(n: number): number {
 
 function redondearDosDecimales(n: number): Prisma.Decimal {
   return new Prisma.Decimal(round2(n));
+}
+
+function parsearFechaOperacion(fechaStr?: string | null): Date {
+  if (!fechaStr) return new Date();
+
+  // Si ya es un ISO completo o incluye offset (por ej. termina en Z o -03:00):
+  if (fechaStr.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(fechaStr)) {
+    const d = new Date(fechaStr);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+
+  // Si es solo YYYY-MM-DD:
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
+    const hoyStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+    }).format(new Date());
+
+    if (fechaStr === hoyStr) {
+      return new Date();
+    }
+    // Para otro día: mediodía en Argentina (12:00 GMT-3 = 15:00 UTC)
+    return new Date(`${fechaStr}T15:00:00.000Z`);
+  }
+
+  // Si es YYYY-MM-DDTHH:mm sin zona, asumir hora argentina (GMT-3)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(fechaStr)) {
+    return new Date(`${fechaStr}-03:00`);
+  }
+
+  const d = new Date(fechaStr);
+  return isNaN(d.getTime()) ? new Date() : d;
 }
 
 const NOMBRES_MESES = [
@@ -264,6 +299,9 @@ export class TesoreriaService {
       : [];
 
     const rolFiltro = this.construirFiltroRol(concepto.destinatarioTipo, concepto.esParaEducadores);
+    const esSoloEducadores =
+      concepto.destinatarioTipo === 'EDUCADORES' ||
+      (!concepto.destinatarioTipo && concepto.esParaEducadores);
 
     const usuariosWhere: Prisma.UsuarioWhereInput = {
       activo: true,
@@ -274,6 +312,19 @@ export class TesoreriaService {
           ...(concepto.unidadId ? { unidadId: concepto.unidadId } : {}),
           ...(rolFiltro ? { rol: rolFiltro } : {}),
         },
+        ...(esSoloEducadores
+          ? {
+              none: {
+                activo: true,
+                rol: {
+                  OR: [
+                    { tipoMiembro: 'PROTAGONISTA' },
+                    { alcancePorDefecto: AlcanceRol.PROPIO },
+                  ],
+                },
+              },
+            }
+          : {}),
       },
     };
 
@@ -473,12 +524,15 @@ export class TesoreriaService {
     if (!usuario || !usuario.activo) return;
 
     const unidadesMiembro = new Set(usuario.asignaciones.map((a) => a.unidadId));
-    const esEducador = usuario.asignaciones.some(
-      (a) => a.rol.tipoMiembro === 'EDUCADOR' || a.rol.alcancePorDefecto !== AlcanceRol.PROPIO,
-    );
     const esProtagonista = usuario.asignaciones.some(
       (a) => a.rol.tipoMiembro === 'PROTAGONISTA' || a.rol.alcancePorDefecto === AlcanceRol.PROPIO,
     );
+    // Regla de Prevalencia Multirrol: Protagonista prevalece sobre Educador para cuotas
+    const esEducador =
+      !esProtagonista &&
+      usuario.asignaciones.some(
+        (a) => a.rol.tipoMiembro === 'EDUCADOR' || a.rol.alcancePorDefecto !== AlcanceRol.PROPIO,
+      );
 
     const conceptosVigentes = await tx.conceptoCuota.findMany({
       where: {
@@ -1308,6 +1362,9 @@ export class TesoreriaService {
     const excluirIds = [...new Set([...(dto.excluirUsuarioIds ?? []), ...excepcionesConcepto])];
 
     const rolFiltro = this.construirFiltroRol(concepto.destinatarioTipo, concepto.esParaEducadores);
+    const esSoloEducadores =
+      concepto.destinatarioTipo === 'EDUCADORES' ||
+      (!concepto.destinatarioTipo && concepto.esParaEducadores);
 
     const usuariosWhere: Prisma.UsuarioWhereInput = {
       activo: true,
@@ -1319,6 +1376,19 @@ export class TesoreriaService {
           ...(targetUnidadId ? { unidadId: targetUnidadId } : {}),
           ...(rolFiltro ? { rol: rolFiltro } : {}),
         },
+        ...(esSoloEducadores
+          ? {
+              none: {
+                activo: true,
+                rol: {
+                  OR: [
+                    { tipoMiembro: 'PROTAGONISTA' },
+                    { alcancePorDefecto: AlcanceRol.PROPIO },
+                  ],
+                },
+              },
+            }
+          : {}),
       },
     };
 
@@ -1847,8 +1917,21 @@ export class TesoreriaService {
       let saldoDisponible = 0;
 
       if (targetUsuarioId && tx.usuario?.findUnique) {
-        const u = await tx.usuario.findUnique({ where: { id: targetUsuarioId } });
-        if (u) saldoDisponible = Number(u.saldoAFavor ?? 0);
+        const u = await tx.usuario.findUnique({
+          where: { id: targetUsuarioId },
+          include: {
+            asignaciones: { where: { activo: true }, select: { unidadId: true } },
+          },
+        });
+        if (u) {
+          saldoDisponible = Number(u.saldoAFavor ?? 0);
+          if (alcance.tipo === 'UNIDAD') {
+            const uIds = u.asignaciones.map((a) => a.unidadId);
+            if (!uIds.some((uid) => alcance.unidadIds.includes(uid))) {
+              throw new ForbiddenException('El miembro no pertenece a su unidad');
+            }
+          }
+        }
       }
 
       // Calcular cuánto saldo a favor se usa en este cobro unificado
@@ -2186,14 +2269,27 @@ export class TesoreriaService {
       }
     }
 
-    return this.prisma.pago.update({
-      where: { id },
-      data: {
-        ...(dto.metodoPago !== undefined ? { metodoPago: dto.metodoPago } : {}),
-        ...(dto.referenciaComprobante !== undefined ? { referenciaComprobante: dto.referenciaComprobante } : {}),
-        ...(dto.observaciones !== undefined ? { observaciones: dto.observaciones } : {}),
-        ...(dto.fechaPago !== undefined ? { fechaPago: new Date(dto.fechaPago) } : {}),
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const pagoActualizado = await tx.pago.update({
+        where: { id },
+        data: {
+          ...(dto.metodoPago !== undefined ? { metodoPago: dto.metodoPago } : {}),
+          ...(dto.referenciaComprobante !== undefined ? { referenciaComprobante: dto.referenciaComprobante } : {}),
+          ...(dto.observaciones !== undefined ? { observaciones: dto.observaciones } : {}),
+          ...(dto.fechaPago !== undefined ? { fechaPago: new Date(dto.fechaPago) } : {}),
+        },
+      });
+
+      if (dto.fechaPago !== undefined) {
+        await tx.movimientoFinanciero.updateMany({
+          where: { pagoId: id },
+          data: {
+            fecha: new Date(dto.fechaPago),
+          },
+        });
+      }
+
+      return pagoActualizado;
     });
   }
 
@@ -2632,6 +2728,7 @@ export class TesoreriaService {
         tipo: c.tipo,
         activa: c.activa,
         saldoActual,
+        saldoActualConsolidado: saldoActual,
         totalIngresos,
         totalEgresos,
         cantidadMovimientos: agg.cantidad,
@@ -2703,9 +2800,56 @@ export class TesoreriaService {
       where: { id },
       data: {
         ...(dto.nombre ? { nombre: dto.nombre } : {}),
+        ...(dto.tipo ? { tipo: dto.tipo } : {}),
         ...(dto.activa !== undefined ? { activa: dto.activa } : {}),
       },
     });
+  }
+
+  async eliminarCuentaFinanciera(
+    actor: AuthUser,
+    alcance: AlcanceAcceso,
+    id: number,
+  ) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para administrar cuentas');
+    }
+
+    const cuenta = await this.prisma.cuentaFinanciera.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: { movimientos: true },
+        },
+      },
+    });
+    if (!cuenta) {
+      throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
+    }
+
+    const agg = await this.prisma.movimientoFinanciero.aggregate({
+      where: { cuentaId: id },
+      _sum: { montoIngreso: true, montoEgreso: true },
+    });
+    const saldo = round2(Number(agg._sum.montoIngreso ?? 0) - Number(agg._sum.montoEgreso ?? 0));
+    if (Math.abs(saldo) > 0.001) {
+      throw new BadRequestException(
+        `No se puede eliminar una cuenta con saldo no nulo ($${saldo.toFixed(2)}). Transfiera los fondos antes de eliminarla`,
+      );
+    }
+
+    if (cuenta._count.movimientos > 0) {
+      const desactivada = await this.prisma.cuentaFinanciera.update({
+        where: { id },
+        data: { activa: false },
+      });
+      return { ...desactivada, eliminadoPermanente: false };
+    }
+
+    const eliminada = await this.prisma.cuentaFinanciera.delete({
+      where: { id },
+    });
+    return { ...eliminada, eliminadoPermanente: true };
   }
 
   async obtenerLibroDiario(alcance: AlcanceAcceso, cuentaId: number, query: ConsultaLibroDiarioQueryDto) {
@@ -2764,6 +2908,8 @@ export class TesoreriaService {
       orderBy: [{ fecha: 'asc' }, { id: 'asc' }],
       include: {
         creadoPor: { select: { id: true, nombre: true, apellido: true } },
+        rubro: { select: { id: true, nombre: true, tipo: true } },
+        gasto: { select: { id: true, descripcion: true, anulado: true, comprobanteNro: true } },
         pago: {
           select: {
             id: true,
@@ -2908,7 +3054,7 @@ export class TesoreriaService {
         );
       }
 
-      const fechaOperacion = dto.fecha ? new Date(dto.fecha) : new Date();
+      const fechaOperacion = parsearFechaOperacion(dto.fecha);
 
       const movSalida = await tx.movimientoFinanciero.create({
         data: {
@@ -3164,7 +3310,7 @@ export class TesoreriaService {
         );
       }
 
-      const fechaOperacion = dto.fecha ? new Date(dto.fecha) : new Date();
+      const fechaOperacion = parsearFechaOperacion(dto.fecha);
 
       const gasto = await tx.gasto.create({
         data: {
@@ -3204,6 +3350,89 @@ export class TesoreriaService {
     });
   }
 
+  async actualizarGasto(
+    actor: AuthUser,
+    alcance: AlcanceAcceso,
+    id: number,
+    dto: ActualizarGastoDto,
+  ) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para modificar gastos');
+    }
+
+    const gasto = await this.prisma.gasto.findUnique({
+      where: { id },
+      include: { rubro: true, cuenta: true },
+    });
+    if (!gasto) throw new NotFoundException('Gasto no encontrado');
+    if (gasto.anulado) throw new BadRequestException('No se puede modificar un gasto anulado');
+
+    if (gasto.rubro.unidadId) {
+      assertUnidadEnAlcance(alcance, gasto.rubro.unidadId);
+    }
+
+    let nuevoRubro = gasto.rubro;
+    if (dto.rubroId && dto.rubroId !== gasto.rubroId) {
+      const rubroEncontrado = await this.prisma.rubroContable.findUnique({ where: { id: dto.rubroId } });
+      if (!rubroEncontrado || !rubroEncontrado.activo || rubroEncontrado.tipo !== TipoRubro.EGRESO) {
+        throw new BadRequestException('El rubro contable de egreso no es válido o está inactivo');
+      }
+      if (rubroEncontrado.unidadId) {
+        assertUnidadEnAlcance(alcance, rubroEncontrado.unidadId);
+      }
+      nuevoRubro = rubroEncontrado;
+    }
+
+    let nuevaCuenta = gasto.cuenta;
+    if (dto.cuentaId && dto.cuentaId !== gasto.cuentaId) {
+      const cuentaEncontrada = await this.prisma.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } });
+      if (!cuentaEncontrada || !cuentaEncontrada.activa) {
+        throw new BadRequestException('La cuenta financiera seleccionada no está activa');
+      }
+      nuevaCuenta = cuentaEncontrada;
+    }
+
+    const nuevaFecha = dto.fecha ? parsearFechaOperacion(dto.fecha) : gasto.fecha;
+    const nuevoMonto = dto.monto !== undefined ? redondearDosDecimales(dto.monto) : Number(gasto.monto);
+    const nuevaDescripcion = dto.descripcion !== undefined ? dto.descripcion : gasto.descripcion;
+    const nuevoComprobanteNro = dto.comprobanteNro !== undefined ? dto.comprobanteNro : gasto.comprobanteNro;
+    const nuevoComprobanteUrl = dto.comprobanteUrl !== undefined ? dto.comprobanteUrl : gasto.comprobanteUrl;
+
+    return this.prisma.$transaction(async (tx) => {
+      const gastoActualizado = await tx.gasto.update({
+        where: { id },
+        data: {
+          fecha: nuevaFecha,
+          monto: nuevoMonto,
+          descripcion: nuevaDescripcion,
+          rubroId: nuevoRubro.id,
+          cuentaId: nuevaCuenta.id,
+          comprobanteNro: nuevoComprobanteNro,
+          comprobanteUrl: nuevoComprobanteUrl,
+        },
+        include: {
+          rubro: { select: { id: true, nombre: true } },
+          cuenta: { select: { id: true, nombre: true, tipo: true } },
+          registradoPor: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+
+      const refTexto = nuevoComprobanteNro ? ` (Comp. #${nuevoComprobanteNro})` : '';
+      await tx.movimientoFinanciero.updateMany({
+        where: { gastoId: gasto.id },
+        data: {
+          cuentaId: nuevaCuenta.id,
+          fecha: nuevaFecha,
+          montoEgreso: nuevoMonto,
+          conceptoTexto: `Gasto: ${nuevaDescripcion} - ${nuevoRubro.nombre}${refTexto}`,
+          rubroId: nuevoRubro.id,
+        },
+      });
+
+      return gastoActualizado;
+    });
+  }
+
   async anularGasto(actor: AuthUser, alcance: AlcanceAcceso, id: number) {
     if (alcance.tipo === 'PROPIO') {
       throw new ForbiddenException('No tiene permisos para anular gastos');
@@ -3233,6 +3462,229 @@ export class TesoreriaService {
     });
   }
 
+  async restaurarGasto(actor: AuthUser, alcance: AlcanceAcceso, id: number) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para restaurar gastos');
+    }
+
+    const gasto = await this.prisma.gasto.findUnique({
+      where: { id },
+      include: { cuenta: true, rubro: true },
+    });
+    if (!gasto) throw new NotFoundException('Gasto no encontrado');
+    if (!gasto.anulado) throw new BadRequestException('El gasto no se encuentra anulado');
+
+    return this.prisma.$transaction(async (tx) => {
+      const gastoRestaurado = await tx.gasto.update({
+        where: { id: gasto.id },
+        data: { anulado: false },
+        include: {
+          rubro: { select: { id: true, nombre: true } },
+          cuenta: { select: { id: true, nombre: true, tipo: true } },
+          registradoPor: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+
+      const refTexto = gasto.comprobanteNro ? ` (Comp. #${gasto.comprobanteNro})` : '';
+      await tx.movimientoFinanciero.create({
+        data: {
+          cuentaId: gasto.cuentaId,
+          fecha: gasto.fecha,
+          tipo: TipoMovimientoFinanciero.EGRESO_GASTO,
+          montoIngreso: 0,
+          montoEgreso: redondearDosDecimales(Number(gasto.monto)),
+          conceptoTexto: `Gasto: ${gasto.descripcion} - ${gasto.rubro.nombre}${refTexto}`,
+          gastoId: gasto.id,
+          rubroId: gasto.rubroId,
+          creadoPorUsuarioId: actor.sub,
+        },
+      });
+
+      return gastoRestaurado;
+    });
+  }
+
+  // ===========================================================================
+  // INGRESOS DIRECTOS / MANUALES
+  // ===========================================================================
+
+  async registrarIngreso(actor: AuthUser, alcance: AlcanceAcceso, dto: RegistrarIngresoDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para registrar ingresos');
+    }
+
+    const monto = round2(dto.monto);
+    if (monto <= 0) {
+      throw new BadRequestException('El monto del ingreso debe ser mayor a 0');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const [cuenta, rubro] = await Promise.all([
+        tx.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } }),
+        tx.rubroContable.findUnique({ where: { id: dto.rubroId } }),
+      ]);
+
+      if (!cuenta) throw new NotFoundException('La cuenta financiera especificada no existe');
+      if (!cuenta.activa) throw new BadRequestException('La cuenta financiera se encuentra inactiva');
+      if (!rubro) throw new NotFoundException('El rubro de ingreso especificado no existe');
+      if (!rubro.activo) throw new BadRequestException('El rubro contable se encuentra inactivo');
+      if (rubro.tipo !== TipoRubro.INGRESO) {
+        throw new BadRequestException('El rubro seleccionado debe ser de tipo INGRESO');
+      }
+
+      const fechaOperacion = parsearFechaOperacion(dto.fecha);
+      const refTexto = dto.comprobanteNro ? ` (Comp. #${dto.comprobanteNro})` : '';
+
+      const movimiento = await tx.movimientoFinanciero.create({
+        data: {
+          cuentaId: cuenta.id,
+          fecha: fechaOperacion,
+          tipo: TipoMovimientoFinanciero.INGRESO_OTRO,
+          montoIngreso: redondearDosDecimales(monto),
+          montoEgreso: 0,
+          conceptoTexto: `Ingreso: ${dto.descripcion} - ${rubro.nombre}${refTexto}`,
+          rubroId: rubro.id,
+          creadoPorUsuarioId: actor.sub,
+        },
+        include: {
+          rubro: { select: { id: true, nombre: true, tipo: true } },
+          cuenta: { select: { id: true, nombre: true, tipo: true } },
+          creadoPor: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+
+      return movimiento;
+    });
+  }
+
+  async actualizarIngreso(actor: AuthUser, alcance: AlcanceAcceso, id: number, dto: ActualizarIngresoDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para modificar ingresos');
+    }
+
+    const movimiento = await this.prisma.movimientoFinanciero.findUnique({
+      where: { id },
+      include: { rubro: true, cuenta: true },
+    });
+
+    if (!movimiento) {
+      throw new NotFoundException(`Movimiento con ID ${id} no encontrado`);
+    }
+
+    if (movimiento.tipo !== TipoMovimientoFinanciero.INGRESO_OTRO) {
+      throw new BadRequestException('Solo se pueden modificar ingresos manuales registrados directamente');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      let cuentaId = movimiento.cuentaId;
+      if (dto.cuentaId !== undefined && dto.cuentaId !== movimiento.cuentaId) {
+        const c = await tx.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } });
+        if (!c) throw new NotFoundException('Cuenta destino no encontrada');
+        if (!c.activa) throw new BadRequestException('La cuenta seleccionada está inactiva');
+        cuentaId = c.id;
+      }
+
+      let rubroId = movimiento.rubroId;
+      let rubroNombre = movimiento.rubro?.nombre || 'Ingreso';
+      if (dto.rubroId !== undefined && dto.rubroId !== movimiento.rubroId) {
+        const r = await tx.rubroContable.findUnique({ where: { id: dto.rubroId } });
+        if (!r) throw new NotFoundException('Rubro no encontrado');
+        if (!r.activo) throw new BadRequestException('El rubro seleccionado se encuentra inactivo');
+        if (r.tipo !== TipoRubro.INGRESO) throw new BadRequestException('El rubro debe ser de tipo INGRESO');
+        rubroId = r.id;
+        rubroNombre = r.nombre;
+      }
+
+      const monto = dto.monto !== undefined ? round2(dto.monto) : Number(movimiento.montoIngreso);
+      if (monto <= 0) {
+        throw new BadRequestException('El monto debe ser mayor a 0');
+      }
+
+      const fechaOperacion = dto.fecha ? parsearFechaOperacion(dto.fecha) : movimiento.fecha;
+
+      let conceptoTexto = movimiento.conceptoTexto;
+      if (dto.descripcion !== undefined || dto.comprobanteNro !== undefined || dto.rubroId !== undefined) {
+        let desc = dto.descripcion;
+        if (!desc) {
+          const sinPrefijo = movimiento.conceptoTexto.replace(/^Ingreso:\s*/, '');
+          const partes = sinPrefijo.split(' - ');
+          desc = partes[0] || movimiento.conceptoTexto;
+        }
+        const refTexto = dto.comprobanteNro ? ` (Comp. #${dto.comprobanteNro})` : '';
+        conceptoTexto = `Ingreso: ${desc} - ${rubroNombre}${refTexto}`;
+      }
+
+      return tx.movimientoFinanciero.update({
+        where: { id },
+        data: {
+          cuentaId,
+          rubroId,
+          fecha: fechaOperacion,
+          montoIngreso: redondearDosDecimales(monto),
+          conceptoTexto,
+        },
+        include: {
+          rubro: { select: { id: true, nombre: true, tipo: true } },
+          cuenta: { select: { id: true, nombre: true, tipo: true } },
+          creadoPor: { select: { id: true, nombre: true, apellido: true } },
+        },
+      });
+    });
+  }
+
+  async eliminarIngreso(actor: AuthUser, alcance: AlcanceAcceso, id: number) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para eliminar ingresos');
+    }
+
+    const movimiento = await this.prisma.movimientoFinanciero.findUnique({
+      where: { id },
+      include: { rubro: true, cuenta: true },
+    });
+
+    if (!movimiento) {
+      throw new NotFoundException(`Ingreso con ID ${id} no encontrado`);
+    }
+
+    if (movimiento.tipo !== TipoMovimientoFinanciero.INGRESO_OTRO) {
+      throw new BadRequestException('Solo se pueden eliminar ingresos manuales registrados directamente');
+    }
+
+    await this.prisma.movimientoFinanciero.delete({
+      where: { id },
+    });
+
+    return { exito: true, mensaje: 'Ingreso eliminado correctamente' };
+  }
+
+  async listarIngresos(alcance: AlcanceAcceso, query: ListarIngresosQueryDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para listar ingresos');
+    }
+
+    const where: Prisma.MovimientoFinancieroWhereInput = {
+      tipo: TipoMovimientoFinanciero.INGRESO_OTRO,
+    };
+
+    if (query.cuentaId) where.cuentaId = query.cuentaId;
+    if (query.rubroId) where.rubroId = query.rubroId;
+    if (query.desde || query.hasta) {
+      where.fecha = {};
+      if (query.desde) where.fecha.gte = new Date(query.desde.includes('T') ? query.desde : `${query.desde}T00:00:00.000Z`);
+      if (query.hasta) where.fecha.lte = new Date(query.hasta.includes('T') ? query.hasta : `${query.hasta}T23:59:59.999Z`);
+    }
+
+    return this.prisma.movimientoFinanciero.findMany({
+      where,
+      orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
+      include: {
+        rubro: { select: { id: true, nombre: true, tipo: true } },
+        cuenta: { select: { id: true, nombre: true, tipo: true } },
+        creadoPor: { select: { id: true, nombre: true, apellido: true } },
+      },
+    });
+  }
+
   // ===========================================================================
   // CUADRO DE RESULTADOS / BALANCE CONTABLE (FASE 3)
   // ===========================================================================
@@ -3248,8 +3700,8 @@ export class TesoreriaService {
     const anio = query.anio || new Date().getFullYear();
     const mesFiltro = query.mes ?? null;
 
-    const desdeAnio = new Date(Date.UTC(anio, 0, 1, 0, 0, 0, 0));
-    const hastaAnio = new Date(Date.UTC(anio, 11, 31, 23, 59, 59, 999));
+    const desdeAnio = new Date(Date.UTC(anio, 0, 1, 3, 0, 0, 0));
+    const hastaAnio = new Date(Date.UTC(anio + 1, 0, 1, 2, 59, 59, 999));
 
     // 1. Obtener rubros contables
     const rubrosDb = await this.prisma.rubroContable.findMany({
@@ -3279,13 +3731,25 @@ export class TesoreriaService {
       },
     });
 
-    // 3. Obtener otros ingresos registrados directamente
-    const otrosIngresos = await this.prisma.movimientoFinanciero.findMany({
+    // 3. Obtener otros ingresos y cobros de eventos económicos registrados en cuentas
+    const ingresosMovimientos = await this.prisma.movimientoFinanciero.findMany({
       where: {
-        tipo: TipoMovimientoFinanciero.INGRESO_OTRO,
+        OR: [
+          { tipo: TipoMovimientoFinanciero.INGRESO_OTRO },
+          { pedidoEventoId: { not: null } },
+        ],
         fecha: { gte: desdeAnio, lte: hastaAnio },
       },
-      include: { rubro: true },
+      include: {
+        rubro: true,
+        pedidoEvento: {
+          include: {
+            evento: {
+              include: { rubro: true },
+            },
+          },
+        },
+      },
     });
 
     // 4. Obtener gastos operativos del año
@@ -3406,14 +3870,24 @@ export class TesoreriaService {
       }
     }
 
-    // Procesar otros ingresos directos
-    for (const aj of otrosIngresos) {
+    // Procesar otros ingresos directos y cobranzas de eventos
+    for (const aj of ingresosMovimientos) {
       const { anio: a, mes: m } = obtenerMesYAnioArg(aj.fecha);
       if (a === anio && m >= 1 && m <= 12) {
-        const rubroNombre = aj.rubro?.nombre || 'Otros Ingresos';
+        let rubroNombre = aj.rubro?.nombre;
+        let rubroId = aj.rubroId;
+
+        if (!rubroNombre && aj.pedidoEvento) {
+          rubroNombre = aj.pedidoEvento.evento.rubro?.nombre || 'Eventos y Festivales';
+          rubroId = aj.pedidoEvento.evento.rubroId ?? null;
+        }
+        if (!rubroNombre) {
+          rubroNombre = 'Otros Ingresos';
+        }
+
         if (!ingresosMap.has(rubroNombre)) {
           ingresosMap.set(rubroNombre, {
-            rubroId: aj.rubroId,
+            rubroId,
             rubroNombre,
             meses: emptyMeses(),
           });
@@ -3535,7 +4009,9 @@ export class TesoreriaService {
   async listarEventos(alcance: AlcanceAcceso, tipo?: TipoEvento) {
     const where: Prisma.EventoWhereInput = {
       ...(tipo ? { tipo } : {}),
-      ...(alcance.tipo === 'PROPIO' ? { estado: EstadoEvento.PUBLICADO } : {}),
+      ...(alcance.tipo === 'PROPIO'
+        ? { estado: { in: [EstadoEvento.PUBLICADO, EstadoEvento.FINALIZADO] } }
+        : {}),
     };
 
     const eventos = await this.prisma.evento.findMany({
@@ -3590,7 +4066,9 @@ export class TesoreriaService {
         fechaFin: ev.fechaFin,
         lugarEntrega: ev.lugarEntrega,
         rubro: ev.rubro,
+        rubroId: ev.rubroId,
         cuenta: ev.cuenta,
+        cuentaId: ev.cuentaId,
         creadoPor: ev.creadoPor,
         items: ev.items,
         metricas: {
@@ -3735,6 +4213,69 @@ export class TesoreriaService {
     });
   }
 
+  async eliminarEvento(alcance: AlcanceAcceso, id: number) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para eliminar eventos económicos');
+    }
+
+    const evento = await this.prisma.evento.findUnique({
+      where: { id },
+      include: {
+        pedidos: {
+          include: {
+            tickets: true,
+          },
+        },
+      },
+    });
+
+    if (!evento) {
+      throw new NotFoundException(`Evento con ID ${id} no encontrado`);
+    }
+
+    const tieneGananciasAcreditadas = evento.pedidos.some((p) => p.gananciaAcreditada);
+    if (tieneGananciasAcreditadas) {
+      throw new BadRequestException(
+        'No se puede eliminar un evento que ya tiene pedidos con ganancias liquidadas a las familias. Puede marcarlo como CANCELADO o FINALIZADO.',
+      );
+    }
+
+    const tieneTicketsUtilizados = evento.pedidos.some((p) =>
+      p.tickets.some((t) => t.estado === EstadoTicketEvento.UTILIZADO),
+    );
+    if (tieneTicketsUtilizados) {
+      throw new BadRequestException(
+        'No se puede eliminar un evento con vales o entradas ya canjeadas/utilizadas. Puede cambiar su estado a CANCELADO.',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.movimientoFinanciero.deleteMany({
+        where: { pedidoEvento: { eventoId: id } },
+      });
+
+      await tx.ticketEvento.deleteMany({
+        where: { pedido: { eventoId: id } },
+      });
+
+      await tx.detallePedidoEvento.deleteMany({
+        where: { pedido: { eventoId: id } },
+      });
+
+      await tx.pedidoEvento.deleteMany({
+        where: { eventoId: id },
+      });
+
+      await tx.itemEvento.deleteMany({
+        where: { eventoId: id },
+      });
+
+      return tx.evento.delete({
+        where: { id },
+      });
+    });
+  }
+
   async crearPedidoEvento(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearPedidoEventoDto) {
     if (alcance.tipo === 'PROPIO') {
       if (dto.vendedorUsuarioId && dto.vendedorUsuarioId !== actor.sub) {
@@ -3749,8 +4290,8 @@ export class TesoreriaService {
       include: { items: true },
     });
     if (!evento) throw new NotFoundException('Evento no encontrado');
-    if (evento.estado === EstadoEvento.CANCELADO || evento.estado === EstadoEvento.FINALIZADO) {
-      throw new BadRequestException('El evento no está disponible para recibir nuevos pedidos');
+    if (evento.estado !== EstadoEvento.PUBLICADO) {
+      throw new BadRequestException('El evento no está habilitado para recibir nuevos pedidos');
     }
 
     const itemsMap = new Map(evento.items.map((i) => [i.id, i]));
@@ -3899,8 +4440,19 @@ export class TesoreriaService {
     }
 
     const tieneTicketUtilizado = pedido.tickets.some((t) => t.estado === EstadoTicketEvento.UTILIZADO);
-    if (tieneTicketUtilizado) {
-      throw new BadRequestException('No se puede modificar un pedido cuyos vales QR ya fueron utilizados');
+    if (dto.items && dto.items.length > 0) {
+      const detallesMap = new Map(pedido.detalles.map((d) => [d.itemId, d.cantidad]));
+      const cambiaronItems =
+        dto.items.length !== pedido.detalles.length ||
+        dto.items.some((it) => detallesMap.get(it.itemId) !== it.cantidad);
+
+      if (tieneTicketUtilizado && cambiaronItems) {
+        throw new BadRequestException('No se pueden modificar los productos ni cantidades de un pedido cuyos vales QR ya fueron retirados');
+      }
+
+      if (!cambiaronItems) {
+        dto.items = undefined;
+      }
     }
 
     if (pedido.gananciaAcreditada) {
@@ -4006,10 +4558,51 @@ export class TesoreriaService {
         }
       }
 
+      const nuevaCuentaId = dto.cuentaId !== undefined ? dto.cuentaId : pedido.cuentaId;
+      const nuevoTotal = dto.items ? redondearDosDecimales(totalVentaNum) : Number(pedido.total);
+      const nuevoEstado = nuevaCuentaId ? EstadoPedidoEvento.PAGADO : EstadoPedidoEvento.PENDIENTE;
+
+      // Sincronizar MovimientoFinanciero si el pedido fue cobrado o se le quitó la cuenta
+      const movExistente = await tx.movimientoFinanciero.findFirst({
+        where: { pedidoEventoId: pedido.id },
+      });
+
+      if (nuevaCuentaId) {
+        if (movExistente) {
+          await tx.movimientoFinanciero.update({
+            where: { id: movExistente.id },
+            data: {
+              cuentaId: nuevaCuentaId,
+              montoIngreso: nuevoTotal,
+              conceptoTexto: `Cobro Venta Evento: ${pedido.evento.titulo} (Pedido #${pedido.id})`,
+              rubroId: pedido.evento.rubroId || undefined,
+            },
+          });
+        } else {
+          await tx.movimientoFinanciero.create({
+            data: {
+              cuentaId: nuevaCuentaId,
+              tipo: TipoMovimientoFinanciero.INGRESO_COBRANZA,
+              montoIngreso: nuevoTotal,
+              montoEgreso: 0,
+              conceptoTexto: `Cobro Venta Evento: ${pedido.evento.titulo} (Pedido #${pedido.id})`,
+              rubroId: pedido.evento.rubroId || undefined,
+              pedidoEventoId: pedido.id,
+              creadoPorUsuarioId: actor.sub,
+            },
+          });
+        }
+      } else if (movExistente) {
+        await tx.movimientoFinanciero.delete({
+          where: { id: movExistente.id },
+        });
+      }
+
       // 5. Actualizar cabecera del pedido
       return tx.pedidoEvento.update({
         where: { id: pedido.id },
         data: {
+          estado: nuevoEstado,
           ...(dto.compradorNombre ? { compradorNombre: dto.compradorNombre } : {}),
           ...(dto.compradorContacto !== undefined ? { compradorContacto: dto.compradorContacto } : {}),
           ...(dto.vendedorUsuarioId !== undefined ? { vendedorUsuarioId: dto.vendedorUsuarioId } : {}),
@@ -4017,7 +4610,7 @@ export class TesoreriaService {
           ...(dto.metodoPago !== undefined ? { metodoPago: dto.metodoPago as MetodoPago } : {}),
           ...(dto.cuentaId !== undefined ? { cuentaId: dto.cuentaId } : {}),
           ...(dto.items ? {
-            total: redondearDosDecimales(totalVentaNum),
+            total: nuevoTotal,
             totalGanancia: redondearDosDecimales(totalGananciaNum),
           } : {}),
         },
@@ -4026,6 +4619,64 @@ export class TesoreriaService {
           tickets: { include: { item: true } },
           vendedorUsuario: { select: { id: true, nombre: true, apellido: true } },
         },
+      });
+    });
+  }
+
+  async eliminarPedidoEvento(actor: AuthUser, alcance: AlcanceAcceso, id: number) {
+    const pedido = await this.prisma.pedidoEvento.findUnique({
+      where: { id },
+      include: {
+        evento: { include: { items: true } },
+        detalles: true,
+        tickets: true,
+      },
+    });
+    if (!pedido) throw new NotFoundException('Pedido no encontrado');
+
+    if (alcance.tipo === 'PROPIO') {
+      if (pedido.vendedorUsuarioId !== actor.sub && pedido.registradoPorUsuarioId !== actor.sub) {
+        throw new ForbiddenException('No tienes permisos para eliminar este pedido');
+      }
+    }
+
+    const tieneTicketUtilizado = pedido.tickets.some((t) => t.estado === EstadoTicketEvento.UTILIZADO);
+    if (tieneTicketUtilizado) {
+      throw new BadRequestException('No se puede eliminar un pedido cuyos vales QR ya fueron utilizados');
+    }
+
+    if (pedido.gananciaAcreditada) {
+      throw new BadRequestException('No se puede eliminar un pedido cuyas ganancias ya fueron acreditadas');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Restaurar stock si correspondía
+      for (const det of pedido.detalles) {
+        const itDb = pedido.evento.items.find((i) => i.id === det.itemId);
+        if (itDb && itDb.stockTotal !== null) {
+          await tx.itemEvento.update({
+            where: { id: det.itemId },
+            data: { stockDisponible: { increment: det.cantidad } },
+          });
+        }
+      }
+
+      // 2. Eliminar movimientos financieros asociados
+      await tx.movimientoFinanciero.deleteMany({
+        where: { pedidoEventoId: pedido.id },
+      });
+
+      // 3. Eliminar tickets y detalles
+      await tx.ticketEvento.deleteMany({
+        where: { pedidoId: pedido.id },
+      });
+
+      await tx.detallePedidoEvento.deleteMany({
+        where: { pedidoId: pedido.id },
+      });
+
+      return tx.pedidoEvento.delete({
+        where: { id: pedido.id },
       });
     });
   }
@@ -4052,6 +4703,14 @@ export class TesoreriaService {
 
       if (!ticket) {
         throw new NotFoundException('Vale o entrada no encontrada en el sistema');
+      }
+
+      if (ticket.pedido.estado === EstadoPedidoEvento.CANCELADO || ticket.pedido.evento.estado === EstadoEvento.CANCELADO) {
+        return {
+          ok: false,
+          estado: 'CANCELADO',
+          mensaje: 'El pedido o el evento asociado se encuentra cancelado.',
+        };
       }
 
       if (ticket.estado === EstadoTicketEvento.UTILIZADO) {
@@ -4099,10 +4758,17 @@ export class TesoreriaService {
         };
       }
 
+      const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
+      const montoTotalPedido = Number(ticket.pedido.total);
+
       return {
         ok: true,
         estado: 'VALIDADO',
-        mensaje: `¡Entrega confirmada! Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`,
+        alertaPagoPendiente: esPagoPendiente,
+        montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
+        mensaje: esPagoPendiente
+          ? `¡Entrega confirmada! (ATENCIÓN: Pago PENDIENTE de $${montoTotalPedido.toLocaleString('es-AR')} en puerta). Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`
+          : `¡Entrega confirmada! Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`,
         ticket: {
           id: ticket.id,
           producto: ticket.item.nombre,
@@ -4112,6 +4778,8 @@ export class TesoreriaService {
             ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
             : null,
           evento: ticket.pedido.evento.titulo,
+          pedidoEstado: ticket.pedido.estado,
+          pedidoTotal: montoTotalPedido,
           fechaUso: new Date(),
         },
       };
@@ -4130,7 +4798,7 @@ export class TesoreriaService {
           where: {
             vendedorUsuarioId: { not: null },
             gananciaAcreditada: false,
-            estado: { not: EstadoPedidoEvento.CANCELADO },
+            estado: EstadoPedidoEvento.PAGADO,
           },
           include: {
             tickets: true,

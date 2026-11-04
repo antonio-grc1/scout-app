@@ -3,7 +3,6 @@ import QRCode from 'qrcode';
 import {
   X,
   QrCode,
-  Share2,
   Download,
   Copy,
   Check,
@@ -13,6 +12,7 @@ import {
   Sun,
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { generarTarjetaValeQR } from '../lib/generadorValeQR';
 
 export interface TicketData {
@@ -77,23 +77,25 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && pantallaCompleta) {
-        salirPantallaCompleta();
-      }
-    };
+  const modalBase = useModalOverlay({
+    abierto: abierto && !pantallaCompleta,
+    onCerrar,
+  });
 
+  useModalOverlay({
+    abierto: abierto && pantallaCompleta,
+    onCerrar: salirPantallaCompleta,
+  });
+
+  useEffect(() => {
     const handleFullscreenChange = () => {
       if (!document.fullscreenElement && pantallaCompleta) {
         setPantallaCompleta(false);
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, [pantallaCompleta]);
@@ -152,7 +154,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
         new ClipboardItem({ 'image/png': blob }),
       ]);
       setCopiadaImagen(true);
-      setMensajeAyuda('¡Imagen del vale copiada al portapapeles! Pegala en el chat con Ctrl + V.');
+      setMensajeAyuda('¡Imagen del vale copiada al portapapeles!');
       setTimeout(() => setCopiadaImagen(false), 3000);
     } catch (err) {
       console.warn('No se pudo copiar la imagen al portapapeles:', err);
@@ -160,59 +162,15 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
     }
   };
 
-  const handleCompartirWhatsApp = async () => {
-    const texto = `Hola ${ticket.pedido.compradorNombre}! Acá tenés tu vale digital con los detalles de compra para "${ticket.pedido.evento.titulo}":
-Producto: ${ticket.cantidad}x ${ticket.item.nombre}
-Lugar de retiro: ${ticket.pedido.evento.lugarEntrega || 'Sede del Grupo'}
-Presentá este código o mostrá la tarjeta con QR al retirar: ${ticket.tokenQr.slice(0, 8)}...`;
-
-    // 1. Intentar Web Share API con archivo adjunto (en móviles adjunta directamente la foto en WhatsApp)
-    if (qrUrl && typeof navigator !== 'undefined' && navigator.canShare) {
-      try {
-        const res = await fetch(qrUrl);
-        const blob = await res.blob();
-        const file = new File([blob], `vale-${ticket.pedido.evento.titulo}-${ticket.id}.png`, {
-          type: 'image/png',
-        });
-
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: `Vale Digital - ${ticket.pedido.evento.titulo}`,
-            text: texto,
-            files: [file],
-          });
-          return;
-        }
-      } catch (err: any) {
-        if (err?.name === 'AbortError') return;
-      }
-    }
-
-    // 2. Si no soporta compartir archivo directamente (ej: Desktop Chrome):
-    // Copiamos la imagen al portapapeles y abrimos WhatsApp con el texto
-    try {
-      if (qrUrl && navigator.clipboard && window.ClipboardItem) {
-        const res = await fetch(qrUrl);
-        const blob = await res.blob();
-        await navigator.clipboard.write([
-          new ClipboardItem({ 'image/png': blob }),
-        ]);
-        setMensajeAyuda('¡Imagen copiada al portapapeles! En WhatsApp pegala con Ctrl + V.');
-      }
-    } catch {
-      // Ignorar
-    }
-
-    const cleanPhone = (ticket.pedido.compradorContacto || '').replace(/\D/g, '');
-    const waUrl = cleanPhone
-      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(texto)}`
-      : `https://wa.me/?text=${encodeURIComponent(texto)}`;
-    window.open(waUrl, '_blank');
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      {...modalBase.backdropProps}
+    >
+      <div
+        className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        {...modalBase.contentProps}
+      >
         {/* Encabezado */}
         <div className="p-4 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
@@ -284,26 +242,15 @@ Presentá este código o mostrá la tarjeta con QR al retirar: ${ticket.tokenQr.
 
           {/* Botones de acción */}
           <div className="w-full pt-2 border-t border-rule flex flex-col gap-2">
-            {/* Botón ver en Pantalla Completa */}
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={entrarPantallaCompleta}
-              className="gap-2 text-xs w-full py-2 font-bold cursor-pointer border-brand/40 text-brand hover:bg-brand/10"
-            >
-              <Maximize2 className="w-4 h-4" />
-              <span>Ver Entrada en Pantalla Completa</span>
-            </Button>
-
-            {/* Botón principal de WhatsApp */}
+            {/* Botón principal de Descargar */}
             <Button
               variant="primary"
               size="sm"
-              onClick={handleCompartirWhatsApp}
-              className="gap-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white w-full py-2.5 font-black shadow-xs cursor-pointer"
+              onClick={handleDescargarQR}
+              className="gap-2 text-xs w-full py-2.5 font-bold cursor-pointer"
             >
-              <Share2 className="w-4 h-4" />
-              <span>Enviar Vale por WhatsApp</span>
+              <Download className="w-4 h-4" />
+              <span>Descargar Vale (PNG)</span>
             </Button>
 
             {/* Acciones secundarias */}
@@ -311,23 +258,23 @@ Presentá este código o mostrá la tarjeta con QR al retirar: ${ticket.tokenQr.
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={handleCopiarImagen}
+                onClick={entrarPantallaCompleta}
                 className="gap-1 text-[11px] px-1.5 py-1.5"
-                title="Copiar imagen al portapapeles para pegar en WhatsApp Web con Ctrl+V"
+                title="Ver entrada en pantalla completa"
               >
-                {copiadaImagen ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <ImageIcon className="w-3.5 h-3.5" />}
-                <span>{copiadaImagen ? 'Copiada!' : 'Copiar Foto'}</span>
+                <Maximize2 className="w-3.5 h-3.5" />
+                <span>Pantalla Completa</span>
               </Button>
 
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={handleDescargarQR}
+                onClick={handleCopiarImagen}
                 className="gap-1 text-[11px] px-1.5 py-1.5"
-                title="Descargar imagen PNG completa del vale"
+                title="Copiar imagen al portapapeles"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Descargar</span>
+                {copiadaImagen ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                <span>{copiadaImagen ? 'Copiada!' : 'Copiar Foto'}</span>
               </Button>
 
               <Button
@@ -401,18 +348,8 @@ Presentá este código o mostrá la tarjeta con QR al retirar: ${ticket.tokenQr.
               <Button
                 variant="primary"
                 size="sm"
-                onClick={handleCompartirWhatsApp}
-                className="gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white border-transparent flex-1"
-              >
-                <Share2 className="w-3.5 h-3.5" />
-                <span>WhatsApp</span>
-              </Button>
-
-              <Button
-                variant="secondary"
-                size="sm"
                 onClick={handleDescargarQR}
-                className="gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 flex-1"
+                className="gap-1.5 text-xs flex-1 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Descargar</span>
@@ -422,7 +359,7 @@ Presentá este código o mostrá la tarjeta con QR al retirar: ${ticket.tokenQr.
                 variant="secondary"
                 size="sm"
                 onClick={salirPantallaCompleta}
-                className="gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 flex-1"
+                className="gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 flex-1 cursor-pointer"
               >
                 <Minimize2 className="w-3.5 h-3.5" />
                 <span>Cerrar</span>

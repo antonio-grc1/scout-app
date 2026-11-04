@@ -554,26 +554,44 @@ export class MiembrosService {
   /** Agrega una asignación (ej. un Rover que además es Educador). No toca las existentes. */
   async agregarAsignacion(alcance: AlcanceAcceso, usuarioId: number, dto: CrearAsignacionDto) {
     if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede gestionar asignaciones');
-    assertUnidadEnAlcance(alcance, dto.unidadId);
-    await this.validarUnidadYRol(alcance, dto.unidadId, dto.rolId, dto.alcanceOverride);
+    const unidadIdResuelta = await this.resolverYValidarUnidadYRol(
+      alcance,
+      dto.unidadId,
+      dto.rolId,
+      dto.alcanceOverride,
+    );
+    assertUnidadEnAlcance(alcance, unidadIdResuelta);
 
     const usuario = await this.prisma.usuario.findUnique({ where: { id: usuarioId } });
     if (!usuario || !usuario.activo) throw new NotFoundException('Miembro no encontrado');
 
     const duplicada = await this.prisma.asignacionMiembro.findFirst({
-      where: { usuarioId, unidadId: dto.unidadId, rolId: dto.rolId, activo: true },
+      where: { usuarioId, unidadId: unidadIdResuelta, rolId: dto.rolId, activo: true },
     });
     if (duplicada) throw new ConflictException('El miembro ya tiene esa asignación activa');
 
-    await this.prisma.asignacionMiembro.create({
-      data: {
-        usuarioId,
-        unidadId: dto.unidadId,
-        rolId: dto.rolId,
-        alcanceOverride: dto.alcanceOverride ?? null,
-        cicloAnio: dto.cicloAnio ?? anioActual(),
-      },
+    const ciclo = dto.cicloAnio ?? anioActual();
+    const trans = this.prisma.$transaction
+      ? (cb: (tx: any) => Promise<any>) => this.prisma.$transaction(cb)
+      : async (cb: (tx: any) => Promise<any>) => cb(this.prisma);
+
+    await trans(async (tx) => {
+      await tx.asignacionMiembro.create({
+        data: {
+          usuarioId,
+          unidadId: unidadIdResuelta,
+          rolId: dto.rolId,
+          alcanceOverride: dto.alcanceOverride ?? null,
+          cicloAnio: ciclo,
+        },
+      });
+
+      if (this.tesoreria) {
+        const mesActual = new Date().getMonth() + 1;
+        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, usuarioId, mesActual, ciclo);
+      }
     });
+
     return this.prisma.usuario.findUniqueOrThrow({ where: { id: usuarioId }, select: MIEMBRO_SELECT });
   }
 
@@ -595,10 +613,22 @@ export class MiembrosService {
       await this.asegurarNoDesactivarUltimoAdmin(usuarioId, asignacionId);
     }
 
-    await this.prisma.asignacionMiembro.update({
-      where: { id: asignacionId },
-      data: { activo: false, fechaFin: hoyUtc() },
+    const trans = this.prisma.$transaction
+      ? (cb: (tx: any) => Promise<any>) => this.prisma.$transaction(cb)
+      : async (cb: (tx: any) => Promise<any>) => cb(this.prisma);
+
+    await trans(async (tx) => {
+      await tx.asignacionMiembro.update({
+        where: { id: asignacionId },
+        data: { activo: false, fechaFin: hoyUtc() },
+      });
+
+      if (this.tesoreria) {
+        const mesActual = new Date().getMonth() + 1;
+        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, usuarioId, mesActual, anioActual());
+      }
     });
+
     return this.prisma.usuario.findUniqueOrThrow({ where: { id: usuarioId }, select: MIEMBRO_SELECT });
   }
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { traducirErrorAmigable } from '../lib/formatters';
@@ -37,6 +38,12 @@ export const PanelAdminPlantillas: React.FC<Props> = ({ onToast }) => {
     activa: true,
   });
   const [guardando, setGuardando] = useState(false);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto: modalAbierto,
+    onCerrar: () => setModalAbierto(false),
+    bloqueado: guardando,
+  });
 
   // Ver detalle de secciones
   const [plantillaDetalle, setPlantillaDetalle] = useState<any | null>(null);
@@ -335,8 +342,14 @@ export const PanelAdminPlantillas: React.FC<Props> = ({ onToast }) => {
 
       {/* Modal Crear / Editar Plantilla */}
       {modalAbierto && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-          <div className="bg-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-rule shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+          {...backdropProps}
+        >
+          <div
+            className="bg-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-rule shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            {...contentProps}
+          >
             <div className="flex items-center justify-between pb-2 border-b border-rule">
               <div className="flex items-center gap-2">
                 <FileText className="w-5 h-5 text-brand" />

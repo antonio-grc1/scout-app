@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import {
   ExternalLink,
   Download,
@@ -128,6 +129,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const [zoom, setZoom] = useState(1);
   const [containerWidth, setContainerWidth] = useState(360);
 
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto: Boolean(url),
+    onCerrar,
+  });
+
   useEffect(() => {
     if (!url) return;
 
@@ -198,8 +204,14 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   if (!url) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 flex flex-col p-1.5 sm:p-5 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-      <div className="bg-surface rounded-2xl w-full max-w-4xl mx-auto flex flex-col flex-1 overflow-hidden border border-rule shadow-2xl text-ink">
+    <div
+      className="fixed inset-0 z-50 bg-black/85 flex flex-col p-1.5 sm:p-5 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface rounded-2xl w-full max-w-4xl mx-auto flex flex-col flex-1 overflow-hidden border border-rule shadow-2xl text-ink"
+        {...contentProps}
+      >
         {/* Cabecera y Controles */}
         <div className="p-2.5 sm:p-4 border-b border-rule flex flex-wrap items-center justify-between gap-2 bg-paper-2">
           <div className="min-w-0 flex items-center gap-2">

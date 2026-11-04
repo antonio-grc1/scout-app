@@ -4,7 +4,7 @@
  * axes: light/system-ui/warm · posture: app-screen · contrast: pass · v2.0.0 */
 /* Hallmark · pre-emit critique: P9 H8 E9 S9 R9 V9 · weakest: H8, tightened header hierarchy and responsive table density */
 @import "./tokens.css";
-@import "./base.css";
+@import "./base.css" layer(base);
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));

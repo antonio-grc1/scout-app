@@ -120,47 +120,49 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
   return (
     <div className="space-y-4 print:space-y-2 print:text-black">
       {/* Barra Superior de Control y Filtros */}
-      <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-wrap items-center justify-between gap-3 print:hidden">
+      <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col md:flex-row md:items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5">
-            <Scale className="w-5 h-5 text-brand" />
+            <Scale className="w-5 h-5 text-brand shrink-0" />
             <h2 className="text-base font-black text-ink">Cuadro de Resultados y Balance</h2>
           </div>
 
-          {/* Selector de Año */}
-          <div className="flex items-center gap-1 pl-2 border-l border-rule">
-            <span className="text-xs font-bold text-ink-muted">Ejercicio:</span>
-            <select
-              value={anio}
-              onChange={(e) => setAnio(Number(e.target.value))}
-              className="py-1 px-2.5 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer"
-            >
-              {[2024, 2025, 2026, 2027].map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Selector de Año */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-bold text-ink-muted">Ejercicio:</span>
+              <select
+                value={anio}
+                onChange={(e) => setAnio(Number(e.target.value))}
+                className="py-1 px-2.5 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer"
+              >
+                {[2024, 2025, 2026, 2027].map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Selector de Período (Año vs Mes) */}
-          <div className="flex items-center gap-1">
-            <span className="text-xs font-bold text-ink-muted">Período:</span>
-            <select
-              value={mesFiltro === null ? 'ANUAL' : String(mesFiltro)}
-              onChange={(e) => {
-                const val = e.target.value;
-                setMesFiltro(val === 'ANUAL' ? null : Number(val));
-              }}
-              className="py-1 px-2.5 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer"
-            >
-              <option value="ANUAL">Todo el Año (Consolidado)</option>
-              {NOMBRES_MESES_COMPLETO.map((nom, idx) => (
-                <option key={idx + 1} value={String(idx + 1)}>
-                  {nom}
-                </option>
-              ))}
-            </select>
+            {/* Selector de Período (Año vs Mes) */}
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-bold text-ink-muted">Período:</span>
+              <select
+                value={mesFiltro === null ? 'ANUAL' : String(mesFiltro)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setMesFiltro(val === 'ANUAL' ? null : Number(val));
+                }}
+                className="py-1 px-2.5 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer"
+              >
+                <option value="ANUAL">Todo el Año (Consolidado)</option>
+                {NOMBRES_MESES_COMPLETO.map((nom, idx) => (
+                  <option key={idx + 1} value={String(idx + 1)}>
+                    {nom}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Toggle Ocultar Rubros sin movimiento */}
@@ -176,7 +178,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end md:self-auto">
           <Button
             variant="secondary"
             size="sm"
@@ -318,14 +320,14 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
             <span className="text-xl font-black text-ink">
               {formatearMoneda(datos?.disponibilidadActual.totalDisponible ?? 0)}
             </span>
-            <div className="mt-1 flex items-center justify-between text-[11px] text-ink-muted">
+            <div className="mt-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] text-ink-muted">
               <span className="flex items-center gap-1">
-                <Wallet className="w-3 h-3 text-emerald-500" />
-                Caja: {formatearMoneda(datos?.disponibilidadActual.totalCaja ?? 0)}
+                <Wallet className="w-3 h-3 text-emerald-500 shrink-0" />
+                <span>Caja: {formatearMoneda(datos?.disponibilidadActual.totalCaja ?? 0)}</span>
               </span>
               <span className="flex items-center gap-1">
-                <Landmark className="w-3 h-3 text-blue-500" />
-                Banco: {formatearMoneda(datos?.disponibilidadActual.totalBanco ?? 0)}
+                <Landmark className="w-3 h-3 text-blue-500 shrink-0" />
+                <span>Banco: {formatearMoneda(datos?.disponibilidadActual.totalBanco ?? 0)}</span>
               </span>
             </div>
           </div>

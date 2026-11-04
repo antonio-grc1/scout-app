@@ -13,6 +13,7 @@ import { useThemeStore, getContrastTextColor, FontScale, THEME_PRESETS } from '.
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { BrandLogo } from './ui/BrandLogo';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface ThemeCustomizerModalProps {
   abierto?: boolean;
@@ -116,16 +117,10 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     }
   }, [isVisible, customization, resolvedTheme]);
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isVisible) {
-        handleClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isVisible, handleClose]);
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto: isVisible,
+    onCerrar: handleClose,
+  });
 
   if (!isVisible) return null;
 
@@ -210,15 +205,15 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
-      onClick={handleClose}
       role="presentation"
+      {...backdropProps}
     >
       <div
         className="bg-surface border border-rule rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden my-auto transition-colors"
         role="dialog"
         aria-modal="true"
         aria-labelledby="theme-customizer-title"
-        onClick={(e) => e.stopPropagation()}
+        {...contentProps}
       >
         {/* Cabecera del Modal */}
         <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between gap-3 bg-surface">

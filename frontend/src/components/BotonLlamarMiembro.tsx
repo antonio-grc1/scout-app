@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Phone, X, User } from 'lucide-react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { extraerTelefonosMiembro } from '../lib/formatters';
 
 interface Props {
@@ -25,6 +26,11 @@ const BADGE_POR_ETIQUETA: Record<string, string> = {
 export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, className }) => {
   const [abierto, setAbierto] = useState(false);
   const telefonos = extraerTelefonosMiembro(miembro, entrega);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar: () => setAbierto(false),
+  });
 
   if (telefonos.length === 0) return null;
 
@@ -51,15 +57,12 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
       {abierto &&
         createPortal(
           <div
-            onClick={(e) => {
-              e.stopPropagation();
-              setAbierto(false);
-            }}
             className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+            {...backdropProps}
           >
             <div
-              onClick={(e) => e.stopPropagation()}
               className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-ink"
+              {...contentProps}
             >
               <div className="p-4 border-b border-rule flex items-center justify-between bg-paper-2">
                 <div className="flex items-center gap-2.5 min-w-0">

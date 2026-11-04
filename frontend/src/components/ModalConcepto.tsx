@@ -11,9 +11,11 @@ import {
   Percent,
   HelpCircle,
   PlusCircle,
+  Pencil,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { ModalCrearRubro } from './ModalCrearRubro';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface ConceptoData {
   id?: number;
@@ -61,6 +63,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
   const [rubroId, setRubroId] = useState<number | ''>('');
   const [rubros, setRubros] = useState<Array<{ id: number; nombre: string; permiteDescuentoDefault: boolean }>>([]);
   const [modalNuevoRubro, setModalNuevoRubro] = useState(false);
+  const [rubroAEditar, setRubroAEditar] = useState<any | null>(null);
   const [montoBase, setMontoBase] = useState('');
   const [cicloAnio, setCicloAnio] = useState(new Date().getFullYear());
   const [fechaVencimiento, setFechaVencimiento] = useState('');
@@ -75,6 +78,12 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando,
+  });
 
   const esEdicion = Boolean(concepto && concepto.id);
 
@@ -236,11 +245,15 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
       <div
         className="bg-surface border border-rule rounded-2xl w-full max-w-lg shadow-md overflow-hidden transition-colors my-6"
         role="dialog"
         aria-modal="true"
+        {...contentProps}
       >
         <div className="p-5 border-b border-rule flex items-center justify-between bg-paper-2">
           <div className="flex items-center gap-2.5">
@@ -282,14 +295,41 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                 <label className="block text-xs font-semibold text-ink-2">
                   Categoría / Tipo de Cobro *
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setModalNuevoRubro(true)}
-                  className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>+ Nueva Categoría</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {rubroId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const r = rubros.find((x) => x.id === rubroId);
+                        if (r) {
+                          setRubroAEditar({
+                            id: r.id,
+                            nombre: r.nombre,
+                            tipo: 'INGRESO',
+                            permiteDescuentoDefault: r.permiteDescuentoDefault,
+                          });
+                          setModalNuevoRubro(true);
+                        }
+                      }}
+                      className="text-[11px] font-bold text-ink-muted hover:text-ink hover:underline flex items-center gap-1 cursor-pointer"
+                      title="Editar o eliminar esta categoría"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Editar</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRubroAEditar(null);
+                      setModalNuevoRubro(true);
+                    }}
+                    className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>+ Nueva Categoría</span>
+                  </button>
+                </div>
               </div>
               <div className="relative">
                 <Tag className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
@@ -556,12 +596,34 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
       <ModalCrearRubro
         abierto={modalNuevoRubro}
         tipoDefault="INGRESO"
-        onCerrar={() => setModalNuevoRubro(false)}
-        onRubroCreado={(nuevo) => {
-          setRubros((prev) => [...prev, { id: nuevo.id, nombre: nuevo.nombre, permiteDescuentoDefault: true }]);
-          setRubroId(nuevo.id);
-          setTipo(nuevo.nombre.toUpperCase().replace(/\s+/g, '_'));
+        rubroAEditar={rubroAEditar}
+        onCerrar={() => {
+          setModalNuevoRubro(false);
+          setRubroAEditar(null);
+        }}
+        onRubroCreado={(rubroGuardado) => {
+          setRubros((prev) => {
+            const index = prev.findIndex((x) => x.id === rubroGuardado.id);
+            if (index >= 0) {
+              const copia = [...prev];
+              copia[index] = { ...copia[index], ...rubroGuardado };
+              return copia;
+            }
+            return [...prev, { id: rubroGuardado.id, nombre: rubroGuardado.nombre, permiteDescuentoDefault: true }];
+          });
+          setRubroId(rubroGuardado.id);
+          setTipo(rubroGuardado.nombre.toUpperCase().replace(/\s+/g, '_'));
           setPermiteDescuentoHermanos(true);
+        }}
+        onRubroEliminado={(rubroEliminado) => {
+          setRubros((prev) => {
+            const filtrados = prev.filter((x) => x.id !== rubroEliminado.id);
+            if (rubroId === rubroEliminado.id) {
+              setRubroId('');
+              setTipo('CUOTA_MENSUAL');
+            }
+            return filtrados;
+          });
         }}
       />
     </div>

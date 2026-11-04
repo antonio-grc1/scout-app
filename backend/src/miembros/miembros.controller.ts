@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { Alcance, CurrentUser, RequirePermission } from '../common/decorators/auth.decorators.js';
+import { Alcance, CurrentUser, RequireAnyPermission, RequirePermission } from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import {
@@ -40,7 +40,7 @@ export class MiembrosController {
   }
 
   /** Búsqueda flexible de hermanos por DNI, Apellido o Nombre en todo el padrón activo. */
-  @RequirePermission('miembros.editar')
+  @RequireAnyPermission('miembros.editar', 'cuotas.ajustar', 'tesoreria.gestionar')
   @Get('hermanos/buscar')
   buscarHermanosPorCriterio(@Query('q') q?: string) {
     return this.miembros.buscarHermanosPorCriterio(q ?? '');
@@ -76,7 +76,7 @@ export class MiembrosController {
     return this.miembros.editar(u, a, id, dto);
   }
 
-  @RequirePermission('miembros.editar')
+  @RequireAnyPermission('pases.ejecutar', 'miembros.editar')
   @Post(':id/asignaciones')
   agregarAsignacion(
     @Alcance() a: AlcanceAcceso,
@@ -87,7 +87,7 @@ export class MiembrosController {
   }
 
   /** Cierra la asignación (activo=false, fechaFin=hoy). Nunca borra el registro. */
-  @RequirePermission('miembros.editar')
+  @RequireAnyPermission('pases.ejecutar', 'miembros.editar')
   @Delete(':id/asignaciones/:asignacionId')
   cerrarAsignacion(
     @CurrentUser() u: AuthUser,

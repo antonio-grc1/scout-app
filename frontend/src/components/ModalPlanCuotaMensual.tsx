@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
+import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import {
   X,
   Calendar,
@@ -10,6 +12,8 @@ import {
   Clock,
   Sparkles,
   Layers,
+  PlusCircle,
+  Pencil,
 } from 'lucide-react';
 
 export interface PlanCuotaMensualData {
@@ -77,11 +81,26 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [modalCrearRubroAbierto, setModalCrearRubroAbierto] = useState(false);
+  const [rubroAEditar, setRubroAEditar] = useState<RubroAEditarItem | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando || modalCrearRubroAbierto,
+  });
+
+  const cargarRubros = async () => {
+    try {
+      const res = await api.get('/tesoreria/rubros?tipo=INGRESO');
+      setRubros(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      // ignore
+    }
+  };
+
   useEffect(() => {
-    api
-      .get('/tesoreria/rubros?tipo=INGRESO')
-      .then((res) => setRubros(Array.isArray(res.data) ? res.data : []))
-      .catch(() => {});
+    cargarRubros();
 
     if (planAEditar) {
       setNombre(planAEditar.nombre || '');
@@ -193,8 +212,14 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-      <div className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden"
+        {...contentProps}
+      >
         {/* Header */}
         <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
           <div className="flex items-center gap-3">
@@ -259,25 +284,58 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           </div>
 
           {/* Categoría / Rubro de Ingreso */}
-          {rubros.length > 0 && (
-            <div>
-              <label className="block text-xs font-bold text-ink-2 mb-1">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-ink-2">
                 Categoría / Rubro Contable (Opcional)
               </label>
-              <select
-                value={rubroId}
-                onChange={(e) => setRubroId(Number(e.target.value) || '')}
-                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              >
-                <option value="">Sin categoría específica (Cuota General)</option>
-                {rubros.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.nombre}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                {rubroId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const r = rubros.find((x) => x.id === rubroId);
+                      if (r) {
+                        setRubroAEditar({
+                          id: r.id,
+                          nombre: r.nombre,
+                          tipo: 'INGRESO',
+                        });
+                      }
+                    }}
+                    className="text-[11px] font-bold text-ink-muted hover:text-brand flex items-center gap-1 cursor-pointer transition"
+                    title="Modificar o eliminar categoría seleccionada"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    <span>Editar</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRubroAEditar(null);
+                    setModalCrearRubroAbierto(true);
+                  }}
+                  className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <PlusCircle className="w-3 h-3" />
+                  <span>+ Nueva</span>
+                </button>
+              </div>
             </div>
-          )}
+            <select
+              value={rubroId}
+              onChange={(e) => setRubroId(Number(e.target.value) || '')}
+              className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+            >
+              <option value="">Sin categoría específica (Cuota General)</option>
+              {rubros.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Monto Mensual y Día de Vencimiento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -462,6 +520,29 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           </div>
         </form>
       </div>
+
+      <ModalCrearRubro
+        abierto={modalCrearRubroAbierto || Boolean(rubroAEditar)}
+        tipoDefault="INGRESO"
+        rubroAEditar={rubroAEditar}
+        onCerrar={() => {
+          setModalCrearRubroAbierto(false);
+          setRubroAEditar(null);
+        }}
+        onRubroCreado={(nuevoRubro) => {
+          cargarRubros();
+          setRubroId(nuevoRubro.id);
+          setModalCrearRubroAbierto(false);
+          setRubroAEditar(null);
+        }}
+        onRubroEliminado={(rubroEliminado) => {
+          if (rubroId === rubroEliminado.id) {
+            setRubroId('');
+          }
+          cargarRubros();
+          setRubroAEditar(null);
+        }}
+      />
     </div>
   );
 };

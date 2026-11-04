@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
+import { useToastStore, mostrarToastConDeshacer } from '../../store/toastStore';
 import { Navbar } from '../../components/Navbar';
 import { ModalPlanCuotaMensual } from '../../components/ModalPlanCuotaMensual';
 import { ModalCobroCampamento } from '../../components/ModalCobroCampamento';
@@ -15,6 +16,7 @@ import { PanelTesoreriaCajaBanco } from '../../components/PanelTesoreriaCajaBanc
 import { PanelGastosTesoreria } from '../../components/PanelGastosTesoreria';
 import { PanelCuadroResultados } from '../../components/PanelCuadroResultados';
 import { PanelEventosEconomicos } from '../../components/PanelEventosEconomicos';
+import { ModalGestionRubros } from '../../components/ModalGestionRubros';
 import {
   NOMBRES_MESES_CORTOS,
   NOMBRES_MESES_LARGOS,
@@ -39,6 +41,7 @@ import {
   Receipt,
   Scale,
   Sparkles,
+  Tag,
   Check,
   Loader2,
   X,
@@ -46,14 +49,50 @@ import {
 } from 'lucide-react';
 
 export const GlobalPage: React.FC = () => {
-  const { tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
-  const puedeVerTesoreria = tienePermiso('tesoreria.gestionar') || tienePermiso('cuotas.ver');
+  const { tienePermiso, tieneGlobal, refrescarSesionDesdeServidor } = useAuthStore();
+  const puedeVerTesoreria =
+    tienePermiso('tesoreria.gestionar') ||
+    tienePermiso('tesoreria.conceptos_planes') ||
+    tienePermiso('tesoreria.caja_ver') ||
+    tienePermiso('tesoreria.gastos_registrar') ||
+    tienePermiso('cuotas.ver') ||
+    tienePermiso('cuotas.cobrar') ||
+    tienePermiso('cuotas.ajustar') ||
+    tienePermiso('eventos.ver') ||
+    tienePermiso('eventos.vender') ||
+    tienePermiso('eventos.gestionar');
   const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
   const puedeVerColaboradores = tienePermiso('legajos.ver');
   const puedeVerOrganizacion = tienePermiso('organizacion.ver') || tienePermiso('organizacion.gestionar');
-  const puedeVerRoles = tienePermiso('organizacion.gestionar') || tienePermiso('organizacion.ver');
+  const puedeVerRoles =
+    tienePermiso('roles.gestionar') ||
+    tienePermiso('organizacion.gestionar') ||
+    tienePermiso('organizacion.ver');
   const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
   const puedeVerPlantillas = tienePermiso('legajos.plantillas_gestionar') || tienePermiso('legajos.ver');
+
+  const puedeVerCaja = tienePermiso('tesoreria.caja_ver') || tienePermiso('tesoreria.gestionar');
+  const puedeVerGastos =
+    tienePermiso('tesoreria.gastos_registrar') ||
+    tienePermiso('tesoreria.caja_ver') ||
+    tienePermiso('tesoreria.gestionar');
+  const puedeVerBalance = tienePermiso('tesoreria.caja_ver') || tienePermiso('tesoreria.gestionar');
+  const puedeVerEventos =
+    tienePermiso('eventos.ver') ||
+    tienePermiso('eventos.vender') ||
+    tienePermiso('eventos.gestionar');
+  const puedeVerPlanes =
+    tienePermiso('tesoreria.conceptos_planes') ||
+    tienePermiso('tesoreria.gestionar') ||
+    tienePermiso('cuotas.ver');
+  const puedeVerCampamentos =
+    tienePermiso('tesoreria.conceptos_planes') ||
+    tienePermiso('cuotas.cobrar') ||
+    tienePermiso('tesoreria.gestionar');
+  const puedeVerFamilias =
+    tienePermiso('tesoreria.gestionar') ||
+    tienePermiso('cuotas.ajustar') ||
+    tienePermiso('miembros.editar');
 
   const tabPorDefecto = (): 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas' => {
     if (puedeVerTesoreria) return 'tesoreria';
@@ -64,12 +103,23 @@ export const GlobalPage: React.FC = () => {
     return 'colaboradores';
   };
 
+  const subTabPorDefecto = (): 'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias' => {
+    if (puedeVerCaja) return 'caja-banco';
+    if (puedeVerGastos) return 'gastos';
+    if (puedeVerBalance) return 'balance';
+    if (puedeVerEventos) return 'eventos-qr';
+    if (puedeVerPlanes) return 'planes';
+    if (puedeVerCampamentos) return 'campamentos';
+    if (puedeVerFamilias) return 'familias';
+    return 'caja-banco';
+  };
+
   const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas'>(tabPorDefecto);
   const [candidatos, setCandidatos] = useState<any[]>([]);
   const [conceptos, setConceptos] = useState<any[]>([]);
   const [planesMensuales, setPlanesMensuales] = useState<any[]>([]);
   const [familias, setFamilias] = useState<any[]>([]);
-  const [subTabTesoreria, setSubTabTesoreria] = useState<'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias'>('caja-banco');
+  const [subTabTesoreria, setSubTabTesoreria] = useState<'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias'>(subTabPorDefecto);
   const [ramas, setRamas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [mostrarInactivasOrg, setMostrarInactivasOrg] = useState(false);
@@ -78,9 +128,9 @@ export const GlobalPage: React.FC = () => {
   const [colaboradores, setColaboradores] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
   const [sincronizandoPlanId, setSincronizandoPlanId] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ texto: string; tipo: 'exito' | 'error' } | null>(null);
 
   // Estados de Modales
+  const [modalGestionRubrosAbierto, setModalGestionRubrosAbierto] = useState(false);
   const [conceptoAEditar, setConceptoAEditar] = useState<any | null>(null);
   const [modalPlanAbierto, setModalPlanAbierto] = useState(false);
   const [planAEditar, setPlanAEditar] = useState<any | null>(null);
@@ -91,12 +141,9 @@ export const GlobalPage: React.FC = () => {
   const [tabInicialDetalle, setTabInicialDetalle] = useState<'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'>('cuotas');
   const [modalConf, setModalConf] = useState<ModalConfirmacionProps | null>(null);
 
-  const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
-    setToast({ texto, tipo });
-    setTimeout(() => {
-      setToast((prev) => (prev?.texto === texto ? null : prev));
-    }, 3500);
-  };
+  const mostrarToast = useCallback((texto: string, tipo: 'exito' | 'error' = 'exito') => {
+    useToastStore.getState().mostrarToast(texto, tipo);
+  }, []);
 
   useEffect(() => {
     cargarDatos();
@@ -114,8 +161,8 @@ export const GlobalPage: React.FC = () => {
         if (unidades.length === 0) setUnidades(resUnidades.data);
       } else if (tab === 'tesoreria') {
         const [resPlanes, resConceptos, resFamilias, resUnidades] = await Promise.all([
-          api.get('/tesoreria/planes-mensuales?cicloAnio=2026').catch(() => ({ data: [] })),
-          api.get('/tesoreria/conceptos?cicloAnio=2026').catch(() => ({ data: [] })),
+          api.get('/tesoreria/planes-mensuales').catch(() => ({ data: [] })),
+          api.get('/tesoreria/conceptos').catch(() => ({ data: [] })),
           api.get('/tesoreria/familias').catch(() => ({ data: [] })),
           unidades.length === 0 ? api.get('/organizacion/unidades') : Promise.resolve({ data: unidades }),
         ]);
@@ -163,7 +210,7 @@ export const GlobalPage: React.FC = () => {
   };
 
   const handleSolicitarEliminarPlan = (plan: any) => {
-    const cobrado = Number(plan.resumenRecaudacion?.totalRecaudado ?? 0);
+    const cobrado = Number(plan.recaudacion?.totalRecaudado ?? plan.resumenRecaudacion?.totalRecaudado ?? 0);
     setModalConf({
       abierto: true,
       titulo: 'Eliminar Cuadro de Cuota',
@@ -176,11 +223,42 @@ export const GlobalPage: React.FC = () => {
       textoCancelar: 'Cancelar',
       onCerrar: () => setModalConf(null),
       onConfirmar: async () => {
+        const planAEliminar = { ...plan };
         try {
-          const res = await api.delete(`/tesoreria/planes-mensuales/${plan.id}`);
+          await api.delete(`/tesoreria/planes-mensuales/${plan.id}`);
           setModalConf(null);
-          mostrarToast(res.data?.mensaje || `Cuadro "${plan.nombre}" eliminado.`);
-          cargarDatos();
+          await cargarDatos();
+
+          mostrarToastConDeshacer(
+            `Cuadro "${planAEliminar.nombre}" eliminado.`,
+            async () => {
+              try {
+                const meses = Array.isArray(planAEliminar.mesesHabilitadosJson)
+                  ? planAEliminar.mesesHabilitadosJson
+                  : Array.isArray(planAEliminar.mesesHabilitados)
+                  ? planAEliminar.mesesHabilitados
+                  : [];
+
+                await api.post('/tesoreria/planes-mensuales', {
+                  nombre: planAEliminar.nombre,
+                  montoMensual: Number(planAEliminar.montoMensual || planAEliminar.montoBase || 0),
+                  cicloAnio: planAEliminar.cicloAnio,
+                  diaVencimiento: planAEliminar.diaVencimiento || 10,
+                  mesesHabilitados: meses,
+                  destinatarioTipo: planAEliminar.destinatarioTipo || 'PROTAGONISTAS',
+                  unidadId: planAEliminar.unidadId || undefined,
+                  rubroId: planAEliminar.rubroId || undefined,
+                  permiteDescuentoHermanos: planAEliminar.permiteDescuentoHermanos ?? true,
+                  porcentajeDescuentoHermanos: planAEliminar.porcentajeDescuentoHermanos ? Number(planAEliminar.porcentajeDescuentoHermanos) : undefined,
+                  excepcionesIds: Array.isArray(planAEliminar.excepcionesJson) ? planAEliminar.excepcionesJson : [],
+                });
+                await cargarDatos();
+                useToastStore.getState().mostrarToast(`Cuadro "${planAEliminar.nombre}" restaurado.`);
+              } catch (err) {
+                useToastStore.getState().mostrarToast(traducirErrorAmigable(err, 'No se pudo restaurar el cuadro.'), 'error');
+              }
+            },
+          );
         } catch (err) {
           setModalConf(null);
           mostrarToast(traducirErrorAmigable(err, 'No se pudo eliminar el cuadro de cuota.'), 'error');
@@ -228,7 +306,7 @@ export const GlobalPage: React.FC = () => {
   };
 
   const handleSolicitarEliminarConcepto = (con: any) => {
-    const cobrado = Number(con.resumenRecaudacion?.totalRecaudado ?? 0);
+    const cobrado = Number(con.recaudacion?.totalRecaudado ?? con.resumenRecaudacion?.totalRecaudado ?? 0);
     setModalConf({
       abierto: true,
       titulo: 'Eliminar Cobro / Campamento',
@@ -241,11 +319,38 @@ export const GlobalPage: React.FC = () => {
       textoCancelar: 'Cancelar',
       onCerrar: () => setModalConf(null),
       onConfirmar: async () => {
+        const conAEliminar = { ...con };
         try {
-          const res = await api.delete(`/tesoreria/conceptos/${con.id}`);
+          await api.delete(`/tesoreria/conceptos/${con.id}`);
           setModalConf(null);
-          mostrarToast(res.data?.mensaje || `"${con.nombre}" eliminado.`);
-          cargarDatos();
+          await cargarDatos();
+
+          mostrarToastConDeshacer(
+            `"${conAEliminar.nombre}" eliminado.`,
+            async () => {
+              try {
+                await api.post('/tesoreria/conceptos', {
+                  nombre: conAEliminar.nombre,
+                  tipo: conAEliminar.tipo,
+                  montoBase: Number(conAEliminar.montoBase),
+                  cicloAnio: conAEliminar.cicloAnio,
+                  fechaVencimiento: conAEliminar.fechaVencimiento ? String(conAEliminar.fechaVencimiento).slice(0, 10) : undefined,
+                  permiteDescuentoHermanos: conAEliminar.permiteDescuentoHermanos ?? true,
+                  porcentajeDescuentoHermanos: conAEliminar.porcentajeDescuentoHermanos ? Number(conAEliminar.porcentajeDescuentoHermanos) : undefined,
+                  esParaEducadores: conAEliminar.esParaEducadores ?? false,
+                  destinatarioTipo: conAEliminar.destinatarioTipo || 'TODOS',
+                  excepcionesIds: Array.isArray(conAEliminar.excepcionesJson) ? conAEliminar.excepcionesJson : [],
+                  rubroId: conAEliminar.rubroId || undefined,
+                  unidadId: conAEliminar.unidadId || undefined,
+                  generarCargosInmediatos: true,
+                });
+                await cargarDatos();
+                useToastStore.getState().mostrarToast(`"${conAEliminar.nombre}" restaurado.`);
+              } catch (err) {
+                useToastStore.getState().mostrarToast(traducirErrorAmigable(err, 'No se pudo restaurar el concepto.'), 'error');
+              }
+            },
+          );
         } catch (err) {
           setModalConf(null);
           mostrarToast(traducirErrorAmigable(err, 'No se pudo eliminar el concepto.'), 'error');
@@ -257,24 +362,6 @@ export const GlobalPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-paper text-ink pb-24 sm:pb-10 transition-colors">
       <Navbar />
-
-      {/* Toast flotante */}
-      {toast && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
-          <div
-            className={`p-3.5 rounded-2xl shadow-lg border flex items-center justify-between gap-3 text-xs font-bold ${
-              toast.tipo === 'exito'
-                ? 'bg-brand text-brand-contrast border-brand font-extrabold'
-                : 'bg-rose-900 text-white border-rose-700'
-            }`}
-          >
-            <span className="leading-snug">{toast.texto}</span>
-            <button onClick={() => setToast(null)} className="p-1 opacity-80 hover:opacity-100 cursor-pointer">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
 
       <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4">
         {/* Cabecera Compacta con Pestañas Táctiles */}
@@ -369,96 +456,122 @@ export const GlobalPage: React.FC = () => {
           <div className="bg-surface rounded-2xl border border-rule shadow-xs p-4 sm:p-6 space-y-5 transition-colors">
             {/* Sub-pestañas de Tesorería */}
             <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-rule pb-3">
-              <button
-                type="button"
-                onClick={() => setSubTabTesoreria('caja-banco')}
-                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  subTabTesoreria === 'caja-banco'
-                    ? 'bg-brand/10 text-brand border border-brand/30'
-                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
-                }`}
-              >
-                <Landmark className="w-4 h-4" />
-                <span>Caja y Banco</span>
-              </button>
+              {puedeVerCaja && (
+                <button
+                  type="button"
+                  onClick={() => setSubTabTesoreria('caja-banco')}
+                  className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                    subTabTesoreria === 'caja-banco'
+                      ? 'bg-brand/10 text-brand border border-brand/30'
+                      : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                  }`}
+                >
+                  <Landmark className="w-4 h-4" />
+                  <span>Caja y Banco</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setSubTabTesoreria('gastos')}
-                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  subTabTesoreria === 'gastos'
-                    ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
-                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
-                }`}
-              >
-                <Receipt className="w-4 h-4" />
-                <span>Gastos / Egresos</span>
-              </button>
+              {puedeVerGastos && (
+                <button
+                  type="button"
+                  onClick={() => setSubTabTesoreria('gastos')}
+                  className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                    subTabTesoreria === 'gastos'
+                      ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                      : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                  }`}
+                >
+                  <Receipt className="w-4 h-4" />
+                  <span>Gastos / Egresos</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setSubTabTesoreria('balance')}
-                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  subTabTesoreria === 'balance'
-                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
-                }`}
-              >
-                <Scale className="w-4 h-4" />
-                <span>Balance de Resultados</span>
-              </button>
+              {puedeVerBalance && (
+                <button
+                  type="button"
+                  onClick={() => setSubTabTesoreria('balance')}
+                  className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                    subTabTesoreria === 'balance'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                      : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                  }`}
+                >
+                  <Scale className="w-4 h-4" />
+                  <span>Balance de Resultados</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setSubTabTesoreria('eventos-qr')}
-                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  subTabTesoreria === 'eventos-qr'
-                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
-                }`}
-              >
-                <Sparkles className="w-4 h-4 text-amber-500" />
-                <span>Eventos y Vales QR</span>
-              </button>
+              {puedeVerEventos && (
+                <button
+                  type="button"
+                  onClick={() => setSubTabTesoreria('eventos-qr')}
+                  className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                    subTabTesoreria === 'eventos-qr'
+                      ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                      : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Eventos y Vales QR</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setSubTabTesoreria('planes')}
-                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  subTabTesoreria === 'planes'
-                    ? 'bg-brand/10 text-brand border border-brand/30'
-                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
-                }`}
-              >
-                <Layers className="w-4 h-4" />
-                <span>Cuotas Mensuales ({planesMensuales.length})</span>
-              </button>
+              {puedeVerPlanes && (
+                <button
+                  type="button"
+                  onClick={() => setSubTabTesoreria('planes')}
+                  className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                    subTabTesoreria === 'planes'
+                      ? 'bg-brand/10 text-brand border border-brand/30'
+                      : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Cuotas Mensuales ({planesMensuales.length})</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setSubTabTesoreria('campamentos')}
-                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  subTabTesoreria === 'campamentos'
-                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
-                }`}
-              >
-                <Tent className="w-4 h-4" />
-                <span>Campamentos y Eventos</span>
-              </button>
+              {puedeVerCampamentos && (
+                <button
+                  type="button"
+                  onClick={() => setSubTabTesoreria('campamentos')}
+                  className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                    subTabTesoreria === 'campamentos'
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                      : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                  }`}
+                >
+                  <Tent className="w-4 h-4" />
+                  <span>Campamentos y Eventos</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={() => setSubTabTesoreria('familias')}
-                className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
-                  subTabTesoreria === 'familias'
-                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                    : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
-                }`}
-              >
-                <Users className="w-4 h-4" />
-                <span>Descuento Hermanos ({familias.length})</span>
-              </button>
+              {puedeVerFamilias && (
+                <button
+                  type="button"
+                  onClick={() => setSubTabTesoreria('familias')}
+                  className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                    subTabTesoreria === 'familias'
+                      ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                      : 'text-ink-muted hover:bg-paper-2 hover:text-ink'
+                  }`}
+                >
+                  <Users className="w-4 h-4" />
+                  <span>Descuento Hermanos ({familias.length})</span>
+                </button>
+              )}
+
+              {puedeGestionarTesoreria && (
+                <button
+                  type="button"
+                  onClick={() => setModalGestionRubrosAbierto(true)}
+                  className="min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition cursor-pointer sm:ml-auto shrink-0"
+                  title="Gestionar todos los rubros contables de ingresos y egresos"
+                >
+                  <Tag className="w-4 h-4" />
+                  <span>Rubros Contables</span>
+                </button>
+              )}
             </div>
 
             {/* SUB-TAB 0: CAJA Y BANCO (LIBRO DIARIO) */}
@@ -537,8 +650,8 @@ export const GlobalPage: React.FC = () => {
                           </div>
 
                           {/* CASILLEROS DE MESES DEL AÑO (1 al 12) */}
-                          <div className="w-full overflow-x-auto pb-1">
-                            <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5 pt-1 min-w-[420px] sm:min-w-0">
+                          <div className="w-full pt-1">
+                            <div className="grid grid-cols-6 sm:grid-cols-12 gap-1 sm:gap-1.5">
                               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
                               const activo = mesesHabilitados.includes(num);
                               const cargandoMes = sincronizandoPlanId === `${plan.id}-${num}`;
@@ -548,7 +661,7 @@ export const GlobalPage: React.FC = () => {
                                   type="button"
                                   disabled={!puedeGestionarTesoreria || cargandoMes}
                                   onClick={() => puedeGestionarTesoreria && handleToggleMesPlan(plan, num)}
-                                  className={`min-h-[42px] py-1.5 px-1 rounded-xl text-center font-bold text-[11px] transition flex flex-col items-center justify-center gap-0.5 border ${
+                                  className={`min-h-[38px] sm:min-h-[42px] py-1 sm:py-1.5 px-0.5 sm:px-1 rounded-xl text-center font-bold text-[10px] sm:text-[11px] transition flex flex-col items-center justify-center gap-0.5 border ${
                                     !puedeGestionarTesoreria ? 'cursor-default' : 'cursor-pointer'
                                   } ${
                                     activo
@@ -1045,6 +1158,12 @@ export const GlobalPage: React.FC = () => {
           }}
         />
       )}
+
+      <ModalGestionRubros
+        abierto={modalGestionRubrosAbierto}
+        onCerrar={() => setModalGestionRubrosAbierto(false)}
+        onRubrosCambiados={cargarDatos}
+      />
 
       {modalConf && (
         <ModalConfirmacion

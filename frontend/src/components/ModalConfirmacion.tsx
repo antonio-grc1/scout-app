@@ -7,6 +7,7 @@ import {
   X,
 } from 'lucide-react';
 import { Button } from './ui/Button';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface ModalConfirmacionProps {
   abierto: boolean;
@@ -31,6 +32,12 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
   textoCancelar = 'Cancelar',
   cargando = false,
 }) => {
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: cargando,
+  });
+
   if (!abierto) return null;
 
   const esAlertaSimple = textoCancelar === null || textoCancelar === undefined;
@@ -72,11 +79,15 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
       <div
         className="bg-surface border border-rule rounded-2xl w-full max-w-md shadow-md overflow-hidden transition-colors"
         role="dialog"
         aria-modal="true"
+        {...contentProps}
       >
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
