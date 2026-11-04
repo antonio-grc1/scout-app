@@ -69,6 +69,12 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
       s.tienePermiso('tesoreria.gestionar') ||
       s.tienePermiso('tesoreria.conceptos_planes'),
   );
+  const puedeVender = useAuthStore(
+    (s) =>
+      s.tienePermiso('eventos.vender') ||
+      s.tienePermiso('eventos.gestionar') ||
+      s.tienePermiso('tesoreria.gestionar'),
+  );
   const [eventos, setEventos] = useState<EventoItem[]>([]);
   const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState<number | null>(null);
   const [eventoDetalle, setEventoDetalle] = useState<any | null>(null);
@@ -342,16 +348,18 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
 
         {/* Botones de Acción */}
         <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full md:w-auto">
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setModalScannerAbierto(true)}
-            className="col-span-2 sm:col-span-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold justify-center"
-            title="Escanear con cámara los vales QR"
-          >
-            <Camera className="w-4 h-4 shrink-0" />
-            <span>Escanear QR / Validar</span>
-          </Button>
+          {puedeVender && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setModalScannerAbierto(true)}
+              className="col-span-2 sm:col-span-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold justify-center"
+              title="Escanear con cámara los vales QR"
+            >
+              <Camera className="w-4 h-4 shrink-0" />
+              <span>Escanear QR / Validar</span>
+            </Button>
+          )}
 
           {eventoActivo && (
             <Button

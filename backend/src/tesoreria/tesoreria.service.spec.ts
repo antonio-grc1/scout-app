@@ -1699,6 +1699,69 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('crearPedidoEvento: beneficiario con alcance PROPIO puede cargar sus propias ventas', async () => {
+      const mockPrisma = {
+        evento: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 1,
+            titulo: 'Venta de Empanadas',
+            estado: 'PUBLICADO',
+            rubroId: 5,
+            items: [
+              {
+                id: 10,
+                nombre: 'Docena Empanadas',
+                precioVenta: '6000.00',
+                costoUnitario: '3500.00',
+                gananciaUnitaria: '2500.00',
+                stockDisponible: 20,
+              },
+            ],
+          }),
+        },
+        $transaction: vi.fn().mockImplementation(async (cb) => {
+          const tx = {
+            pedidoEvento: {
+              create: vi.fn().mockResolvedValue({ id: 50 }),
+              findUnique: vi.fn().mockResolvedValue({
+                id: 50,
+                vendedorUsuarioId: 1,
+                total: '6000.00',
+              }),
+            },
+            ticketEvento: { create: vi.fn().mockResolvedValue({ id: 1 }) },
+            itemEvento: { update: vi.fn().mockResolvedValue({}) },
+          };
+          return cb(tx);
+        }),
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      const res = await service.crearPedidoEvento(actor, alcancePropio, {
+        eventoId: 1,
+        compradorNombre: 'Tía Nora',
+        vendedorUsuarioId: 1,
+        items: [{ itemId: 10, cantidad: 1 }],
+      });
+
+      expect(res?.id).toBe(50);
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+    });
+
+    it('crearPedidoEvento: beneficiario con alcance PROPIO no puede asignar ventas a otro usuario', async () => {
+      const mockPrisma = {} as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      await expect(
+        service.crearPedidoEvento(actor, alcancePropio, {
+          eventoId: 1,
+          compradorNombre: 'Cliente X',
+          vendedorUsuarioId: 999, // Distinto a actor.sub (1)
+          items: [{ itemId: 10, cantidad: 1 }],
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('validarTicketQr: valida ticket activo y previene doble uso', async () => {
       const { generateTokenQR } = await import('../common/utils/qr-token.util.js');
       const validToken = generateTokenQR();

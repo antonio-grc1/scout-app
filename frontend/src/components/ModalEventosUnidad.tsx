@@ -13,6 +13,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalCargarPedidoEvento } from './ModalCargarPedidoEvento';
@@ -30,6 +31,8 @@ export const ModalEventosUnidad: React.FC<ModalEventosUnidadProps> = ({
   onCerrar,
   onToast,
 }) => {
+  const { tienePermiso } = useAuthStore();
+  const puedeEscanear = tienePermiso('eventos.vender') || tienePermiso('eventos.gestionar');
   const [eventos, setEventos] = useState<any[]>([]);
   const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState<number | null>(null);
   const [cargando, setCargando] = useState(false);
@@ -115,15 +118,17 @@ export const ModalEventosUnidad: React.FC<ModalEventosUnidadProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setScannerAbierto(true)}
-                className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-100 transition"
-                title="Escanear vales QR en puerta"
-              >
-                <QrCode className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Escanear QR</span>
-              </button>
+              {puedeEscanear && (
+                <button
+                  type="button"
+                  onClick={() => setScannerAbierto(true)}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:bg-emerald-100 transition"
+                  title="Escanear vales QR en puerta"
+                >
+                  <QrCode className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Escanear QR</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onCerrar}

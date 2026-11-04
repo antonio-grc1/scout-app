@@ -4283,6 +4283,15 @@ export class TesoreriaService {
       }
       dto.vendedorUsuarioId = actor.sub;
       dto.cuentaId = undefined;
+    } else if (actor.asignaciones && actor.asignaciones.length > 0) {
+      const puedeVender = actor.asignaciones.some((a) =>
+        a.permisos.some((p) =>
+          ['eventos.vender', 'eventos.gestionar', 'tesoreria.gestionar', 'cuotas.cobrar'].includes(p),
+        ),
+      );
+      if (!puedeVender) {
+        throw new ForbiddenException('No tienes permisos para registrar ventas en este alcance');
+      }
     }
 
     const evento = await this.prisma.evento.findUnique({
@@ -4437,6 +4446,15 @@ export class TesoreriaService {
         throw new ForbiddenException('Solo puedes asignar pedidos a tu propio usuario');
       }
       dto.cuentaId = undefined;
+    } else if (actor.asignaciones && actor.asignaciones.length > 0) {
+      const puedeVender = actor.asignaciones.some((a) =>
+        a.permisos.some((p) =>
+          ['eventos.vender', 'eventos.gestionar', 'tesoreria.gestionar', 'cuotas.cobrar'].includes(p),
+        ),
+      );
+      if (!puedeVender) {
+        throw new ForbiddenException('No tienes permisos para modificar pedidos en este alcance');
+      }
     }
 
     const tieneTicketUtilizado = pedido.tickets.some((t) => t.estado === EstadoTicketEvento.UTILIZADO);
@@ -4637,6 +4655,15 @@ export class TesoreriaService {
     if (alcance.tipo === 'PROPIO') {
       if (pedido.vendedorUsuarioId !== actor.sub && pedido.registradoPorUsuarioId !== actor.sub) {
         throw new ForbiddenException('No tienes permisos para eliminar este pedido');
+      }
+    } else if (actor.asignaciones && actor.asignaciones.length > 0) {
+      const puedeVender = actor.asignaciones.some((a) =>
+        a.permisos.some((p) =>
+          ['eventos.vender', 'eventos.gestionar', 'tesoreria.gestionar', 'cuotas.cobrar'].includes(p),
+        ),
+      );
+      if (!puedeVender) {
+        throw new ForbiddenException('No tienes permisos para eliminar pedidos en este alcance');
       }
     }
 
