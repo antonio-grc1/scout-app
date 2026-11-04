@@ -132,16 +132,20 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     puedeAccederPanelGestion: () => {
-      const { tieneGlobal, tienePermiso } = get();
+      const { asignaciones, tieneGlobal, tienePermiso } = get();
+      // Beneficiarios (o usuarios sin asignaciones de gestión/educador) jamás acceden al panel de gestión
+      const tieneAsignacionGestion = asignaciones.some(
+        (a) => a.tipoMiembro === 'EDUCADOR' || a.alcance === 'UNIDAD' || a.alcance === 'GLOBAL',
+      );
+      if (!tieneAsignacionGestion) return false;
+
       const permisosPanel = [
         'tesoreria.gestionar',
         'tesoreria.conceptos_planes',
         'tesoreria.caja_ver',
         'tesoreria.gastos_registrar',
-        'cuotas.ver',
         'cuotas.cobrar',
         'cuotas.ajustar',
-        'eventos.ver',
         'eventos.vender',
         'eventos.gestionar',
         'organizacion.ver',
@@ -149,7 +153,6 @@ export const useAuthStore = create<AuthState>((set, get) => {
         'roles.gestionar',
         'pases.ver',
         'pases.ejecutar',
-        'legajos.ver',
         'legajos.plantillas_gestionar',
       ];
       return tieneGlobal() || permisosPanel.some((p) => tienePermiso(p));

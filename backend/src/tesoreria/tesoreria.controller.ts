@@ -607,7 +607,7 @@ export class TesoreriaController {
     return this.tesoreria.eliminarEvento(a, id);
   }
 
-  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
   @Post('eventos/pedidos')
   crearPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -617,7 +617,7 @@ export class TesoreriaController {
     return this.tesoreria.crearPedidoEvento(u, a, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
   @Patch('eventos/pedidos/:id')
   actualizarPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -628,7 +628,7 @@ export class TesoreriaController {
     return this.tesoreria.actualizarPedidoEvento(u, a, id, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
   @Delete('eventos/pedidos/:id')
   eliminarPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -658,13 +658,13 @@ export class TesoreriaController {
     return this.tesoreria.acreditarGananciasEvento(u, a, dto);
   }
 
-  @RequirePermission(CUOTAS_VER)
+  @RequireAnyPermission(EVENTOS_VER, CUOTAS_VER)
   @Get('mis-tickets')
   obtenerMisTickets(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisTickets(u);
   }
 
-  @RequirePermission(CUOTAS_VER)
+  @RequireAnyPermission(EVENTOS_VER, CUOTAS_VER)
   @Get('mis-pedidos')
   obtenerMisPedidos(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisPedidos(u);
