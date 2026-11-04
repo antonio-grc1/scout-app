@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import {
@@ -64,6 +65,12 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: cargando,
+  });
 
   const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null;
   const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA';
@@ -275,8 +282,14 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-      <div className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col transition-colors">
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col transition-colors"
+        {...contentProps}
+      >
         <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
           <div className="flex items-center gap-2">
             <UserPlus className="w-5 h-5 text-brand" />

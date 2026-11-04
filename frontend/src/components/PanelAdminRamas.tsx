@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { TIPO_UNIDAD_LABELS, traducirErrorAmigable } from '../lib/formatters';
@@ -68,22 +69,23 @@ export const PanelAdminRamas: React.FC<Props> = ({
   const [seccionHistorial, setSeccionHistorial] = useState<any | null>(null);
   const [modalConfirmacion, setModalConfirmacion] = useState<ModalConfirmacionProps | null>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if ((creandoRama || editandoRama) && !guardandoRama) {
-          setCreandoRama(false);
-          setEditandoRama(null);
-        }
-        if ((creandoUnidad || editandoUnidad) && !guardandoUnidad) {
-          setCreandoUnidad(false);
-          setEditandoUnidad(null);
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [creandoRama, editandoRama, guardandoRama, creandoUnidad, editandoUnidad, guardandoUnidad]);
+  const modalRama = useModalOverlay({
+    abierto: Boolean(puedeGestionar && (creandoRama || editandoRama)),
+    onCerrar: () => {
+      setCreandoRama(false);
+      setEditandoRama(null);
+    },
+    bloqueado: guardandoRama,
+  });
+
+  const modalUnidad = useModalOverlay({
+    abierto: Boolean(puedeGestionar && (creandoUnidad || editandoUnidad)),
+    onCerrar: () => {
+      setCreandoUnidad(false);
+      setEditandoUnidad(null);
+    },
+    bloqueado: guardandoUnidad,
+  });
 
   const abrirCrearRama = () => {
     const maxOrden = ramas.reduce((max, r) => Math.max(max, Number(r.ordenProgresion || 0)), 0);
@@ -630,17 +632,12 @@ export const PanelAdminRamas: React.FC<Props> = ({
       {/* Modal / Overlay Flotante para Crear o Editar Rama */}
       {puedeGestionar && (creandoRama || editandoRama) && (
         <div
-          onClick={() => {
-            if (!guardandoRama) {
-              setCreandoRama(false);
-              setEditandoRama(null);
-            }
-          }}
           className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+          {...modalRama.backdropProps}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
             className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+            {...modalRama.contentProps}
           >
             {/* Cabecera del Modal */}
             <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
@@ -795,17 +792,12 @@ export const PanelAdminRamas: React.FC<Props> = ({
       {/* Modal / Overlay Flotante para Crear o Editar Sección */}
       {puedeGestionar && (creandoUnidad || editandoUnidad) && (
         <div
-          onClick={() => {
-            if (!guardandoUnidad) {
-              setCreandoUnidad(false);
-              setEditandoUnidad(null);
-            }
-          }}
           className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+          {...modalUnidad.backdropProps}
         >
           <div
-            onClick={(e) => e.stopPropagation()}
             className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+            {...modalUnidad.contentProps}
           >
             {/* Cabecera del Modal */}
             <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">

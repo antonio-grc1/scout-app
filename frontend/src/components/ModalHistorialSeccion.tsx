@@ -28,6 +28,7 @@ import {
   esRolDeProtagonista,
   TIPO_UNIDAD_LABELS,
 } from '../lib/formatters';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface ModalHistorialSeccionProps {
   unidadId: number;
@@ -137,16 +138,9 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
     };
   }, [unidadId, recargarTrigger]);
 
-  // Manejo de tecla Escape
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCerrar();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCerrar]);
+  const { backdropProps, contentProps } = useModalOverlay({
+    onCerrar,
+  });
 
   const seccionInfo = useMemo(() => {
     return {
@@ -273,12 +267,12 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-historial-seccion-titulo"
-      onClick={onCerrar}
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
     >
       <div
-        onClick={(e) => e.stopPropagation()}
         className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
+        {...contentProps}
       >
         {/* CABECERA DEL MODAL */}
         <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">

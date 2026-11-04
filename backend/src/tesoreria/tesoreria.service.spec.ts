@@ -591,6 +591,78 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       const res = await service.actualizarCuentaFinanciera(actor, alcanceGlobal, 1, { activa: false });
       expect(res.activa).toBe(false);
     });
+
+    it('actualizarCuentaFinanciera: actualiza nombre y tipo de cuenta', async () => {
+      const mockPrisma = {
+        cuentaFinanciera: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja Chica', tipo: 'CAJA_EFECTIVO', activa: true }),
+          findFirst: vi.fn().mockResolvedValue(null),
+          update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 1, ...data })),
+        },
+      } as any;
+
+      const service = new TesoreriaService(mockPrisma);
+      const res = await service.actualizarCuentaFinanciera(actor, alcanceGlobal, 1, {
+        nombre: 'Caja Grande',
+        tipo: 'BANCO' as any,
+      });
+      expect(res.nombre).toBe('Caja Grande');
+      expect(res.tipo).toBe('BANCO');
+    });
+
+    it('eliminarCuentaFinanciera: rechaza si la cuenta tiene saldo no nulo', async () => {
+      const mockPrisma = {
+        cuentaFinanciera: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja', activa: true, _count: { movimientos: 2 } }),
+        },
+        movimientoFinanciero: {
+          aggregate: vi.fn().mockResolvedValue({
+            _sum: { montoIngreso: 5000, montoEgreso: 2000 },
+          }),
+        },
+      } as any;
+
+      const service = new TesoreriaService(mockPrisma);
+      await expect(service.eliminarCuentaFinanciera(actor, alcanceGlobal, 1)).rejects.toThrow(BadRequestException);
+    });
+
+    it('eliminarCuentaFinanciera: desactiva (soft-delete) si tiene movimientos y saldo cero', async () => {
+      const mockPrisma = {
+        cuentaFinanciera: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja', activa: true, _count: { movimientos: 3 } }),
+          update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 1, nombre: 'Caja', ...data })),
+        },
+        movimientoFinanciero: {
+          aggregate: vi.fn().mockResolvedValue({
+            _sum: { montoIngreso: 2000, montoEgreso: 2000 },
+          }),
+        },
+      } as any;
+
+      const service = new TesoreriaService(mockPrisma);
+      const res = await service.eliminarCuentaFinanciera(actor, alcanceGlobal, 1);
+      expect(res.activa).toBe(false);
+      expect(res.eliminadoPermanente).toBe(false);
+    });
+
+    it('eliminarCuentaFinanciera: elimina permanente si no tiene movimientos', async () => {
+      const mockPrisma = {
+        cuentaFinanciera: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja Vacía', activa: true, _count: { movimientos: 0 } }),
+          delete: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja Vacía' }),
+        },
+        movimientoFinanciero: {
+          aggregate: vi.fn().mockResolvedValue({
+            _sum: { montoIngreso: 0, montoEgreso: 0 },
+          }),
+        },
+      } as any;
+
+      const service = new TesoreriaService(mockPrisma);
+      const res = await service.eliminarCuentaFinanciera(actor, alcanceGlobal, 1);
+      expect(res.eliminadoPermanente).toBe(true);
+      expect(mockPrisma.cuentaFinanciera.delete).toHaveBeenCalledWith({ where: { id: 1 } });
+    });
   });
 
   describe('Libro Diario y Saldo Continuo', () => {
@@ -1233,6 +1305,137 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
     });
   });
 
+  describe('Ingresos Directos / Manuales', () => {
+    it('registrarIngreso: rechaza si el rubro seleccionado no es de tipo INGRESO', async () => {
+      const actor = { sub: 1 } as any;
+      const tx = {
+        cuentaFinanciera: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Banco Galicia', activa: true }),
+        },
+        rubroContable: {
+          findUnique: vi.fn().mockResolvedValue({ id: 2, nombre: 'Librería y Papelería', tipo: 'EGRESO', activo: true }),
+        },
+      };
+      const mockPrisma = {
+        $transaction: vi.fn().mockImplementation((cb) => cb(tx)),
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      await expect(
+        service.registrarIngreso(actor, alcanceGlobal, {
+          cuentaId: 1,
+          rubroId: 2,
+          monto: 15000,
+          descripcion: 'Donación anónima',
+        }),
+      ).rejects.toThrow('El rubro seleccionado debe ser de tipo INGRESO');
+    });
+
+    it('registrarIngreso: crea el movimiento financiero con tipo INGRESO_OTRO', async () => {
+      const actor = { sub: 5 } as any;
+      const tx = {
+        cuentaFinanciera: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Banco Galicia', activa: true }),
+        },
+        rubroContable: {
+          findUnique: vi.fn().mockResolvedValue({ id: 8, nombre: 'Donaciones', tipo: 'INGRESO', activo: true }),
+        },
+        movimientoFinanciero: {
+          create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 99, ...data })),
+        },
+      };
+      const mockPrisma = {
+        $transaction: vi.fn().mockImplementation((cb) => cb(tx)),
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      const res = await service.registrarIngreso(actor, alcanceGlobal, {
+        cuentaId: 1,
+        rubroId: 8,
+        monto: 25000,
+        descripcion: 'Donación de empresa colaboradora',
+        comprobanteNro: 'REC-0099',
+      });
+
+      expect(res.id).toBe(99);
+      expect(tx.movimientoFinanciero.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            cuentaId: 1,
+            rubroId: 8,
+            montoIngreso: expect.any(Object),
+            montoEgreso: 0,
+            tipo: 'INGRESO_OTRO',
+            creadoPorUsuarioId: 5,
+          }),
+        }),
+      );
+    });
+
+    it('actualizarIngreso: modifica monto y concepto en el movimiento financiero', async () => {
+      const actor = { sub: 1 } as any;
+      const movExistente = {
+        id: 99,
+        cuentaId: 1,
+        rubroId: 8,
+        tipo: 'INGRESO_OTRO',
+        montoIngreso: '25000.00',
+        conceptoTexto: 'Ingreso: Donación inicial - Donaciones',
+        fecha: new Date('2026-05-01'),
+        rubro: { id: 8, nombre: 'Donaciones' },
+        cuenta: { id: 1, nombre: 'Banco Galicia' },
+      };
+      const tx = {
+        movimientoFinanciero: {
+          update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...movExistente, ...data })),
+        },
+      };
+      const mockPrisma = {
+        movimientoFinanciero: {
+          findUnique: vi.fn().mockResolvedValue(movExistente),
+        },
+        $transaction: vi.fn().mockImplementation((cb) => cb(tx)),
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      const res = await service.actualizarIngreso(actor, alcanceGlobal, 99, {
+        monto: 30000,
+        descripcion: 'Donación ampliada',
+      });
+
+      expect(tx.movimientoFinanciero.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 99 },
+          data: expect.objectContaining({
+            montoIngreso: expect.any(Object),
+            conceptoTexto: 'Ingreso: Donación ampliada - Donaciones',
+          }),
+        }),
+      );
+    });
+
+    it('eliminarIngreso: remueve el movimiento si es de tipo INGRESO_OTRO', async () => {
+      const actor = { sub: 1 } as any;
+      const movExistente = {
+        id: 99,
+        tipo: 'INGRESO_OTRO',
+      };
+      const mockPrisma = {
+        movimientoFinanciero: {
+          findUnique: vi.fn().mockResolvedValue(movExistente),
+          delete: vi.fn().mockResolvedValue(movExistente),
+        },
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      const res = await service.eliminarIngreso(actor, alcanceGlobal, 99);
+      expect(res.exito).toBe(true);
+      expect(mockPrisma.movimientoFinanciero.delete).toHaveBeenCalledWith({
+        where: { id: 99 },
+      });
+    });
+  });
+
   describe('Cuadro de Resultados y Balance Contable (Fase 3)', () => {
     it('obtenerCuadroResultados: rechaza acceso a usuarios con alcance PROPIO', async () => {
       const mockPrisma = {} as any;
@@ -1474,6 +1677,28 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       expect(mockPrisma.$transaction).toHaveBeenCalled();
     });
 
+    it('crearPedidoEvento: rechaza cargar pedidos si el evento no está publicado (ej: FINALIZADO o BORRADOR)', async () => {
+      const mockPrisma = {
+        evento: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 1,
+            titulo: 'Venta Finalizada',
+            estado: 'FINALIZADO',
+            items: [],
+          }),
+        },
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      await expect(
+        service.crearPedidoEvento(actor, alcanceGlobal, {
+          eventoId: 1,
+          compradorNombre: 'Marta Pérez',
+          items: [{ itemId: 1, cantidad: 1 }],
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('validarTicketQr: valida ticket activo y previene doble uso', async () => {
       const { generateTokenQR } = await import('../common/utils/qr-token.util.js');
       const validToken = generateTokenQR();
@@ -1564,6 +1789,18 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
 
       expect(res.pedidosAcreditados).toBe(1);
       expect(res.totalGananciaAcreditada).toBe(4000);
+      expect(mockPrisma.evento.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1 },
+          include: expect.objectContaining({
+            pedidos: expect.objectContaining({
+              where: expect.objectContaining({
+                estado: 'PAGADO',
+              }),
+            }),
+          }),
+        }),
+      );
     });
 
     it('acreditarGananciasEvento: liquida y acredita pedidos con ganancia igual a cero', async () => {
@@ -1601,7 +1838,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       expect(res.totalGananciaAcreditada).toBe(0);
     });
 
-    it('actualizarPedidoEvento: rechaza modificar un pedido cuyos tickets ya fueron utilizados', async () => {
+    it('actualizarPedidoEvento: rechaza modificar productos de un pedido cuyos tickets ya fueron utilizados', async () => {
       const mockPrisma = {
         pedidoEvento: {
           findUnique: vi.fn().mockResolvedValue({
@@ -1616,8 +1853,112 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       const service = new TesoreriaService(mockPrisma);
 
       await expect(
-        service.actualizarPedidoEvento(actor, alcanceGlobal, 200, { compradorNombre: 'Nuevo Nombre' }),
+        service.actualizarPedidoEvento(actor, alcanceGlobal, 200, {
+          items: [{ itemId: 1, cantidad: 2 }],
+        }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('actualizarPedidoEvento: permite cobrar un pedido pendiente cuyos tickets ya fueron utilizados', async () => {
+      const tx = {
+        movimientoFinanciero: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({ id: 999 }),
+        },
+        pedidoEvento: {
+          update: vi.fn().mockResolvedValue({
+            id: 200,
+            estado: 'PAGADO',
+            cuentaId: 10,
+            metodoPago: 'EFECTIVO',
+          }),
+        },
+      };
+
+      const mockPrisma = {
+        pedidoEvento: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 200,
+            vendedorUsuarioId: 1,
+            total: 5000,
+            totalGanancia: 1500,
+            estado: 'PENDIENTE',
+            tickets: [{ id: 1, estado: 'UTILIZADO' }],
+            detalles: [],
+            evento: { id: 1, titulo: 'Venta Empanadas', items: [] },
+          }),
+        },
+        $transaction: vi.fn().mockImplementation(async (cb) => cb(tx)),
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      const res = await service.actualizarPedidoEvento(actor, alcanceGlobal, 200, {
+        cuentaId: 10,
+        metodoPago: 'EFECTIVO',
+      });
+
+      expect(res.estado).toBe('PAGADO');
+      expect(tx.movimientoFinanciero.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            cuentaId: 10,
+            montoIngreso: 5000,
+            pedidoEventoId: 200,
+          }),
+        }),
+      );
+      expect(tx.pedidoEvento.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 200 },
+          data: expect.objectContaining({
+            estado: 'PAGADO',
+            cuentaId: 10,
+            metodoPago: 'EFECTIVO',
+          }),
+        }),
+      );
+    });
+
+    it('actualizarPedidoEvento: si se envían los mismos items que ya tenía un pedido con tickets utilizados, no rechaza y actualiza el pago', async () => {
+      const tx = {
+        movimientoFinanciero: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          create: vi.fn().mockResolvedValue({ id: 999 }),
+        },
+        pedidoEvento: {
+          update: vi.fn().mockResolvedValue({
+            id: 200,
+            estado: 'PAGADO',
+            cuentaId: 10,
+            metodoPago: 'EFECTIVO',
+          }),
+        },
+      };
+
+      const mockPrisma = {
+        pedidoEvento: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 200,
+            vendedorUsuarioId: 1,
+            total: 5000,
+            totalGanancia: 1500,
+            estado: 'PENDIENTE',
+            tickets: [{ id: 1, estado: 'UTILIZADO' }],
+            detalles: [{ itemId: 1, cantidad: 2 }],
+            evento: { id: 1, titulo: 'Venta Empanadas', items: [] },
+          }),
+        },
+        $transaction: vi.fn().mockImplementation(async (cb) => cb(tx)),
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      const res = await service.actualizarPedidoEvento(actor, alcanceGlobal, 200, {
+        cuentaId: 10,
+        metodoPago: 'EFECTIVO',
+        items: [{ itemId: 1, cantidad: 2 }],
+      });
+
+      expect(res.estado).toBe('PAGADO');
     });
 
     it('actualizarPedidoEvento: rechaza si el alcance es PROPIO y no le pertenece', async () => {
@@ -1640,6 +1981,70 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       ).rejects.toThrow(ForbiddenException);
     });
 
+    it('eliminarEvento: rechaza si el alcance es PROPIO', async () => {
+      const service = new TesoreriaService({} as any);
+      await expect(service.eliminarEvento(alcancePropio, 1)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('eliminarEvento: lanza NotFoundException si no existe', async () => {
+      const mockPrisma = {
+        evento: { findUnique: vi.fn().mockResolvedValue(null) },
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+      await expect(service.eliminarEvento(alcanceGlobal, 999)).rejects.toThrow(NotFoundException);
+    });
+
+    it('eliminarEvento: rechaza si tiene pedidos con ganancias liquidadas', async () => {
+      const mockPrisma = {
+        evento: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 1,
+            pedidos: [{ id: 10, gananciaAcreditada: true, tickets: [] }],
+          }),
+        },
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+      await expect(service.eliminarEvento(alcanceGlobal, 1)).rejects.toThrow(BadRequestException);
+    });
+
+    it('eliminarEvento: rechaza si tiene tickets utilizados', async () => {
+      const mockPrisma = {
+        evento: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 1,
+            pedidos: [{ id: 10, gananciaAcreditada: false, tickets: [{ id: 1, estado: 'UTILIZADO' }] }],
+          }),
+        },
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+      await expect(service.eliminarEvento(alcanceGlobal, 1)).rejects.toThrow(BadRequestException);
+    });
+
+    it('eliminarEvento: elimina evento y relaciones en transaccion si no tiene vales utilizados ni ganancias liquidadas', async () => {
+      const tx = {
+        movimientoFinanciero: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        ticketEvento: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        detallePedidoEvento: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        pedidoEvento: { deleteMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        itemEvento: { deleteMany: vi.fn().mockResolvedValue({ count: 2 }) },
+        evento: { delete: vi.fn().mockResolvedValue({ id: 1, titulo: 'Bono Contribución' }) },
+      };
+      const mockPrisma = {
+        evento: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 1,
+            titulo: 'Bono Contribución',
+            pedidos: [{ id: 10, gananciaAcreditada: false, tickets: [{ id: 1, estado: 'ACTIVO' }] }],
+          }),
+        },
+        $transaction: vi.fn().mockImplementation((cb) => cb(tx)),
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+      const res = await service.eliminarEvento(alcanceGlobal, 1);
+      expect(res.id).toBe(1);
+      expect(tx.evento.delete).toHaveBeenCalledWith({ where: { id: 1 } });
+    });
+
     it('obtenerMisPedidos: consulta pedidos donde el usuario es vendedor o registrador', async () => {
       const mockPrisma = {
         pedidoEvento: {
@@ -1660,6 +2065,64 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
               { registradoPorUsuarioId: 10 },
             ],
           },
+        }),
+      );
+    });
+
+    it('sincronizarCuotasMiembroActivoEnTx: Prevalencia de Protagonista ante rol dual (Protagonista + Educador)', async () => {
+      const txMock = {
+        usuario: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 20,
+            activo: true,
+            grupoFamiliar: null,
+            asignaciones: [
+              { unidadId: 1, rol: { tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: 'PROPIO' } },
+              { unidadId: 2, rol: { tipoMiembro: 'EDUCADOR', alcancePorDefecto: 'GLOBAL' } },
+            ],
+            cargos: [],
+          }),
+        },
+        conceptoCuota: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 101,
+              cicloAnio: 2026,
+              destinatarioTipo: 'EDUCADORES',
+              esParaEducadores: true,
+              planCuotaMensualId: 1,
+              mes: 4,
+              montoBase: '5000.00',
+              excepcionesJson: [],
+            },
+            {
+              id: 102,
+              cicloAnio: 2026,
+              destinatarioTipo: 'PROTAGONISTAS',
+              esParaEducadores: false,
+              planCuotaMensualId: 1,
+              mes: 4,
+              montoBase: '8000.00',
+              excepcionesJson: [],
+            },
+          ]),
+        },
+        cargoMiembro: {
+          create: vi.fn().mockResolvedValue({ id: 1 }),
+        },
+      } as any;
+
+      const service = new TesoreriaService({} as any);
+      await service.sincronizarCuotasMiembroActivoEnTx(txMock, 20, 4, 2026);
+
+      // Debería haberse creado cargo para el concepto 102 (Protagonistas) pero NO para el 101 (Educadores)
+      expect(txMock.cargoMiembro.create).toHaveBeenCalledTimes(1);
+      expect(txMock.cargoMiembro.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            conceptoId: 102,
+            usuarioId: 20,
+          }),
         }),
       );
     });

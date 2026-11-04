@@ -13,8 +13,9 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { api } from '../api/client';
-import { traducirErrorAmigable } from '../lib/formatters';
+import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface ModalScannerQRProps {
   abierto: boolean;
@@ -26,6 +27,8 @@ interface ValidacionResultado {
   ok: boolean;
   estado: string;
   mensaje: string;
+  alertaPagoPendiente?: boolean;
+  montoPendiente?: number;
   ticket?: {
     id: number;
     producto: string;
@@ -34,6 +37,8 @@ interface ValidacionResultado {
     vendedor?: string | null;
     evento: string;
     fechaUso?: string | null;
+    pedidoEstado?: string;
+    pedidoTotal?: number;
   };
 }
 
@@ -70,6 +75,12 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
   const [errorCamara, setErrorCamara] = useState<string | null>(null);
   const [tokenManual, setTokenManual] = useState<string>('');
   const [validando, setValidando] = useState<boolean>(false);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: validando,
+  });
   const [resultado, setResultado] = useState<ValidacionResultado | null>(null);
   const [modoManual, setModoManual] = useState<boolean>(false);
 
@@ -204,8 +215,14 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
   if (!abierto) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
+      {...backdropProps}
+    >
+      <div
+        className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        {...contentProps}
+      >
         {/* Encabezado */}
         <div className="p-4 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
@@ -298,6 +315,13 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
 
                 <div className="space-y-1 flex-1">
                   <h4 className="text-sm font-black tracking-tight">{resultado.mensaje}</h4>
+
+                  {resultado.ok && (resultado.alertaPagoPendiente || resultado.ticket?.pedidoEstado === 'PENDIENTE') && (
+                    <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center gap-2 mt-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>ATENCIÓN: Pago PENDIENTE ({formatearMoneda(resultado.montoPendiente || resultado.ticket?.pedidoTotal || 0)}). Cobrar en puerta si corresponde.</span>
+                    </div>
+                  )}
 
                   {resultado.ticket && (
                     <div className="pt-2 mt-2 border-t border-rule/40 space-y-1 text-xs">

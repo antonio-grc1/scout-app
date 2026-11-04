@@ -185,6 +185,7 @@ export type CrearCuentaFinancieraDto = z.infer<typeof CrearCuentaFinancieraSchem
 
 export const ActualizarCuentaFinancieraSchema = z.object({
   nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100).optional(),
+  tipo: z.enum(TipoCuenta).optional(),
   activa: z.boolean().optional(),
 });
 export type ActualizarCuentaFinancieraDto = z.infer<typeof ActualizarCuentaFinancieraSchema>;
@@ -243,6 +244,17 @@ export const RegistrarGastoSchema = z.object({
 });
 export type RegistrarGastoDto = z.infer<typeof RegistrarGastoSchema>;
 
+export const ActualizarGastoSchema = z.object({
+  fecha: z.string().optional(),
+  monto: montoDecimal.optional(),
+  descripcion: z.string().trim().min(2, 'La descripción debe tener al menos 2 caracteres').max(300).optional(),
+  rubroId: z.number().int().positive('Debe seleccionar un rubro de egreso').optional(),
+  cuentaId: z.number().int().positive('Debe seleccionar la cuenta de pago (Caja o Banco)').optional(),
+  comprobanteNro: z.string().trim().max(100).nullable().optional(),
+  comprobanteUrl: z.string().trim().max(500).nullable().optional(),
+});
+export type ActualizarGastoDto = z.infer<typeof ActualizarGastoSchema>;
+
 export const ListarGastosQuerySchema = z.object({
   cuentaId: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().positive().optional()),
   rubroId: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().positive().optional()),
@@ -253,6 +265,35 @@ export const ListarGastosQuerySchema = z.object({
     .optional(),
 });
 export type ListarGastosQueryDto = z.infer<typeof ListarGastosQuerySchema>;
+
+// ---------------- Ingresos Directos / Manuales ----------------
+export const RegistrarIngresoSchema = z.object({
+  fecha: z.string().optional(),
+  monto: montoDecimal,
+  descripcion: z.string().trim().min(2, 'La descripción debe tener al menos 2 caracteres').max(300),
+  rubroId: z.number().int().positive('Debe seleccionar un rubro de ingreso'),
+  cuentaId: z.number().int().positive('Debe seleccionar la cuenta donde ingresa el dinero (Caja o Banco)'),
+  comprobanteNro: z.string().trim().max(100).nullable().optional(),
+});
+export type RegistrarIngresoDto = z.infer<typeof RegistrarIngresoSchema>;
+
+export const ActualizarIngresoSchema = z.object({
+  fecha: z.string().optional(),
+  monto: montoDecimal.optional(),
+  descripcion: z.string().trim().min(2, 'La descripción debe tener al menos 2 caracteres').max(300).optional(),
+  rubroId: z.number().int().positive('Debe seleccionar un rubro de ingreso').optional(),
+  cuentaId: z.number().int().positive('Debe seleccionar la cuenta donde ingresa el dinero (Caja o Banco)').optional(),
+  comprobanteNro: z.string().trim().max(100).nullable().optional(),
+});
+export type ActualizarIngresoDto = z.infer<typeof ActualizarIngresoSchema>;
+
+export const ListarIngresosQuerySchema = z.object({
+  cuentaId: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().positive().optional()),
+  rubroId: z.preprocess((val) => (val ? Number(val) : undefined), z.number().int().positive().optional()),
+  desde: z.string().optional(),
+  hasta: z.string().optional(),
+});
+export type ListarIngresosQueryDto = z.infer<typeof ListarIngresosQuerySchema>;
 
 // ---------------- Cuadro de Resultados (Fase 3) ----------------
 export const ConsultaCuadroResultadosQuerySchema = z.object({
@@ -313,7 +354,7 @@ export const CrearPedidoEventoSchema = z.object({
   compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120),
   compradorContacto: z.string().trim().max(100).optional(),
   vendedorUsuarioId: z.number().int().positive().nullable().optional(),
-  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'MERCADOPAGO', 'OTRO']).optional(),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'OTRO']).optional(),
   cuentaId: z.number().int().positive().nullable().optional(),
   observaciones: z.string().trim().max(300).optional(),
   items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto'),
@@ -324,7 +365,7 @@ export const ActualizarPedidoEventoSchema = z.object({
   compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120).optional(),
   compradorContacto: z.string().trim().max(100).optional(),
   vendedorUsuarioId: z.number().int().positive().nullable().optional(),
-  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'MERCADOPAGO', 'OTRO']).optional(),
+  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'OTRO']).optional(),
   cuentaId: z.number().int().positive().nullable().optional(),
   observaciones: z.string().trim().max(300).optional(),
   items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto').optional(),

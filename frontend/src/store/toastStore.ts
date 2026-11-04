@@ -1,0 +1,120 @@
+import { create } from 'zustand';
+
+export interface ToastAccion {
+  label?: string;
+  onEjecutar: () => void | Promise<void>;
+}
+
+export interface ToastItem {
+  id: string;
+  texto: string;
+  tipo: 'exito' | 'error' | 'info' | 'advertencia';
+  accion?: ToastAccion;
+  duracionMs: number;
+  creadoEn: number;
+}
+
+interface ToastState {
+  toast: ToastItem | null;
+  mostrarToast: (
+    texto: string,
+    tipo?: 'exito' | 'error' | 'info' | 'advertencia',
+    duracionMs?: number,
+  ) => void;
+  mostrarToastConDeshacer: (
+    texto: string,
+    onDeshacer: () => void | Promise<void>,
+    duracionMs?: number,
+  ) => void;
+  cerrarToast: () => void;
+  ejecutarAccion: () => Promise<void>;
+}
+
+let timeoutId: any = null;
+
+export const useToastStore = create<ToastState>((set, get) => ({
+  toast: null,
+
+  mostrarToast: (texto, tipo = 'exito', duracionMs = 4000) => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    const id = Math.random().toString(36).substring(2, 9);
+    set({
+      toast: {
+        id,
+        texto,
+        tipo,
+        duracionMs,
+        creadoEn: Date.now(),
+      },
+    });
+
+    timeoutId = setTimeout(() => {
+      if (get().toast?.id === id) {
+        set({ toast: null });
+      }
+    }, duracionMs);
+  },
+
+  mostrarToastConDeshacer: (texto, onDeshacer, duracionMs = 7500) => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    const id = Math.random().toString(36).substring(2, 9);
+    set({
+      toast: {
+        id,
+        texto,
+        tipo: 'info',
+        accion: {
+          label: 'Deshacer',
+          onEjecutar: onDeshacer,
+        },
+        duracionMs,
+        creadoEn: Date.now(),
+      },
+    });
+
+    timeoutId = setTimeout(() => {
+      if (get().toast?.id === id) {
+        set({ toast: null });
+      }
+    }, duracionMs);
+  },
+
+  cerrarToast: () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    set({ toast: null });
+  },
+
+  ejecutarAccion: async () => {
+    const { toast } = get();
+    if (!toast || !toast.accion) return;
+    const accion = toast.accion;
+    // Cerrar inmediatamente el toast para no permitir doble clic
+    if (timeoutId) clearTimeout(timeoutId);
+    set({ toast: null });
+
+    try {
+      await accion.onEjecutar();
+    } catch (err) {
+      console.error('Error al ejecutar acción de deshacer:', err);
+    }
+  },
+}));
+
+// Helpers directos sin necesidad de hook
+export const mostrarToast = (
+  texto: string,
+  tipo?: 'exito' | 'error' | 'info' | 'advertencia',
+  duracionMs?: number,
+) => useToastStore.getState().mostrarToast(texto, tipo, duracionMs);
+
+export const mostrarToastConDeshacer = (
+  texto: string,
+  onDeshacer: () => void | Promise<void>,
+  duracionMs?: number,
+) => useToastStore.getState().mostrarToastConDeshacer(texto, onDeshacer, duracionMs);

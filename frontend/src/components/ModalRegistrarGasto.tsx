@@ -2,14 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
-import { X, Receipt, PlusCircle, AlertCircle, Wallet } from 'lucide-react';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
-import { ModalCrearRubro } from './ModalCrearRubro';
+import { X, Receipt, PlusCircle, AlertCircle, Wallet, Pencil } from 'lucide-react';
+import {
+  formatearMoneda,
+  traducirErrorAmigable,
+  ahoraLocalDatetime,
+  fechaAFormatoDatetimeLocal,
+} from '../lib/formatters';
+import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
+import { useModalOverlay } from '../hooks/useModalOverlay';
+
+export interface GastoAEditarItem {
+  id: number;
+  fecha: string;
+  monto: number;
+  descripcion: string;
+  rubroId: number;
+  cuentaId: number;
+  comprobanteNro: string | null;
+}
 
 export interface ModalRegistrarGastoProps {
   abierto: boolean;
   onCerrar: () => void;
   onGastoRegistrado: (mensaje: string) => void;
+  gastoAEditar?: GastoAEditarItem | null;
 }
 
 export interface RubroItem {
@@ -24,23 +41,19 @@ export interface CuentaItem {
   nombre: string;
   tipo: 'CAJA_EFECTIVO' | 'BANCO';
   activa: boolean;
+  saldoActual?: number;
   saldoActualConsolidado?: number;
-}
-
-function hoyISO(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
   abierto,
   onCerrar,
   onGastoRegistrado,
+  gastoAEditar,
 }) => {
-  const [fecha, setFecha] = useState(hoyISO());
+  const esModoEdicion = Boolean(gastoAEditar);
+
+  const [fecha, setFecha] = useState(ahoraLocalDatetime());
   const [monto, setMonto] = useState<string>('');
   const [descripcion, setDescripcion] = useState('');
   const [rubroId, setRubroId] = useState<number | ''>('');
@@ -51,9 +64,16 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
   const [cuentas, setCuentas] = useState<CuentaItem[]>([]);
   const [cargandoDatos, setCargandoDatos] = useState(false);
   const [modalNuevoRubroAbierto, setModalNuevoRubroAbierto] = useState(false);
+  const [rubroAEditar, setRubroAEditar] = useState<RubroAEditarItem | null>(null);
 
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando || modalNuevoRubroAbierto,
+  });
 
   const cargarCuentasYRubros = async () => {
     try {
@@ -68,11 +88,13 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
       setRubros(rubrosList);
       setCuentas(cuentasList);
 
-      if (rubrosList.length > 0 && !rubroId) {
-        setRubroId(rubrosList[0].id);
-      }
-      if (cuentasList.length > 0 && !cuentaId) {
-        setCuentaId(cuentasList[0].id);
+      if (!gastoAEditar) {
+        if (rubrosList.length > 0 && !rubroId) {
+          setRubroId(rubrosList[0].id);
+        }
+        if (cuentasList.length > 0 && !cuentaId) {
+          setCuentaId(cuentasList[0].id);
+        }
       }
     } catch {
       // Ignorar error inicial
@@ -83,19 +105,33 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
 
   useEffect(() => {
     if (abierto) {
-      setFecha(hoyISO());
-      setMonto('');
-      setDescripcion('');
-      setComprobanteNro('');
+      if (gastoAEditar) {
+        setFecha(fechaAFormatoDatetimeLocal(gastoAEditar.fecha));
+        setMonto(String(gastoAEditar.monto));
+        setDescripcion(gastoAEditar.descripcion || '');
+        setRubroId(gastoAEditar.rubroId);
+        setCuentaId(gastoAEditar.cuentaId);
+        setComprobanteNro(gastoAEditar.comprobanteNro || '');
+      } else {
+        setFecha(ahoraLocalDatetime());
+        setMonto('');
+        setDescripcion('');
+        setComprobanteNro('');
+      }
       setError(null);
       cargarCuentasYRubros();
     }
-  }, [abierto]);
+  }, [abierto, gastoAEditar]);
 
   if (!abierto) return null;
 
   const cuentaSeleccionada = cuentas.find((c) => c.id === cuentaId);
-  const saldoDisponibleCuenta = Number(cuentaSeleccionada?.saldoActualConsolidado ?? 0);
+  const saldoBase = Number(cuentaSeleccionada?.saldoActual ?? cuentaSeleccionada?.saldoActualConsolidado ?? 0);
+  const saldoDisponibleCuenta =
+    saldoBase +
+    (esModoEdicion && gastoAEditar && gastoAEditar.cuentaId === cuentaId
+      ? Number(gastoAEditar.monto)
+      : 0);
   const montoNum = Number(monto) || 0;
   const saldoInsuficiente = montoNum > saldoDisponibleCuenta && montoNum > 0;
 
@@ -129,19 +165,26 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
     try {
       setGuardando(true);
       setError(null);
-      await api.post('/tesoreria/gastos', {
+      const payload = {
         fecha,
         monto: montoNum,
         descripcion: descripcion.trim(),
         rubroId: Number(rubroId),
         cuentaId: Number(cuentaId),
         comprobanteNro: comprobanteNro.trim() || undefined,
-      });
+      };
 
-      onGastoRegistrado(`Gasto de ${formatearMoneda(montoNum)} registrado correctamente`);
+      if (esModoEdicion && gastoAEditar) {
+        await api.patch(`/tesoreria/gastos/${gastoAEditar.id}`, payload);
+        onGastoRegistrado(`Gasto de ${formatearMoneda(montoNum)} actualizado correctamente`);
+      } else {
+        await api.post('/tesoreria/gastos', payload);
+        onGastoRegistrado(`Gasto de ${formatearMoneda(montoNum)} registrado correctamente`);
+      }
+
       onCerrar();
     } catch (err) {
-      setError(traducirErrorAmigable(err, 'No se pudo registrar el gasto.'));
+      setError(traducirErrorAmigable(err, esModoEdicion ? 'No se pudo actualizar el gasto.' : 'No se pudo registrar el gasto.'));
     } finally {
       setGuardando(false);
     }
@@ -149,19 +192,27 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-        <div className="bg-paper border border-rule w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-rule flex items-center justify-between">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+        {...backdropProps}
+      >
+        <div
+          className="bg-paper border border-rule w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+          {...contentProps}
+        >
+          <div className="px-5 py-4 border-b border-rule flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                 <Receipt className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="text-sm font-black text-ink">
-                  Registrar Gasto / Egreso
+                  {esModoEdicion ? 'Modificar Gasto / Egreso' : 'Registrar Gasto / Egreso'}
                 </h3>
                 <p className="text-[11px] text-ink-muted">
-                  Impactará inmediatamente en el libro diario de la cuenta seleccionada.
+                  {esModoEdicion
+                    ? 'Actualizará los datos del gasto y el movimiento en el libro diario.'
+                    : 'Impactará inmediatamente en el libro diario de la cuenta seleccionada.'}
                 </p>
               </div>
             </div>
@@ -174,7 +225,7 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
             {error && (
               <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -201,10 +252,10 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
 
               <div>
                 <label className="text-xs font-bold text-ink block mb-1">
-                  Fecha del Gasto
+                  Fecha y Hora del Gasto *
                 </label>
                 <Input
-                  type="date"
+                  type="datetime-local"
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
                   required
@@ -225,7 +276,7 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
               >
                 {cuentas.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nombre} ({c.tipo === 'CAJA_EFECTIVO' ? 'Efectivo' : 'Banco'}) — Saldo disp: {formatearMoneda(Number(c.saldoActualConsolidado ?? 0))}
+                    {c.nombre} ({c.tipo === 'CAJA_EFECTIVO' ? 'Efectivo' : 'Banco'}) — Saldo disp: {formatearMoneda(Number(c.saldoActual ?? c.saldoActualConsolidado ?? 0))}
                   </option>
                 ))}
               </select>
@@ -237,20 +288,47 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
               )}
             </div>
 
-            {/* Rubro de Gasto con botón para crear nuevo */}
+            {/* Rubro de Gasto con botón para crear y editar */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
                 <label className="text-xs font-bold text-ink">
                   Rubro / Categoría de Gasto
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setModalNuevoRubroAbierto(true)}
-                  className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <PlusCircle className="w-3.5 h-3.5" />
-                  <span>+ Nuevo Rubro</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  {rubroId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const r = rubros.find((x) => x.id === rubroId);
+                        if (r) {
+                          setRubroAEditar({
+                            id: r.id,
+                            nombre: r.nombre,
+                            tipo: r.tipo,
+                            permiteDescuentoDefault: r.permiteDescuentoDefault,
+                          });
+                          setModalNuevoRubroAbierto(true);
+                        }
+                      }}
+                      className="text-[11px] font-bold text-ink-muted hover:text-ink hover:underline flex items-center gap-1 cursor-pointer"
+                      title="Modificar o eliminar esta categoría"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>Editar</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRubroAEditar(null);
+                      setModalNuevoRubroAbierto(true);
+                    }}
+                    className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" />
+                    <span>+ Nuevo Rubro</span>
+                  </button>
+                </div>
               </div>
 
               <select
@@ -310,7 +388,13 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
                 className="gap-1.5"
               >
                 <Receipt className="w-4 h-4" />
-                <span>{guardando ? 'Guardando...' : 'Registrar Gasto'}</span>
+                <span>
+                  {guardando
+                    ? 'Guardando...'
+                    : esModoEdicion
+                    ? 'Guardar Modificaciones'
+                    : 'Registrar Gasto'}
+                </span>
               </Button>
             </div>
           </form>
@@ -320,10 +404,31 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
       <ModalCrearRubro
         abierto={modalNuevoRubroAbierto}
         tipoDefault="EGRESO"
-        onCerrar={() => setModalNuevoRubroAbierto(false)}
-        onRubroCreado={(nuevo) => {
-          setRubros((prev) => [...prev, nuevo as RubroItem]);
-          setRubroId(nuevo.id);
+        rubroAEditar={rubroAEditar}
+        onCerrar={() => {
+          setModalNuevoRubroAbierto(false);
+          setRubroAEditar(null);
+        }}
+        onRubroCreado={(rubroGuardado) => {
+          setRubros((prev) => {
+            const index = prev.findIndex((x) => x.id === rubroGuardado.id);
+            if (index >= 0) {
+              const copia = [...prev];
+              copia[index] = { ...copia[index], ...rubroGuardado };
+              return copia;
+            }
+            return [...prev, rubroGuardado as RubroItem];
+          });
+          setRubroId(rubroGuardado.id);
+        }}
+        onRubroEliminado={(rubroEliminado) => {
+          setRubros((prev) => {
+            const filtrados = prev.filter((x) => x.id !== rubroEliminado.id);
+            if (rubroId === rubroEliminado.id) {
+              setRubroId(filtrados.length > 0 ? filtrados[0].id : '');
+            }
+            return filtrados;
+          });
         }}
       />
     </>

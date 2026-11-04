@@ -42,23 +42,31 @@ const UNIDADES: { nombre: string; tipo: TipoUnidad; rama: string | null }[] = [
 // 3. Catálogo de permisos (claves usadas por @RequirePermission)
 // ---------------------------------------------------------------------------
 const PERMISOS: { clave: string; descripcion: string }[] = [
-  { clave: 'organizacion.ver', descripcion: 'Ver ramas, unidades, roles y permisos' },
-  { clave: 'organizacion.gestionar', descripcion: 'Crear/editar ramas, unidades, roles y permisos' },
+  { clave: 'organizacion.ver', descripcion: 'Ver ramas, unidades y parámetros' },
+  { clave: 'organizacion.gestionar', descripcion: 'Crear/editar ramas, unidades y parámetros' },
+  { clave: 'roles.gestionar', descripcion: 'Crear, editar roles y configurar sus permisos' },
   { clave: 'miembros.ver', descripcion: 'Ver padrón y datos de miembros' },
   { clave: 'miembros.crear', descripcion: 'Dar de alta miembros' },
-  { clave: 'miembros.editar', descripcion: 'Editar datos de contacto, familiares y de salud' },
+  { clave: 'miembros.editar', descripcion: 'Editar datos de contacto, familiares, salud y vincular hermanos' },
   { clave: 'miembros.editar_identidad', descripcion: 'Editar nombre, apellido, DNI y fecha de nacimiento' },
   { clave: 'miembros.baja', descripcion: 'Dar de baja o reactivar miembros' },
   { clave: 'auth.resetear_clave', descripcion: 'Resetear la clave de un miembro a su DNI' },
   { clave: 'pases.ver', descripcion: 'Ver candidatos sugeridos para pase' },
-  { clave: 'pases.ejecutar', descripcion: 'Ejecutar pases de rama' },
+  { clave: 'pases.ejecutar', descripcion: 'Ejecutar pases de rama y gestionar asignaciones' },
   { clave: 'legajos.ver', descripcion: 'Ver legajos y fichas' },
   { clave: 'legajos.completar', descripcion: 'Completar formularios y generar snapshot/PDF' },
   { clave: 'legajos.validar_fisico', descripcion: 'Validar firma física escaneando el QR' },
   { clave: 'legajos.plantillas_gestionar', descripcion: 'Administrar plantillas de formularios' },
   { clave: 'cuotas.ver', descripcion: 'Ver cargos y estado de cuenta' },
-  { clave: 'cuotas.cobrar', descripcion: 'Registrar pagos e imputarlos a cargos' },
-  { clave: 'tesoreria.gestionar', descripcion: 'Administrar conceptos, cargos y descuentos familiares' },
+  { clave: 'cuotas.cobrar', descripcion: 'Registrar cobros e imputar pagos a cargos' },
+  { clave: 'cuotas.ajustar', descripcion: 'Anular cargos, revertir pagos y ajustar saldos de cuenta corriente' },
+  { clave: 'tesoreria.conceptos_planes', descripcion: 'Crear y editar conceptos cobrables y planes de cuotas anuales o campamentos' },
+  { clave: 'tesoreria.caja_ver', descripcion: 'Ver movimientos de caja física, cuentas bancarias y cuadro de resultados' },
+  { clave: 'tesoreria.gastos_registrar', descripcion: 'Registrar y editar egresos/gastos de caja o banco' },
+  { clave: 'tesoreria.gestionar', descripcion: 'Configuración completa de tesorería, cuentas bancarias y cierre de caja' },
+  { clave: 'eventos.ver', descripcion: 'Ver eventos económicos y órdenes de compra' },
+  { clave: 'eventos.vender', descripcion: 'Registrar ventas de eventos económicos y cobrar o validar pedidos' },
+  { clave: 'eventos.gestionar', descripcion: 'Crear, configurar, abrir y cerrar eventos económicos' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -76,7 +84,7 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.PROPIO,
     tipoMiembro: 'PROTAGONISTA',
     requiereRama: true,
-    permisos: ['miembros.ver', 'miembros.editar', 'legajos.ver', 'legajos.completar', 'cuotas.ver'],
+    permisos: ['miembros.ver', 'miembros.editar', 'legajos.ver', 'legajos.completar', 'cuotas.ver', 'eventos.ver'],
   },
   {
     nombre: 'Educador de Rama',
@@ -98,6 +106,12 @@ const ROLES: {
       'legajos.validar_fisico',
       'cuotas.ver',
       'cuotas.cobrar',
+      'cuotas.ajustar',
+      'tesoreria.conceptos_planes',
+      'tesoreria.caja_ver',
+      'tesoreria.gastos_registrar',
+      'eventos.ver',
+      'eventos.vender',
     ],
   },
   {
@@ -113,7 +127,73 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.GLOBAL,
     tipoMiembro: 'EDUCADOR',
     requiereRama: false,
-    permisos: ['organizacion.ver', 'miembros.ver', 'legajos.ver', 'legajos.completar', 'legajos.validar_fisico', 'cuotas.ver'],
+    permisos: [
+      'organizacion.ver',
+      'miembros.ver',
+      'legajos.ver',
+      'legajos.completar',
+      'legajos.validar_fisico',
+      'cuotas.ver',
+      'eventos.ver',
+    ],
+  },
+  {
+    nombre: 'Tesorero',
+    alcancePorDefecto: AlcanceRol.GLOBAL,
+    tipoMiembro: 'EDUCADOR',
+    requiereRama: false,
+    permisos: [
+      'organizacion.ver',
+      'miembros.ver',
+      'miembros.editar',
+      'cuotas.ver',
+      'cuotas.cobrar',
+      'cuotas.ajustar',
+      'tesoreria.conceptos_planes',
+      'tesoreria.caja_ver',
+      'tesoreria.gastos_registrar',
+      'tesoreria.gestionar',
+      'eventos.ver',
+      'eventos.vender',
+      'eventos.gestionar',
+    ],
+  },
+  {
+    nombre: 'Secretaría / Legajos',
+    alcancePorDefecto: AlcanceRol.GLOBAL,
+    tipoMiembro: 'EDUCADOR',
+    requiereRama: false,
+    permisos: [
+      'organizacion.ver',
+      'miembros.ver',
+      'miembros.crear',
+      'miembros.editar',
+      'miembros.editar_identidad',
+      'miembros.baja',
+      'auth.resetear_clave',
+      'pases.ver',
+      'pases.ejecutar',
+      'legajos.ver',
+      'legajos.completar',
+      'legajos.validar_fisico',
+      'legajos.plantillas_gestionar',
+      'roles.gestionar',
+    ],
+  },
+  {
+    nombre: 'Organizador de Eventos',
+    alcancePorDefecto: AlcanceRol.GLOBAL,
+    tipoMiembro: 'EDUCADOR',
+    requiereRama: false,
+    permisos: [
+      'organizacion.ver',
+      'miembros.ver',
+      'eventos.ver',
+      'eventos.vender',
+      'eventos.gestionar',
+      'cuotas.ver',
+      'cuotas.cobrar',
+    ],
   },
 ];
 
@@ -197,8 +277,9 @@ async function seedRoles(permisoIds: Map<string, number>): Promise<Map<string, n
 
   for (const r of ROLES) {
     const existente = await prisma.rol.findUnique({ where: { nombre: r.nombre } });
-    if (!existente && totalRolesExistentes > 0) {
-      // Si ya existen roles en la base y este nombre no está, fue renombrado o eliminado por el administrador: no recrearlo
+    const esRolEstandarNuevo = ['Tesorero', 'Secretaría / Legajos', 'Organizador de Eventos'].includes(r.nombre);
+    if (!existente && totalRolesExistentes > 0 && !esRolEstandarNuevo) {
+      // Si ya existen roles en la base y este nombre no está y no es de los nuevos roles del sistema: no recrearlo
       continue;
     }
     const rol = existente

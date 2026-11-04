@@ -1,15 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
+import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
+import { formatearMoneda, traducirErrorAmigable, formatearFechaHora } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalCrearCuentaFinanciera } from './ModalCrearCuentaFinanciera';
 import { ModalTraspasoCuentas, type CuentaFinancieraItem } from './ModalTraspasoCuentas';
+import { ModalRegistrarIngreso, type IngresoAEditarItem } from './ModalRegistrarIngreso';
+import { ModalRegistrarGasto, type GastoAEditarItem } from './ModalRegistrarGasto';
+import { ModalConfirmacion } from './ModalConfirmacion';
 import {
   Landmark,
   Wallet,
   ArrowLeftRight,
   PlusCircle,
+  Pencil,
+  Trash2,
+  Receipt,
+  Tag,
   Calendar,
   RotateCcw,
   ArrowDownRight,
@@ -36,6 +44,18 @@ export interface MovimientoFinancieroItem {
   miembroNombre?: string | null;
   pagoId: number | null;
   gastoId: number | null;
+  rubroId?: number | null;
+  rubro?: {
+    id: number;
+    nombre: string;
+    tipo?: string;
+  } | null;
+  gasto?: {
+    id: number;
+    descripcion: string;
+    anulado: boolean;
+    comprobanteNro: string | null;
+  } | null;
   creadoPorUsuarioId: number;
   creadoPor?: {
     id: number;
@@ -108,23 +128,6 @@ function obtenerRangoMes(): { desde: string; hasta: string } {
   return { desde: format(primerDia), hasta: format(ultimoDia) };
 }
 
-function formatearFechaHora(fechaIso?: string | null): string {
-  if (!fechaIso) return '-';
-  try {
-    const d = new Date(fechaIso);
-    if (isNaN(d.getTime())) return fechaIso;
-    return d.toLocaleString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return fechaIso;
-  }
-}
-
 function obtenerEtiquetaTipoMovimiento(tipo: MovimientoFinancieroItem['tipo']): {
   texto: string;
   badgeClass: string;
@@ -173,6 +176,11 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   const { tienePermiso } = useAuthStore();
   const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
 
+  const onToastRef = useRef(onToast);
+  useEffect(() => {
+    onToastRef.current = onToast;
+  }, [onToast]);
+
   const [cuentas, setCuentas] = useState<CuentaFinancieraItem[]>([]);
   const [cuentaSeleccionadaId, setCuentaSeleccionadaId] = useState<number | null>(null);
   const [cargandoCuentas, setCargandoCuentas] = useState(true);
@@ -189,37 +197,45 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
   // Modales
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false);
+  const [cuentaAEditar, setCuentaAEditar] = useState<CuentaFinancieraItem | null>(null);
   const [modalTraspasoAbierto, setModalTraspasoAbierto] = useState(false);
+  const [modalIngresoAbierto, setModalIngresoAbierto] = useState(false);
+  const [ingresoAEditar, setIngresoAEditar] = useState<IngresoAEditarItem | null>(null);
+  const [modalGastoAbierto, setModalGastoAbierto] = useState(false);
+  const [gastoAEditar, setGastoAEditar] = useState<GastoAEditarItem | null>(null);
+  const [movimientoAEliminar, setMovimientoAEliminar] = useState<MovimientoFinancieroItem | null>(null);
+  const [modalConfirmarEliminar, setModalConfirmarEliminar] = useState(false);
+  const [eliminandoId, setEliminandoId] = useState<number | null>(null);
 
   // Cargar cuentas financieras
   const cargarCuentas = useCallback(
     async (idASeleccionar?: number) => {
-      setCargandoCuentas(true);
       try {
         const res = await api.get('/tesoreria/cuentas');
         const listaCuentas: CuentaFinancieraItem[] = res.data || [];
         setCuentas(listaCuentas);
 
         if (listaCuentas.length > 0) {
-          if (idASeleccionar && listaCuentas.some((c) => c.id === idASeleccionar)) {
-            setCuentaSeleccionadaId(idASeleccionar);
-          } else if (
-            cuentaSeleccionadaId === null ||
-            !listaCuentas.some((c) => c.id === cuentaSeleccionadaId)
-          ) {
-            setCuentaSeleccionadaId(listaCuentas[0].id);
-          }
+          setCuentaSeleccionadaId((prevId) => {
+            if (idASeleccionar && listaCuentas.some((c) => c.id === idASeleccionar)) {
+              return idASeleccionar;
+            }
+            if (prevId === null || !listaCuentas.some((c) => c.id === prevId)) {
+              return listaCuentas[0].id;
+            }
+            return prevId;
+          });
         } else {
           setCuentaSeleccionadaId(null);
         }
       } catch (err: any) {
         const msg = traducirErrorAmigable(err, 'No se pudieron cargar las cuentas financieras.');
-        if (onToast) onToast(msg, 'error');
+        if (onToastRef.current) onToastRef.current(msg, 'error');
       } finally {
         setCargandoCuentas(false);
       }
     },
-    [cuentaSeleccionadaId, onToast],
+    [],
   );
 
   useEffect(() => {
@@ -248,15 +264,52 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     } catch (err: any) {
       const msg = traducirErrorAmigable(err, 'No se pudo cargar el libro diario.');
       setErrorLibro(msg);
-      if (onToast) onToast(msg, 'error');
+      if (onToastRef.current) onToastRef.current(msg, 'error');
     } finally {
       setCargandoLibro(false);
     }
-  }, [cuentaSeleccionadaId, fechaDesde, fechaHasta, onToast]);
+  }, [cuentaSeleccionadaId, fechaDesde, fechaHasta]);
 
   useEffect(() => {
     cargarLibroDiario();
   }, [cargarLibroDiario]);
+
+  const ejecutarEliminacionIngreso = async () => {
+    if (!movimientoAEliminar) return;
+    const mov = movimientoAEliminar;
+    try {
+      setEliminandoId(mov.id);
+      await api.delete(`/tesoreria/ingresos/${mov.id}`);
+      setModalConfirmarEliminar(false);
+      setMovimientoAEliminar(null);
+      await Promise.all([cargarCuentas(), cargarLibroDiario()]);
+
+      mostrarToastConDeshacer(
+        `Ingreso "${mov.conceptoTexto}" eliminado.`,
+        async () => {
+          try {
+            await api.post('/tesoreria/ingresos', {
+              fecha: mov.fecha,
+              monto: Number(mov.montoIngreso),
+              descripcion: mov.conceptoTexto.replace(/^Ingreso:\s*/, '').split(' - ')[0],
+              cuentaId: mov.cuentaId,
+              rubroId: mov.rubroId || mov.rubro?.id,
+            });
+            await Promise.all([cargarCuentas(), cargarLibroDiario()]);
+            useToastStore.getState().mostrarToast('Ingreso restaurado correctamente.');
+          } catch (err: any) {
+            const msg = traducirErrorAmigable(err, 'No se pudo restaurar el ingreso.');
+            useToastStore.getState().mostrarToast(msg, 'error');
+          }
+        },
+      );
+    } catch (err: any) {
+      const msg = traducirErrorAmigable(err, 'No se pudo eliminar el ingreso.');
+      if (onToastRef.current) onToastRef.current(msg, 'error');
+    } finally {
+      setEliminandoId(null);
+    }
+  };
 
   // Manejo de filtros rápidos
   const aplicarFiltroRapido = (tipo: 'hoy' | 'semana' | 'mes' | 'todo') => {
@@ -281,10 +334,18 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
   const cuentaActiva = cuentas.find((c) => c.id === cuentaSeleccionadaId);
   const hayFiltroFecha = Boolean(fechaDesde || fechaHasta);
-  const saldoAnterior = libroDiario?.saldoAnterior ?? 0;
-  const movimientos = libroDiario?.movimientos ?? [];
+  const datosLibroListos = Boolean(
+    libroDiario && cuentaSeleccionadaId !== null && libroDiario.cuenta.id === cuentaSeleccionadaId,
+  );
+  const estaCargando =
+    cargandoCuentas ||
+    cargandoLibro ||
+    (cuentaSeleccionadaId !== null && !datosLibroListos && !errorLibro);
+
+  const saldoAnterior = datosLibroListos ? (libroDiario?.saldoAnterior ?? 0) : 0;
+  const movimientos = datosLibroListos ? (libroDiario?.movimientos ?? []) : [];
   const saldoHero =
-    libroDiario?.saldoActualConsolidado !== undefined
+    datosLibroListos && libroDiario?.saldoActualConsolidado !== undefined
       ? libroDiario.saldoActualConsolidado
       : cuentaActiva?.saldoActual ?? 0;
 
@@ -293,7 +354,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       {/* 1. Dynamic Account Tabs Strip */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
-          {cargandoCuentas ? (
+          {cargandoCuentas && cuentas.length === 0 ? (
             <div className="flex items-center gap-2">
               <div className="h-10 w-32 bg-paper-2 animate-pulse rounded-xl" />
               <div className="h-10 w-36 bg-paper-2 animate-pulse rounded-xl" />
@@ -340,7 +401,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => setModalCrearAbierto(true)}
+            onClick={() => {
+              setCuentaAEditar(null);
+              setModalCrearAbierto(true);
+            }}
             leftIcon={<PlusCircle className="w-4 h-4" />}
             className="shrink-0"
           >
@@ -350,63 +414,104 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       </div>
 
       {/* 2. Top Summary Hero Strip */}
-      {cuentaActiva && (
-        <div className="p-4 sm:p-5 rounded-2xl border border-rule bg-paper-2 shadow-2xs transition-colors">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="w-9 h-9 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
-                  {cuentaActiva.tipo === 'BANCO' ? (
-                    <Landmark className="w-5 h-5" />
-                  ) : (
-                    <Wallet className="w-5 h-5" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-ink text-lg leading-tight">
-                    {cuentaActiva.nombre}
-                  </h3>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-paper-3 text-ink-2">
-                      {cuentaActiva.tipo === 'CAJA_EFECTIVO'
-                        ? 'Caja Chica / Efectivo'
-                        : 'Cuenta Bancaria'}
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      <span>Activa</span>
-                    </span>
-                  </div>
+      {cuentaActiva ? (
+        <div className="p-4 sm:p-5 rounded-2xl border border-rule bg-paper-2 shadow-2xs transition-colors space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
+                {cuentaActiva.tipo === 'BANCO' ? (
+                  <Landmark className="w-5 h-5" />
+                ) : (
+                  <Wallet className="w-5 h-5" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-extrabold text-ink text-lg leading-tight">
+                  {cuentaActiva.nombre}
+                </h3>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-paper-3 text-ink-2">
+                    {cuentaActiva.tipo === 'CAJA_EFECTIVO'
+                      ? 'Caja Chica / Efectivo'
+                      : 'Cuenta Bancaria'}
+                  </span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    <span>Activa</span>
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-end sm:items-center gap-4 justify-between sm:justify-end">
-              <div className="text-left sm:text-right">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-muted">
-                  Saldo Disponible en Tiempo Real
-                </span>
-                <span className="text-2xl sm:text-3xl font-black text-ink tracking-tight">
-                  {formatearMoneda(saldoHero)}
-                </span>
-              </div>
-
-              {puedeGestionarTesoreria && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  onClick={() => setModalTraspasoAbierto(true)}
-                  leftIcon={<ArrowLeftRight className="w-4 h-4" />}
-                  className="shrink-0"
-                >
-                  Traspaso entre cuentas
-                </Button>
-              )}
+            <div className="p-3 sm:p-0 rounded-xl bg-surface sm:bg-transparent border sm:border-0 border-rule flex flex-col md:items-end">
+              <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                Saldo Disponible en Tiempo Real
+              </span>
+              <span className="text-2xl sm:text-3xl font-black text-ink tracking-tight mt-0.5">
+                {formatearMoneda(saldoHero)}
+              </span>
             </div>
           </div>
+
+          {puedeGestionarTesoreria && (
+            <div className="pt-3 border-t border-rule grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end gap-2">
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setIngresoAEditar(null);
+                  setModalIngresoAbierto(true);
+                }}
+                leftIcon={<PlusCircle className="w-4 h-4 shrink-0" />}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white justify-center text-xs sm:text-sm"
+                title="Registrar ingreso de dinero a esta cuenta"
+              >
+                + Ingreso
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  setGastoAEditar(null);
+                  setModalGastoAbierto(true);
+                }}
+                leftIcon={<Receipt className="w-4 h-4 shrink-0" />}
+                className="text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 justify-center text-xs sm:text-sm"
+                title="Registrar gasto o egreso desde esta cuenta"
+              >
+                - Gasto
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => setModalTraspasoAbierto(true)}
+                leftIcon={<ArrowLeftRight className="w-4 h-4 shrink-0" />}
+                className="justify-center text-xs sm:text-sm"
+              >
+                Traspaso
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  setCuentaAEditar(cuentaActiva);
+                  setModalCrearAbierto(true);
+                }}
+                leftIcon={<Pencil className="w-4 h-4 shrink-0" />}
+                className="justify-center text-xs sm:text-sm"
+              >
+                Editar
+              </Button>
+            </div>
+          )}
         </div>
-      )}
+      ) : cargandoCuentas ? (
+        <div className="p-5 rounded-2xl border border-rule bg-paper-2/60 animate-pulse h-[106px] sm:h-[90px]" />
+      ) : null}
 
       {/* 3. Date Filter / Arqueo Bar */}
       <div className="p-3.5 sm:p-4 rounded-2xl border border-rule bg-surface shadow-2xs space-y-3">
@@ -468,8 +573,8 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           </div>
 
           {/* Date Range Inputs */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-xs text-ink-2">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs text-ink-2">
               <label htmlFor="fecha-desde-input" className="font-semibold text-ink-muted">
                 Desde:
               </label>
@@ -481,37 +586,39 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   setFechaDesde(e.target.value);
                   setFiltroRapido('todo');
                 }}
-                className="min-h-[36px] rounded-xl border border-rule bg-paper-2 px-2.5 py-1 text-xs text-ink focus:border-brand outline-none"
+                className="w-full sm:w-auto min-h-[36px] rounded-xl border border-rule bg-paper-2 px-2.5 py-1 text-xs text-ink focus:border-brand outline-none"
               />
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-ink-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs text-ink-2">
               <label htmlFor="fecha-hasta-input" className="font-semibold text-ink-muted">
                 Hasta:
               </label>
-              <input
-                id="fecha-hasta-input"
-                type="date"
-                value={fechaHasta}
-                onChange={(e) => {
-                  setFechaHasta(e.target.value);
-                  setFiltroRapido('todo');
-                }}
-                className="min-h-[36px] rounded-xl border border-rule bg-paper-2 px-2.5 py-1 text-xs text-ink focus:border-brand outline-none"
-              />
-            </div>
+              <div className="flex items-center gap-1 w-full sm:w-auto">
+                <input
+                  id="fecha-hasta-input"
+                  type="date"
+                  value={fechaHasta}
+                  onChange={(e) => {
+                    setFechaHasta(e.target.value);
+                    setFiltroRapido('todo');
+                  }}
+                  className="flex-1 sm:w-auto min-h-[36px] rounded-xl border border-rule bg-paper-2 px-2.5 py-1 text-xs text-ink focus:border-brand outline-none"
+                />
 
-            {hayFiltroFecha && (
-              <button
-                type="button"
-                onClick={() => aplicarFiltroRapido('todo')}
-                className="p-2 text-ink-muted hover:text-ink rounded-lg hover:bg-paper-2 transition cursor-pointer"
-                title="Limpiar fechas"
-                aria-label="Limpiar fechas"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            )}
+                {hayFiltroFecha && (
+                  <button
+                    type="button"
+                    onClick={() => aplicarFiltroRapido('todo')}
+                    className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-ink-muted hover:text-ink rounded-xl border border-rule hover:bg-paper-2 transition cursor-pointer shrink-0"
+                    title="Limpiar fechas"
+                    aria-label="Limpiar fechas"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -531,7 +638,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         </div>
 
         {/* Loading state */}
-        {cargandoLibro && (
+        {estaCargando && (
           <div className="p-8 space-y-3">
             <div className="h-8 bg-paper-2 animate-pulse rounded-xl w-full" />
             <div className="h-8 bg-paper-2 animate-pulse rounded-xl w-full" />
@@ -540,7 +647,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         )}
 
         {/* Error state */}
-        {!cargandoLibro && errorLibro && (
+        {!estaCargando && errorLibro && (
           <div className="p-8 text-center space-y-3">
             <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
               {errorLibro}
@@ -557,8 +664,8 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           </div>
         )}
 
-        {/* Empty state */}
-        {!cargandoLibro && !errorLibro && movimientos.length === 0 && (
+        {/* Empty state: cuenta seleccionada sin movimientos */}
+        {!estaCargando && !errorLibro && cuentaSeleccionadaId && movimientos.length === 0 && (
           <div className="p-10 text-center space-y-2">
             <p className="text-sm font-bold text-ink">
               No hay movimientos registrados en este período
@@ -570,8 +677,20 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           </div>
         )}
 
+        {/* Empty state: sin cuentas creadas */}
+        {!estaCargando && !errorLibro && cuentas.length === 0 && (
+          <div className="p-10 text-center space-y-2">
+            <p className="text-sm font-bold text-ink">
+              No hay cuentas financieras creadas
+            </p>
+            <p className="text-xs text-ink-muted max-w-md mx-auto">
+              Crea una caja chica o cuenta bancaria para comenzar a registrar movimientos.
+            </p>
+          </div>
+        )}
+
         {/* Desktop Ledger Table */}
-        {!cargandoLibro && !errorLibro && (movimientos.length > 0 || hayFiltroFecha) && (
+        {!estaCargando && !errorLibro && cuentaSeleccionadaId && (movimientos.length > 0 || hayFiltroFecha) && (
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-paper-2 border-b border-rule text-ink font-bold">
@@ -582,6 +701,9 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   <th scope="col" className="py-3 px-4 text-right">Salida (-)</th>
                   <th scope="col" className="py-3 px-4 text-right">Saldo Acumulado</th>
                   <th scope="col" className="py-3 px-4">Registrado Por</th>
+                  {puedeGestionarTesoreria && (
+                    <th scope="col" className="py-3 px-4 text-center">Acciones</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
@@ -604,6 +726,9 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                     <td className="py-2.5 px-4 text-ink-muted text-[11px]">
                       Sistema
                     </td>
+                    {puedeGestionarTesoreria && (
+                      <td className="py-2.5 px-4 text-center text-ink-muted">-</td>
+                    )}
                   </tr>
                 )}
 
@@ -637,6 +762,12 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                             >
                               {tipoConfig.texto}
                             </span>
+                            {m.rubro?.nombre && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                <Tag className="w-2.5 h-2.5" />
+                                <span>{m.rubro.nombre}</span>
+                              </span>
+                            )}
                             {m.miembroNombre &&
                               !m.conceptoTexto
                                 .toLowerCase()
@@ -682,6 +813,68 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                           <span className="truncate max-w-[130px]">{usuarioNombre}</span>
                         </div>
                       </td>
+
+                      {puedeGestionarTesoreria && (
+                        <td className="py-3 px-4 whitespace-nowrap text-center">
+                          {m.tipo === 'INGRESO_OTRO' && (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIngresoAEditar({
+                                    id: m.id,
+                                    fecha: m.fecha,
+                                    montoIngreso: Number(m.montoIngreso),
+                                    conceptoTexto: m.conceptoTexto,
+                                    rubroId: m.rubroId || m.rubro?.id,
+                                    cuentaId: m.cuentaId,
+                                  });
+                                  setModalIngresoAbierto(true);
+                                }}
+                                className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                                title="Modificar este ingreso"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMovimientoAEliminar(m);
+                                  setModalConfirmarEliminar(true);
+                                }}
+                                disabled={eliminandoId === m.id}
+                                className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                                title="Eliminar este ingreso (deshacer disponible)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                          {m.tipo === 'EGRESO_GASTO' && m.gastoId && (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setGastoAEditar({
+                                    id: m.gastoId!,
+                                    fecha: m.fecha,
+                                    monto: Number(m.montoEgreso),
+                                    descripcion: m.gasto?.descripcion || m.conceptoTexto,
+                                    rubroId: m.rubroId || m.rubro?.id || 0,
+                                    cuentaId: m.cuentaId,
+                                    comprobanteNro: m.gasto?.comprobanteNro ?? null,
+                                  });
+                                  setModalGastoAbierto(true);
+                                }}
+                                className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                                title="Modificar este gasto"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -691,7 +884,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         )}
 
         {/* Mobile Responsive Cards Fallback */}
-        {!cargandoLibro && !errorLibro && movimientos.length > 0 && (
+        {!estaCargando && !errorLibro && cuentaSeleccionadaId && movimientos.length > 0 && (
           <div className="md:hidden divide-y divide-rule">
             {hayFiltroFecha && (
               <div className="p-3.5 bg-paper-2/60 space-y-1 text-xs">
@@ -753,12 +946,81 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   </div>
 
                   <div className="flex items-center justify-between gap-2 pt-1 border-t border-rule/50 text-[10px]">
-                    <span
-                      className={`font-semibold px-2 py-0.5 rounded-full border ${tipoConfig.badgeClass}`}
-                    >
-                      {tipoConfig.texto}
-                    </span>
-                    <span className="text-ink-muted truncate">{usuarioNombre}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`font-semibold px-2 py-0.5 rounded-full border ${tipoConfig.badgeClass}`}
+                      >
+                        {tipoConfig.texto}
+                      </span>
+                      {m.rubro?.nombre && (
+                        <span className="inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          <Tag className="w-2.5 h-2.5" />
+                          <span>{m.rubro.nombre}</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-ink-muted truncate">{usuarioNombre}</span>
+                      {puedeGestionarTesoreria && m.tipo === 'INGRESO_OTRO' && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIngresoAEditar({
+                                id: m.id,
+                                fecha: m.fecha,
+                                montoIngreso: Number(m.montoIngreso),
+                                conceptoTexto: m.conceptoTexto,
+                                rubroId: m.rubroId || m.rubro?.id,
+                                cuentaId: m.cuentaId,
+                              });
+                              setModalIngresoAbierto(true);
+                            }}
+                            className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                            title="Modificar ingreso"
+                            aria-label="Modificar ingreso"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMovimientoAEliminar(m);
+                              setModalConfirmarEliminar(true);
+                            }}
+                            className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                            title="Eliminar ingreso"
+                            aria-label="Eliminar ingreso"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      {puedeGestionarTesoreria && m.tipo === 'EGRESO_GASTO' && m.gastoId && (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setGastoAEditar({
+                                id: m.gastoId!,
+                                fecha: m.fecha,
+                                monto: Number(m.montoEgreso),
+                                descripcion: m.gasto?.descripcion || m.conceptoTexto,
+                                rubroId: m.rubroId || m.rubro?.id || 0,
+                                cuentaId: m.cuentaId,
+                                comprobanteNro: m.gasto?.comprobanteNro ?? null,
+                              });
+                              setModalGastoAbierto(true);
+                            }}
+                            className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                            title="Modificar gasto"
+                            aria-label="Modificar gasto"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -767,7 +1029,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         )}
 
         {/* 5. Bottom summary bar */}
-        {libroDiario && (
+        {!estaCargando && datosLibroListos && libroDiario && (
           <div className="p-4 sm:p-5 bg-paper-2 border-t border-rule">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-left">
               <div className="p-3 rounded-xl bg-surface border border-rule">
@@ -805,10 +1067,41 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       {modalCrearAbierto && (
         <ModalCrearCuentaFinanciera
           abierto={modalCrearAbierto}
-          onCerrar={() => setModalCrearAbierto(false)}
-          onCuentaCreada={(nuevaCuenta) => {
-            const nuevoId = nuevaCuenta?.id;
+          cuentaAEditar={cuentaAEditar}
+          onCerrar={() => {
+            setModalCrearAbierto(false);
+            setCuentaAEditar(null);
+          }}
+          onCuentaCreada={(cuentaGuardada) => {
+            const nuevoId = cuentaGuardada?.id ?? cuentaAEditar?.id;
             cargarCuentas(nuevoId);
+          }}
+          onCuentaEliminada={(cuenta, eliminadoPermanente) => {
+            cargarCuentas();
+            mostrarToastConDeshacer(
+              eliminadoPermanente
+                ? `Cuenta "${cuenta.nombre}" eliminada.`
+                : `Cuenta "${cuenta.nombre}" archivada como inactiva.`,
+              async () => {
+                try {
+                  if (eliminadoPermanente) {
+                    await api.post('/tesoreria/cuentas', {
+                      nombre: cuenta.nombre,
+                      tipo: cuenta.tipo,
+                    });
+                  } else {
+                    await api.patch(`/tesoreria/cuentas/${cuenta.id}`, {
+                      activa: true,
+                    });
+                  }
+                  await cargarCuentas(cuenta.id);
+                  useToastStore.getState().mostrarToast(`Cuenta "${cuenta.nombre}" restaurada.`);
+                } catch (err: any) {
+                  const msg = traducirErrorAmigable(err, 'No se pudo restaurar la cuenta.');
+                  useToastStore.getState().mostrarToast(msg, 'error');
+                }
+              },
+            );
           }}
           onToast={onToast}
         />
@@ -825,6 +1118,64 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             cargarLibroDiario();
           }}
           onToast={onToast}
+        />
+      )}
+
+      {modalIngresoAbierto && (
+        <ModalRegistrarIngreso
+          abierto={modalIngresoAbierto}
+          ingresoAEditar={ingresoAEditar}
+          cuentaIdInicial={cuentaSeleccionadaId}
+          onCerrar={() => {
+            setModalIngresoAbierto(false);
+            setIngresoAEditar(null);
+          }}
+          onIngresoRegistrado={(msg) => {
+            if (onToast) onToast(msg, 'exito');
+            cargarCuentas(cuentaSeleccionadaId ?? undefined);
+            cargarLibroDiario();
+          }}
+        />
+      )}
+
+      {modalGastoAbierto && (
+        <ModalRegistrarGasto
+          abierto={modalGastoAbierto}
+          gastoAEditar={gastoAEditar}
+          onCerrar={() => {
+            setModalGastoAbierto(false);
+            setGastoAEditar(null);
+          }}
+          onGastoRegistrado={(msg) => {
+            if (onToast) onToast(msg, 'exito');
+            cargarCuentas(cuentaSeleccionadaId ?? undefined);
+            cargarLibroDiario();
+          }}
+        />
+      )}
+
+      {modalConfirmarEliminar && movimientoAEliminar && (
+        <ModalConfirmacion
+          abierto={modalConfirmarEliminar}
+          onCerrar={() => !eliminandoId && setModalConfirmarEliminar(false)}
+          onConfirmar={ejecutarEliminacionIngreso}
+          titulo="Eliminar Ingreso"
+          tipo="peligro"
+          textoConfirmar={eliminandoId ? 'Eliminando...' : 'Sí, Eliminar Ingreso'}
+          textoCancelar="Cancelar"
+          cargando={Boolean(eliminandoId)}
+          mensaje={
+            <div className="space-y-3">
+              <p className="text-sm text-ink leading-relaxed">
+                ¿Estás seguro de que deseas eliminar el ingreso{' '}
+                <strong className="text-ink font-bold">"{movimientoAEliminar.conceptoTexto}"</strong> por{' '}
+                <strong className="text-ink font-bold">{formatearMoneda(Number(movimientoAEliminar.montoIngreso))}</strong>?
+              </p>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                El saldo de la cuenta se recalculará automáticamente. Podrás deshacer esta acción durante unos segundos.
+              </p>
+            </div>
+          }
         />
       )}
     </div>

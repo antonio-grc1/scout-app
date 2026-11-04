@@ -10,7 +10,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Alcance, RequirePermission } from '../common/decorators/auth.decorators.js';
+import { Alcance, RequireAnyPermission, RequirePermission } from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso } from '../common/types/auth.types.js';
 import {
@@ -35,6 +35,8 @@ import { OrganizacionService } from './organizacion.service.js';
 
 const VER = 'organizacion.ver';
 const GESTIONAR = 'organizacion.gestionar';
+const GESTIONAR_ROLES = ['roles.gestionar', 'organizacion.gestionar'];
+const VER_ROLES = ['organizacion.ver', 'roles.gestionar', 'organizacion.gestionar'];
 const incluirInactivas = new ParseBoolPipe({ optional: true });
 
 @Controller('organizacion')
@@ -117,19 +119,19 @@ export class OrganizacionController {
   }
 
   // ---------------- Roles ----------------
-  @RequirePermission(VER)
+  @RequireAnyPermission(...VER_ROLES)
   @Get('roles')
   listarRoles() {
     return this.org.listarRoles();
   }
 
-  @RequirePermission(GESTIONAR)
+  @RequireAnyPermission(...GESTIONAR_ROLES)
   @Post('roles')
   crearRol(@Alcance() a: AlcanceAcceso, @Body(new ZodValidationPipe(CrearRolSchema)) dto: CrearRolDto) {
     return this.org.crearRol(a, dto);
   }
 
-  @RequirePermission(GESTIONAR)
+  @RequireAnyPermission(...GESTIONAR_ROLES)
   @Patch('roles/:id')
   editarRol(
     @Alcance() a: AlcanceAcceso,
@@ -139,26 +141,26 @@ export class OrganizacionController {
     return this.org.editarRol(a, id, dto);
   }
 
-  @RequirePermission(GESTIONAR)
+  @RequireAnyPermission(...GESTIONAR_ROLES)
   @Delete('roles/:id')
   eliminarRol(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
     return this.org.eliminarRol(a, id);
   }
 
   // ---------------- Permisos ----------------
-  @RequirePermission(VER)
+  @RequireAnyPermission(...VER_ROLES)
   @Get('permisos')
   listarPermisos() {
     return this.org.listarPermisos();
   }
 
-  @RequirePermission(GESTIONAR)
+  @RequireAnyPermission(...GESTIONAR_ROLES)
   @Post('permisos')
   crearPermiso(@Alcance() a: AlcanceAcceso, @Body(new ZodValidationPipe(CrearPermisoSchema)) dto: CrearPermisoDto) {
     return this.org.crearPermiso(a, dto);
   }
 
-  @RequirePermission(GESTIONAR)
+  @RequireAnyPermission(...GESTIONAR_ROLES)
   @Patch('permisos/:id')
   editarPermiso(
     @Alcance() a: AlcanceAcceso,

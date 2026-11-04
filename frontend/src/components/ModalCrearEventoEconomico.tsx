@@ -13,8 +13,11 @@ import {
   Clock,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
+import { ModalConfirmacion } from './ModalConfirmacion';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface EventoAEditar {
   id: number;
@@ -69,11 +72,19 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
   const [tipo, setTipo] = useState<'RECAUDACION_PEDIDOS' | 'FESTIVAL_ENTRADAS'>('RECAUDACION_PEDIDOS');
   const [estado, setEstado] = useState<'BORRADOR' | 'PUBLICADO' | 'FINALIZADO' | 'CANCELADO'>('PUBLICADO');
   const [fechaEvento, setFechaEvento] = useState('');
-  const [lugarEntrega, setLugarEntrega] = useState('Sede del Grupo - Cocina');
+  const [lugarEntrega, setLugarEntrega] = useState('');
   const [rubroId, setRubroId] = useState<string>('');
   const [cuentaId, setCuentaId] = useState<string>('');
   const [guardando, setGuardando] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+  const [modalConfirmarEliminar, setModalConfirmarEliminar] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando || eliminando,
+  });
 
   // Listas
   const [rubros, setRubros] = useState<Array<{ id: number; nombre: string }>>([]);
@@ -82,10 +93,11 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
   // Items del evento
   const [items, setItems] = useState<ItemForm[]>([
     {
-      nombre: 'Pizza Muzzarella',
-      descripcion: 'Muzzarella, salsa y orégano',
-      precioVenta: '5000',
-      costoUnitario: '3000',
+      nombre: '',
+      descripcion: '',
+      precioVenta: '',
+      costoUnitario: '',
+      gananciaUnitaria: '',
       stockTotal: '',
     },
   ]);
@@ -106,9 +118,11 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             ? new Date(eventoAEditar.fechaEvento).toISOString().slice(0, 10)
             : new Date().toISOString().slice(0, 10),
         );
-        setLugarEntrega(eventoAEditar.lugarEntrega || 'Sede del Grupo');
-        setRubroId(eventoAEditar.rubroId ? String(eventoAEditar.rubroId) : '');
-        setCuentaId(eventoAEditar.cuentaId ? String(eventoAEditar.cuentaId) : '');
+        setLugarEntrega(eventoAEditar.lugarEntrega || '');
+        const rId = eventoAEditar.rubroId ?? eventoAEditar.rubro?.id;
+        const cId = eventoAEditar.cuentaId ?? eventoAEditar.cuenta?.id;
+        setRubroId(rId ? String(rId) : '');
+        setCuentaId(cId ? String(cId) : '');
 
         if (Array.isArray(eventoAEditar.items) && eventoAEditar.items.length > 0) {
           setItems(
@@ -133,14 +147,14 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
         setTipo('RECAUDACION_PEDIDOS');
         setEstado('PUBLICADO');
         setFechaEvento(d.toISOString().slice(0, 10));
-        setLugarEntrega('Sede del Grupo - Cocina');
+        setLugarEntrega('');
         setItems([
           {
-            nombre: 'Pizza Muzzarella',
-            descripcion: 'Muzzarella, salsa y orégano',
-            precioVenta: '5000',
-            costoUnitario: '3000',
-            gananciaUnitaria: '2000',
+            nombre: '',
+            descripcion: '',
+            precioVenta: '',
+            costoUnitario: '',
+            gananciaUnitaria: '',
             stockTotal: '',
           },
         ]);
@@ -265,9 +279,63 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
     }
   };
 
+  const handleEliminarEvento = async () => {
+    if (!eventoAEditar) return;
+    const eventoAEliminar = { ...eventoAEditar };
+    setEliminando(true);
+    try {
+      await api.delete(`/tesoreria/eventos/${eventoAEliminar.id}`);
+      setModalConfirmarEliminar(false);
+      onCerrar();
+      onGuardado();
+
+      mostrarToastConDeshacer(
+        `Evento "${eventoAEliminar.titulo}" eliminado.`,
+        async () => {
+          try {
+            await api.post('/tesoreria/eventos', {
+              titulo: eventoAEliminar.titulo,
+              descripcion: eventoAEliminar.descripcion || undefined,
+              tipo: eventoAEliminar.tipo,
+              fechaEvento: eventoAEliminar.fechaEvento,
+              fechaFin: eventoAEliminar.fechaFin || undefined,
+              lugarEntrega: eventoAEliminar.lugarEntrega || undefined,
+              rubroId: eventoAEliminar.rubroId || undefined,
+              cuentaId: eventoAEliminar.cuentaId || undefined,
+              items: (eventoAEliminar.items || []).map((it: any) => ({
+                nombre: it.nombre,
+                descripcion: it.descripcion || undefined,
+                precioVenta: Number(it.precioVenta),
+                costoUnitario: Number(it.costoUnitario || 0),
+                gananciaUnitaria: Number(it.gananciaUnitaria || 0),
+                stockTotal: it.stockTotal ? Number(it.stockTotal) : null,
+              })),
+            });
+            onGuardado();
+            useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" restaurado.`);
+          } catch (err: any) {
+            const msg = traducirErrorAmigable(err, 'No se pudo restaurar el evento.');
+            useToastStore.getState().mostrarToast(msg, 'error');
+          }
+        },
+      );
+    } catch (err) {
+      const msg = traducirErrorAmigable(err, 'No se pudo eliminar el evento.');
+      if (onToast) onToast(msg, 'error');
+    } finally {
+      setEliminando(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-2xl rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-150"
+      {...backdropProps}
+    >
+      <div
+        className="relative w-full max-w-2xl rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        {...contentProps}
+      >
         {/* Header */}
         <div className="p-4 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
@@ -336,7 +404,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
               type="text"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
-              placeholder="Ej: Gran Venta de Pizzas para Campamento de Verano"
+              placeholder="Ej: Venta de pizzas"
               className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
               required
             />
@@ -347,7 +415,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             <textarea
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Ej: Retiro en la sede el sábado a las 12hs. Todo lo recaudado suma al saldo del scout."
+              placeholder="Detalles o instrucciones de retiro"
               rows={2}
               className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand resize-none"
             />
@@ -378,7 +446,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                 type="text"
                 value={lugarEntrega}
                 onChange={(e) => setLugarEntrega(e.target.value)}
-                placeholder="Ej: Sede de Grupo - Calle 25 de Mayo 123"
+                placeholder="Ej: Sede del grupo"
                 className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
               />
             </div>
@@ -448,7 +516,9 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                 const gananciaVal =
                   it.gananciaUnitaria !== undefined && it.gananciaUnitaria !== ''
                     ? it.gananciaUnitaria
-                    : String(gananciaCalc);
+                    : pVenta > 0
+                    ? String(gananciaCalc)
+                    : '';
 
                 return (
                   <div
@@ -460,7 +530,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                         type="text"
                         value={it.nombre}
                         onChange={(e) => actualizarItem(idx, 'nombre', e.target.value)}
-                        placeholder="Nombre (ej: Pizza Especial de Jamón y Morrones)"
+                        placeholder="Ej: Pizza especial"
                         className="flex-1 py-1 px-2.5 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand"
                         required
                       />
@@ -488,7 +558,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                           min="0"
                           value={it.precioVenta}
                           onChange={(e) => actualizarItem(idx, 'precioVenta', e.target.value)}
-                          placeholder="5000"
+                          placeholder="0"
                           className="w-full py-1 px-2 rounded-xl bg-surface border border-rule text-xs font-black text-ink"
                           required
                         />
@@ -504,7 +574,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                           min="0"
                           value={it.costoUnitario}
                           onChange={(e) => actualizarItem(idx, 'costoUnitario', e.target.value)}
-                          placeholder="3000"
+                          placeholder="0"
                           className="w-full py-1 px-2 rounded-xl bg-surface border border-rule text-xs text-ink"
                         />
                       </div>
@@ -530,22 +600,62 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             </div>
           </div>
 
-          <div className="pt-3 flex justify-end gap-2 border-t border-rule shrink-0">
-            <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando}>
-              Cancelar
-            </Button>
-            <Button type="submit" variant="primary" disabled={guardando} className="gap-1.5">
-              <span>
-                {guardando
-                  ? 'Guardando...'
-                  : esModoEdicion
-                  ? 'Guardar Modificaciones'
-                  : 'Crear Evento y Habilitar Ventas'}
-              </span>
-            </Button>
+          <div className="pt-3 flex items-center justify-between gap-2 border-t border-rule shrink-0">
+            {esModoEdicion ? (
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                onClick={() => setModalConfirmarEliminar(true)}
+                disabled={guardando || eliminando}
+                className="gap-1.5 text-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Eliminar Evento</span>
+              </Button>
+            ) : <div />}
+
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando || eliminando}>
+                Cancelar
+              </Button>
+              <Button type="submit" variant="primary" disabled={guardando || eliminando} className="gap-1.5">
+                <span>
+                  {guardando
+                    ? 'Guardando...'
+                    : esModoEdicion
+                    ? 'Guardar Modificaciones'
+                    : 'Crear Evento y Habilitar Ventas'}
+                </span>
+              </Button>
+            </div>
           </div>
         </form>
       </div>
+
+      {modalConfirmarEliminar && eventoAEditar && (
+        <ModalConfirmacion
+          abierto={modalConfirmarEliminar}
+          onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
+          onConfirmar={handleEliminarEvento}
+          titulo="Eliminar Evento Económico"
+          tipo="peligro"
+          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Evento'}
+          textoCancelar="Cancelar"
+          cargando={eliminando}
+          mensaje={
+            <div className="space-y-3">
+              <p className="text-sm text-ink leading-relaxed">
+                ¿Estás seguro de que deseas eliminar permanentemente el evento{' '}
+                <strong className="text-ink font-bold">"{eventoAEditar.titulo}"</strong>?
+              </p>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Esta acción no se puede deshacer. Los eventos con vales ya canjeados o ganancias liquidadas a familias no pueden ser eliminados.
+              </p>
+            </div>
+          }
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
 import {
@@ -32,6 +33,8 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   const [fechaVencimiento, setFechaVencimiento] = useState('');
   const [destinatarioTipo, setDestinatarioTipo] = useState<'TODOS' | 'PROTAGONISTAS' | 'EDUCADORES'>('PROTAGONISTAS');
   const [unidadId, setUnidadId] = useState<number | null>(null);
+  const [rubroId, setRubroId] = useState<number | null>(null);
+  const [rubros, setRubros] = useState<any[]>([]);
   const [permiteDescuentoHermanos, setPermiteDescuentoHermanos] = useState(true);
   const [usarPorcentajePersonalizado, setUsarPorcentajePersonalizado] = useState(false);
   const [porcentajeDescuentoHermanos, setPorcentajeDescuentoHermanos] = useState<number | ''>('');
@@ -40,8 +43,15 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando,
+  });
+
   useEffect(() => {
     if (abierto) {
+      api.get('/tesoreria/rubros?tipo=INGRESO').then((r) => setRubros(r.data || [])).catch(() => {});
       if (conceptoAEditar) {
         setNombre(conceptoAEditar.nombre || '');
         setTipo(conceptoAEditar.tipo || 'CAMPAMENTO');
@@ -57,6 +67,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           dest === 'TODOS' || dest === 'EDUCADORES' ? dest : 'PROTAGONISTAS',
         );
         setUnidadId(conceptoAEditar.unidadId ?? null);
+        setRubroId(conceptoAEditar.rubroId ?? null);
         setPermiteDescuentoHermanos(conceptoAEditar.permiteDescuentoHermanos ?? true);
         if (
           conceptoAEditar.porcentajeDescuentoHermanos !== null &&
@@ -79,6 +90,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
         setFechaVencimiento('');
         setDestinatarioTipo('PROTAGONISTAS');
         setUnidadId(null);
+        setRubroId(null);
         setPermiteDescuentoHermanos(true);
         setUsarPorcentajePersonalizado(false);
         setPorcentajeDescuentoHermanos('');
@@ -114,6 +126,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
         fechaVencimiento: fechaVencimiento ? fechaVencimiento : null,
         destinatarioTipo,
         unidadId: unidadId ?? null,
+        rubroId: rubroId ?? null,
         permiteDescuentoHermanos,
         porcentajeDescuentoHermanos:
           permiteDescuentoHermanos && usarPorcentajePersonalizado && porcentajeDescuentoHermanos !== ''
@@ -140,8 +153,14 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+        {...contentProps}
+      >
         {/* Header */}
         <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
           <div className="flex items-center gap-3">
@@ -175,8 +194,8 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             </div>
           )}
 
-          {/* Nombre y Tipo */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Nombre, Categoría y Rubro Contable */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-ink-2 mb-1">
                 Nombre del Campamento / Cobro *
@@ -205,6 +224,24 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 <option value="INSCRIPCION">Inscripción / Afiliación</option>
                 <option value="MATERIALES">Materiales / Indumentaria</option>
                 <option value="OTRO">Otro Cobro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-ink-2 mb-1">
+                Rubro Contable
+              </label>
+              <select
+                value={rubroId ?? ''}
+                onChange={(e) => setRubroId(e.target.value ? Number(e.target.value) : null)}
+                className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              >
+                <option value="">Sin rubro contable</option>
+                {rubros.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nombre}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

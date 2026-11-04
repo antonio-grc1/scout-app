@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { X, Users, Percent, Check, AlertCircle, UserMinus, Trash2 } from 'lucide-react';
 import { traducirErrorAmigable } from '../lib/formatters';
@@ -28,6 +29,12 @@ export const ModalEditarFamilia: React.FC<Props> = ({
   const [desvinculandoId, setDesvinculandoId] = useState<number | null>(null);
   const [eliminandoGrupo, setEliminandoGrupo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: guardando || Boolean(desvinculandoId) || eliminandoGrupo,
+  });
 
   useEffect(() => {
     if (familia) {
@@ -104,8 +111,14 @@ export const ModalEditarFamilia: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-      <div className="bg-surface border border-rule rounded-3xl max-w-lg w-full shadow-md overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface border border-rule rounded-3xl max-w-lg w-full shadow-md overflow-hidden flex flex-col max-h-[90vh]"
+        {...contentProps}
+      >
         {/* Encabezado */}
         <div className="flex items-center justify-between p-5 border-b border-rule bg-paper-2">
           <div className="flex items-center gap-3">

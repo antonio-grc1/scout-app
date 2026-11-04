@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import {
   X,
@@ -81,6 +82,12 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: procesando,
+  });
 
   const saldoAFavorDisponible = Math.round(Number(miembro.saldoAFavor ?? 0) * 100) / 100;
 
@@ -317,8 +324,14 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
   const puedeConfirmar = !procesando && (totalImputado > 0 || montoEfectivoFinal > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+        {...contentProps}
+      >
         {/* Header */}
         <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
           <div className="flex items-center gap-3">

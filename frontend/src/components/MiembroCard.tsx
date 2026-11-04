@@ -8,6 +8,8 @@ import {
   esRolDeEducador,
   extraerTelefonosMiembro,
   formatearMoneda,
+  obtenerRolPrincipal,
+  obtenerRolesSecundarios,
 } from '../lib/formatters';
 import { BotonLlamarMiembro } from './BotonLlamarMiembro';
 import {
@@ -47,7 +49,8 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
   const puedeEjecutarPases = tienePermiso('pases.ejecutar');
   const puedeVerCuotas = tienePermiso('cuotas.ver') || tienePermiso('tesoreria.gestionar');
 
-  const asig = miembro.asignaciones?.[0];
+  const asig = obtenerRolPrincipal(miembro);
+  const rolesSecundarios = obtenerRolesSecundarios(miembro);
   const cfgRama = obtenerConfigRama(miembro, unidades);
   const edad = calcularEdad(miembro.fechaNacimiento);
   const camada = calcularCamada(miembro.fechaNacimiento);
@@ -60,7 +63,8 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
 
   const deudaTotal = Math.round(
     (miembro.cargos || []).reduce(
-      (acc: number, c: any) => acc + Math.max(0, Number(c.montoFinal) - Number(c.montoPagado)),
+      (acc: number, c: any) =>
+        c.estado === 'ANULADO' ? acc : acc + Math.max(0, Number(c.montoFinal) - Number(c.montoPagado)),
       0,
     ) * 100,
   ) / 100;
@@ -113,6 +117,15 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
                   {asig.rol.nombre}
                 </span>
               )}
+
+              {rolesSecundarios.map((sec: any) => (
+                <span
+                  key={sec.id}
+                  className="text-[10px] font-semibold text-brand bg-brand/10 px-2 py-0.5 rounded-full border border-brand/20"
+                >
+                  +{sec.rol?.nombre || 'Rol'} ({sec.unidad?.nombre || 'Global'})
+                </span>
+              ))}
 
               {edad !== null && (
                 <span className="text-[11px] text-ink-muted font-medium">

@@ -161,7 +161,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {puedeGestionarTesoreria && (
+          {(puedeGestionarTesoreria || puedeCobrarCuotas) && (
             <button
               type="button"
               onClick={onAbrirModalGenerarDeuda}
@@ -289,24 +289,26 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
-            {familiar && (
+          {puedeGestionarTesoreria && (
+            <div className="flex items-center gap-1.5">
+              {familiar && (
+                <button
+                  type="button"
+                  onClick={onAbrirModalEditarFamilia}
+                  className="px-2.5 py-1 rounded-lg bg-surface border border-brand/40 text-brand font-bold text-[11px] cursor-pointer"
+                >
+                  Editar Familia ({pctDesc}%)
+                </button>
+              )}
               <button
                 type="button"
-                onClick={onAbrirModalEditarFamilia}
-                className="px-2.5 py-1 rounded-lg bg-surface border border-brand/40 text-brand font-bold text-[11px] cursor-pointer"
+                onClick={onAbrirModalVincularHermano}
+                className="px-2.5 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[11px] cursor-pointer transition-colors"
               >
-                Editar Familia ({pctDesc}%)
+                + Hermano
               </button>
-            )}
-            <button
-              type="button"
-              onClick={onAbrirModalVincularHermano}
-              className="px-2.5 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[11px] cursor-pointer transition-colors"
-            >
-              + Hermano
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         {integrantesFamilia.length > 0 && (
@@ -322,15 +324,17 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                 <span>
                   {h.nombre} {h.apellido}
                 </span>
-                <button
-                  type="button"
-                  disabled={desvinculandoMiembroId === h.id}
-                  onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
-                  title={`Quitar a ${h.nombre} del grupo familiar`}
-                  className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
-                >
-                  {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
-                </button>
+                {puedeGestionarTesoreria && (
+                  <button
+                    type="button"
+                    disabled={desvinculandoMiembroId === h.id}
+                    onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
+                    title={`Quitar a ${h.nombre} del grupo familiar`}
+                    className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
+                  >
+                    {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
+                  </button>
+                )}
               </span>
             ))}
           </div>
@@ -353,7 +357,8 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               const desc = Number(c.montoDescuento ?? 0);
               const cfgEstado =
                 ESTADO_CARGO_CONFIG[c.estado] || ESTADO_CARGO_CONFIG.PENDIENTE;
-              const puedeCobrar = c.estado !== 'PAGADO' && c.estado !== 'ANULADO';
+              const puedeCobrar =
+                puedeCobrarCuotas && c.estado !== 'PAGADO' && c.estado !== 'ANULADO';
               const estaEditandoEste = cargoEditando?.id === c.id;
 
               return (
@@ -414,27 +419,31 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                         </button>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          estaEditandoEste
-                            ? setCargoEditando(null)
-                            : onIniciarEdicionCargo(c)
-                        }
-                        title="Editar monto o descuento de esta cuota"
-                        className="min-h-[38px] px-2.5 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-xs flex items-center gap-1 cursor-pointer"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
+                      {puedeCobrarCuotas && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              estaEditandoEste
+                                ? setCargoEditando(null)
+                                : onIniciarEdicionCargo(c)
+                            }
+                            title="Editar monto o descuento de esta cuota"
+                            className="min-h-[38px] px-2.5 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
 
-                      <button
-                        type="button"
-                        onClick={() => onAnularCargo(c)}
-                        title="Anular cuota (si tiene pagos, pasan a Saldo a Favor)"
-                        className="min-h-[38px] px-2.5 rounded-xl border border-rose-200/70 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold text-xs flex items-center gap-1 cursor-pointer"
-                      >
-                        <Ban className="w-3.5 h-3.5" />
-                      </button>
+                          <button
+                            type="button"
+                            onClick={() => onAnularCargo(c)}
+                            title="Anular cuota (si tiene pagos, pasan a Saldo a Favor)"
+                            className="min-h-[38px] px-2.5 rounded-xl border border-rose-200/70 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -562,33 +571,35 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                       ({formatearMoneda(ca.montoFinal)})
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      disabled={procesandoAccionCuota}
-                      onClick={() =>
-                        onReactivarCargo(ca.id, ca.concepto?.nombre || 'Cuota')
-                      }
-                      className="px-2.5 py-1 rounded-lg bg-brand/10 text-brand border border-brand/30 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Reactivar</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={procesandoAccionCuota}
-                      onClick={() =>
-                        onEliminarCargoDefinitivo(
-                          ca.id,
-                          ca.concepto?.nombre || 'Cuota',
-                        )
-                      }
-                      title="Eliminar definitivamente"
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {puedeCobrarCuotas && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={procesandoAccionCuota}
+                        onClick={() =>
+                          onReactivarCargo(ca.id, ca.concepto?.nombre || 'Cuota')
+                        }
+                        className="px-2.5 py-1 rounded-lg bg-brand/10 text-brand border border-brand/30 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Reactivar</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={procesandoAccionCuota}
+                        onClick={() =>
+                          onEliminarCargoDefinitivo(
+                            ca.id,
+                            ca.concepto?.nombre || 'Cuota',
+                          )
+                        }
+                        title="Eliminar definitivamente"
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -639,34 +650,36 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          editandoEstePago
-                            ? setPagoEditando(null)
-                            : setPagoEditando({
-                                id: p.id,
-                                metodoPago: p.metodoPago || 'EFECTIVO',
-                                referenciaComprobante: p.referenciaComprobante || '',
-                                observaciones: p.observaciones || '',
-                              })
-                        }
-                        title="Editar método o comprobante"
-                        className="p-1.5 rounded-lg text-ink-muted hover:bg-paper-3 cursor-pointer"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onRevertirPago(p)}
-                        title="Revertir / Anular este pago"
-                        className="px-2 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        <span>Revertir</span>
-                      </button>
-                    </div>
+                    {puedeCobrarCuotas && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            editandoEstePago
+                              ? setPagoEditando(null)
+                              : setPagoEditando({
+                                  id: p.id,
+                                  metodoPago: p.metodoPago || 'EFECTIVO',
+                                  referenciaComprobante: p.referenciaComprobante || '',
+                                  observaciones: p.observaciones || '',
+                                })
+                          }
+                          title="Editar método o comprobante"
+                          className="p-1.5 rounded-lg text-ink-muted hover:bg-paper-3 cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onRevertirPago(p)}
+                          title="Revertir / Anular este pago"
+                          className="px-2 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Revertir</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {editandoEstePago && pagoEditando && (

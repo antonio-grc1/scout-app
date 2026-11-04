@@ -39,3 +39,33 @@ export interface AuthenticatedRequest extends Request {
   user: AuthUser;
   alcance?: AlcanceAcceso;
 }
+
+export const PERMISOS_SISTEMA = [
+  'organizacion.ver',
+  'organizacion.gestionar',
+  'roles.gestionar',
+  'miembros.ver',
+  'miembros.crear',
+  'miembros.editar',
+  'miembros.editar_identidad',
+  'miembros.baja',
+  'auth.resetear_clave',
+  'pases.ver',
+  'pases.ejecutar',
+  'legajos.ver',
+  'legajos.completar',
+  'legajos.validar_fisico',
+  'legajos.plantillas_gestionar',
+  'cuotas.ver',
+  'cuotas.cobrar',
+  'cuotas.ajustar',
+  'tesoreria.conceptos_planes',
+  'tesoreria.caja_ver',
+  'tesoreria.gastos_registrar',
+  'tesoreria.gestionar',
+  'eventos.ver',
+  'eventos.vender',
+  'eventos.gestionar',
+] as const;
+
+export type PermisoSistema = (typeof PERMISOS_SISTEMA)[number];

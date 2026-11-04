@@ -3,10 +3,8 @@ import { Navbar } from '../../components/Navbar';
 import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
-import { useThemeStore } from '../../store/themeStore';
 import { obtenerConfigRama } from '../../lib/ramaColors';
 import { Button } from '../../components/ui/Button';
-import { ThemeCustomizerModal } from '../../components/ThemeCustomizerModal';
 import {
   calcularEdad,
   traducirErrorAmigable,
@@ -25,17 +23,14 @@ import {
   EyeOff,
   CheckCircle2,
   AlertCircle,
-  Palette,
 } from 'lucide-react';
 
 export const PerfilPage: React.FC = () => {
   const { usuario, setSesion } = useAuthStore();
-  const { customization } = useThemeStore();
   const [perfil, setPerfil] = useState<any | null>(null);
   const [cargando, setCargando] = useState(true);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
   const [guardandoClave, setGuardandoClave] = useState(false);
-  const [customizerAbierto, setCustomizerAbierto] = useState(false);
   const [alertaContacto, setAlertaContacto] = useState<{
     tipo: 'exito' | 'error';
     texto: string;
@@ -177,11 +172,13 @@ export const PerfilPage: React.FC = () => {
     }
   };
 
-  const asigPrincipal = perfil?.asignaciones?.[0];
+  const asigPrincipal =
+    perfil?.asignaciones?.find((a: any) => a.activo) ?? perfil?.asignaciones?.[0];
   const cfgRama = obtenerConfigRama(asigPrincipal?.unidad);
   const hermanos = (perfil?.grupoFamiliar?.miembros || []).filter(
     (h: any) => h.id !== perfil?.id,
   );
+  const asignacionesActivas = (perfil?.asignaciones || []).filter((a: any) => a.activo);
 
   return (
     <div className="min-h-screen bg-paper pb-24 sm:pb-10 transition-colors">
@@ -220,7 +217,7 @@ export const PerfilPage: React.FC = () => {
 
                 {/* Asignaciones activas */}
                 <div className="flex flex-wrap gap-1.5">
-                  {(perfil?.asignaciones || []).map((a: any) => {
+                  {asignacionesActivas.map((a: any) => {
                     const c = obtenerConfigRama(a.unidad);
                     return (
                       <span
@@ -258,81 +255,6 @@ export const PerfilPage: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Tarjeta de Personalización y Apariencia */}
-            <div className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs space-y-4 transition-colors">
-              <div className="flex items-center gap-2 border-b border-rule pb-3">
-                <Palette className="w-4 h-4 text-brand" />
-                <div>
-                  <h2 className="text-sm font-extrabold text-ink">
-                    Personalización y Apariencia
-                  </h2>
-                  <p className="text-[11px] text-ink-muted">
-                    Configurá la paleta institucional y la escala tipográfica en este dispositivo.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  {/* Muestras de color activas */}
-                  <div className="flex items-center -space-x-1.5 overflow-hidden p-1">
-                    <span
-                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs bg-brand"
-                      title="Color Primario"
-                    />
-                    <span
-                      style={{ backgroundColor: 'var(--color-navbar)' }}
-                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs"
-                      title="Barra de Navegación"
-                    />
-                    <span
-                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs bg-paper"
-                      title="Fondo General"
-                    />
-                    <span
-                      className="inline-block w-6 h-6 rounded-full border-2 border-surface shadow-2xs bg-ink"
-                      title="Color de Texto"
-                    />
-                  </div>
-
-                  <div>
-                    <span className="text-xs font-bold text-ink block">
-                      Tema en uso:{' '}
-                      <span className="text-brand font-extrabold">
-                        {customization?.preset === 'nautical'
-                          ? 'Azul Marino & Oro'
-                          : customization?.preset === 'forest'
-                            ? 'Bosque & Arena'
-                            : customization?.preset === 'contrast'
-                              ? 'Alto Contraste'
-                              : customization?.preset === 'custom'
-                                ? 'Personalizado'
-                                : 'Scout Tradicional'}
-                      </span>
-                    </span>
-                    <span className="text-[11px] text-ink-muted">
-                      Escala de texto: {customization?.fontScale || '100%'}
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => setCustomizerAbierto(true)}
-                  leftIcon={<Palette className="w-4 h-4" />}
-                  className="min-h-[44px] cursor-pointer whitespace-nowrap"
-                >
-                  <span>Personalizar Tema</span>
-                </Button>
-              </div>
-            </div>
-
-            <ThemeCustomizerModal
-              abierto={customizerAbierto}
-              onCerrar={() => setCustomizerAbierto(false)}
-            />
 
             {/* Formulario de Contacto y Teléfonos Familiares */}
             <form

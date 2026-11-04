@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api/client';
 import { ESTADO_FICHA_CONFIG, traducirErrorAmigable } from '../lib/formatters';
+import { useModalOverlay } from '../hooks/useModalOverlay';
 
 interface Props {
   abierto: boolean;
@@ -26,6 +27,12 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
   const [cargando, setCargando] = useState(false);
   const [validando, setValidando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { backdropProps, contentProps } = useModalOverlay({
+    abierto,
+    onCerrar,
+    bloqueado: validando,
+  });
   const [exito, setExito] = useState<string | null>(null);
   const [previaEntrega, setPreviaEntrega] = useState<any | null>(null);
 
@@ -173,8 +180,14 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
-      <div className="bg-surface border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-md overflow-hidden shadow-2xl transition-colors text-ink">
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-end sm:items-center justify-center sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-md overflow-hidden shadow-2xl transition-colors text-ink"
+        {...contentProps}
+      >
         {/* Cabecera */}
         <div className="flex items-center justify-between p-4 border-b border-rule">
           <div className="flex items-center gap-2">

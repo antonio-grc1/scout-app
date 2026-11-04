@@ -1,6 +1,6 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { overflow-x: clip; }
-html { font-size: var(--font-scale, 100%); scrollbar-color: var(--color-muted) var(--color-paper); scroll-padding-top: var(--space-3xl); transition: font-size 150ms ease-out; }
+html { font-size: var(--font-scale, 100%); scrollbar-gutter: stable; scrollbar-color: var(--color-muted) var(--color-paper); scroll-padding-top: var(--space-3xl); transition: font-size 150ms ease-out; }
 body { margin: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-body); font-size: var(--text-md); line-height: 1.55; -webkit-font-smoothing: antialiased; caret-color: var(--color-accent); }
 ::selection { background: color-mix(in oklab, var(--color-accent) 22%, transparent); color: var(--color-ink); }
 :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
@@ -23,3 +23,20 @@ button, input, select, textarea { font: inherit; }
 @media (max-width: 60rem) { :root { --gutter: 24px; --section-gap-s: 80px; --section-gap: 96px; --section-gap-l: 120px; } }
 @media (max-width: 40rem) { :root { --gutter: 16px; --section-gap-s: 56px; --section-gap: 72px; --section-gap-l: 96px; --gap-columns: 16px; } }
 @media (prefers-reduced-motion: reduce) { *:not(.keep-motion), *:not(.keep-motion)::before, *:not(.keep-motion)::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
+
+/* Prevenir scroll encadenado hacia la pantalla de abajo al scrollear en modales o pantallas superpuestas */
+.fixed.inset-0,
+[role="dialog"],
+[aria-modal="true"] {
+  overscroll-behavior: contain;
+}
+
+.fixed.inset-0 [class*="overflow-y-auto"],
+.fixed.inset-0 [class*="overflow-auto"],
+.fixed.inset-0 [class*="overflow-x-auto"],
+[role="dialog"] [class*="overflow-y-auto"],
+[role="dialog"] [class*="overflow-auto"],
+[role="dialog"] [class*="overflow-x-auto"] {
+  overscroll-behavior: contain;
+}
+
