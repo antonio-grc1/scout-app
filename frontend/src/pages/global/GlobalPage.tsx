@@ -80,7 +80,10 @@ export const GlobalPage: React.FC = () => {
   const puedeVerEventos =
     tienePermiso('eventos.ver') ||
     tienePermiso('eventos.vender') ||
-    tienePermiso('eventos.gestionar');
+    tienePermiso('eventos.gestionar') ||
+    tienePermiso('tesoreria.gestionar') ||
+    tienePermiso('tesoreria.conceptos_planes') ||
+    tienePermiso('cuotas.ver');
   const puedeVerPlanes =
     tienePermiso('tesoreria.conceptos_planes') ||
     tienePermiso('tesoreria.gestionar') ||
@@ -512,7 +515,7 @@ export const GlobalPage: React.FC = () => {
                   }`}
                 >
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>Eventos y Vales QR</span>
+                  <span>Eventos Económicos (QR)</span>
                 </button>
               )}
 
@@ -542,7 +545,7 @@ export const GlobalPage: React.FC = () => {
                   }`}
                 >
                   <Tent className="w-4 h-4" />
-                  <span>Campamentos y Eventos</span>
+                  <span>Campamentos y Cobros Especiales</span>
                 </button>
               )}
 
