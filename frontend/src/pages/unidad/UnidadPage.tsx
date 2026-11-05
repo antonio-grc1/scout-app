@@ -7,24 +7,28 @@ import { ModalScannerQR } from '../../components/ModalScannerQR';
 import { ModalEventosUnidad } from '../../components/ModalEventosUnidad';
 import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
 import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
+import { ModalImportarMiembros } from '../../components/ModalImportarMiembros';
 import { MiembroCard } from '../../components/MiembroCard';
 import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
 import { useModalOverlay } from '../../hooks/useModalOverlay';
-import { obtenerConfigRama } from '../../lib/ramaColors';
+import { obtenerConfigRama, obtenerOrdenRama } from '../../lib/ramaColors';
 import {
   ESTADO_FICHA_CONFIG,
   calcularCamada,
   calcularEdad,
   esRolDeEducador,
-  formatearMoneda,
+  formatearFecha,
   formatearNombreFamilia,
   normalizarTextoBusqueda,
   traducirErrorAmigable,
 } from '../../lib/formatters';
+import { BotonExportar } from '../../components/ui';
+import { exportarAExcel, exportarACSV, type ColumnaExportacion } from '../../utils/exportadorPlanillas';
 import {
   Users,
   QrCode,
   UserPlus,
+  Upload,
   Search,
   CheckCircle2,
   Clock,
@@ -44,6 +48,7 @@ import {
   Calendar,
   ChevronDown,
   RotateCcw,
+  Filter,
   Ticket,
   ShoppingBag,
   HeartHandshake,
@@ -72,6 +77,19 @@ const calcularDeudaMiembro = (m: any): number =>
     ) * 100,
   ) / 100;
 
+const obtenerTextoDireccion = (campo: CampoOrden, dir: DireccionOrden): string => {
+  switch (campo) {
+    case 'seccion':
+      return dir === 'asc' ? 'Menor a mayor edad' : 'Mayor a menor edad';
+    case 'miembro':
+      return dir === 'asc' ? 'A → Z (Apellido)' : 'Z → A (Apellido)';
+    case 'edad':
+      return dir === 'asc' ? 'Menor a mayor edad' : 'Mayor a menor edad';
+    case 'ficha':
+      return dir === 'asc' ? 'Pendientes primero' : 'Validadas primero';
+  }
+};
+
 export const UnidadPage: React.FC = () => {
   const { tienePermiso } = useAuthStore();
   const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
@@ -96,6 +114,7 @@ export const UnidadPage: React.FC = () => {
   const [modalEventosAbierto, setModalEventosAbierto] = useState(false);
   const [modalScannerEventosAbierto, setModalScannerEventosAbierto] = useState(false);
   const [modalAltaAbierto, setModalAltaAbierto] = useState(false);
+  const [modalImportarAbierto, setModalImportarAbierto] = useState(false);
   const [miembroSeleccionadoId, setMiembroSeleccionadoId] = useState<number | null>(null);
   const [tabInicialModal, setTabInicialModal] = useState<
     'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'
@@ -139,8 +158,12 @@ export const UnidadPage: React.FC = () => {
   const [menuCamadasAbierto, setMenuCamadasAbierto] = useState(false);
   const [menuAccionesAbierto, setMenuAccionesAbierto] = useState(false);
   const [chipActivo, setChipActivo] = useState<ChipFiltro>('TODOS');
+  const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
+
+  const totalFiltrosAvanzados =
+    seccionesFiltro.length + rolesFiltro.length + camadasFiltro.length;
 
   // Ordenamiento
   const [campoOrden, setCampoOrden] = useState<CampoOrden>('seccion');
@@ -192,7 +215,7 @@ export const UnidadPage: React.FC = () => {
     try {
       const [resMiembros, resCandidatos, resEntregas, resUnidades, resRoles, resRamas] =
         await Promise.all([
-          api.get('/miembros?porPagina=200&incluirInactivos=true'),
+          api.get('/miembros?porPagina=2000&incluirInactivos=true'),
           puedeVerPases ? api.get('/pases/candidatos').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           puedeVerFichas ? api.get('/legajos/entregas?cicloAnio=2026').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/organizacion/unidades').catch(() => ({ data: [] })),
@@ -444,13 +467,53 @@ export const UnidadPage: React.FC = () => {
           break;
         }
         case 'seccion': {
+          // 1. Orden de progresión de la Rama / Sección por orden de edades (Lobatos -> Scout -> Caminantes -> Rover -> Adultos)
+          const ordenRamaA = obtenerOrdenRama(a, unidades, ramas);
+          const ordenRamaB = obtenerOrdenRama(b, unidades, ramas);
+          if (ordenRamaA !== ordenRamaB) {
+            comp = ordenRamaA - ordenRamaB;
+            break;
+          }
+
+          // 2. Si pertenecen a la misma rama, agrupar por nombre de la sección (ej: dos secciones scouts)
           const seccionA = a.asignaciones?.[0]?.unidad?.nombre || '';
           const seccionB = b.asignaciones?.[0]?.unidad?.nombre || '';
-          comp =
-            seccionA.localeCompare(seccionB, 'es') ||
-            `${a.apellido} ${a.nombre}`
-              .toLowerCase()
-              .localeCompare(`${b.apellido} ${b.nombre}`.toLowerCase(), 'es');
+          const compSeccion = seccionA.localeCompare(seccionB, 'es');
+          if (compSeccion !== 0) {
+            comp = compSeccion;
+            break;
+          }
+
+          // 3. Rol: Protagonistas (menores) primero, Educadores (adultos) después
+          const asigA = a.asignaciones?.[0];
+          const asigB = b.asignaciones?.[0];
+          const esEduA = esRolDeEducador(asigA?.rol) ? 1 : 0;
+          const esEduB = esRolDeEducador(asigB?.rol) ? 1 : 0;
+          if (esEduA !== esEduB) {
+            comp = esEduA - esEduB;
+            break;
+          }
+
+          // 4. Dentro del mismo rol: ordenar por orden de edades (menor a mayor edad según fecha de nacimiento)
+          const timeA = a.fechaNacimiento ? new Date(a.fechaNacimiento).getTime() : 0;
+          const timeB = b.fechaNacimiento ? new Date(b.fechaNacimiento).getTime() : 0;
+          if (timeA && timeB && timeA !== timeB) {
+            comp = timeB - timeA;
+            break;
+          }
+          if (timeA && !timeB) {
+            comp = -1;
+            break;
+          }
+          if (!timeA && timeB) {
+            comp = 1;
+            break;
+          }
+
+          // 5. Desempate alfabético por Apellido y Nombre
+          comp = `${a.apellido} ${a.nombre}`
+            .toLowerCase()
+            .localeCompare(`${b.apellido} ${b.nombre}`.toLowerCase(), 'es');
           break;
         }
         case 'edad': {
@@ -482,6 +545,7 @@ export const UnidadPage: React.FC = () => {
     campoOrden,
     direccionOrden,
     unidades,
+    ramas,
   ]);
 
   // Camadas disponibles de protagonistas según sección y rol actuales
@@ -621,6 +685,92 @@ export const UnidadPage: React.FC = () => {
   ) => {
     setMiembroSeleccionadoId(id);
     setTabInicialModal(tab);
+  };
+
+  const prepararColumnasPadron = (): ColumnaExportacion<any>[] => [
+    { header: 'Apellido', formatear: (m) => m.apellido || '' },
+    { header: 'Nombre', formatear: (m) => m.nombre || '' },
+    { header: 'DNI', formatear: (m) => m.dni || '' },
+    {
+      header: 'Fecha Nacimiento',
+      formatear: (m) => (m.fechaNacimiento ? formatearFecha(m.fechaNacimiento) : ''),
+    },
+    { header: 'Edad', formatear: (m) => calcularEdad(m.fechaNacimiento) ?? '' },
+    { header: 'Camada', formatear: (m) => calcularCamada(m.fechaNacimiento) ?? '' },
+    {
+      header: 'Rama / Sección',
+      formatear: (m) => obtenerConfigRama(m, unidades).nombre || '',
+    },
+    {
+      header: 'Rol / Función',
+      formatear: (m) => {
+        const asig = m.asignaciones?.[0];
+        return asig?.rol?.nombre || (typeof asig?.rol === 'string' ? asig.rol : '') || '';
+      },
+    },
+    { header: 'Estado', formatear: (m) => (m.activo ? 'Activo' : 'Baja') },
+    {
+      header: 'Teléfono',
+      formatear: (m) => m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
+    },
+    { header: 'Email', formatear: (m) => m.emailContacto || '' },
+    { header: 'Domicilio', formatear: (m) => m.datosFijosJson?.domicilio || '' },
+    {
+      header: 'Familia',
+      formatear: (m) => formatearNombreFamilia(m.grupoFamiliar?.nombreFamilia) || '',
+    },
+    {
+      header: 'Ficha Médica',
+      formatear: (m) => {
+        const entrega = entregasPorUsuario.get(m.id);
+        if (entrega?.estado === 'VALIDADO_FISICAMENTE') return 'Validada Físicamente';
+        if (entrega) return 'Completada / Pendiente';
+        return 'Sin Entregar';
+      },
+    },
+    { header: 'Saldo a Favor ($)', formatear: (m) => Number(m.saldoAFavor || 0) },
+    { header: 'Deuda Cuotas ($)', formatear: (m) => calcularDeudaMiembro(m) },
+  ];
+
+  const handleExportarPadronExcel = async () => {
+    if (miembrosFiltrados.length === 0) {
+      mostrarToast('No hay miembros para exportar con los filtros seleccionados.', 'error');
+      return;
+    }
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    await exportarAExcel({
+      nombreArchivo: `Padron_Grupo_Juan_XXIII_${fechaHoy}`,
+      nombreHoja: 'Padrón',
+      columnas: prepararColumnasPadron(),
+      filas: miembrosFiltrados,
+      resumenSuperior: [
+        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
+        { etiqueta: 'Reporte', valor: 'Padrón de Miembros' },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Total de Registros', valor: miembrosFiltrados.length },
+      ],
+    });
+    mostrarToast('Padrón exportado exitosamente a Excel.');
+  };
+
+  const handleExportarPadronCSV = () => {
+    if (miembrosFiltrados.length === 0) {
+      mostrarToast('No hay miembros para exportar con los filtros seleccionados.', 'error');
+      return;
+    }
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    exportarACSV({
+      nombreArchivo: `Padron_Grupo_Juan_XXIII_${fechaHoy}`,
+      columnas: prepararColumnasPadron(),
+      filas: miembrosFiltrados,
+      resumenSuperior: [
+        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
+        { etiqueta: 'Reporte', valor: 'Padrón de Miembros' },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Total de Registros', valor: miembrosFiltrados.length },
+      ],
+    });
+    mostrarToast('Padrón exportado exitosamente a CSV.');
   };
 
   // Acciones secundarias de la cabecera: en escritorio se muestran en línea;
@@ -769,6 +919,27 @@ export const UnidadPage: React.FC = () => {
               </div>
             )}
 
+            <BotonExportar
+              size="md"
+              disabled={miembrosFiltrados.length === 0}
+              onExportarExcel={handleExportarPadronExcel}
+              onExportarCSV={handleExportarPadronCSV}
+              tituloTooltip="Exportar padrón filtrado como hoja de cálculo"
+              className="flex-1 sm:flex-initial"
+            />
+
+            {tienePermiso('miembros.crear') && (
+              <button
+                type="button"
+                onClick={() => setModalImportarAbierto(true)}
+                className="flex-1 sm:flex-initial min-h-[44px] px-3.5 sm:px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+                title="Importar miembros desde hoja de cálculo Excel o CSV"
+              >
+                <Upload className="w-4 h-4 text-brand shrink-0" />
+                <span>Importar</span>
+              </button>
+            )}
+
             {tienePermiso('miembros.crear') && (
               <button
                 onClick={() => setModalAltaAbierto(true)}
@@ -781,31 +952,109 @@ export const UnidadPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Buscador Único en Vivo */}
-        <div className="relative w-full">
-          <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            inputMode="search"
-            placeholder="Buscar por nombre, apellido, DNI, familia, sección o rol..."
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full min-h-[44px] pl-10 pr-10 py-2 rounded-2xl border border-rule text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none bg-surface text-ink placeholder:text-ink-muted shadow-2xs transition-colors [&::-webkit-search-cancel-button]:hidden"
-          />
-          {busqueda && (
-            <button
-              type="button"
-              onClick={() => setBusqueda('')}
-              aria-label="Limpiar búsqueda"
-              className="min-w-[40px] min-h-[40px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+        {/* Buscador Único en Vivo y Botón de Filtros Móvil */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              inputMode="search"
+              placeholder="Buscar por nombre, apellido, DNI, familia, sección o rol..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              className="w-full min-h-[44px] pl-10 pr-10 py-2 rounded-2xl border border-rule text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none bg-surface text-ink placeholder:text-ink-muted shadow-2xs transition-colors [&::-webkit-search-cancel-button]:hidden"
+            />
+            {busqueda && (
+              <button
+                type="button"
+                onClick={() => setBusqueda('')}
+                aria-label="Limpiar búsqueda"
+                className="min-w-[40px] min-h-[40px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Botón para desplegar/ocultar filtros avanzados en pantalla móvil */}
+          <button
+            type="button"
+            onClick={() => {
+              if (mostrarFiltrosMovil) {
+                setMenuSeccionesAbierto(false);
+                setMenuRolesAbierto(false);
+                setMenuCamadasAbierto(false);
+              }
+              setMostrarFiltrosMovil(!mostrarFiltrosMovil);
+            }}
+            aria-expanded={mostrarFiltrosMovil}
+            aria-controls="panel-filtros-avanzados"
+            aria-label={mostrarFiltrosMovil ? 'Ocultar filtros' : 'Desplegar filtros'}
+            className={`sm:hidden min-h-[44px] px-3.5 rounded-2xl border flex items-center gap-1.5 text-xs font-bold transition cursor-pointer shrink-0 shadow-2xs ${
+              totalFiltrosAvanzados > 0 || mostrarFiltrosMovil
+                ? 'border-brand bg-brand/10 text-brand'
+                : 'border-rule bg-surface text-ink hover:bg-paper-2'
+            }`}
+          >
+            <Filter className="w-4 h-4 shrink-0" />
+            <span>Filtros</span>
+            {totalFiltrosAvanzados > 0 && (
+              <span className="min-w-[18px] h-4.5 px-1 rounded-full bg-brand text-brand-contrast text-[10px] font-extrabold flex items-center justify-center">
+                {totalFiltrosAvanzados}
+              </span>
+            )}
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform ${
+                mostrarFiltrosMovil ? 'rotate-180 text-brand' : 'text-ink-muted'
+              }`}
+            />
+          </button>
         </div>
 
-        {/* Filtros Primarios: Sección (Unidad Operativa) y Rol con soporte Multi-Select Checkboxes */}
-        <div className="space-y-2">
+        {/* Filtros Primarios: Sección (Unidad Operativa), Rol y Camada */}
+        <div
+          id="panel-filtros-avanzados"
+          className={`${
+            mostrarFiltrosMovil ? 'block' : 'hidden'
+          } sm:block bg-surface sm:bg-transparent p-3 sm:p-0 rounded-2xl border border-rule sm:border-0 shadow-2xs sm:shadow-none space-y-2.5`}
+        >
+          {/* Cabecera contextual en móvil cuando está desplegado */}
+          <div className="flex sm:hidden items-center justify-between pb-1.5 border-b border-rule">
+            <div className="flex items-center gap-1.5">
+              <Filter className="w-3.5 h-3.5 text-brand" />
+              <span className="text-xs font-extrabold text-ink">
+                Filtros y orden
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {totalFiltrosAvanzados > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSeccionesFiltro([]);
+                    setRolesFiltro([]);
+                    setCamadasFiltro([]);
+                  }}
+                  className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                >
+                  Limpiar
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuSeccionesAbierto(false);
+                  setMenuRolesAbierto(false);
+                  setMenuCamadasAbierto(false);
+                  setMostrarFiltrosMovil(false);
+                }}
+                className="text-xs font-bold text-brand hover:underline cursor-pointer"
+              >
+                Listo
+              </button>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
             {/* Selector de Sección con Checkboxes */}
             <div className="relative">
@@ -1176,85 +1425,132 @@ export const UnidadPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Etiquetas / Pills de Filtros Activos para remoción en 1 tap */}
-          {(seccionesFiltro.length > 0 || rolesFiltro.length > 0 || camadasFiltro.length > 0) && (
-            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-              <span className="text-xs font-semibold text-ink-muted mr-1">
-                Filtros activos:
+          {/* Ordenamiento de Miembros (exclusivo para vista de tarjetas en móvil / tablet) */}
+          <div className="pt-2.5 border-t border-rule space-y-2 md:hidden">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                <ArrowUpDown className="w-3.5 h-3.5 text-brand shrink-0" />
+                <span>Ordenar miembros por</span>
+              </div>
+              <span className="text-[11px] font-semibold text-ink-muted truncate">
+                {obtenerTextoDireccion(campoOrden, direccionOrden)}
               </span>
-              {seccionesFiltro.map((id) => {
-                const u = unidades.find((item) => item.id === id);
-                if (!u) return null;
-                return (
-                  <span
-                    key={`sec-tag-${id}`}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand/10 text-brand border border-brand/30"
-                  >
-                    <GitBranch className="w-3 h-3 text-brand shrink-0" />
-                    <span>{u.nombre}</span>
-                    <button
-                      type="button"
-                      onClick={() => setSeccionesFiltro((prev) => prev.filter((x) => x !== id))}
-                      className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
-                      aria-label={`Quitar filtro ${u.nombre}`}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                );
-              })}
-              {rolesFiltro.map((id) => {
-                const r = roles.find((item) => item.id === id);
-                if (!r) return null;
-                return (
-                  <span
-                    key={`rol-tag-${id}`}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800"
-                  >
-                    <Shield className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                    <span>{r.nombre}</span>
-                    <button
-                      type="button"
-                      onClick={() => setRolesFiltro((prev) => prev.filter((x) => x !== id))}
-                      className="hover:bg-indigo-200 dark:hover:bg-indigo-900 p-0.5 rounded cursor-pointer"
-                      aria-label={`Quitar filtro ${r.nombre}`}
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                );
-              })}
-              {camadasFiltro.map((anio) => (
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <select
+                  value={campoOrden}
+                  onChange={(e) => {
+                    setCampoOrden(e.target.value as CampoOrden);
+                    setDireccionOrden('asc');
+                  }}
+                  aria-label="Criterio de ordenamiento"
+                  className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-rule bg-surface text-ink text-xs sm:text-sm font-semibold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none cursor-pointer shadow-2xs transition"
+                >
+                  <option value="seccion">Sección y Rol (orden de edades)</option>
+                  <option value="miembro">Nombre y Apellido</option>
+                  <option value="edad">Edad / Fecha de nacimiento</option>
+                  <option value="ficha">Estado de Ficha Médica</option>
+                </select>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDireccionOrden(direccionOrden === 'asc' ? 'desc' : 'asc')}
+                title={direccionOrden === 'asc' ? 'Cambiar a orden descendente' : 'Cambiar a orden ascendente'}
+                aria-label={`Sentido actual: ${obtenerTextoDireccion(campoOrden, direccionOrden)}. Tocar para alternar.`}
+                className="min-h-[44px] px-3.5 rounded-xl border border-rule bg-surface hover:bg-paper-2 text-ink text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer shadow-2xs active:scale-95"
+              >
+                {direccionOrden === 'asc' ? (
+                  <ArrowUp className="w-4 h-4 text-brand shrink-0" />
+                ) : (
+                  <ArrowDown className="w-4 h-4 text-brand shrink-0" />
+                )}
+                <span>{direccionOrden === 'asc' ? 'Asc' : 'Desc'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Etiquetas / Pills de Filtros Activos para remoción en 1 tap */}
+        {(seccionesFiltro.length > 0 || rolesFiltro.length > 0 || camadasFiltro.length > 0) && (
+          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+            <span className="text-xs font-semibold text-ink-muted mr-1">
+              Filtros activos:
+            </span>
+            {seccionesFiltro.map((id) => {
+              const u = unidades.find((item) => item.id === id);
+              if (!u) return null;
+              return (
                 <span
-                  key={`camada-tag-${anio}`}
+                  key={`sec-tag-${id}`}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand/10 text-brand border border-brand/30"
                 >
-                  <Calendar className="w-3 h-3 text-brand shrink-0" />
-                  <span>Camada {anio}</span>
+                  <GitBranch className="w-3 h-3 text-brand shrink-0" />
+                  <span>{u.nombre}</span>
                   <button
                     type="button"
-                    onClick={() => setCamadasFiltro((prev) => prev.filter((x) => x !== anio))}
+                    onClick={() => setSeccionesFiltro((prev) => prev.filter((x) => x !== id))}
                     className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
-                    aria-label={`Quitar filtro Camada ${anio}`}
+                    aria-label={`Quitar filtro ${u.nombre}`}
                   >
                     <X className="w-3 h-3" />
                   </button>
                 </span>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setSeccionesFiltro([]);
-                  setRolesFiltro([]);
-                  setCamadasFiltro([]);
-                }}
-                className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline px-1.5 py-0.5 cursor-pointer ml-0.5"
+              );
+            })}
+            {rolesFiltro.map((id) => {
+              const r = roles.find((item) => item.id === id);
+              if (!r) return null;
+              return (
+                <span
+                  key={`rol-tag-${id}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800"
+                >
+                  <Shield className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span>{r.nombre}</span>
+                  <button
+                    type="button"
+                    onClick={() => setRolesFiltro((prev) => prev.filter((x) => x !== id))}
+                    className="hover:bg-indigo-200 dark:hover:bg-indigo-900 p-0.5 rounded cursor-pointer"
+                    aria-label={`Quitar filtro ${r.nombre}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              );
+            })}
+            {camadasFiltro.map((anio) => (
+              <span
+                key={`camada-tag-${anio}`}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand/10 text-brand border border-brand/30"
               >
-                Limpiar
-              </button>
-            </div>
-          )}
-        </div>
+                <Calendar className="w-3 h-3 text-brand shrink-0" />
+                <span>Camada {anio}</span>
+                <button
+                  type="button"
+                  onClick={() => setCamadasFiltro((prev) => prev.filter((x) => x !== anio))}
+                  className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
+                  aria-label={`Quitar filtro Camada ${anio}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setSeccionesFiltro([]);
+                setRolesFiltro([]);
+                setCamadasFiltro([]);
+              }}
+              className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline px-1.5 py-0.5 cursor-pointer ml-0.5"
+            >
+              Limpiar
+            </button>
+          </div>
+        )}
 
         {/* Barra de Chips Táctiles de Estado Operativo */}
         <div
@@ -1766,6 +2062,19 @@ export const UnidadPage: React.FC = () => {
         }}
         unidadesDisponibles={unidades}
         rolesDisponibles={roles}
+      />
+
+      {/* Modal Importar Miembros desde Hoja de Cálculo */}
+      <ModalImportarMiembros
+        abierto={modalImportarAbierto}
+        onCerrar={() => setModalImportarAbierto(false)}
+        onImportado={() => {
+          cargarDatos();
+          mostrarToast('Padrón actualizado tras la importación.');
+        }}
+        unidadesDisponibles={unidades}
+        rolesDisponibles={roles}
+        miembrosExistentes={miembros}
       />
 
       {/* Modal Escáner QR Físico */}

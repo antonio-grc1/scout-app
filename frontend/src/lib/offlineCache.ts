@@ -278,6 +278,112 @@ function resolverFallbackInteligente<T>(
         }
       }
     }
+
+    // Fallback: /tesoreria/cuentas/:id/libro-diario
+    const matchLibro = url.match(/\/tesoreria\/cuentas\/(\d+)\/libro-diario/);
+    if (matchLibro) {
+      const cId = Number(matchLibro[1]);
+      const cachedLibro = buscarListaEnCache<any>(`/tesoreria/cuentas/${cId}/libro-diario`);
+      if (cachedLibro?.data) {
+        return cachedLibro as ItemCache<T>;
+      }
+    }
+
+    // Fallback: /tesoreria/cuentas
+    if (url.includes('/tesoreria/cuentas') && !url.match(/\/tesoreria\/cuentas\/\d+/)) {
+      const listaCuentas = buscarListaEnCache<any[]>('/tesoreria/cuentas');
+      if (Array.isArray(listaCuentas?.data) && listaCuentas.data.length > 0) {
+        return listaCuentas as ItemCache<T>;
+      }
+    }
+
+    // Fallback: /tesoreria/gastos
+    if (url.includes('/tesoreria/gastos')) {
+      const listaGastos = buscarListaEnCache<any[]>('/tesoreria/gastos');
+      if (Array.isArray(listaGastos?.data)) {
+        let items = listaGastos.data;
+        const cuentaId = params?.cuentaId || extraerParametroUrl(url, 'cuentaId');
+        const rubroId = params?.rubroId || extraerParametroUrl(url, 'rubroId');
+        const incluirAnulados = (params?.incluirAnulados || extraerParametroUrl(url, 'incluirAnulados')) === 'true';
+
+        if (cuentaId && cuentaId !== 'TODAS') {
+          items = items.filter((g: any) => g.cuentaId === Number(cuentaId));
+        }
+        if (rubroId && rubroId !== 'TODOS') {
+          items = items.filter((g: any) => g.rubroId === Number(rubroId));
+        }
+        if (!incluirAnulados) {
+          items = items.filter((g: any) => !g.anulado);
+        }
+        return { data: items as T, timestamp: listaGastos.timestamp };
+      }
+    }
+
+    // Fallback: /tesoreria/rubros
+    if (url.includes('/tesoreria/rubros')) {
+      const listaRubros = buscarListaEnCache<any[]>('/tesoreria/rubros');
+      if (Array.isArray(listaRubros?.data)) {
+        const tipo = params?.tipo || extraerParametroUrl(url, 'tipo');
+        let items = listaRubros.data;
+        if (tipo) {
+          items = items.filter((r: any) => r.tipo === tipo);
+        }
+        return { data: items as T, timestamp: listaRubros.timestamp };
+      }
+    }
+
+    // Fallback: /tesoreria/cuadro-resultados
+    if (url.includes('/tesoreria/cuadro-resultados')) {
+      const balance = buscarListaEnCache<any>('/tesoreria/cuadro-resultados');
+      if (balance?.data) {
+        return balance as ItemCache<T>;
+      }
+    }
+
+    // Fallback: /tesoreria/eventos/:id
+    const matchEvento = url.match(/\/tesoreria\/eventos\/(\d+)(?:\?|$)/);
+    if (matchEvento) {
+      const evId = Number(matchEvento[1]);
+      const listaEventos = buscarListaEnCache<any[]>('/tesoreria/eventos');
+      if (Array.isArray(listaEventos?.data)) {
+        const ev = listaEventos.data.find((e: any) => e.id === evId);
+        if (ev) {
+          return { data: ev as T, timestamp: listaEventos.timestamp };
+        }
+      }
+    }
+
+    // Fallback: /tesoreria/eventos
+    if (url.includes('/tesoreria/eventos') && !url.match(/\/tesoreria\/eventos\/\d+/)) {
+      const listaEventos = buscarListaEnCache<any[]>('/tesoreria/eventos');
+      if (Array.isArray(listaEventos?.data) && listaEventos.data.length > 0) {
+        return listaEventos as ItemCache<T>;
+      }
+    }
+
+    // Fallback: /tesoreria/planes-mensuales
+    if (url.includes('/tesoreria/planes-mensuales')) {
+      const listaPlanes = buscarListaEnCache<any[]>('/tesoreria/planes-mensuales');
+      if (Array.isArray(listaPlanes?.data) && listaPlanes.data.length > 0) {
+        return listaPlanes as ItemCache<T>;
+      }
+    }
+
+    // Fallback: /tesoreria/conceptos
+    if (url.includes('/tesoreria/conceptos')) {
+      const listaConceptos = buscarListaEnCache<any[]>('/tesoreria/conceptos');
+      if (Array.isArray(listaConceptos?.data) && listaConceptos.data.length > 0) {
+        return listaConceptos as ItemCache<T>;
+      }
+    }
+
+    // Fallback: /tesoreria/familias
+    if (url.includes('/tesoreria/familias')) {
+      const listaFamilias = buscarListaEnCache<any[]>('/tesoreria/familias');
+      if (Array.isArray(listaFamilias?.data) && listaFamilias.data.length > 0) {
+        return listaFamilias as ItemCache<T>;
+      }
+    }
   } catch {
     // Si falla la deserialización, no devolver nada
   }

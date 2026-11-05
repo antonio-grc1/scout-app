@@ -33,7 +33,15 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     transparent: '/brand/Logo%20Juancho.png',
   };
 
+  const darkAssetMap: Record<string, string> = {
+    icon: '/brand/Logo%20Juancho%20Icono.png',
+    full: '/brand/Logo%20Juancho%20Letras%20Blancas.png',
+    text: '/brand/Logo%20Juancho%20Letras%20Blancas.png',
+    transparent: '/brand/Logo%20Juancho%20Letras%20Blancas.png',
+  };
+
   const imageSrc = assetMap[variant] || assetMap.icon;
+  const darkImageSrc = darkAssetMap[variant] || darkAssetMap.icon;
   const isHorizontal = variant === 'full' || variant === 'transparent' || variant === 'text';
 
   // Responsive dimensions
@@ -61,13 +69,32 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
     >
       <div className={cn('relative shrink-0 flex items-center justify-center p-0.5', sizeClasses[size])}>
         {!imageFailed ? (
-          <img
-            src={imageSrc}
-            alt={alt}
-            onError={() => setImageFailed(true)}
-            className="w-full h-full object-contain drop-shadow-2xs select-none"
-            loading="eager"
-          />
+          imageSrc === darkImageSrc ? (
+            <img
+              src={imageSrc}
+              alt={alt}
+              onError={() => setImageFailed(true)}
+              className="w-full h-full object-contain drop-shadow-2xs select-none"
+              loading="eager"
+            />
+          ) : (
+            <>
+              <img
+                src={imageSrc}
+                alt={alt}
+                onError={() => setImageFailed(true)}
+                className="w-full h-full object-contain drop-shadow-2xs select-none dark:hidden"
+                loading="eager"
+              />
+              <img
+                src={darkImageSrc}
+                alt={alt}
+                onError={() => setImageFailed(true)}
+                className="w-full h-full object-contain drop-shadow-2xs select-none hidden dark:block"
+                loading="eager"
+              />
+            </>
+          )
         ) : (
           // Elegant vector scout insignia fallback
           <svg

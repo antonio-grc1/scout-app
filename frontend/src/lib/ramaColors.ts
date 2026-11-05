@@ -99,7 +99,7 @@ export function obtenerConfigRama(m: any, unidades: any[] = []): RamaColorConfig
       (rolObj?.alcancePorDefecto === 'UNIDAD' || rolObj?.alcancePorDefecto === 'GLOBAL'));
 
   // 1. Lobatos: Amarillo
-  if (texto.includes('lobat')) {
+  if (texto.includes('lobat') || texto.includes('manada')) {
     return RAMA_COLORS.lobatos;
   }
 
@@ -136,21 +136,29 @@ export function obtenerOrdenRama(m: any, unidades: any[] = [], ramas: any[] = []
   if (asig.unidad?.rama?.ordenProgresion != null) {
     return asig.unidad.rama.ordenProgresion;
   }
+  if (asig.unidad?.rama?.edadMinima != null) {
+    return asig.unidad.rama.edadMinima;
+  }
 
   const u = unidades.find((x) => x.id === asig.unidadId);
   if (u?.rama?.ordenProgresion != null) {
     return u.rama.ordenProgresion;
   }
+  if (u?.rama?.edadMinima != null) {
+    return u.rama.edadMinima;
+  }
   if (u?.ramaId && ramas.length > 0) {
     const r = ramas.find((x) => x.id === u.ramaId);
     if (r?.ordenProgresion != null) return r.ordenProgresion;
+    if (r?.edadMinima != null) return r.edadMinima;
   }
 
   const nom = (asig.unidad?.nombre || u?.nombre || '').toLowerCase();
-  if (nom.includes('lobat')) return 1;
-  if (nom.includes('scout')) return 2;
-  if (nom.includes('caminant')) return 3;
-  if (nom.includes('rover')) return 4;
+  if (nom.includes('castor')) return 0;
+  if (nom.includes('lobat') || nom.includes('manada')) return 1;
+  if (nom.includes('scout') || nom.includes('tropa')) return 2;
+  if (nom.includes('caminant') || nom.includes('raider')) return 3;
+  if (nom.includes('rover') || nom.includes('clan')) return 4;
   if (asig.unidad?.tipo === 'JEFATURA' || nom.includes('jefatura')) return 90;
   if (asig.unidad?.tipo === 'SIN_RAMA_APOYO' || nom.includes('apoyo')) return 95;
 

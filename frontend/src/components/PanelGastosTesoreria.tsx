@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
-import { formatearMoneda, traducirErrorAmigable, formatearFechaHora } from '../lib/formatters';
+import { formatearMoneda, traducirErrorAmigable, formatearFechaHora, normalizarTextoBusqueda } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalRegistrarGasto } from './ModalRegistrarGasto';
 import { ModalRegistrarIngreso } from './ModalRegistrarIngreso';
@@ -21,6 +21,8 @@ import {
   Tag,
   AlertCircle,
   FileSpreadsheet,
+  Search,
+  X,
 } from 'lucide-react';
 
 export interface GastoItem {
@@ -62,6 +64,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
   const [error, setError] = useState<string | null>(null);
 
   // Filtros
+  const [busqueda, setBusqueda] = useState('');
   const [filtroCuentaId, setFiltroCuentaId] = useState<string>('TODAS');
   const [filtroRubroId, setFiltroRubroId] = useState<string>('TODOS');
   const [incluirAnulados, setIncluirAnulados] = useState(false);
@@ -100,8 +103,22 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       setRubros(Array.isArray(resRubros.data) ? resRubros.data : []);
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudieron cargar los gastos.');
-      setError(msg);
-      if (onToast) onToast(msg, 'error');
+      const esOffline =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        msg.toLowerCase().includes('offline') ||
+        msg.toLowerCase().includes('sin conexión') ||
+        msg.toLowerCase().includes('sin conexion');
+
+      if (esOffline) {
+        if (gastos.length === 0) {
+          setError('Estás sin conexión y los gastos aún no han sido sincronizados en este dispositivo.');
+        } else {
+          setError(null);
+        }
+      } else {
+        setError(msg);
+        if (onToast) onToast(msg, 'error');
+      }
     } finally {
       setCargando(false);
     }
@@ -156,6 +173,25 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
   const totalBanco = gastosActivos
     .filter((g) => g.cuenta?.tipo === 'BANCO')
     .reduce((acc, cur) => acc + Number(cur.monto), 0);
+
+  // Filtrado reactivo por texto de búsqueda
+  const gastosFiltrados = useMemo(() => {
+    const q = normalizarTextoBusqueda(busqueda);
+    if (!q) return gastos;
+
+    return gastos.filter((g) => {
+      const matchDesc = normalizarTextoBusqueda(g.descripcion).includes(q);
+      const matchComprobante = g.comprobanteNro ? normalizarTextoBusqueda(g.comprobanteNro).includes(q) : false;
+      const matchRubro = g.rubro?.nombre ? normalizarTextoBusqueda(g.rubro.nombre).includes(q) : false;
+      const matchCuenta = g.cuenta?.nombre ? normalizarTextoBusqueda(g.cuenta.nombre).includes(q) : false;
+      const matchMonto = String(g.monto).includes(q);
+      const matchUsuario = g.registradoPor
+        ? normalizarTextoBusqueda(`${g.registradoPor.nombre} ${g.registradoPor.apellido}`).includes(q)
+        : false;
+
+      return matchDesc || matchComprobante || matchRubro || matchCuenta || matchMonto || matchUsuario;
+    });
+  }, [gastos, busqueda]);
 
   return (
     <div className="space-y-4">
@@ -214,7 +250,8 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               {formatearMoneda(totalGastos)}
             </span>
             <span className="text-xs font-bold text-ink-muted">
-              {gastosActivos.length} {gastosActivos.length === 1 ? 'gasto' : 'gastos'}
+              {gastosFiltrados.length} {gastosFiltrados.length === 1 ? 'gasto' : 'gastos'}
+              {busqueda && ` (de ${gastosActivos.length})`}
             </span>
           </div>
         </div>
@@ -244,15 +281,33 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
         </div>
       </div>
 
-      {/* Barra de Filtros */}
-      <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-ink-muted shrink-0">
-            <Filter className="w-3.5 h-3.5" />
-            <span>Filtrar:</span>
+      {/* Barra de Filtros y Buscador */}
+      <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1 flex-wrap">
+          {/* Input de Búsqueda */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Buscar por descripción, comprobante, rubro..."
+              className="w-full pl-8 pr-7 py-2 rounded-xl bg-paper border border-rule text-xs font-medium text-ink placeholder:text-ink-muted focus:outline-brand"
+            />
+            {busqueda && (
+              <button
+                type="button"
+                onClick={() => setBusqueda('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-ink-muted hover:text-ink rounded cursor-pointer"
+                title="Limpiar búsqueda"
+                aria-label="Limpiar búsqueda"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
             <select
               value={filtroCuentaId}
               onChange={(e) => setFiltroCuentaId(e.target.value)}
@@ -278,17 +333,17 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                 </option>
               ))}
             </select>
-          </div>
 
-          <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-paper border border-rule text-xs font-semibold text-ink cursor-pointer shrink-0">
-            <input
-              type="checkbox"
-              checked={incluirAnulados}
-              onChange={(e) => setIncluirAnulados(e.target.checked)}
-              className="rounded text-brand"
-            />
-            <span>Ver anulados</span>
-          </label>
+            <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-paper border border-rule text-xs font-semibold text-ink cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={incluirAnulados}
+                onChange={(e) => setIncluirAnulados(e.target.checked)}
+                className="rounded text-brand"
+              />
+              <span>Ver anulados</span>
+            </label>
+          </div>
         </div>
 
         <button
@@ -339,8 +394,21 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                     No hay gastos registrados para los filtros seleccionados.
                   </td>
                 </tr>
+              ) : gastosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-12 text-center text-ink-muted">
+                    <p>No se encontraron gastos que coincidan con "{busqueda}".</p>
+                    <button
+                      type="button"
+                      onClick={() => setBusqueda('')}
+                      className="mt-1 text-xs text-brand font-bold hover:underline cursor-pointer"
+                    >
+                      Limpiar búsqueda
+                    </button>
+                  </td>
+                </tr>
               ) : (
-                gastos.map((gasto) => (
+                gastosFiltrados.map((gasto) => (
                   <tr
                     key={gasto.id}
                     className={`hover:bg-paper-2/50 transition-colors ${
@@ -442,8 +510,19 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             <div className="p-8 text-center text-xs text-ink-muted">
               No hay gastos registrados para los filtros seleccionados.
             </div>
+          ) : gastosFiltrados.length === 0 ? (
+            <div className="p-8 text-center text-xs text-ink-muted">
+              <p>No se encontraron gastos que coincidan con "{busqueda}".</p>
+              <button
+                type="button"
+                onClick={() => setBusqueda('')}
+                className="mt-1 text-xs text-brand font-bold hover:underline cursor-pointer"
+              >
+                Limpiar búsqueda
+              </button>
+            </div>
           ) : (
-            gastos.map((gasto) => (
+            gastosFiltrados.map((gasto) => (
               <div
                 key={gasto.id}
                 className={`p-3.5 space-y-2 hover:bg-paper-2/40 transition ${

@@ -68,29 +68,32 @@ export const Login: React.FC = () => {
       <div className="relative z-10 w-full max-w-5xl mx-auto grid lg:grid-cols-[0.95fr_1.05fr] gap-8 lg:gap-16 items-center">
         <div className="hidden lg:flex flex-col gap-5 px-4">
           <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-brand">
-            Portal de gestión
+            Grupo Scout Juan XXIII
           </p>
           <p className="max-w-md text-4xl font-black leading-[1.05] tracking-[-0.03em] text-ink font-display">
-            Una comunidad que se organiza mejor.
+            Portal de Gestión y Familias
           </p>
           <p className="max-w-md text-base leading-relaxed text-ink-muted">
-            Todo el padrón, los legajos y la vida de tu grupo scout en un solo lugar.
+            Ingresá con tu DNI para acceder a tu panel.
           </p>
         </div>
 
-        <div className="w-full max-w-md mx-auto text-center">
-          <BrandLogo
-            variant="transparent"
-            size="lg"
-            center
-            className="drop-shadow-sm my-2"
-          />
-          <h1 className="mt-4 text-2xl font-extrabold text-ink tracking-tight font-display">
-            Grupo Scout Juan XXIII
-          </h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Ingreso exclusivo para Protagonistas, Familias y Educadores
-          </p>
+        <div className="w-full max-w-md mx-auto">
+          <div className="flex items-center gap-3.5 sm:gap-4 text-left px-1">
+            <BrandLogo
+              variant="icon"
+              size="lg"
+              className="drop-shadow-sm shrink-0 m-0"
+            />
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight font-display leading-tight">
+                Grupo Scout Juan XXIII
+              </h1>
+              <p className="mt-1 text-xs sm:text-sm text-ink-muted leading-snug">
+                Ingreso exclusivo para Protagonistas, Familias y Educadores
+              </p>
+            </div>
+          </div>
 
           <div className="mt-8 text-left bg-surface py-7 px-5 shadow-md border border-rule rounded-3xl sm:px-8 transition-colors">
             <form className="space-y-6" onSubmit={handleSubmit}>
