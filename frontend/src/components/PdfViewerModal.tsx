@@ -107,13 +107,17 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
   }, [pdfDoc, pageNumber, zoom, containerWidth]);
 
   return (
-    <div className="relative bg-white shadow-md rounded-lg overflow-hidden border border-rule mx-auto my-2">
-      <div className="bg-paper-2 px-3 py-1 text-[10px] font-bold text-ink-muted flex items-center justify-between border-b border-rule">
+    <div className="relative bg-white shadow-md rounded-lg overflow-hidden border border-rule my-2 w-fit">
+      <div className="bg-paper-2 px-3 py-1 text-[10px] font-bold text-ink-muted flex items-center justify-between border-b border-rule select-none">
         <span>Hoja {pageNumber}</span>
         {renderizando && <span className="animate-pulse">Renderizando…</span>}
       </div>
-      <div className="overflow-x-auto flex justify-center bg-white">
-        <canvas ref={canvasRef} aria-label={`Página ${pageNumber} del documento PDF`} className="block max-w-none" />
+      <div className="flex justify-center bg-white select-none">
+        <canvas
+          ref={canvasRef}
+          aria-label={`Página ${pageNumber} del documento PDF`}
+          className="block max-w-none pointer-events-none select-none"
+        />
       </div>
     </div>
   );
@@ -304,7 +308,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         {/* Área de Visualización Nativa en Canvas (compatible con celulares Android/iOS sin apps externas) */}
         <div
           ref={containerRef}
-          className="flex-1 bg-paper-3 overflow-y-auto overflow-x-auto p-2 sm:p-4"
+          className="flex-1 bg-paper-3 overflow-y-auto overflow-x-auto p-2 sm:p-4 touch-manipulation overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {cargando ? (
             <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-2 text-ink-muted">
@@ -326,16 +331,18 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               )}
             </div>
           ) : (
-            pdfDoc &&
-            Array.from({ length: numPages }, (_, idx) => (
-              <PdfPageCanvas
-                key={idx + 1}
-                pdfDoc={pdfDoc}
-                pageNumber={idx + 1}
-                zoom={zoom}
-                containerWidth={containerWidth}
-              />
-            ))
+            <div className="w-fit min-w-full mx-auto flex flex-col items-center">
+              {pdfDoc &&
+                Array.from({ length: numPages }, (_, idx) => (
+                  <PdfPageCanvas
+                    key={idx + 1}
+                    pdfDoc={pdfDoc}
+                    pageNumber={idx + 1}
+                    zoom={zoom}
+                    containerWidth={containerWidth}
+                  />
+                ))}
+            </div>
           )}
         </div>
       </div>

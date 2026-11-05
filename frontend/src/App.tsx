@@ -8,7 +8,6 @@ import { AutogestionPage } from './pages/autogestion/AutogestionPage';
 import { UnidadPage } from './pages/unidad/UnidadPage';
 import { GlobalPage } from './pages/global/GlobalPage';
 import { PerfilPage } from './pages/perfil/PerfilPage';
-import { BarraDeCarga } from './components/ui/BarraDeCarga';
 import { ToastGlobal } from './components/ui/ToastGlobal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { BannerOffline } from './components/BannerOffline';
@@ -82,7 +81,6 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <BannerOffline />
-        <BarraDeCarga />
         <ThemeCustomizerModal />
         <Routes>
           <Route path="/login" element={<Login />} />

@@ -1,9 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
-import { formatearMoneda, traducirErrorAmigable, formatearFechaHora } from '../lib/formatters';
+import {
+  formatearMoneda,
+  traducirErrorAmigable,
+  formatearFecha,
+  formatearFechaHora,
+  normalizarTextoBusqueda,
+} from '../lib/formatters';
 import { Button } from './ui/Button';
+import { BotonExportar } from './ui/BotonExportar';
+import { exportarAExcel, exportarACSV, type ColumnaExportacion } from '../utils/exportadorPlanillas';
 import { ModalCrearCuentaFinanciera } from './ModalCrearCuentaFinanciera';
 import { ModalTraspasoCuentas, type CuentaFinancieraItem } from './ModalTraspasoCuentas';
 import { ModalRegistrarIngreso, type IngresoAEditarItem } from './ModalRegistrarIngreso';
@@ -26,6 +34,11 @@ import {
   Clock,
   User,
   CheckCircle2,
+  ChevronDown,
+  Loader2,
+  ArrowUp,
+  Search,
+  X,
 } from 'lucide-react';
 
 export interface MovimientoFinancieroItem {
@@ -230,7 +243,15 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         }
       } catch (err: any) {
         const msg = traducirErrorAmigable(err, 'No se pudieron cargar las cuentas financieras.');
-        if (onToastRef.current) onToastRef.current(msg, 'error');
+        const esOffline =
+          (typeof navigator !== 'undefined' && !navigator.onLine) ||
+          msg.toLowerCase().includes('offline') ||
+          msg.toLowerCase().includes('sin conexión') ||
+          msg.toLowerCase().includes('sin conexion');
+
+        if (!esOffline && onToastRef.current) {
+          onToastRef.current(msg, 'error');
+        }
       } finally {
         setCargandoCuentas(false);
       }
@@ -263,8 +284,22 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       setLibroDiario(res.data);
     } catch (err: any) {
       const msg = traducirErrorAmigable(err, 'No se pudo cargar el libro diario.');
-      setErrorLibro(msg);
-      if (onToastRef.current) onToastRef.current(msg, 'error');
+      const esOffline =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        msg.toLowerCase().includes('offline') ||
+        msg.toLowerCase().includes('sin conexión') ||
+        msg.toLowerCase().includes('sin conexion');
+
+      if (esOffline) {
+        if (!libroDiario) {
+          setErrorLibro('Estás sin conexión y esta cuenta aún no ha sido sincronizada en este dispositivo.');
+        } else {
+          setErrorLibro(null);
+        }
+      } else {
+        setErrorLibro(msg);
+        if (onToastRef.current) onToastRef.current(msg, 'error');
+      }
     } finally {
       setCargandoLibro(false);
     }
@@ -348,6 +383,208 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     datosLibroListos && libroDiario?.saldoActualConsolidado !== undefined
       ? libroDiario.saldoActualConsolidado
       : cuentaActiva?.saldoActual ?? 0;
+
+  // Buscador y parámetros de paginación progresiva por bloques
+  const [busqueda, setBusqueda] = useState('');
+  const TAMANIO_BLOQUE = 20;
+  const [expandido, setExpandido] = useState(false);
+  const [cantidadVisible, setCantidadVisible] = useState(TAMANIO_BLOQUE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Reiniciar paginación al cambiar de cuenta, filtro de fechas o búsqueda
+  useEffect(() => {
+    setExpandido(false);
+    setCantidadVisible(TAMANIO_BLOQUE);
+  }, [cuentaSeleccionadaId, fechaDesde, fechaHasta, busqueda]);
+
+  // Invertir el orden: los movimientos más recientes se muestran más arriba
+  const movimientosInvertidos = useMemo(() => {
+    return [...movimientos].reverse();
+  }, [movimientos]);
+
+  // Filtrado en vivo por término de búsqueda
+  const movimientosFiltrados = useMemo(() => {
+    if (!busqueda.trim()) return movimientosInvertidos;
+    const q = normalizarTextoBusqueda(busqueda);
+    return movimientosInvertidos.filter((m) => {
+      const concepto = normalizarTextoBusqueda(m.conceptoTexto);
+      const miembro = normalizarTextoBusqueda(m.miembroNombre);
+      const rubro = normalizarTextoBusqueda(m.rubro?.nombre);
+      const usuario = normalizarTextoBusqueda(
+        m.creadoPor ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}` : '',
+      );
+      const tipo = normalizarTextoBusqueda(obtenerEtiquetaTipoMovimiento(m.tipo).texto);
+      const montoIn = String(m.montoIngreso || '');
+      const montoEg = String(m.montoEgreso || '');
+      const saldo = String(m.saldoAcumulado || '');
+
+      return (
+        concepto.includes(q) ||
+        miembro.includes(q) ||
+        rubro.includes(q) ||
+        usuario.includes(q) ||
+        tipo.includes(q) ||
+        montoIn.includes(q) ||
+        montoEg.includes(q) ||
+        saldo.includes(q)
+      );
+    });
+  }, [movimientosInvertidos, busqueda]);
+
+  const totalMovimientos = movimientosFiltrados.length;
+  const hayMasMovimientos = cantidadVisible < totalMovimientos;
+
+  // Movimientos en orden cronológico respetando la búsqueda para exportación contable
+  const movimientosAExportar = useMemo(() => {
+    if (!busqueda.trim()) return movimientos;
+    const q = normalizarTextoBusqueda(busqueda);
+    return movimientos.filter((m) => {
+      const concepto = normalizarTextoBusqueda(m.conceptoTexto);
+      const miembro = normalizarTextoBusqueda(m.miembroNombre);
+      const rubro = normalizarTextoBusqueda(m.rubro?.nombre);
+      const usuario = normalizarTextoBusqueda(
+        m.creadoPor ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}` : '',
+      );
+      const tipo = normalizarTextoBusqueda(obtenerEtiquetaTipoMovimiento(m.tipo).texto);
+      const montoIn = String(m.montoIngreso || '');
+      const montoEg = String(m.montoEgreso || '');
+      const saldo = String(m.saldoAcumulado || '');
+
+      return (
+        concepto.includes(q) ||
+        miembro.includes(q) ||
+        rubro.includes(q) ||
+        usuario.includes(q) ||
+        tipo.includes(q) ||
+        montoIn.includes(q) ||
+        montoEg.includes(q) ||
+        saldo.includes(q)
+      );
+    });
+  }, [movimientos, busqueda]);
+
+  const prepararColumnasLibroDiario = (): ColumnaExportacion<MovimientoFinancieroItem>[] => [
+    {
+      header: 'Fecha',
+      formatear: (m) => (m.fecha ? formatearFecha(m.fecha) : ''),
+    },
+    { header: 'Concepto / Detalle', formatear: (m) => m.conceptoTexto || '' },
+    {
+      header: 'Tipo',
+      formatear: (m) => obtenerEtiquetaTipoMovimiento(m.tipo).texto,
+    },
+    { header: 'Miembro', formatear: (m) => m.miembroNombre || '' },
+    { header: 'Rubro Contable', formatear: (m) => m.rubro?.nombre || '' },
+    { header: 'N° Comprobante', formatear: (m) => m.gasto?.comprobanteNro || '' },
+    { header: 'Ingreso (+)', formatear: (m) => Number(m.montoIngreso || 0) },
+    { header: 'Egreso (-)', formatear: (m) => Number(m.montoEgreso || 0) },
+    { header: 'Saldo Acumulado', formatear: (m) => Number(m.saldoAcumulado || 0) },
+    {
+      header: 'Registrado Por',
+      formatear: (m) =>
+        m.creadoPor ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}`.trim() : '',
+    },
+  ];
+
+  const handleExportarExcel = async () => {
+    if (movimientosAExportar.length === 0) {
+      if (onToastRef.current) onToastRef.current('No hay movimientos para exportar.', 'error');
+      return;
+    }
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const nombreSanitizado = (cuentaActiva?.nombre || 'Cuenta').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const periodoTexto = `${fechaDesde ? formatearFecha(fechaDesde) : 'Histórico'} al ${fechaHasta ? formatearFecha(fechaHasta) : 'Hoy'}`;
+
+    await exportarAExcel({
+      nombreArchivo: `Libro_Diario_${nombreSanitizado}_${fechaHoy}`,
+      nombreHoja: 'Libro Diario',
+      columnas: prepararColumnasLibroDiario(),
+      filas: movimientosAExportar,
+      resumenSuperior: [
+        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
+        { etiqueta: 'Cuenta', valor: cuentaActiva?.nombre || '' },
+        {
+          etiqueta: 'Tipo de Cuenta',
+          valor: cuentaActiva?.tipo === 'CAJA_EFECTIVO' ? 'Caja Chica / Efectivo' : 'Cuenta Bancaria',
+        },
+        { etiqueta: 'Período', valor: periodoTexto },
+        { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+      ],
+      resumenInferior: [
+        { etiqueta: 'Total Ingresos del Período ($)', valor: libroDiario?.totalIngresosPeriodo ?? 0 },
+        { etiqueta: 'Total Egresos del Período ($)', valor: libroDiario?.totalEgresosPeriodo ?? 0 },
+        { etiqueta: 'Saldo Final del Período ($)', valor: libroDiario?.saldoFinalPeriodo ?? 0 },
+        { etiqueta: 'Saldo Actual Consolidado ($)', valor: libroDiario?.saldoActualConsolidado ?? 0 },
+      ],
+    });
+    if (onToastRef.current) onToastRef.current('Libro diario exportado exitosamente a Excel.');
+  };
+
+  const handleExportarCSV = () => {
+    if (movimientosAExportar.length === 0) {
+      if (onToastRef.current) onToastRef.current('No hay movimientos para exportar.', 'error');
+      return;
+    }
+    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const nombreSanitizado = (cuentaActiva?.nombre || 'Cuenta').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const periodoTexto = `${fechaDesde ? formatearFecha(fechaDesde) : 'Histórico'} al ${fechaHasta ? formatearFecha(fechaHasta) : 'Hoy'}`;
+
+    exportarACSV({
+      nombreArchivo: `Libro_Diario_${nombreSanitizado}_${fechaHoy}`,
+      columnas: prepararColumnasLibroDiario(),
+      filas: movimientosAExportar,
+      resumenSuperior: [
+        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
+        { etiqueta: 'Cuenta', valor: cuentaActiva?.nombre || '' },
+        {
+          etiqueta: 'Tipo de Cuenta',
+          valor: cuentaActiva?.tipo === 'CAJA_EFECTIVO' ? 'Caja Chica / Efectivo' : 'Cuenta Bancaria',
+        },
+        { etiqueta: 'Período', valor: periodoTexto },
+        { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+      ],
+      resumenInferior: [
+        { etiqueta: 'Total Ingresos del Período ($)', valor: libroDiario?.totalIngresosPeriodo ?? 0 },
+        { etiqueta: 'Total Egresos del Período ($)', valor: libroDiario?.totalEgresosPeriodo ?? 0 },
+        { etiqueta: 'Saldo Final del Período ($)', valor: libroDiario?.saldoFinalPeriodo ?? 0 },
+        { etiqueta: 'Saldo Actual Consolidado ($)', valor: libroDiario?.saldoActualConsolidado ?? 0 },
+      ],
+    });
+    if (onToastRef.current) onToastRef.current('Libro diario exportado exitosamente a CSV.');
+  };
+
+  // Lista recortada a mostrar según la paginación progresiva
+  const movimientosVisibles = useMemo(() => {
+    if (!expandido) {
+      return movimientosFiltrados.slice(0, Math.min(TAMANIO_BLOQUE, totalMovimientos));
+    }
+    return movimientosFiltrados.slice(0, cantidadVisible);
+  }, [movimientosFiltrados, expandido, cantidadVisible, totalMovimientos]);
+
+  const cargarMasBloque = useCallback(() => {
+    setCantidadVisible((prev) => Math.min(prev + TAMANIO_BLOQUE, totalMovimientos));
+  }, [totalMovimientos]);
+
+  // IntersectionObserver para carga progresiva automática por bloques a medida que se baja
+  useEffect(() => {
+    if (!expandido || !hayMasMovimientos) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          cargarMasBloque();
+        }
+      },
+      { rootMargin: '250px' },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [expandido, hayMasMovimientos, cargarMasBloque]);
 
   return (
     <div className="space-y-5">
@@ -513,9 +750,32 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         <div className="p-5 rounded-2xl border border-rule bg-paper-2/60 animate-pulse h-[106px] sm:h-[90px]" />
       ) : null}
 
-      {/* 3. Date Filter / Arqueo Bar */}
+      {/* 3. Date Filter / Arqueo Bar & Search */}
       <div className="p-3.5 sm:p-4 rounded-2xl border border-rule bg-surface shadow-2xs space-y-3">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        {/* Buscador en vivo del Libro Diario */}
+        <div className="relative w-full">
+          <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            inputMode="search"
+            placeholder="Buscar por concepto, miembro, rubro, tipo o monto..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="w-full min-h-[42px] pl-10 pr-10 py-2 rounded-xl border border-rule text-xs sm:text-sm focus:border-brand outline-none bg-paper-2 text-ink placeholder:text-ink-muted transition-colors [&::-webkit-search-cancel-button]:hidden"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              aria-label="Limpiar búsqueda"
+              className="min-w-[36px] min-h-[36px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1 border-t border-rule/50">
           {/* Quick 1-tap arqueo buttons */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
             <span className="text-xs font-bold text-ink-muted mr-1 hidden sm:inline flex items-center gap-1">
@@ -625,16 +885,27 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
       {/* 4. Chronological Ledger Table (Libro Diario) */}
       <div className="bg-surface rounded-2xl border border-rule shadow-xs overflow-hidden transition-colors">
-        <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-b border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-brand" />
             <h4 className="font-extrabold text-ink text-base">
               Libro Diario de Movimientos
             </h4>
           </div>
-          <span className="text-xs font-semibold text-ink-muted">
-            {movimientos.length} {movimientos.length === 1 ? 'operación' : 'operaciones'}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-ink-muted">
+              {expandido && totalMovimientos > TAMANIO_BLOQUE
+                ? `Mostrando ${movimientosVisibles.length} de ${totalMovimientos} operaciones`
+                : `${totalMovimientos} ${totalMovimientos === 1 ? 'operación' : 'operaciones'}`}
+            </span>
+            <BotonExportar
+              size="sm"
+              disabled={totalMovimientos === 0}
+              onExportarExcel={handleExportarExcel}
+              onExportarCSV={handleExportarCSV}
+              tituloTooltip="Exportar libro diario filtrado como hoja de cálculo"
+            />
+          </div>
         </div>
 
         {/* Loading state */}
@@ -664,18 +935,48 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           </div>
         )}
 
-        {/* Empty state: cuenta seleccionada sin movimientos */}
-        {!estaCargando && !errorLibro && cuentaSeleccionadaId && movimientos.length === 0 && (
-          <div className="p-10 text-center space-y-2">
-            <p className="text-sm font-bold text-ink">
-              No hay movimientos registrados en este período
-            </p>
-            <p className="text-xs text-ink-muted max-w-md mx-auto">
-              Los cobros de cuotas, campamentos o traspasos asignados a esta cuenta se
-              reflejarán cronológicamente aquí.
-            </p>
-          </div>
-        )}
+        {/* Empty state: sin resultados de búsqueda */}
+        {!estaCargando &&
+          !errorLibro &&
+          cuentaSeleccionadaId &&
+          movimientosInvertidos.length > 0 &&
+          totalMovimientos === 0 && (
+            <div className="p-10 text-center space-y-3">
+              <Search className="w-8 h-8 text-ink-muted opacity-40 mx-auto" />
+              <p className="text-sm font-bold text-ink">
+                No se encontraron movimientos que coincidan con &ldquo;{busqueda}&rdquo;
+              </p>
+              <p className="text-xs text-ink-muted">
+                Intentá con otro término o limpiá la búsqueda.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setBusqueda('')}
+                leftIcon={<X className="w-3.5 h-3.5" />}
+                className="mx-auto"
+              >
+                Limpiar búsqueda
+              </Button>
+            </div>
+          )}
+
+        {/* Empty state: cuenta seleccionada sin movimientos en el período */}
+        {!estaCargando &&
+          !errorLibro &&
+          cuentaSeleccionadaId &&
+          movimientosInvertidos.length === 0 && (
+            <div className="p-10 text-center space-y-2">
+              <p className="text-sm font-bold text-ink">
+                No hay movimientos registrados en este período
+              </p>
+              <p className="text-xs text-ink-muted max-w-md mx-auto">
+                Los cobros de cuotas, campamentos o traspasos asignados a esta cuenta se
+                reflejarán cronológicamente aquí.
+              </p>
+            </div>
+          )}
 
         {/* Empty state: sin cuentas creadas */}
         {!estaCargando && !errorLibro && cuentas.length === 0 && (
@@ -690,7 +991,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         )}
 
         {/* Desktop Ledger Table */}
-        {!estaCargando && !errorLibro && cuentaSeleccionadaId && (movimientos.length > 0 || hayFiltroFecha) && (
+        {!estaCargando && !errorLibro && cuentaSeleccionadaId && (totalMovimientos > 0 || hayFiltroFecha) && (
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead className="bg-paper-2 border-b border-rule text-ink font-bold">
@@ -707,33 +1008,8 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
-                {/* Fila inicial de Saldo Anterior cuando hay filtro de fecha */}
-                {hayFiltroFecha && (
-                  <tr className="bg-paper-2/60 font-semibold text-ink-2">
-                    <td className="py-2.5 px-4 text-ink-muted italic">
-                      Al inicio del período
-                    </td>
-                    <td className="py-2.5 px-4">
-                      <span className="font-bold text-ink">
-                        Saldo Anterior / Arrastre
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-4 text-right text-ink-muted">-</td>
-                    <td className="py-2.5 px-4 text-right text-ink-muted">-</td>
-                    <td className="py-2.5 px-4 text-right font-extrabold text-ink">
-                      {formatearMoneda(saldoAnterior)}
-                    </td>
-                    <td className="py-2.5 px-4 text-ink-muted text-[11px]">
-                      Sistema
-                    </td>
-                    {puedeGestionarTesoreria && (
-                      <td className="py-2.5 px-4 text-center text-ink-muted">-</td>
-                    )}
-                  </tr>
-                )}
-
-                {/* Movimientos cronológicos */}
-                {movimientos.map((m) => {
+                {/* Movimientos cronológicos invertidos (más recientes primero) */}
+                {movimientosVisibles.map((m) => {
                   const tipoConfig = obtenerEtiquetaTipoMovimiento(m.tipo);
                   const usuarioNombre = m.creadoPor
                     ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}`.trim()
@@ -878,29 +1154,40 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                     </tr>
                   );
                 })}
+
+                {/* Fila final de Saldo Anterior cuando hay filtro de fecha (al final del historial invertido) */}
+                {hayFiltroFecha && (!hayMasMovimientos || !expandido) && (
+                  <tr className="bg-paper-2/60 font-semibold text-ink-2">
+                    <td className="py-2.5 px-4 text-ink-muted italic">
+                      Al inicio del período
+                    </td>
+                    <td className="py-2.5 px-4">
+                      <span className="font-bold text-ink">
+                        Saldo Anterior / Arrastre
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-right text-ink-muted">-</td>
+                    <td className="py-2.5 px-4 text-right text-ink-muted">-</td>
+                    <td className="py-2.5 px-4 text-right font-extrabold text-ink">
+                      {formatearMoneda(saldoAnterior)}
+                    </td>
+                    <td className="py-2.5 px-4 text-ink-muted text-[11px]">
+                      Sistema
+                    </td>
+                    {puedeGestionarTesoreria && (
+                      <td className="py-2.5 px-4 text-center text-ink-muted">-</td>
+                    )}
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
         )}
 
         {/* Mobile Responsive Cards Fallback */}
-        {!estaCargando && !errorLibro && cuentaSeleccionadaId && movimientos.length > 0 && (
+        {!estaCargando && !errorLibro && cuentaSeleccionadaId && totalMovimientos > 0 && (
           <div className="md:hidden divide-y divide-rule">
-            {hayFiltroFecha && (
-              <div className="p-3.5 bg-paper-2/60 space-y-1 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold text-ink">Saldo Anterior</span>
-                  <span className="font-black text-ink">
-                    {formatearMoneda(saldoAnterior)}
-                  </span>
-                </div>
-                <span className="text-[11px] text-ink-muted block">
-                  Arrastre acumulado antes del período
-                </span>
-              </div>
-            )}
-
-            {movimientos.map((m) => {
+            {movimientosVisibles.map((m) => {
               const tipoConfig = obtenerEtiquetaTipoMovimiento(m.tipo);
               const usuarioNombre = m.creadoPor
                 ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}`.trim()
@@ -1025,6 +1312,79 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 </div>
               );
             })}
+
+            {hayFiltroFecha && (!hayMasMovimientos || !expandido) && (
+              <div className="p-3.5 bg-paper-2/60 space-y-1 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="font-bold text-ink">Saldo Anterior</span>
+                  <span className="font-black text-ink">
+                    {formatearMoneda(saldoAnterior)}
+                  </span>
+                </div>
+                <span className="text-[11px] text-ink-muted block">
+                  Arrastre acumulado antes del período
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sentinel para carga progresiva automática por bloques */}
+        <div ref={sentinelRef} className="h-1 w-full" />
+
+        {/* 1. Botón inicial: Ver movimientos anteriores */}
+        {!expandido && totalMovimientos > TAMANIO_BLOQUE && (
+          <div className="p-4 sm:p-5 text-center bg-paper-2/40 border-t border-rule flex flex-col items-center justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setExpandido(true);
+                setCantidadVisible(Math.min(TAMANIO_BLOQUE * 2, totalMovimientos));
+              }}
+              className="min-h-[42px] px-5 py-2.5 rounded-xl bg-brand text-brand-contrast font-extrabold text-xs hover:opacity-90 active:scale-98 transition flex items-center gap-2 cursor-pointer shadow-2xs"
+            >
+              <ChevronDown className="w-4 h-4" />
+              <span>Ver movimientos anteriores ({totalMovimientos - TAMANIO_BLOQUE} más)</span>
+            </button>
+            <span className="text-[11px] text-ink-muted">
+              Mostrando los {TAMANIO_BLOQUE} movimientos más recientes de {totalMovimientos}
+            </span>
+          </div>
+        )}
+
+        {/* 2. Estado expandido con más bloques pendientes */}
+        {expandido && hayMasMovimientos && (
+          <div className="p-4 text-center border-t border-rule flex flex-col sm:flex-row items-center justify-center gap-3 bg-paper-2/30">
+            <div className="flex items-center gap-2 text-xs font-semibold text-ink-muted">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-brand" />
+              <span>
+                Cargando movimientos anteriores ({movimientosVisibles.length} de {totalMovimientos})...
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={cargarMasBloque}
+              className="text-[11px] font-bold text-brand hover:underline cursor-pointer"
+            >
+              Cargar siguientes {Math.min(TAMANIO_BLOQUE, totalMovimientos - cantidadVisible)} ahora
+            </button>
+          </div>
+        )}
+
+        {/* 3. Estado expandido: todos los movimientos cargados */}
+        {expandido && !hayMasMovimientos && totalMovimientos > TAMANIO_BLOQUE && (
+          <div className="p-3 bg-paper-2/40 border-t border-rule text-center text-[11px] text-ink-muted flex items-center justify-center gap-3 flex-wrap">
+            <span>✓ Se mostraron todos los movimientos ({totalMovimientos})</span>
+            <button
+              type="button"
+              onClick={() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="font-bold text-brand hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <ArrowUp className="w-3 h-3" />
+              Volver arriba
+            </button>
           </div>
         )}
 

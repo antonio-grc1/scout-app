@@ -53,8 +53,8 @@ export const ListarMiembrosSchema = z
       .transform((v) => v === 'true')
       .optional(),
     pagina: z.coerce.number().int().min(1).default(1),
-    porPagina: z.coerce.number().int().min(1).max(200).default(50),
-    limite: z.coerce.number().int().min(1).max(200).optional(),
+    porPagina: z.coerce.number().int().min(1).max(2000).default(50),
+    limite: z.coerce.number().int().min(1).max(2000).optional(),
   })
   .transform((data) => ({
     ...data,

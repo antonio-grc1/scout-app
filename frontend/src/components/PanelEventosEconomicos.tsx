@@ -20,11 +20,13 @@ import {
   Landmark,
   AlertTriangle,
   XCircle,
+  Search,
+  X,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
+import { formatearMoneda, traducirErrorAmigable, normalizarTextoBusqueda } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalCrearEventoEconomico } from './ModalCrearEventoEconomico';
 import { ModalCargarPedidoEvento } from './ModalCargarPedidoEvento';
@@ -80,6 +82,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   const [eventoDetalle, setEventoDetalle] = useState<any | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [busqueda, setBusqueda] = useState('');
 
   // Modales
   const [modalCrearEventoAbierto, setModalCrearEventoAbierto] = useState(false);
@@ -114,8 +117,22 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
       }
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudieron cargar los eventos económicos.');
-      setError(msg);
-      if (onToast) onToast(msg, 'error');
+      const esOffline =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        msg.toLowerCase().includes('offline') ||
+        msg.toLowerCase().includes('sin conexión') ||
+        msg.toLowerCase().includes('sin conexion');
+
+      if (esOffline) {
+        if (eventos.length === 0) {
+          setError('Estás sin conexión y los eventos aún no han sido sincronizados en este dispositivo.');
+        } else {
+          setError(null);
+        }
+      } else {
+        setError(msg);
+        if (onToast) onToast(msg, 'error');
+      }
     } finally {
       setCargando(false);
     }
@@ -135,6 +152,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   }, [cargarEventos]);
 
   useEffect(() => {
+    setBusqueda('');
     if (eventoSeleccionadoId) {
       cargarDetalleEvento(eventoSeleccionadoId);
     } else {
@@ -152,6 +170,31 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
     () => eventos.filter((e) => e.estado !== 'PUBLICADO'),
     [eventos],
   );
+
+  const pedidosFiltrados = useMemo(() => {
+    const pedidos = eventoDetalle?.pedidos || [];
+    const q = normalizarTextoBusqueda(busqueda);
+    if (!q) return pedidos;
+
+    return pedidos.filter((p: any) => {
+      const matchComprador = p.compradorNombre
+        ? normalizarTextoBusqueda(p.compradorNombre).includes(q)
+        : false;
+      const matchContacto = p.compradorContacto
+        ? normalizarTextoBusqueda(p.compradorContacto).includes(q)
+        : false;
+      const matchVendedor = p.vendedorUsuario
+        ? normalizarTextoBusqueda(`${p.vendedorUsuario.nombre} ${p.vendedorUsuario.apellido}`).includes(q)
+        : false;
+      const matchTotal = String(p.total).includes(q);
+      const matchEstado = p.estado ? normalizarTextoBusqueda(p.estado).includes(q) : false;
+      const matchItems = p.detalles?.some((d: any) =>
+        d.item?.nombre ? normalizarTextoBusqueda(d.item.nombre).includes(q) : false,
+      );
+
+      return matchComprador || matchContacto || matchVendedor || matchTotal || matchEstado || matchItems;
+    });
+  }, [eventoDetalle?.pedidos, busqueda]);
 
 
   const pedidosPendientesAcreditar = (eventoDetalle?.pedidos || []).filter(
@@ -566,23 +609,60 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
       {/* TABLA DE PEDIDOS Y VALES DEL EVENTO */}
       {eventos.length > 0 && (
       <div className="rounded-2xl border border-rule bg-surface overflow-hidden shadow-2xs">
-        <div className="px-4 py-3 bg-paper-2 border-b border-rule flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <ShoppingBag className="w-4 h-4 text-brand" />
-            <h3 className="text-xs font-black text-ink">
-              Pedidos y Vales QR ({eventoDetalle?.pedidos?.length || 0})
-            </h3>
+        <div className="p-3 bg-paper-2 border-b border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-brand shrink-0" />
+              <h3 className="text-xs font-black text-ink">
+                Pedidos y Vales QR ({pedidosFiltrados.length}
+                {busqueda && ` de ${eventoDetalle?.pedidos?.length || 0}`})
+              </h3>
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => eventoSeleccionadoId && cargarDetalleEvento(eventoSeleccionadoId)}
+              className="gap-1 text-xs sm:hidden shrink-0"
+              title="Refrescar pedidos"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </Button>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => eventoSeleccionadoId && cargarDetalleEvento(eventoSeleccionadoId)}
-            className="gap-1 text-xs"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Refrescar</span>
-          </Button>
+          <div className="flex items-center gap-2 flex-1 max-w-md">
+            <div className="relative flex-1">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+              <input
+                type="text"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder="Buscar por comprador, scout, producto, teléfono..."
+                className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-paper border border-rule text-xs font-medium text-ink placeholder:text-ink-muted focus:outline-brand"
+              />
+              {busqueda && (
+                <button
+                  type="button"
+                  onClick={() => setBusqueda('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-ink-muted hover:text-ink rounded cursor-pointer"
+                  title="Limpiar búsqueda"
+                  aria-label="Limpiar búsqueda"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => eventoSeleccionadoId && cargarDetalleEvento(eventoSeleccionadoId)}
+              className="gap-1 text-xs hidden sm:flex shrink-0"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Refrescar</span>
+            </Button>
+          </div>
         </div>
 
         {/* Desktop Table View */}
@@ -601,7 +681,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
               </tr>
             </thead>
             <tbody className="divide-y divide-rule font-medium">
-              {eventoDetalle?.pedidos?.map((p: any) => {
+              {pedidosFiltrados.map((p: any) => {
                 const todosRetirados = p.tickets?.length > 0 && p.tickets.every((t: any) => t.estado === 'UTILIZADO');
                 const algunoRetirado = p.tickets?.some((t: any) => t.estado === 'UTILIZADO');
 
@@ -729,13 +809,26 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
                 );
               })}
 
-              {(!eventoDetalle?.pedidos || eventoDetalle.pedidos.length === 0) && (
+              {(!eventoDetalle?.pedidos || eventoDetalle.pedidos.length === 0) ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-ink-muted">
                     No hay pedidos registrados para este evento. Hacé clic en "Cargar Pedido" para registrar la primera venta.
                   </td>
                 </tr>
-              )}
+              ) : pedidosFiltrados.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-ink-muted">
+                    <p>No se encontraron pedidos que coincidan con "{busqueda}".</p>
+                    <button
+                      type="button"
+                      onClick={() => setBusqueda('')}
+                      className="mt-1 text-xs text-brand font-bold hover:underline cursor-pointer"
+                    >
+                      Limpiar búsqueda
+                    </button>
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
@@ -746,8 +839,19 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
             <div className="p-8 text-center text-xs text-ink-muted">
               No hay pedidos registrados para este evento. Hacé clic en "Cargar Pedido" para registrar la primera venta.
             </div>
+          ) : pedidosFiltrados.length === 0 ? (
+            <div className="p-8 text-center text-xs text-ink-muted space-y-1">
+              <p>No se encontraron pedidos que coincidan con "{busqueda}".</p>
+              <button
+                type="button"
+                onClick={() => setBusqueda('')}
+                className="text-xs text-brand font-bold hover:underline cursor-pointer"
+              >
+                Limpiar búsqueda
+              </button>
+            </div>
           ) : (
-            eventoDetalle.pedidos.map((p: any) => {
+            pedidosFiltrados.map((p: any) => {
               const algunoRetirado = p.tickets?.some((t: any) => t.estado === 'UTILIZADO');
               return (
                 <div key={p.id} className="p-3.5 space-y-2 hover:bg-paper-2/40 transition">

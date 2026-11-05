@@ -219,17 +219,37 @@ export const GlobalPage: React.FC = () => {
         setCandidatos(res.data);
         if (unidades.length === 0) setUnidades(resUnidades.data);
       } else if (tab === 'tesoreria') {
-        const [resPlanes, resConceptos, resFamilias, resUnidades] = await Promise.all([
+        const [
+          resPlanes,
+          resConceptos,
+          resFamilias,
+          resUnidades,
+          resCuentas,
+        ] = await Promise.all([
           api.get('/tesoreria/planes-mensuales').catch(() => ({ data: [] })),
           api.get('/tesoreria/conceptos').catch(() => ({ data: [] })),
           api.get('/tesoreria/familias').catch(() => ({ data: [] })),
           unidades.length === 0 ? api.get('/organizacion/unidades') : Promise.resolve({ data: unidades }),
+          api.get('/tesoreria/cuentas').catch(() => ({ data: [] })),
+          api.get('/tesoreria/rubros').catch(() => ({ data: [] })),
+          api.get('/tesoreria/gastos').catch(() => ({ data: [] })),
+          api.get('/tesoreria/eventos').catch(() => ({ data: [] })),
+          api.get(`/tesoreria/cuadro-resultados?anio=${new Date().getFullYear()}`).catch(() => ({ data: null })),
         ]);
         setPlanesMensuales(resPlanes.data || []);
         setConceptos(resConceptos.data || []);
         setFamilias(resFamilias.data || []);
         if (unidades.length === 0) {
           setUnidades(resUnidades.data);
+        }
+
+        // Pre-cachear el libro diario de cada cuenta financiera para disponibilidad offline
+        if (Array.isArray(resCuentas.data) && resCuentas.data.length > 0) {
+          for (const c of resCuentas.data) {
+            if (c?.id) {
+              api.get(`/tesoreria/cuentas/${c.id}/libro-diario`).catch(() => {});
+            }
+          }
         }
       } else if (tab === 'organizacion') {
         const qInactivas = mostrarInactivasOrg ? '?incluirInactivas=true' : '';

@@ -88,8 +88,22 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
       setDatos(res.data);
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudo cargar el cuadro de resultados.');
-      setError(msg);
-      if (onToast) onToast(msg, 'error');
+      const esOffline =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        msg.toLowerCase().includes('offline') ||
+        msg.toLowerCase().includes('sin conexión') ||
+        msg.toLowerCase().includes('sin conexion');
+
+      if (esOffline) {
+        if (!datos) {
+          setError('Estás sin conexión y el cuadro de resultados aún no ha sido sincronizado en este dispositivo.');
+        } else {
+          setError(null);
+        }
+      } else {
+        setError(msg);
+        if (onToast) onToast(msg, 'error');
+      }
     } finally {
       setCargando(false);
     }
