@@ -9,9 +9,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      selfDestroying: true,
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'pwa-icon.svg', 'pdf-templates/*.pdf'],
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,pdf}'],
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api/],
+      },
       manifest: {
         name: 'Sistema Scout - Grupo Scout Juan XXIII',
         short_name: 'ScoutApp',

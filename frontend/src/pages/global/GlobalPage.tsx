@@ -251,7 +251,14 @@ export const GlobalPage: React.FC = () => {
         setColaboradores(res.data);
       }
     } catch (err) {
-      mostrarToast(traducirErrorAmigable(err, 'No se pudieron cargar los datos.'), 'error');
+      const esOffline =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        String(err).toLowerCase().includes('offline') ||
+        String(err).toLowerCase().includes('sin conexión') ||
+        String(err).toLowerCase().includes('sin conexion');
+      if (!esOffline) {
+        mostrarToast(traducirErrorAmigable(err, 'No se pudieron cargar los datos.'), 'error');
+      }
     } finally {
       setCargando(false);
     }

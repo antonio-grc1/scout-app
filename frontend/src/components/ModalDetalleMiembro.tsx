@@ -930,25 +930,37 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
   const obtenerPlantillaActiva = async () => {
     if (plantillaActiva) return plantillaActiva;
-    const res = await api.get('/legajos/plantillas?cicloAnio=2026');
-    let lista = Array.isArray(res.data) ? res.data : [];
-    if (lista.length === 0) {
-      const resTodas = await api.get('/legajos/plantillas');
-      lista = Array.isArray(resTodas.data) ? resTodas.data : [];
+    try {
+      const res = await api.get('/legajos/plantillas?cicloAnio=2026');
+      let lista = Array.isArray(res.data) ? res.data : [];
+      if (lista.length === 0) {
+        const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
+        lista = Array.isArray(resTodas.data) ? resTodas.data : [];
+      }
+      const p = seleccionarPlantillaPorMiembro(lista, miembro) || lista[0] || null;
+      setPlantillaActiva(p);
+      return p;
+    } catch {
+      return null;
     }
-    const p = seleccionarPlantillaPorMiembro(lista, miembro) || lista[0] || null;
-    setPlantillaActiva(p);
-    return p;
   };
 
   const generarBytesPdfMiembro = async (ent?: any): Promise<Uint8Array> => {
-    let mapeo: MapeoPdf;
+    let mapeo: MapeoPdf = { pdfBaseUrl: '', campos: {} };
     if (ent?.plantillaId) {
-      const res = await api.get(`/legajos/plantillas/${ent.plantillaId}`);
-      mapeo = res.data.mapeoPdfJson;
+      try {
+        const res = await api.get(`/legajos/plantillas/${ent.plantillaId}`);
+        mapeo = res.data?.mapeoPdfJson || mapeo;
+      } catch {
+        // Fallback seguro
+      }
     } else {
-      const p = await obtenerPlantillaActiva();
-      mapeo = p?.mapeoPdfJson || { pdfBaseUrl: '', campos: {} };
+      try {
+        const p = await obtenerPlantillaActiva();
+        mapeo = p?.mapeoPdfJson || mapeo;
+      } catch {
+        // Fallback seguro
+      }
     }
 
     const ramaNombre = miembro.asignaciones?.[0]?.unidad?.nombre || '';

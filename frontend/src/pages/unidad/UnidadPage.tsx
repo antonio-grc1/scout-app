@@ -119,6 +119,7 @@ export const UnidadPage: React.FC = () => {
       const res = await api.get('/legajos/colaboradores-adultos?cicloAnio=2026');
       setFamiliasVoluntarias(res.data || []);
     } catch (err) {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
       setToast({
         texto: traducirErrorAmigable(err, 'No se pudieron cargar las familias voluntarias.'),
         tipo: 'error',
@@ -146,6 +147,16 @@ export const UnidadPage: React.FC = () => {
   const [direccionOrden, setDireccionOrden] = useState<DireccionOrden>('asc');
 
   const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
+    if (
+      tipo === 'error' &&
+      (texto.toLowerCase().includes('sin conexión') ||
+        texto.toLowerCase().includes('sin conexion') ||
+        texto.toLowerCase().includes('offline') ||
+        texto.toLowerCase().includes('red') ||
+        (typeof navigator !== 'undefined' && !navigator.onLine))
+    ) {
+      return;
+    }
     setToast({ texto, tipo });
   };
 
@@ -187,6 +198,9 @@ export const UnidadPage: React.FC = () => {
           api.get('/organizacion/unidades').catch(() => ({ data: [] })),
           api.get('/organizacion/roles').catch(() => ({ data: [] })),
           api.get('/organizacion/ramas').catch(() => ({ data: [] })),
+          puedeVerFichas
+            ? api.get('/legajos/plantillas?cicloAnio=2026').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
         ]);
 
       setMiembros(resMiembros.data.items || []);
@@ -198,9 +212,22 @@ export const UnidadPage: React.FC = () => {
       setErrorCarga(null);
     } catch (err) {
       const mensaje = traducirErrorAmigable(err, 'No se pudo cargar el padrón.');
-      // Sin datos previos se muestra el estado de error en pantalla; con datos, alcanza el toast.
-      setErrorCarga(mensaje);
-      if (miembros.length > 0) mostrarToast(mensaje, 'error');
+      const esOffline =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        mensaje.toLowerCase().includes('sin conexión') ||
+        mensaje.toLowerCase().includes('sin conexion') ||
+        mensaje.toLowerCase().includes('offline');
+
+      if (esOffline) {
+        if (miembros.length === 0) {
+          setErrorCarga('Estás sin conexión y aún no hay datos sincronizados en este dispositivo.');
+        } else {
+          setErrorCarga(null);
+        }
+      } else {
+        setErrorCarga(mensaje);
+        if (miembros.length > 0) mostrarToast(mensaje, 'error');
+      }
     } finally {
       setCargando(false);
     }
