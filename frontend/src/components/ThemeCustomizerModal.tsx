@@ -244,7 +244,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
         </div>
 
         {/* Cuerpo del Modal con Scroll Suave */}
-        <div className="p-4 sm:p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-6 max-h-[75dvh] overflow-y-auto">
           {/* SECCIÓN 1: Tarjetas de los 5 Presets */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

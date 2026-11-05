@@ -9,6 +9,7 @@ import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
 import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
 import { MiembroCard } from '../../components/MiembroCard';
 import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
+import { useModalOverlay } from '../../hooks/useModalOverlay';
 import { obtenerConfigRama } from '../../lib/ramaColors';
 import {
   ESTADO_FICHA_CONFIG,
@@ -49,6 +50,8 @@ import {
   Utensils,
   Truck,
   Phone,
+  Ellipsis,
+  CloudOff,
 } from 'lucide-react';
 
 type CampoOrden = 'miembro' | 'edad' | 'seccion' | 'ficha';
@@ -84,6 +87,7 @@ export const UnidadPage: React.FC = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [ramas, setRamas] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [validandoId, setValidandoId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ texto: string; tipo: 'exito' | 'error' } | null>(null);
 
@@ -99,6 +103,14 @@ export const UnidadPage: React.FC = () => {
   const [modalFamiliasVoluntariasAbierto, setModalFamiliasVoluntariasAbierto] = useState(false);
   const [familiasVoluntarias, setFamiliasVoluntarias] = useState<any[]>([]);
   const [cargandoVoluntarias, setCargandoVoluntarias] = useState(false);
+
+  const {
+    backdropProps: backdropVoluntariasProps,
+    contentProps: contentVoluntariasProps,
+  } = useModalOverlay({
+    abierto: modalFamiliasVoluntariasAbierto,
+    onCerrar: () => setModalFamiliasVoluntariasAbierto(false),
+  });
 
   const handleAbrirFamiliasVoluntarias = async () => {
     setModalFamiliasVoluntariasAbierto(true);
@@ -124,6 +136,7 @@ export const UnidadPage: React.FC = () => {
   const [menuSeccionesAbierto, setMenuSeccionesAbierto] = useState(false);
   const [menuRolesAbierto, setMenuRolesAbierto] = useState(false);
   const [menuCamadasAbierto, setMenuCamadasAbierto] = useState(false);
+  const [menuAccionesAbierto, setMenuAccionesAbierto] = useState(false);
   const [chipActivo, setChipActivo] = useState<ChipFiltro>('TODOS');
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
@@ -135,6 +148,23 @@ export const UnidadPage: React.FC = () => {
   const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
     setToast({ texto, tipo });
   };
+
+  const hayMenuDesplegableAbierto =
+    menuSeccionesAbierto || menuRolesAbierto || menuCamadasAbierto || menuAccionesAbierto;
+
+  useEffect(() => {
+    if (!hayMenuDesplegableAbierto) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuSeccionesAbierto(false);
+        setMenuRolesAbierto(false);
+        setMenuCamadasAbierto(false);
+        setMenuAccionesAbierto(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hayMenuDesplegableAbierto]);
 
   useEffect(() => {
     if (!toast) return;
@@ -165,8 +195,12 @@ export const UnidadPage: React.FC = () => {
       setUnidades(resUnidades.data || []);
       setRoles(resRoles.data || []);
       setRamas(resRamas.data || []);
+      setErrorCarga(null);
     } catch (err) {
-      mostrarToast(traducirErrorAmigable(err, 'No se pudo cargar el padrón.'), 'error');
+      const mensaje = traducirErrorAmigable(err, 'No se pudo cargar el padrón.');
+      // Sin datos previos se muestra el estado de error en pantalla; con datos, alcanza el toast.
+      setErrorCarga(mensaje);
+      if (miembros.length > 0) mostrarToast(mensaje, 'error');
     } finally {
       setCargando(false);
     }
@@ -562,13 +596,56 @@ export const UnidadPage: React.FC = () => {
     setTabInicialModal(tab);
   };
 
+  // Acciones secundarias de la cabecera: en escritorio se muestran en línea;
+  // en móvil, si hay más de una, se agrupan en "Más acciones" para no ocupar media pantalla.
+  const accionesSecundarias = [
+    (tienePermiso('eventos.ver') || tienePermiso('eventos.vender') || tienePermiso('cuotas.cobrar')) && {
+      key: 'eventos',
+      texto: 'Eventos',
+      titulo: 'Ver eventos económicos y ventas de recaudación de la rama',
+      icono: <ShoppingBag className="w-4 h-4 text-brand shrink-0" />,
+      onClick: () => setModalEventosAbierto(true),
+    },
+    (tienePermiso('eventos.vender') || tienePermiso('cuotas.cobrar')) && {
+      key: 'qr-vales',
+      texto: 'QR Vales',
+      titulo: 'Escanear y validar vales o entradas QR de eventos económicos',
+      icono: <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />,
+      onClick: () => setModalScannerEventosAbierto(true),
+    },
+    tienePermiso('legajos.ver') && {
+      key: 'familias',
+      texto: 'Familias',
+      titulo: 'Ver familias voluntarias y oficios',
+      icono: <HeartHandshake className="w-4 h-4 text-rose-500 shrink-0" />,
+      onClick: handleAbrirFamiliasVoluntarias,
+    },
+    tienePermiso('legajos.validar_fisico') && {
+      key: 'qr-ficha',
+      texto: 'QR Ficha Médica',
+      titulo: 'Validar entrega física de Ficha Médica escaneando el QR',
+      icono: <QrCode className="w-4 h-4 text-ink-2 shrink-0" />,
+      onClick: () => setScannerAbierto(true),
+    },
+  ].filter(Boolean) as {
+    key: string;
+    texto: string;
+    titulo: string;
+    icono: React.ReactNode;
+    onClick: () => void;
+  }[];
+  const agruparAccionesEnMovil = accionesSecundarias.length > 1;
+
   return (
     <div className="min-h-screen bg-paper text-ink pb-24 sm:pb-10 transition-colors">
       <Navbar />
 
       {/* Toast Flotante No Bloqueante */}
       {toast && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4">
+        <div
+          role={toast.tipo === 'error' ? 'alert' : 'status'}
+          className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4"
+        >
           <div
             className={`px-4 py-3 rounded-2xl shadow-lg border text-xs font-bold flex items-center justify-between gap-3 ${
               toast.tipo === 'exito'
@@ -579,6 +656,7 @@ export const UnidadPage: React.FC = () => {
             <span>{toast.texto}</span>
             <button
               onClick={() => setToast(null)}
+              aria-label="Cerrar aviso"
               className="p-1 hover:bg-white/20 rounded-lg cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -603,48 +681,65 @@ export const UnidadPage: React.FC = () => {
 
           {/* Botones de Acción Principal según capacidades del rol (Touch target >= 44px) */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-            {(tienePermiso('eventos.ver') || tienePermiso('eventos.vender') || tienePermiso('cuotas.cobrar')) && (
+            {accionesSecundarias.map((accion) => (
               <button
-                onClick={() => setModalEventosAbierto(true)}
-                title="Ver eventos económicos y ventas de recaudación de la rama"
-                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+                key={accion.key}
+                onClick={accion.onClick}
+                title={accion.titulo}
+                className={`${agruparAccionesEnMovil ? 'hidden sm:flex' : 'flex'} flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs items-center justify-center gap-2 transition cursor-pointer shadow-2xs`}
               >
-                <ShoppingBag className="w-4 h-4 text-brand shrink-0" />
-                <span>Eventos</span>
+                {accion.icono}
+                <span>{accion.texto}</span>
               </button>
-            )}
+            ))}
 
-            {(tienePermiso('eventos.vender') || tienePermiso('cuotas.cobrar')) && (
-              <button
-                onClick={() => setModalScannerEventosAbierto(true)}
-                title="Escanear y validar vales o entradas QR de eventos económicos"
-                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
-              >
-                <Ticket className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>QR Vales</span>
-              </button>
-            )}
+            {agruparAccionesEnMovil && (
+              <div className="relative flex-1 sm:hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuAccionesAbierto(!menuAccionesAbierto);
+                    setMenuSeccionesAbierto(false);
+                    setMenuRolesAbierto(false);
+                    setMenuCamadasAbierto(false);
+                  }}
+                  aria-expanded={menuAccionesAbierto}
+                  aria-haspopup="menu"
+                  className="w-full min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
+                >
+                  <Ellipsis className="w-4 h-4 shrink-0" />
+                  <span>Más acciones</span>
+                  <ChevronDown
+                    className={`w-4 h-4 text-ink-muted transition-transform ${menuAccionesAbierto ? 'rotate-180' : ''}`}
+                  />
+                </button>
 
-            {tienePermiso('legajos.ver') && (
-              <button
-                onClick={handleAbrirFamiliasVoluntarias}
-                title="Ver familias voluntarias y oficios"
-                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
-              >
-                <HeartHandshake className="w-4 h-4 text-rose-500 shrink-0" />
-                <span>Familias</span>
-              </button>
-            )}
-
-            {tienePermiso('legajos.validar_fisico') && (
-              <button
-                onClick={() => setScannerAbierto(true)}
-                title="Validar entrega física de Ficha Médica escaneando el QR"
-                className="flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl bg-surface border border-rule hover:bg-paper-2 text-ink font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-2xs"
-              >
-                <QrCode className="w-4 h-4 text-ink-2 shrink-0" />
-                <span>QR Ficha Médica</span>
-              </button>
+                {menuAccionesAbierto && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setMenuAccionesAbierto(false)} />
+                    <div
+                      role="menu"
+                      className="absolute left-0 top-full mt-1.5 z-30 w-64 max-w-[calc(100vw-1.5rem)] bg-surface border border-rule rounded-2xl shadow-md p-1.5 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+                    >
+                      {accionesSecundarias.map((accion) => (
+                        <button
+                          key={accion.key}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuAccionesAbierto(false);
+                            accion.onClick();
+                          }}
+                          className="w-full min-h-[44px] px-3 rounded-xl flex items-center gap-2.5 text-sm font-semibold text-ink hover:bg-paper-2 text-left cursor-pointer"
+                        >
+                          {accion.icono}
+                          <span>{accion.texto}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             {tienePermiso('miembros.crear') && (
@@ -693,6 +788,7 @@ export const UnidadPage: React.FC = () => {
                   setMenuSeccionesAbierto(!menuSeccionesAbierto);
                   setMenuRolesAbierto(false);
                   setMenuCamadasAbierto(false);
+                  setMenuAccionesAbierto(false);
                 }}
                 aria-expanded={menuSeccionesAbierto}
                 aria-label="Filtrar por secciones operativas"
@@ -813,6 +909,7 @@ export const UnidadPage: React.FC = () => {
                   setMenuRolesAbierto(!menuRolesAbierto);
                   setMenuSeccionesAbierto(false);
                   setMenuCamadasAbierto(false);
+                  setMenuAccionesAbierto(false);
                 }}
                 aria-expanded={menuRolesAbierto}
                 aria-label="Filtrar por roles"
@@ -933,6 +1030,7 @@ export const UnidadPage: React.FC = () => {
                   setMenuCamadasAbierto(!menuCamadasAbierto);
                   setMenuSeccionesAbierto(false);
                   setMenuRolesAbierto(false);
+                  setMenuAccionesAbierto(false);
                 }}
                 aria-expanded={menuCamadasAbierto}
                 aria-label="Filtrar por camadas"
@@ -1132,9 +1230,14 @@ export const UnidadPage: React.FC = () => {
         </div>
 
         {/* Barra de Chips Táctiles de Estado Operativo */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap">
+        <div
+          role="group"
+          aria-label="Filtros rápidos del padrón"
+          className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap"
+        >
           <button
             onClick={() => setChipActivo('TODOS')}
+            aria-pressed={chipActivo === 'TODOS'}
             className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer border ${
               chipActivo === 'TODOS'
                 ? 'bg-brand text-brand-contrast border-brand shadow-2xs font-extrabold'
@@ -1144,21 +1247,26 @@ export const UnidadPage: React.FC = () => {
             Todos ({conteos.todos})
           </button>
 
-          <button
-            onClick={() => setChipActivo(chipActivo === 'FALTA_FICHA' ? 'TODOS' : 'FALTA_FICHA')}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
-              chipActivo === 'FALTA_FICHA'
-                ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
-                : 'bg-surface text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60'
-            }`}
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Falta Ficha ({conteos.faltaFicha})</span>
-          </button>
+          {/* Sin permiso de legajos no se cargan las entregas: el conteo marcaría a todos como faltantes */}
+          {puedeVerFichas && (
+            <button
+              onClick={() => setChipActivo(chipActivo === 'FALTA_FICHA' ? 'TODOS' : 'FALTA_FICHA')}
+              aria-pressed={chipActivo === 'FALTA_FICHA'}
+              className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
+                chipActivo === 'FALTA_FICHA'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
+                  : 'bg-surface text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Falta Ficha ({conteos.faltaFicha})</span>
+            </button>
+          )}
 
-          {conteos.conDeuda > 0 && (
+          {puedeVerCuotas && conteos.conDeuda > 0 && (
             <button
               onClick={() => setChipActivo(chipActivo === 'CON_DEUDA' ? 'TODOS' : 'CON_DEUDA')}
+              aria-pressed={chipActivo === 'CON_DEUDA'}
               className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
                 chipActivo === 'CON_DEUDA'
                   ? 'bg-rose-600 text-white border-rose-600 shadow-2xs'
@@ -1175,6 +1283,7 @@ export const UnidadPage: React.FC = () => {
               onClick={() =>
                 setChipActivo(chipActivo === 'PASE_SUGERIDO' ? 'TODOS' : 'PASE_SUGERIDO')
               }
+              aria-pressed={chipActivo === 'PASE_SUGERIDO'}
               className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
                 chipActivo === 'PASE_SUGERIDO'
                   ? 'bg-brand text-brand-contrast border-brand shadow-2xs font-extrabold'
@@ -1189,6 +1298,7 @@ export const UnidadPage: React.FC = () => {
           {conteos.bajas > 0 && (
             <button
               onClick={() => setChipActivo(chipActivo === 'BAJAS' ? 'TODOS' : 'BAJAS')}
+              aria-pressed={chipActivo === 'BAJAS'}
               className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
                 chipActivo === 'BAJAS'
                   ? 'bg-ink text-surface border-ink'
@@ -1307,6 +1417,22 @@ export const UnidadPage: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        ) : errorCarga && miembros.length === 0 ? (
+          <div
+            role="alert"
+            className="bg-surface rounded-2xl border border-rose-200 dark:border-rose-900/60 p-10 text-center space-y-3"
+          >
+            <CloudOff className="w-10 h-10 text-rose-500 opacity-70 mx-auto" />
+            <p className="text-sm font-bold text-ink">{errorCarga}</p>
+            <p className="text-xs text-ink-muted">Revisá tu conexión e intentá de nuevo.</p>
+            <button
+              onClick={cargarDatos}
+              className="min-h-[40px] px-4 py-2 rounded-xl bg-brand text-brand-contrast font-extrabold text-xs cursor-pointer transition-colors inline-flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reintentar
+            </button>
           </div>
         ) : miembrosFiltrados.length === 0 ? (
           <div className="bg-surface rounded-2xl border border-rule p-10 text-center space-y-3">
@@ -1644,8 +1770,17 @@ export const UnidadPage: React.FC = () => {
 
       {/* Modal Familias Voluntarias de la Unidad */}
       {modalFamiliasVoluntariasAbierto && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface rounded-3xl border border-rule shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95">
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+          {...backdropVoluntariasProps}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Familias Voluntarias y Oficios"
+            className="bg-surface rounded-3xl border border-rule shadow-2xl w-full max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95"
+            {...contentVoluntariasProps}
+          >
             <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2">
               <div className="flex items-center gap-2.5">
                 <HeartHandshake className="w-5 h-5 text-rose-500" />
@@ -1661,6 +1796,7 @@ export const UnidadPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setModalFamiliasVoluntariasAbierto(false)}
+                aria-label="Cerrar modal"
                 className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />

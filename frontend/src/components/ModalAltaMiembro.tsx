@@ -287,7 +287,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
       {...backdropProps}
     >
       <div
-        className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col transition-colors"
+        className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-xl max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col transition-colors"
         {...contentProps}
       >
         <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">

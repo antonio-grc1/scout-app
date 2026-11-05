@@ -347,7 +347,7 @@ export const PanelAdminPlantillas: React.FC<Props> = ({ onToast }) => {
           {...backdropProps}
         >
           <div
-            className="bg-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-rule shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="bg-surface w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl border border-rule shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90dvh] overflow-y-auto"
             {...contentProps}
           >
             <div className="flex items-center justify-between pb-2 border-b border-rule">

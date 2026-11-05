@@ -601,7 +601,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
           {...backdropProps}
         >
           <div
-            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
             {...contentProps}
           >
             {/* Cabecera del Bottom Sheet */}

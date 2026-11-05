@@ -329,7 +329,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       {...backdropProps}
     >
       <div
-        className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92vh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+        className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
         {...contentProps}
       >
         {/* Header */}

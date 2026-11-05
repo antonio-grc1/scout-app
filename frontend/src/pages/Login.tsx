@@ -55,32 +55,50 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-paper flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative transition-colors">
-      <div className="absolute top-4 right-4 flex items-center gap-2">
+    <div className="min-h-screen bg-paper flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative transition-colors overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-32 top-1/4 size-72 rounded-full bg-brand/10 blur-3xl"
+      />
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
         <BotonInstalarPwa variante="navbar" />
         <ThemeToggle variant="segmented" />
       </div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <BrandLogo
-          variant="transparent"
-          size="lg"
-          center
-          className="drop-shadow-sm my-3"
-        />
-        <h2 className="mt-4 text-2xl font-extrabold text-ink tracking-tight font-display">
-          Grupo Scout Juan XXIII
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Ingreso exclusivo para Protagonistas, Familias y Educadores
-        </p>
-      </div>
+      <div className="relative z-10 w-full max-w-5xl mx-auto grid lg:grid-cols-[0.95fr_1.05fr] gap-8 lg:gap-16 items-center">
+        <div className="hidden lg:flex flex-col gap-5 px-4">
+          <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-brand">
+            Portal de gestión
+          </p>
+          <p className="max-w-md text-4xl font-black leading-[1.05] tracking-[-0.03em] text-ink font-display">
+            Una comunidad que se organiza mejor.
+          </p>
+          <p className="max-w-md text-base leading-relaxed text-ink-muted">
+            Todo el padrón, los legajos y la vida de tu grupo scout en un solo lugar.
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-surface py-8 px-6 shadow-sm border border-rule rounded-2xl sm:px-10 transition-colors">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2">
+        <div className="w-full max-w-md mx-auto text-center">
+          <BrandLogo
+            variant="transparent"
+            size="lg"
+            center
+            className="drop-shadow-sm my-2"
+          />
+          <h1 className="mt-4 text-2xl font-extrabold text-ink tracking-tight font-display">
+            Grupo Scout Juan XXIII
+          </h1>
+          <p className="mt-1 text-sm text-ink-muted">
+            Ingreso exclusivo para Protagonistas, Familias y Educadores
+          </p>
+
+          <div className="mt-8 text-left bg-surface py-7 px-5 shadow-md border border-rule rounded-3xl sm:px-8 transition-colors">
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {error && (
+                <div
+                  role="alert"
+                  className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2"
+                >
                 <AlertCircle className="w-5 h-5 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -147,6 +165,7 @@ export const Login: React.FC = () => {
               </Button>
             </div>
           </form>
+          </div>
         </div>
       </div>
     </div>

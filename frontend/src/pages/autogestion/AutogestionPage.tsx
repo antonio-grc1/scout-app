@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
 import { Navbar } from '../../components/Navbar';
@@ -39,9 +40,27 @@ import { PdfViewerModal } from '../../components/PdfViewerModal';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR } from '../../components/ModalTicketQR';
 
+type VistaAutogestion = 'papeles' | 'cuotas' | 'eventos';
+const VISTAS_VALIDAS: VistaAutogestion[] = ['papeles', 'cuotas', 'eventos'];
+
 export const AutogestionPage: React.FC = () => {
   const { usuario, asignaciones } = useAuthStore();
-  const [vistaActiva, setVistaActiva] = useState<'papeles' | 'cuotas' | 'eventos'>('papeles');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [vistaActiva, setVistaActiva] = useState<VistaAutogestion>(() => {
+    const desdeUrl = searchParams.get('vista') as VistaAutogestion | null;
+    return desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : 'papeles';
+  });
+  const cambiarVista = (nuevaVista: VistaAutogestion) => {
+    setVistaActiva(nuevaVista);
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('vista', nuevaVista);
+        return params;
+      },
+      { replace: true },
+    );
+  };
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<any | null>(null);
   const [precarga, setPrecarga] = useState<any | null>(null);
   const [cargandoInicial, setCargandoInicial] = useState(true);
@@ -344,7 +363,10 @@ export const AutogestionPage: React.FC = () => {
       />
 
       {toast && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div
+          role={toast.tipo === 'error' ? 'alert' : 'status'}
+          className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4 duration-200"
+        >
           <div
             className={`p-3.5 rounded-2xl shadow-lg border flex items-center justify-between gap-3 text-xs font-bold ${
               toast.tipo === 'exito'
@@ -355,6 +377,7 @@ export const AutogestionPage: React.FC = () => {
             <span className="leading-snug">{toast.texto}</span>
             <button
               onClick={() => setToast(null)}
+              aria-label="Cerrar aviso"
               className="p-1 opacity-80 hover:opacity-100 cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -423,10 +446,14 @@ export const AutogestionPage: React.FC = () => {
           </div>
 
           {/* Selector Rápido de Vista (Papeles vs Cuotas vs Eventos) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-rule">
+          <nav
+            aria-label="Secciones de mi legajo"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-rule"
+          >
             <button
               type="button"
-              onClick={() => setVistaActiva('papeles')}
+              onClick={() => cambiarVista('papeles')}
+              aria-current={vistaActiva === 'papeles' ? 'page' : undefined}
               className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'papeles'
                   ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -439,7 +466,8 @@ export const AutogestionPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setVistaActiva('cuotas')}
+              onClick={() => cambiarVista('cuotas')}
+              aria-current={vistaActiva === 'cuotas' ? 'page' : undefined}
               className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'cuotas'
                   ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -463,7 +491,8 @@ export const AutogestionPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setVistaActiva('eventos')}
+              onClick={() => cambiarVista('eventos')}
+              aria-current={vistaActiva === 'eventos' ? 'page' : undefined}
               className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'eventos'
                   ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -484,7 +513,7 @@ export const AutogestionPage: React.FC = () => {
                 </span>
               )}
             </button>
-          </div>
+          </nav>
         </div>
 
         {/* VISTA 1: PAPELES / FORMULARIO */}

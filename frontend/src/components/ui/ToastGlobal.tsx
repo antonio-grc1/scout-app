@@ -60,7 +60,7 @@ export const ToastGlobal: React.FC = () => {
 
   return (
     <div
-      className="fixed bottom-5 sm:bottom-6 inset-x-0 mx-auto max-w-md z-50 px-4 pointer-events-none motion-safe:animate-in motion-safe:slide-in-from-bottom-5 motion-safe:fade-in duration-200"
+      className="fixed bottom-20 sm:bottom-6 inset-x-0 mx-auto max-w-md z-50 px-4 pointer-events-none motion-safe:animate-in motion-safe:slide-in-from-bottom-5 motion-safe:fade-in duration-200"
       role="status"
       aria-live="polite"
     >

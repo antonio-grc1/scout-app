@@ -168,7 +168,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
       {...modalBase.backdropProps}
     >
       <div
-        className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]"
         {...modalBase.contentProps}
       >
         {/* Encabezado */}
@@ -325,12 +325,12 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
           </div>
 
           {/* Tarjeta del Vale centrada y maximizada */}
-          <div className="flex-1 flex flex-col items-center justify-center p-2 max-h-[78vh] w-full">
+          <div className="flex-1 flex flex-col items-center justify-center p-2 max-h-[78dvh] w-full">
             {qrUrl ? (
               <img
                 src={qrUrl}
                 alt={`Entrada en pantalla completa - ${ticket.pedido.evento.titulo}`}
-                className="max-h-[72vh] sm:max-h-[76vh] w-auto max-w-[95vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
+                className="max-h-[72dvh] sm:max-h-[76dvh] w-auto max-w-[95vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
               />
             ) : (
               <div className="text-white text-xs">Cargando entrada...</div>

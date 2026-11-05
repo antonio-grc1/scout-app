@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../../store/toastStore';
@@ -47,6 +48,9 @@ import {
   X,
   FileText,
 } from 'lucide-react';
+
+type TabGestion = 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas';
+type SubTabTesoreria = 'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias';
 
 export const GlobalPage: React.FC = () => {
   const { tienePermiso, tieneGlobal, refrescarSesionDesdeServidor } = useAuthStore();
@@ -97,7 +101,7 @@ export const GlobalPage: React.FC = () => {
     tienePermiso('cuotas.ajustar') ||
     tienePermiso('miembros.editar');
 
-  const tabPorDefecto = (): 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas' => {
+  const tabPorDefecto = (): TabGestion => {
     if (puedeVerTesoreria) return 'tesoreria';
     if (puedeVerRoles) return 'roles';
     if (puedeVerOrganizacion) return 'organizacion';
@@ -106,7 +110,22 @@ export const GlobalPage: React.FC = () => {
     return 'colaboradores';
   };
 
-  const subTabPorDefecto = (): 'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias' => {
+  // La pestaña activa vive en la URL (?tab=) para conservarla al recargar o compartir el link.
+  const permisoPorTab: Record<TabGestion, boolean> = {
+    tesoreria: puedeVerTesoreria,
+    colaboradores: puedeVerColaboradores,
+    organizacion: puedeVerOrganizacion,
+    roles: puedeVerRoles,
+    pases: puedeVerPases,
+    plantillas: puedeVerPlantillas,
+  };
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabInicial = (): TabGestion => {
+    const desdeUrl = searchParams.get('tab') as TabGestion | null;
+    return desdeUrl && permisoPorTab[desdeUrl] ? desdeUrl : tabPorDefecto();
+  };
+
+  const subTabPorDefecto = (): SubTabTesoreria => {
     if (puedeVerCaja) return 'caja-banco';
     if (puedeVerGastos) return 'gastos';
     if (puedeVerBalance) return 'balance';
@@ -116,13 +135,50 @@ export const GlobalPage: React.FC = () => {
     if (puedeVerFamilias) return 'familias';
     return 'caja-banco';
   };
+  const permisoPorSubTab: Record<SubTabTesoreria, boolean> = {
+    'caja-banco': puedeVerCaja,
+    gastos: puedeVerGastos,
+    balance: puedeVerBalance,
+    'eventos-qr': puedeVerEventos,
+    planes: puedeVerPlanes,
+    campamentos: puedeVerCampamentos,
+    familias: puedeVerFamilias,
+  };
+  const subTabInicial = (): SubTabTesoreria => {
+    const desdeUrl = searchParams.get('sub') as SubTabTesoreria | null;
+    return desdeUrl && permisoPorSubTab[desdeUrl] ? desdeUrl : subTabPorDefecto();
+  };
 
-  const [tab, setTab] = useState<'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas'>(tabPorDefecto);
+  const [tab, setTab] = useState<TabGestion>(tabInicial);
+  const cambiarTab = (nuevaTab: TabGestion) => {
+    setTab(nuevaTab);
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('tab', nuevaTab);
+        if (nuevaTab !== 'tesoreria') params.delete('sub');
+        return params;
+      },
+      { replace: true },
+    );
+  };
   const [candidatos, setCandidatos] = useState<any[]>([]);
   const [conceptos, setConceptos] = useState<any[]>([]);
   const [planesMensuales, setPlanesMensuales] = useState<any[]>([]);
   const [familias, setFamilias] = useState<any[]>([]);
-  const [subTabTesoreria, setSubTabTesoreria] = useState<'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias'>(subTabPorDefecto);
+  const [subTabTesoreria, setSubTabTesoreria] = useState<SubTabTesoreria>(subTabInicial);
+  const cambiarSubTabTesoreria = (nuevaSub: SubTabTesoreria) => {
+    setSubTabTesoreria(nuevaSub);
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('tab', 'tesoreria');
+        params.set('sub', nuevaSub);
+        return params;
+      },
+      { replace: true },
+    );
+  };
   const [ramas, setRamas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [mostrarInactivasOrg, setMostrarInactivasOrg] = useState(false);
@@ -378,10 +434,14 @@ export const GlobalPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+          <nav
+            aria-label="Secciones de gestión"
+            className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5"
+          >
             {puedeVerTesoreria && (
               <button
-                onClick={() => setTab('tesoreria')}
+                onClick={() => cambiarTab('tesoreria')}
+                aria-current={tab === 'tesoreria' ? 'page' : undefined}
                 className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'tesoreria'
                     ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -393,7 +453,8 @@ export const GlobalPage: React.FC = () => {
             )}
             {puedeVerColaboradores && (
               <button
-                onClick={() => setTab('colaboradores')}
+                onClick={() => cambiarTab('colaboradores')}
+                aria-current={tab === 'colaboradores' ? 'page' : undefined}
                 className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'colaboradores'
                     ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -405,7 +466,8 @@ export const GlobalPage: React.FC = () => {
             )}
             {puedeVerOrganizacion && (
               <button
-                onClick={() => setTab('organizacion')}
+                onClick={() => cambiarTab('organizacion')}
+                aria-current={tab === 'organizacion' ? 'page' : undefined}
                 className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'organizacion'
                     ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -417,7 +479,8 @@ export const GlobalPage: React.FC = () => {
             )}
             {puedeVerRoles && (
               <button
-                onClick={() => setTab('roles')}
+                onClick={() => cambiarTab('roles')}
+                aria-current={tab === 'roles' ? 'page' : undefined}
                 className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'roles'
                     ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -429,7 +492,8 @@ export const GlobalPage: React.FC = () => {
             )}
             {puedeVerPases && (
               <button
-                onClick={() => setTab('pases')}
+                onClick={() => cambiarTab('pases')}
+                aria-current={tab === 'pases' ? 'page' : undefined}
                 className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'pases'
                     ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -441,7 +505,8 @@ export const GlobalPage: React.FC = () => {
             )}
             {puedeVerPlantillas && (
               <button
-                onClick={() => setTab('plantillas')}
+                onClick={() => cambiarTab('plantillas')}
+                aria-current={tab === 'plantillas' ? 'page' : undefined}
                 className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
                   tab === 'plantillas'
                     ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -451,18 +516,22 @@ export const GlobalPage: React.FC = () => {
                 Formularios y Fichas
               </button>
             )}
-          </div>
+          </nav>
         </div>
 
         {/* TAB 2: TESORERÍA */}
         {tab === 'tesoreria' && (
           <div className="bg-surface rounded-2xl border border-rule shadow-xs p-4 sm:p-6 space-y-5 transition-colors">
             {/* Sub-pestañas de Tesorería */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-rule pb-3">
+            <nav
+              aria-label="Vistas de tesorería"
+              className="flex items-center gap-1.5 overflow-x-auto no-scrollbar border-b border-rule pb-3"
+            >
               {puedeVerCaja && (
                 <button
                   type="button"
-                  onClick={() => setSubTabTesoreria('caja-banco')}
+                  onClick={() => cambiarSubTabTesoreria('caja-banco')}
+                  aria-current={subTabTesoreria === 'caja-banco' ? 'page' : undefined}
                   className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                     subTabTesoreria === 'caja-banco'
                       ? 'bg-brand/10 text-brand border border-brand/30'
@@ -477,7 +546,8 @@ export const GlobalPage: React.FC = () => {
               {puedeVerGastos && (
                 <button
                   type="button"
-                  onClick={() => setSubTabTesoreria('gastos')}
+                  onClick={() => cambiarSubTabTesoreria('gastos')}
+                  aria-current={subTabTesoreria === 'gastos' ? 'page' : undefined}
                   className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                     subTabTesoreria === 'gastos'
                       ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
@@ -492,7 +562,8 @@ export const GlobalPage: React.FC = () => {
               {puedeVerBalance && (
                 <button
                   type="button"
-                  onClick={() => setSubTabTesoreria('balance')}
+                  onClick={() => cambiarSubTabTesoreria('balance')}
+                  aria-current={subTabTesoreria === 'balance' ? 'page' : undefined}
                   className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                     subTabTesoreria === 'balance'
                       ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
@@ -507,7 +578,8 @@ export const GlobalPage: React.FC = () => {
               {puedeVerEventos && (
                 <button
                   type="button"
-                  onClick={() => setSubTabTesoreria('eventos-qr')}
+                  onClick={() => cambiarSubTabTesoreria('eventos-qr')}
+                  aria-current={subTabTesoreria === 'eventos-qr' ? 'page' : undefined}
                   className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                     subTabTesoreria === 'eventos-qr'
                       ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
@@ -522,7 +594,8 @@ export const GlobalPage: React.FC = () => {
               {puedeVerPlanes && (
                 <button
                   type="button"
-                  onClick={() => setSubTabTesoreria('planes')}
+                  onClick={() => cambiarSubTabTesoreria('planes')}
+                  aria-current={subTabTesoreria === 'planes' ? 'page' : undefined}
                   className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                     subTabTesoreria === 'planes'
                       ? 'bg-brand/10 text-brand border border-brand/30'
@@ -537,7 +610,8 @@ export const GlobalPage: React.FC = () => {
               {puedeVerCampamentos && (
                 <button
                   type="button"
-                  onClick={() => setSubTabTesoreria('campamentos')}
+                  onClick={() => cambiarSubTabTesoreria('campamentos')}
+                  aria-current={subTabTesoreria === 'campamentos' ? 'page' : undefined}
                   className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                     subTabTesoreria === 'campamentos'
                       ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
@@ -552,7 +626,8 @@ export const GlobalPage: React.FC = () => {
               {puedeVerFamilias && (
                 <button
                   type="button"
-                  onClick={() => setSubTabTesoreria('familias')}
+                  onClick={() => cambiarSubTabTesoreria('familias')}
+                  aria-current={subTabTesoreria === 'familias' ? 'page' : undefined}
                   className={`min-h-[40px] flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer shrink-0 ${
                     subTabTesoreria === 'familias'
                       ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
@@ -575,7 +650,7 @@ export const GlobalPage: React.FC = () => {
                   <span>Rubros Contables</span>
                 </button>
               )}
-            </div>
+            </nav>
 
             {/* SUB-TAB 0: CAJA Y BANCO (LIBRO DIARIO) */}
             {subTabTesoreria === 'caja-banco' && (
@@ -1016,7 +1091,20 @@ export const GlobalPage: React.FC = () => {
         {/* TAB 4: COLABORADORES Y RECURSOS DE FAMILIAS */}
         {tab === 'colaboradores' && (
           <div className="space-y-4">
-            {colaboradores.length === 0 ? (
+            {cargando && colaboradores.length === 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="h-28 rounded-2xl bg-surface border border-rule animate-pulse p-5 space-y-3"
+                  >
+                    <div className="h-4 w-44 bg-paper-3 rounded" />
+                    <div className="h-3 w-64 bg-paper-2 rounded" />
+                    <div className="h-5 w-24 bg-paper-2 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : colaboradores.length === 0 ? (
               <div className="bg-surface rounded-2xl p-10 text-center border border-rule text-ink-muted">
                 <HeartHandshake className="w-10 h-10 mx-auto mb-2 opacity-50" />
                 <p className="text-sm font-semibold text-ink-2">
