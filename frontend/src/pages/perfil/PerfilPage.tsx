@@ -186,9 +186,22 @@ export const PerfilPage: React.FC = () => {
 
       <main className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-5">
         {cargando ? (
-          <div className="bg-surface rounded-2xl p-10 border border-rule flex flex-col items-center justify-center gap-3 text-ink-muted">
-            <Loader2 className="w-6 h-6 animate-spin text-brand" />
-            <span className="text-xs font-bold">Cargando tu perfil…</span>
+          <div className="space-y-5">
+            <div className="bg-surface rounded-2xl p-5 border border-rule animate-pulse flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-2xl bg-paper-3 shrink-0" />
+              <div className="space-y-2 flex-1">
+                <div className="h-5 w-48 bg-paper-3 rounded" />
+                <div className="h-3.5 w-32 bg-paper-2 rounded" />
+              </div>
+            </div>
+            <div className="bg-surface rounded-2xl p-5 border border-rule animate-pulse space-y-4">
+              <div className="h-4 w-56 bg-paper-3 rounded" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-11 rounded-xl bg-paper-2" />
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <>
@@ -275,6 +288,7 @@ export const PerfilPage: React.FC = () => {
 
               {alertaContacto && (
                 <div
+                  role={alertaContacto.tipo === 'error' ? 'alert' : 'status'}
                   className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border ${
                     alertaContacto.tipo === 'exito'
                       ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
@@ -496,9 +510,10 @@ export const PerfilPage: React.FC = () => {
 
               {alertaClave && (
                 <div
+                  role={alertaClave.tipo === 'error' ? 'alert' : 'status'}
                   className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border ${
                     alertaClave.tipo === 'exito'
-                      ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-900 dark:text-emerald-200 border-emerald-200 dark:border-emerald-800'
                       : 'bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-200 border-rose-200 dark:border-rose-800'
                   }`}
                 >
@@ -513,12 +528,14 @@ export const PerfilPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <label className="block text-ink font-bold mb-1">
+                  <label htmlFor="perfil-clave-actual" className="block text-ink font-bold mb-1">
                     Contraseña Actual
                   </label>
                   <div className="relative">
                     <input
+                      id="perfil-clave-actual"
                       type={verActual ? 'text' : 'password'}
+                      autoComplete="current-password"
                       required
                       value={formClave.passwordActual}
                       onChange={(e) =>
@@ -529,6 +546,7 @@ export const PerfilPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setVerActual((v) => !v)}
+                      aria-label={verActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer"
                     >
                       {verActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -537,12 +555,14 @@ export const PerfilPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-ink font-bold mb-1">
+                  <label htmlFor="perfil-clave-nueva" className="block text-ink font-bold mb-1">
                     Nueva Contraseña
                   </label>
                   <div className="relative">
                     <input
+                      id="perfil-clave-nueva"
                       type={verNueva ? 'text' : 'password'}
+                      autoComplete="new-password"
                       required
                       minLength={8}
                       placeholder="Mínimo 8 caracteres"
@@ -555,6 +575,7 @@ export const PerfilPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setVerNueva((v) => !v)}
+                      aria-label={verNueva ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer"
                     >
                       {verNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -563,12 +584,14 @@ export const PerfilPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-ink font-bold mb-1">
+                  <label htmlFor="perfil-clave-confirmar" className="block text-ink font-bold mb-1">
                     Repetir Nueva Contraseña
                   </label>
                   <div className="relative">
                     <input
+                      id="perfil-clave-confirmar"
                       type={verConfirmar ? 'text' : 'password'}
+                      autoComplete="new-password"
                       required
                       minLength={8}
                       value={formClave.confirmar}
@@ -578,6 +601,7 @@ export const PerfilPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setVerConfirmar((v) => !v)}
+                      aria-label={verConfirmar ? 'Ocultar repetición de contraseña' : 'Ver repetición de contraseña'}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer"
                     >
                       {verConfirmar ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

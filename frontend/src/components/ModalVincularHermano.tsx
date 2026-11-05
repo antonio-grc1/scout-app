@@ -118,7 +118,7 @@ export const ModalVincularHermano: React.FC<Props> = ({
       {...backdropProps}
     >
       <div
-        className="bg-surface border border-rule rounded-3xl max-w-lg w-full shadow-md overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-surface border border-rule rounded-3xl max-w-lg w-full shadow-md overflow-hidden flex flex-col max-h-[90dvh]"
         {...contentProps}
       >
         {/* Encabezado */}

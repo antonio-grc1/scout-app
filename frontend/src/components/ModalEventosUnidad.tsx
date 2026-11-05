@@ -99,7 +99,7 @@ export const ModalEventosUnidad: React.FC<ModalEventosUnidadProps> = ({
         {...backdropProps}
       >
         <div
-          className="bg-surface border border-rule rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden"
+          className="bg-surface border border-rule rounded-3xl max-w-2xl w-full shadow-2xl flex flex-col max-h-[90dvh] overflow-hidden"
           {...contentProps}
         >
           {/* Encabezado */}

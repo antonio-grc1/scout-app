@@ -202,7 +202,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
         {...backdropProps}
       >
         <div
-          className="bg-paper border border-rule w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+          className="bg-paper border border-rule w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]"
           {...contentProps}
         >
           <div className="px-5 py-4 border-b border-rule flex items-center justify-between shrink-0">

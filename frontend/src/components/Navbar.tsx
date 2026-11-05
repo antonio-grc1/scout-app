@@ -33,7 +33,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="bg-navbar border-b border-navbar-rule sticky top-0 z-40 transition-colors backdrop-blur-xs">
+      <header className="bg-navbar/85 border-b border-navbar-rule sticky top-0 z-40 transition-colors backdrop-blur-xl shadow-[0_8px_30px_-24px_rgba(15,23,42,0.55)]">
         {requiereCambioClave && (
           <div className="bg-brand text-brand-contrast px-4 py-2.5 text-xs font-bold flex items-center justify-between">
             <div className="flex items-center gap-2 mx-auto">
@@ -62,11 +62,12 @@ export const Navbar: React.FC = () => {
             </div>
 
             {/* Navegación Desktop (sm/md+) y Acciones Rápidas */}
-            <nav className="flex items-center gap-1.5 sm:gap-2">
+            <nav aria-label="Navegación principal" className="flex items-center gap-1.5 sm:gap-2">
               <div className="hidden sm:flex items-center gap-1">
                 {puedeVerPadron() && (
                   <Link
                     to="/rama"
+                    aria-current={esRama || esPadron ? 'page' : undefined}
                     className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                       esRama || esPadron
                         ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
@@ -81,6 +82,7 @@ export const Navbar: React.FC = () => {
                 {puedeAccederPanelGestion() && (
                   <Link
                     to="/global"
+                    aria-current={esGlobal ? 'page' : undefined}
                     className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                       esGlobal
                         ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
@@ -94,6 +96,7 @@ export const Navbar: React.FC = () => {
 
                 <Link
                   to="/autogestion"
+                  aria-current={esAutogestion ? 'page' : undefined}
                   className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                     esAutogestion
                       ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
@@ -106,6 +109,7 @@ export const Navbar: React.FC = () => {
 
                 <Link
                   to="/perfil"
+                  aria-current={esPerfil ? 'page' : undefined}
                   className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
                     esPerfil
                       ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
@@ -137,11 +141,12 @@ export const Navbar: React.FC = () => {
       {/* Bottom Navigation Bar exclusiva para Móvil (Ergonomía para el pulgar) */}
       <nav
         aria-label="Navegación principal móvil"
-        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-navbar border-t border-navbar-rule px-2 py-1.5 flex items-center justify-around shadow-lg transition-colors backdrop-blur-xs"
+        className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-navbar/95 border-t border-navbar-rule px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] flex items-center justify-around shadow-lg transition-colors backdrop-blur-xl"
       >
         {puedeVerPadron() && (
           <Link
             to="/rama"
+            aria-current={esRama || esPadron ? 'page' : undefined}
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
               esRama || esPadron
                 ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
@@ -156,6 +161,7 @@ export const Navbar: React.FC = () => {
         {puedeAccederPanelGestion() && (
           <Link
             to="/global"
+            aria-current={esGlobal ? 'page' : undefined}
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
               esGlobal
                 ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
@@ -169,6 +175,7 @@ export const Navbar: React.FC = () => {
 
         <Link
           to="/autogestion"
+          aria-current={esAutogestion ? 'page' : undefined}
           className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
             esAutogestion
               ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
@@ -181,6 +188,7 @@ export const Navbar: React.FC = () => {
 
         <Link
           to="/perfil"
+          aria-current={esPerfil ? 'page' : undefined}
           className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
             esPerfil
               ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'

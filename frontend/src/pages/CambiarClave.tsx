@@ -94,9 +94,9 @@ export const CambiarClave: React.FC = () => {
             <div className="flex items-center justify-between gap-2 mb-4">
               <div className="flex items-center gap-2">
                 <KeyRound className="w-6 h-6 text-brand" />
-                <h3 className="text-xl font-bold text-ink">
+                <h1 className="text-xl font-bold text-ink">
                   {requiereCambioClave ? 'Actualizar Contraseña Inicial' : 'Cambiar Contraseña'}
-                </h3>
+                </h1>
               </div>
 
               {!requiereCambioClave && (
@@ -119,26 +119,34 @@ export const CambiarClave: React.FC = () => {
 
             <form className="space-y-5" onSubmit={handleSubmit}>
               {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 rounded-xl text-xs flex items-center gap-2">
+                <div
+                  role="alert"
+                  className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl text-xs flex items-center gap-2"
+                >
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{error}</span>
                 </div>
               )}
 
               {exito && (
-                <div className="p-3 bg-brand/10 border border-brand/30 text-ink rounded-xl text-xs font-bold flex items-center gap-2">
+                <div
+                  role="status"
+                  className="p-3 bg-brand/10 border border-brand/30 text-ink rounded-xl text-xs font-bold flex items-center gap-2"
+                >
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-brand" />
                   <span>{exito}</span>
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-semibold text-ink">
+                <label htmlFor="clave-actual" className="block text-xs font-semibold text-ink">
                   Contraseña Actual {requiereCambioClave ? '(o DNI)' : ''}
                 </label>
                 <div className="mt-1 relative">
                   <input
+                    id="clave-actual"
                     type={mostrarActual ? 'text' : 'password'}
+                    autoComplete="current-password"
                     required
                     value={claveActual}
                     onChange={(e) => setClaveActual(e.target.value)}
@@ -157,12 +165,14 @@ export const CambiarClave: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-ink">
+                <label htmlFor="clave-nueva" className="block text-xs font-semibold text-ink">
                   Nueva Contraseña (mínimo 8 caracteres)
                 </label>
                 <div className="mt-1 relative">
                   <input
+                    id="clave-nueva"
                     type={mostrarNueva ? 'text' : 'password'}
+                    autoComplete="new-password"
                     required
                     value={claveNueva}
                     onChange={(e) => setClaveNueva(e.target.value)}
@@ -181,12 +191,14 @@ export const CambiarClave: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-ink">
+                <label htmlFor="clave-repetir" className="block text-xs font-semibold text-ink">
                   Repetir Nueva Contraseña
                 </label>
                 <div className="mt-1 relative">
                   <input
+                    id="clave-repetir"
                     type={mostrarRepetir ? 'text' : 'password'}
+                    autoComplete="new-password"
                     required
                     value={claveRepetir}
                     onChange={(e) => setClaveRepetir(e.target.value)}

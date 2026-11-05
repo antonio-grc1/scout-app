@@ -148,7 +148,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
         {...backdropProps}
       >
         <div
-          className="bg-paper border border-rule w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh]"
+          className="bg-paper border border-rule w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[88dvh]"
           role="dialog"
           aria-modal="true"
           {...contentProps}

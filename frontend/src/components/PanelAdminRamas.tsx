@@ -368,28 +368,37 @@ export const PanelAdminRamas: React.FC<Props> = ({
   return (
     <div className="space-y-4">
       {/* Barra superior de control */}
-      <div className="flex items-center justify-between gap-2 flex-wrap bg-surface rounded-2xl border border-rule p-4 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface rounded-2xl border border-rule p-4 sm:p-5 shadow-xs">
         <div>
-          <h2 className="text-sm font-extrabold text-ink">
+          <h2 className="text-base font-extrabold text-ink">
             Configuración de Ramas, Edades de Pase y Secciones
           </h2>
-          <p className="text-xs text-ink-muted">
+          <p className="text-xs text-ink-muted mt-0.5">
             Modificá nombres, edades límite para sugerencias de pases o agregá y quitá ramas.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onToggleMostrarInactivas(!mostrarInactivas)}
-          className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
-            mostrarInactivas
-              ? 'bg-ink text-paper border-ink'
-              : 'bg-paper-2 text-ink-2 border-rule'
-          }`}
-        >
-          {mostrarInactivas ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          <span>{mostrarInactivas ? 'Ocultar inactivas' : 'Ver inactivas'}</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="px-2.5 py-1 rounded-xl border border-rule bg-paper-2 text-xs font-bold text-ink-2">
+            {ramas.filter((r) => r.activa !== false).length} ramas activas
+          </span>
+          <span className="px-2.5 py-1 rounded-xl border border-rule bg-paper-2 text-xs font-bold text-ink-2">
+            {unidades.filter((u) => u.activa !== false).length} secciones
+          </span>
+          <button
+            type="button"
+            onClick={() => onToggleMostrarInactivas(!mostrarInactivas)}
+            aria-pressed={mostrarInactivas}
+            className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+              mostrarInactivas
+                ? 'bg-ink text-paper border-ink'
+                : 'bg-paper-2 text-ink-2 border-rule'
+            }`}
+          >
+            {mostrarInactivas ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            <span>{mostrarInactivas ? 'Ocultar inactivas' : 'Ver inactivas'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -636,7 +645,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
           {...modalRama.backdropProps}
         >
           <div
-            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
             {...modalRama.contentProps}
           >
             {/* Cabecera del Modal */}
@@ -796,7 +805,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
           {...modalUnidad.backdropProps}
         >
           <div
-            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
+            className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150"
             {...modalUnidad.contentProps}
           >
             {/* Cabecera del Modal */}

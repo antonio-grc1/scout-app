@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
 import { Navbar } from '../../components/Navbar';
@@ -39,9 +40,27 @@ import { PdfViewerModal } from '../../components/PdfViewerModal';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR } from '../../components/ModalTicketQR';
 
+type VistaAutogestion = 'papeles' | 'cuotas' | 'eventos';
+const VISTAS_VALIDAS: VistaAutogestion[] = ['papeles', 'cuotas', 'eventos'];
+
 export const AutogestionPage: React.FC = () => {
   const { usuario, asignaciones } = useAuthStore();
-  const [vistaActiva, setVistaActiva] = useState<'papeles' | 'cuotas' | 'eventos'>('papeles');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [vistaActiva, setVistaActiva] = useState<VistaAutogestion>(() => {
+    const desdeUrl = searchParams.get('vista') as VistaAutogestion | null;
+    return desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : 'papeles';
+  });
+  const cambiarVista = (nuevaVista: VistaAutogestion) => {
+    setVistaActiva(nuevaVista);
+    setSearchParams(
+      (prev) => {
+        const params = new URLSearchParams(prev);
+        params.set('vista', nuevaVista);
+        return params;
+      },
+      { replace: true },
+    );
+  };
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<any | null>(null);
   const [precarga, setPrecarga] = useState<any | null>(null);
   const [cargandoInicial, setCargandoInicial] = useState(true);
@@ -81,6 +100,16 @@ export const AutogestionPage: React.FC = () => {
   }, [misPedidos, eventoParaCargar]);
 
   const mostrarToast = (texto: string, tipo: 'exito' | 'error' = 'exito') => {
+    if (
+      tipo === 'error' &&
+      (texto.toLowerCase().includes('sin conexión') ||
+        texto.toLowerCase().includes('sin conexion') ||
+        texto.toLowerCase().includes('offline') ||
+        texto.toLowerCase().includes('red') ||
+        (typeof navigator !== 'undefined' && !navigator.onLine))
+    ) {
+      return;
+    }
     setToast({ texto, tipo });
   };
 
@@ -91,79 +120,96 @@ export const AutogestionPage: React.FC = () => {
   }, [toast]);
 
   const inicializarAutogestion = useCallback(async () => {
+    const usuarioActual = useAuthStore.getState().usuario;
+    const asignacionesActuales = useAuthStore.getState().asignaciones;
+    const targetUserId = usuarioActual?.id;
+
+    if (!targetUserId) {
+      setErrorCarga('No se pudo identificar tu usuario. Volvé a iniciar sesión.');
+      setCargandoInicial(false);
+      return;
+    }
+
     setCargandoInicial(true);
     setErrorCarga(null);
 
     try {
-      let targetUserId = usuario?.id;
-      let usuarioMe = usuario;
-      let asignacionesMe = asignaciones;
-      try {
-        const resMe = await api.get('/auth/me');
-        if (resMe.data?.usuario?.id) {
-          targetUserId = resMe.data.usuario.id;
-          usuarioMe = resMe.data.usuario;
-          if (Array.isArray(resMe.data.asignaciones)) {
-            asignacionesMe = resMe.data.asignaciones;
-          }
-          useAuthStore.getState().setSesion({
-            accessToken: resMe.data.accessToken || useAuthStore.getState().token || '',
-            usuario: resMe.data.usuario,
-            requiereCambioClave: Boolean(
-              resMe.data.requiereCambioClave ?? useAuthStore.getState().requiereCambioClave,
-            ),
-            asignaciones: Array.isArray(resMe.data.asignaciones)
-              ? resMe.data.asignaciones
-              : useAuthStore.getState().asignaciones,
-          });
-        }
-      } catch {
-        // Fallback al usuario en sesión
-      }
-
-      if (!targetUserId) {
-        setErrorCarga('No se pudo identificar tu usuario. Volvé a iniciar sesión.');
-        setCargandoInicial(false);
-        return;
-      }
-
       api
         .get(`/tesoreria/estado-cuenta/${targetUserId}`)
         .then((res) => setEstadoCuenta(res.data))
         .catch(() => {});
 
       const [resPlantillas, resMiembro] = await Promise.all([
-        api.get('/legajos/plantillas?cicloAnio=2026'),
+        api.get('/legajos/plantillas?cicloAnio=2026').catch(() => ({ data: [] })),
         api.get(`/miembros/${targetUserId}`).catch(() => ({ data: null })),
       ]);
       let listaPlantillas: any[] = Array.isArray(resPlantillas.data) ? resPlantillas.data : [];
 
       if (listaPlantillas.length === 0) {
-        const resTodas = await api.get('/legajos/plantillas');
+        const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
         listaPlantillas = Array.isArray(resTodas.data) ? resTodas.data : [];
       }
 
+      const perfilMiembro = resMiembro.data || usuarioActual;
+
       if (listaPlantillas.length === 0) {
-        setErrorCarga('No hay formularios activos en este momento.');
+        const esOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+        if (esOffline) {
+          setErrorCarga('Estás sin conexión y aún no se guardaron los formularios en este dispositivo.');
+        } else {
+          setErrorCarga('No hay formularios activos en este momento.');
+        }
         setCargandoInicial(false);
         return;
       }
 
-      const perfilMiembro = resMiembro.data || usuarioMe;
       const plantilla =
-        seleccionarPlantillaPorMiembro(listaPlantillas, perfilMiembro, asignacionesMe) ||
+        seleccionarPlantillaPorMiembro(listaPlantillas, perfilMiembro, asignacionesActuales) ||
         listaPlantillas[0];
       setPlantillaSeleccionada(plantilla);
 
       const ciclo = plantilla.cicloAnio || 2026;
-      const resPrecarga = await api.get(
-        `/legajos/miembro/${targetUserId}/plantilla/${plantilla.id}/precarga?cicloAnio=${ciclo}`,
-      );
-      setPrecarga(resPrecarga.data);
+      let datosPrecarga: any = null;
+      try {
+        const resPrecarga = await api.get(
+          `/legajos/miembro/${targetUserId}/plantilla/${plantilla.id}/precarga?cicloAnio=${ciclo}`,
+        );
+        datosPrecarga = resPrecarga.data;
+      } catch {
+        // Fallback offline con los datos del usuario en sesión
+        datosPrecarga = {
+          usuario: perfilMiembro,
+          plantilla,
+          ultimaEntrega: null,
+          datosFamiliaresSugeridos: {},
+        };
+      }
+      setPrecarga(datosPrecarga);
     } catch (err) {
+      const esOffline =
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        String(err).toLowerCase().includes('offline') ||
+        String(err).toLowerCase().includes('sin conexión') ||
+        String(err).toLowerCase().includes('sin conexion');
+
+      if (esOffline) {
+        if (usuarioActual) {
+          setPrecarga((prev: any) => prev || {
+            usuario: usuarioActual,
+            plantilla: null,
+            ultimaEntrega: null,
+            datosFamiliaresSugeridos: {},
+          });
+          setErrorCarga(null);
+          return;
+        }
+      }
+
       const msg = traducirErrorAmigable(err, 'No se pudo cargar tu ficha.');
-      setErrorCarga(msg);
-      mostrarToast(msg, 'error');
+      if (!esOffline) {
+        setErrorCarga(msg);
+        mostrarToast(msg, 'error');
+      }
     } finally {
       setCargandoInicial(false);
     }
@@ -185,16 +231,19 @@ export const AutogestionPage: React.FC = () => {
 
       const evList = Array.isArray(resEventos.data) ? resEventos.data : [];
       setEventosActivos(evList);
-      if (evList.length > 0 && !eventoParaCargar) {
-        const primerPublicado = evList.find((e: any) => e.estado === 'PUBLICADO');
-        setEventoParaCargar(primerPublicado || evList[0]);
+      if (evList.length > 0) {
+        setEventoParaCargar((prev: any) => {
+          if (prev) return prev;
+          const primerPublicado = evList.find((e: any) => e.estado === 'PUBLICADO');
+          return primerPublicado || evList[0];
+        });
       }
     } catch {
       // Ignorar
     } finally {
       setCargandoEventos(false);
     }
-  }, [eventoParaCargar]);
+  }, []);
 
   useEffect(() => {
     if (vistaActiva === 'eventos') {
@@ -344,7 +393,10 @@ export const AutogestionPage: React.FC = () => {
       />
 
       {toast && (
-        <div className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4 duration-200">
+        <div
+          role={toast.tipo === 'error' ? 'alert' : 'status'}
+          className="fixed bottom-20 sm:bottom-6 right-4 left-4 sm:left-auto sm:max-w-sm z-50 animate-in fade-in slide-in-from-bottom-4 duration-200"
+        >
           <div
             className={`p-3.5 rounded-2xl shadow-lg border flex items-center justify-between gap-3 text-xs font-bold ${
               toast.tipo === 'exito'
@@ -355,6 +407,7 @@ export const AutogestionPage: React.FC = () => {
             <span className="leading-snug">{toast.texto}</span>
             <button
               onClick={() => setToast(null)}
+              aria-label="Cerrar aviso"
               className="p-1 opacity-80 hover:opacity-100 cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -423,10 +476,14 @@ export const AutogestionPage: React.FC = () => {
           </div>
 
           {/* Selector Rápido de Vista (Papeles vs Cuotas vs Eventos) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-rule">
+          <nav
+            aria-label="Secciones de mi legajo"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-rule"
+          >
             <button
               type="button"
-              onClick={() => setVistaActiva('papeles')}
+              onClick={() => cambiarVista('papeles')}
+              aria-current={vistaActiva === 'papeles' ? 'page' : undefined}
               className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'papeles'
                   ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -439,7 +496,8 @@ export const AutogestionPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setVistaActiva('cuotas')}
+              onClick={() => cambiarVista('cuotas')}
+              aria-current={vistaActiva === 'cuotas' ? 'page' : undefined}
               className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'cuotas'
                   ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -463,7 +521,8 @@ export const AutogestionPage: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setVistaActiva('eventos')}
+              onClick={() => cambiarVista('eventos')}
+              aria-current={vistaActiva === 'eventos' ? 'page' : undefined}
               className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                 vistaActiva === 'eventos'
                   ? 'bg-brand text-brand-contrast shadow-2xs'
@@ -484,7 +543,7 @@ export const AutogestionPage: React.FC = () => {
                 </span>
               )}
             </button>
-          </div>
+          </nav>
         </div>
 
         {/* VISTA 1: PAPELES / FORMULARIO */}

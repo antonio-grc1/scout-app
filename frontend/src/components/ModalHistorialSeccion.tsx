@@ -271,7 +271,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
       {...backdropProps}
     >
       <div
-        className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
+        className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-4xl max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
         {...contentProps}
       >
         {/* CABECERA DEL MODAL */}

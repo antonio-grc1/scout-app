@@ -220,7 +220,7 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
       {...backdropProps}
     >
       <div
-        className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-md rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]"
         {...contentProps}
       >
         {/* Encabezado */}

@@ -11,6 +11,7 @@ import { PerfilPage } from './pages/perfil/PerfilPage';
 import { BarraDeCarga } from './components/ui/BarraDeCarga';
 import { ToastGlobal } from './components/ui/ToastGlobal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
+import { BannerOffline } from './components/BannerOffline';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,7 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <BannerOffline />
         <BarraDeCarga />
         <ThemeCustomizerModal />
         <Routes>

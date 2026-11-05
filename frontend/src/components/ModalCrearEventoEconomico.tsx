@@ -333,7 +333,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
       {...backdropProps}
     >
       <div
-        className="relative w-full max-w-2xl rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-2xl rounded-3xl bg-surface border border-rule shadow-2xl overflow-hidden flex flex-col max-h-[92dvh]"
         {...contentProps}
       >
         {/* Header */}

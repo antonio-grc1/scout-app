@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
+import { limpiarCacheApi } from '../lib/offlineCache';
 
 export interface AsignacionUsuario {
   unidadId: number;
@@ -94,6 +95,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     logout: () => {
+      limpiarCacheApi();
       localStorage.removeItem('scout_token');
       localStorage.removeItem('scout_user');
       localStorage.removeItem('scout_asignaciones');

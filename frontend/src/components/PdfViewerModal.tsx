@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import '../lib/pdfPolyfills';
 import * as pdfjsLib from 'pdfjs-dist';
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import {
   ExternalLink,
@@ -13,7 +14,11 @@ import {
   FileText,
 } from 'lucide-react';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+// Asignar el worker de PDF.js directamente en memoria en el hilo principal
+// para que funcione 100% offline sin hacer ninguna petición HTTP de red
+if (typeof window !== 'undefined') {
+  (window as any).pdfjsWorker = pdfjsWorker;
+}
 
 interface PdfViewerModalProps {
   url?: string | null;
@@ -166,7 +171,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       try {
         const response = await fetch(url);
         const buffer = await response.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: buffer });
+        const loadingTask = pdfjsLib.getDocument({
+          data: new Uint8Array(buffer),
+        });
         currentTask = loadingTask;
         const doc = await loadingTask.promise;
 
@@ -180,7 +187,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         if (containerRef.current) {
           setContainerWidth(containerRef.current.clientWidth);
         }
-      } catch {
+      } catch (err) {
+        console.error('Error renderizando PDF:', err);
         if (!cancelado) {
           setError('No se pudo renderizar el documento PDF en pantalla.');
         }

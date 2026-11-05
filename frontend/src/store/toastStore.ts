@@ -36,6 +36,18 @@ export const useToastStore = create<ToastState>((set, get) => ({
   toast: null,
 
   mostrarToast: (texto, tipo = 'exito', duracionMs = 4000) => {
+    // Silenciar toasts de error por falta de conexión u offline, ya que se informa en el banner superior
+    if (
+      tipo === 'error' &&
+      (texto.toLowerCase().includes('sin conexión') ||
+        texto.toLowerCase().includes('sin conexion') ||
+        texto.toLowerCase().includes('offline') ||
+        texto.toLowerCase().includes('red') ||
+        (typeof navigator !== 'undefined' && !navigator.onLine))
+    ) {
+      return;
+    }
+
     if (timeoutId) {
       clearTimeout(timeoutId);
     }

@@ -930,25 +930,37 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
   const obtenerPlantillaActiva = async () => {
     if (plantillaActiva) return plantillaActiva;
-    const res = await api.get('/legajos/plantillas?cicloAnio=2026');
-    let lista = Array.isArray(res.data) ? res.data : [];
-    if (lista.length === 0) {
-      const resTodas = await api.get('/legajos/plantillas');
-      lista = Array.isArray(resTodas.data) ? resTodas.data : [];
+    try {
+      const res = await api.get('/legajos/plantillas?cicloAnio=2026');
+      let lista = Array.isArray(res.data) ? res.data : [];
+      if (lista.length === 0) {
+        const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
+        lista = Array.isArray(resTodas.data) ? resTodas.data : [];
+      }
+      const p = seleccionarPlantillaPorMiembro(lista, miembro) || lista[0] || null;
+      setPlantillaActiva(p);
+      return p;
+    } catch {
+      return null;
     }
-    const p = seleccionarPlantillaPorMiembro(lista, miembro) || lista[0] || null;
-    setPlantillaActiva(p);
-    return p;
   };
 
   const generarBytesPdfMiembro = async (ent?: any): Promise<Uint8Array> => {
-    let mapeo: MapeoPdf;
+    let mapeo: MapeoPdf = { pdfBaseUrl: '', campos: {} };
     if (ent?.plantillaId) {
-      const res = await api.get(`/legajos/plantillas/${ent.plantillaId}`);
-      mapeo = res.data.mapeoPdfJson;
+      try {
+        const res = await api.get(`/legajos/plantillas/${ent.plantillaId}`);
+        mapeo = res.data?.mapeoPdfJson || mapeo;
+      } catch {
+        // Fallback seguro
+      }
     } else {
-      const p = await obtenerPlantillaActiva();
-      mapeo = p?.mapeoPdfJson || { pdfBaseUrl: '', campos: {} };
+      try {
+        const p = await obtenerPlantillaActiva();
+        mapeo = p?.mapeoPdfJson || mapeo;
+      } catch {
+        // Fallback seguro
+      }
     }
 
     const ramaNombre = miembro.asignaciones?.[0]?.unidad?.nombre || '';
@@ -1105,7 +1117,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       {...backdropProps}
     >
       <div
-        className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-md flex flex-col max-h-[92vh] border border-rule transition-colors animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
+        className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-md flex flex-col max-h-[92dvh] border border-rule transition-colors animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
         {...contentProps}
       >
         {/* Cabecera Compacta */}
@@ -1173,9 +1185,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         </div>
 
         {/* Pestañas Táctiles (Touch Target >= 44px) */}
-        <div className="flex border-b border-rule bg-surface px-3 overflow-x-auto no-scrollbar text-xs font-bold text-ink-muted shrink-0">
+        <nav
+          aria-label="Secciones del miembro"
+          className="flex border-b border-rule bg-surface px-3 overflow-x-auto no-scrollbar text-xs font-bold text-ink-muted shrink-0"
+        >
           <button
             onClick={() => setTab('datos')}
+            aria-current={tab === 'datos' ? 'page' : undefined}
             className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
               tab === 'datos'
                 ? 'border-brand text-brand font-bold'
@@ -1189,6 +1205,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           {puedeVerCuotas && (
             <button
               onClick={() => setTab('cuotas')}
+              aria-current={tab === 'cuotas' ? 'page' : undefined}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'cuotas'
                   ? 'border-brand text-brand font-bold'
@@ -1208,6 +1225,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           {puedeVerFicha && (
             <button
               onClick={() => setTab('ficha')}
+              aria-current={tab === 'ficha' ? 'page' : undefined}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'ficha'
                   ? 'border-brand text-brand font-bold'
@@ -1222,6 +1240,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           {puedeHacerPases && (
             <button
               onClick={() => setTab('pase')}
+              aria-current={tab === 'pase' ? 'page' : undefined}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'pase'
                   ? 'border-brand text-brand font-bold'
@@ -1239,6 +1258,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           {puedeResetearClave && (
             <button
               onClick={() => setTab('seguridad')}
+              aria-current={tab === 'seguridad' ? 'page' : undefined}
               className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
                 tab === 'seguridad'
                   ? 'border-brand text-brand font-bold'
@@ -1249,11 +1269,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
               <span>Clave</span>
             </button>
           )}
-        </div>
+        </nav>
 
         {/* Alerta interna */}
         {alerta && (
           <div
+            role={alerta.tipo === 'error' ? 'alert' : 'status'}
             className={`mx-4 mt-3 p-3 rounded-xl text-xs font-bold flex items-center justify-between border ${
               alerta.tipo === 'exito'
                 ? 'bg-brand/10 border-brand/30 text-ink'
@@ -1261,7 +1282,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             }`}
           >
             <span>{alerta.texto}</span>
-            <button onClick={() => setAlerta(null)} className="ml-2 p-1 cursor-pointer">
+            <button
+              onClick={() => setAlerta(null)}
+              aria-label="Cerrar alerta"
+              className="ml-2 p-1 cursor-pointer"
+            >
               ✕
             </button>
           </div>

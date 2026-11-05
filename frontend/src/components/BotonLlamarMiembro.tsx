@@ -87,7 +87,7 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
                 </button>
               </div>
 
-              <div className="p-3.5 space-y-2.5 max-h-[70vh] overflow-y-auto">
+              <div className="p-3.5 space-y-2.5 max-h-[70dvh] overflow-y-auto">
                 {telefonos.map((item, idx) => {
                   const badgeClase =
                     BADGE_POR_ETIQUETA[item.etiqueta] ||
