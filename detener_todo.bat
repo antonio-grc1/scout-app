@@ -1,5 +1,5 @@
 @echo off
-title ScoutApp - Detener Servicios
+title Juan XXIII - Detener Servicios
 echo ==============================================
 echo  Deteniendo procesos en puertos 5432, 3000 y 5173...
 echo ==============================================

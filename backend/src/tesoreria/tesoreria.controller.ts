@@ -358,7 +358,7 @@ export class TesoreriaController {
   }
 
   // ---------------- Cuentas Financieras, Libro Diario y Transferencias (Fase 1) ----------------
-  @RequireAnyPermission(TESORERIA_CAJA, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_CAJA, CUOTAS_COBRAR, TESORERIA_GESTIONAR, EVENTOS_VENDER, EVENTOS_GESTIONAR)
   @Get('cuentas')
   listarCuentas(
     @Alcance() a: AlcanceAcceso,

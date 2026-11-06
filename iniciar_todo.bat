@@ -1,14 +1,14 @@
 @echo off
-title ScoutApp - Launcher
+title Juan XXIII - Launcher
 echo ========================================================
 echo  Iniciando Base de Datos Local, Backend y Frontend...
 echo ========================================================
 
-start "ScoutApp - Base de Datos" cmd /k "%~dp0iniciar_db.bat"
+start "Juan XXIII - Base de Datos" cmd /k "%~dp0iniciar_db.bat"
 timeout /t 3 /nobreak >nul
-start "ScoutApp - Backend" cmd /k "%~dp0iniciar_backend.bat"
+start "Juan XXIII - Backend" cmd /k "%~dp0iniciar_backend.bat"
 timeout /t 2 /nobreak >nul
-start "ScoutApp - Frontend" cmd /k "%~dp0iniciar_frontend.bat"
+start "Juan XXIII - Frontend" cmd /k "%~dp0iniciar_frontend.bat"
 
 echo.
 echo Se han abierto las ventanas para:

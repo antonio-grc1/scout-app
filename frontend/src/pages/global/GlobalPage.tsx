@@ -151,6 +151,7 @@ export const GlobalPage: React.FC = () => {
 
   const [tab, setTab] = useState<TabGestion>(tabInicial);
   const cambiarTab = (nuevaTab: TabGestion) => {
+    if (nuevaTab === tab) return;
     setTab(nuevaTab);
     setSearchParams(
       (prev) => {
@@ -159,7 +160,6 @@ export const GlobalPage: React.FC = () => {
         if (nuevaTab !== 'tesoreria') params.delete('sub');
         return params;
       },
-      { replace: true },
     );
   };
   const [candidatos, setCandidatos] = useState<any[]>([]);
@@ -168,6 +168,7 @@ export const GlobalPage: React.FC = () => {
   const [familias, setFamilias] = useState<any[]>([]);
   const [subTabTesoreria, setSubTabTesoreria] = useState<SubTabTesoreria>(subTabInicial);
   const cambiarSubTabTesoreria = (nuevaSub: SubTabTesoreria) => {
+    if (nuevaSub === subTabTesoreria) return;
     setSubTabTesoreria(nuevaSub);
     setSearchParams(
       (prev) => {
@@ -176,9 +177,23 @@ export const GlobalPage: React.FC = () => {
         params.set('sub', nuevaSub);
         return params;
       },
-      { replace: true },
     );
   };
+
+  // Sincronizar pestaña activa y subpestaña con searchParams (al presionar Atrás/Adelante en el navegador/móvil)
+  useEffect(() => {
+    const tabUrl = searchParams.get('tab') as TabGestion | null;
+    const tabValida = tabUrl && permisoPorTab[tabUrl] ? tabUrl : tabPorDefecto();
+    if (tabValida !== tab) {
+      setTab(tabValida);
+    }
+
+    const subUrl = searchParams.get('sub') as SubTabTesoreria | null;
+    const subValida = subUrl && permisoPorSubTab[subUrl] ? subUrl : subTabPorDefecto();
+    if (subValida !== subTabTesoreria) {
+      setSubTabTesoreria(subValida);
+    }
+  }, [searchParams]);
   const [ramas, setRamas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [mostrarInactivasOrg, setMostrarInactivasOrg] = useState(false);

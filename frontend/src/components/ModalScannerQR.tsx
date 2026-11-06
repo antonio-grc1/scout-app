@@ -16,6 +16,7 @@ import { api } from '../api/client';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { ModalDefinirPagoPedido } from './ModalDefinirPagoPedido';
 
 export interface ModalScannerQRProps {
   abierto: boolean;
@@ -29,8 +30,10 @@ interface ValidacionResultado {
   mensaje: string;
   alertaPagoPendiente?: boolean;
   montoPendiente?: number;
+  pedidoId?: number;
   ticket?: {
     id: number;
+    pedidoId?: number;
     producto: string;
     cantidad: number;
     comprador: string;
@@ -39,6 +42,7 @@ interface ValidacionResultado {
     fechaUso?: string | null;
     pedidoEstado?: string;
     pedidoTotal?: number;
+    pedidoMetodoPago?: string | null;
   };
 }
 
@@ -83,6 +87,16 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
   });
   const [resultado, setResultado] = useState<ValidacionResultado | null>(null);
   const [modoManual, setModoManual] = useState<boolean>(false);
+  const [modalCobroAbierto, setModalCobroAbierto] = useState<boolean>(false);
+  const [modalCobroDatos, setModalCobroDatos] = useState<{
+    pedidoId: number;
+    monto: number;
+    comprador: string;
+    producto?: string;
+    cantidad?: number;
+    evento?: string;
+    vendedor?: string | null;
+  } | null>(null);
 
   // Inicializar o detener scanner según si el modal está abierto
   useEffect(() => {
@@ -91,6 +105,9 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
       setResultado(null);
       setErrorCamara(null);
       setTokenManual('');
+      setModalCobroAbierto(false);
+      setModalCobroDatos(null);
+      scanInProgressRef.current = false;
       return;
     }
 
@@ -138,10 +155,6 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
           if (scanInProgressRef.current) return;
           scanInProgressRef.current = true;
           await procesarToken(decodedText);
-          // Espera 2.5s antes de volver a aceptar lecturas para evitar escaneos dobles
-          setTimeout(() => {
-            scanInProgressRef.current = false;
-          }, 2500);
         },
         () => {
           // Ignorar errores de frame no-encontrado en video continuo
@@ -173,7 +186,10 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
 
   const procesarToken = async (token: string) => {
     const raw = token.trim();
-    if (!raw) return;
+    if (!raw) {
+      scanInProgressRef.current = false;
+      return;
+    }
 
     setValidando(true);
     setResultado(null);
@@ -186,10 +202,39 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
       if (data.ok) {
         playFeedbackTone(880); // Tono agudo de éxito
         if (onTicketValidado) onTicketValidado();
-      } else if (data.estado === 'YA_UTILIZADO') {
-        playFeedbackTone(440); // Tono medio de advertencia
+
+        const esPendiente = Boolean(
+          data.alertaPagoPendiente || data.ticket?.pedidoEstado === 'PENDIENTE',
+        );
+        const resolvedPedidoId = data.pedidoId || data.ticket?.pedidoId;
+
+        if (esPendiente && resolvedPedidoId) {
+          // Desplegar automáticamente el modal para definir si está abonado o no y cómo
+          setModalCobroDatos({
+            pedidoId: resolvedPedidoId,
+            monto: data.montoPendiente || data.ticket?.pedidoTotal || 0,
+            comprador: data.ticket?.comprador || 'Comprador',
+            producto: data.ticket?.producto,
+            cantidad: data.ticket?.cantidad,
+            evento: data.ticket?.evento,
+            vendedor: data.ticket?.vendedor,
+          });
+          setModalCobroAbierto(true);
+          // La cámara permanece pausada mientras esté el modal abierto
+        } else {
+          setTimeout(() => {
+            scanInProgressRef.current = false;
+          }, 2500);
+        }
       } else {
-        playFeedbackTone(220); // Tono grave de error
+        if (data.estado === 'YA_UTILIZADO') {
+          playFeedbackTone(440); // Tono medio de advertencia
+        } else {
+          playFeedbackTone(220); // Tono grave de error
+        }
+        setTimeout(() => {
+          scanInProgressRef.current = false;
+        }, 2500);
       }
     } catch (err) {
       playFeedbackTone(220);
@@ -199,10 +244,52 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
         estado: 'ERROR',
         mensaje: msg,
       });
+      setTimeout(() => {
+        scanInProgressRef.current = false;
+      }, 2500);
     } finally {
       setValidando(false);
       setTokenManual('');
     }
+  };
+
+  const handlePagoConfirmado = (nuevoMetodo: string, nuevoEstado: 'PAGADO' | 'PENDIENTE') => {
+    if (nuevoEstado === 'PAGADO') {
+      playFeedbackTone(880);
+      setResultado((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          alertaPagoPendiente: false,
+          mensaje: `¡Entrega confirmada y pago registrado (${nuevoMetodo})! Entregar: ${prev.ticket?.cantidad}x ${prev.ticket?.producto}`,
+          ticket: prev.ticket
+            ? {
+                ...prev.ticket,
+                pedidoEstado: 'PAGADO',
+                pedidoMetodoPago: nuevoMetodo,
+              }
+            : undefined,
+        };
+      });
+      if (onTicketValidado) onTicketValidado();
+    }
+  };
+
+  const abrirModalCobro = (resObj: ValidacionResultado) => {
+    const pId = resObj.pedidoId || resObj.ticket?.pedidoId;
+    if (!pId) return;
+
+    scanInProgressRef.current = true;
+    setModalCobroDatos({
+      pedidoId: pId,
+      monto: resObj.montoPendiente || resObj.ticket?.pedidoTotal || 0,
+      comprador: resObj.ticket?.comprador || 'Comprador',
+      producto: resObj.ticket?.producto,
+      cantidad: resObj.ticket?.cantidad,
+      evento: resObj.ticket?.evento,
+      vendedor: resObj.ticket?.vendedor,
+    });
+    setModalCobroAbierto(true);
   };
 
   const handleSubmitManual = (e: React.FormEvent) => {
@@ -317,9 +404,27 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
                   <h4 className="text-sm font-black tracking-tight">{resultado.mensaje}</h4>
 
                   {resultado.ok && (resultado.alertaPagoPendiente || resultado.ticket?.pedidoEstado === 'PENDIENTE') && (
-                    <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-bold flex items-center gap-2 mt-2">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>ATENCIÓN: Pago PENDIENTE ({formatearMoneda(resultado.montoPendiente || resultado.ticket?.pedidoTotal || 0)}). Cobrar en puerta si corresponde.</span>
+                    <div className="p-2.5 rounded-xl bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>ATENCIÓN: Pago PENDIENTE ({formatearMoneda(resultado.montoPendiente || resultado.ticket?.pedidoTotal || 0)}).</span>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="primary"
+                        onClick={() => abrirModalCobro(resultado)}
+                        className="text-[11px] py-1 px-2.5 shrink-0"
+                      >
+                        Definir Pago
+                      </Button>
+                    </div>
+                  )}
+
+                  {resultado.ok && resultado.ticket?.pedidoEstado === 'PAGADO' && (
+                    <div className="p-2 rounded-xl bg-emerald-100/80 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 text-xs font-bold flex items-center gap-2 mt-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Pedido Abonado {resultado.ticket.pedidoMetodoPago ? `(${resultado.ticket.pedidoMetodoPago})` : ''}</span>
                     </div>
                   )}
 
@@ -377,6 +482,26 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
           </Button>
         </div>
       </div>
+
+      {modalCobroAbierto && modalCobroDatos && (
+        <ModalDefinirPagoPedido
+          abierto={modalCobroAbierto}
+          onCerrar={() => {
+            setModalCobroAbierto(false);
+            setTimeout(() => {
+              scanInProgressRef.current = false;
+            }, 1500);
+          }}
+          pedidoId={modalCobroDatos.pedidoId}
+          monto={modalCobroDatos.monto}
+          comprador={modalCobroDatos.comprador}
+          producto={modalCobroDatos.producto}
+          cantidad={modalCobroDatos.cantidad}
+          evento={modalCobroDatos.evento}
+          vendedor={modalCobroDatos.vendedor}
+          onPagoConfirmado={handlePagoConfirmado}
+        />
+      )}
     </div>
   );
 };
