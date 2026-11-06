@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { ThemeToggle } from '../components/ThemeToggle';
@@ -14,8 +14,26 @@ export const Login: React.FC = () => {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const token = useAuthStore((state) => state.token);
+  const usuario = useAuthStore((state) => state.usuario);
+  const puedeVerPadron = useAuthStore((state) => state.puedeVerPadron);
+  const puedeAccederPanelGestion = useAuthStore((state) => state.puedeAccederPanelGestion);
+  const requiereCambioClave = useAuthStore((state) => state.requiereCambioClave);
   const setSesion = useAuthStore((state) => state.setSesion);
   const navigate = useNavigate();
+
+  // Si ya tiene sesión activa, redirigir inmediatamente a su pantalla inicial
+  // para evitar caer en el login al navegar hacia atrás en móviles.
+  if (token && usuario) {
+    const destino = requiereCambioClave
+      ? '/cambiar-clave'
+      : puedeVerPadron()
+        ? '/rama'
+        : puedeAccederPanelGestion()
+          ? '/global'
+          : '/autogestion';
+    return <Navigate to={destino} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,19 +50,20 @@ export const Login: React.FC = () => {
       setSesion(res.data);
 
       if (res.data.requiereCambioClave) {
-        navigate('/cambiar-clave');
+        navigate('/cambiar-clave', { replace: true });
         return;
       }
 
-      // Redirección inteligente según el alcance de sus asignaciones (pestaña por defecto: Padrón)
+      // Redirección inteligente según el alcance de sus asignaciones (pestaña por defecto: Padrón).
+      // Usar replace: true para que el login no quede en el historial de navegación móvil al presionar atrás.
       const asignaciones = res.data.asignaciones || [];
       const esGlobal = asignaciones.some((a: any) => a.alcance === 'GLOBAL');
       const esUnidad = asignaciones.some((a: any) => a.alcance === 'UNIDAD');
 
       if (esGlobal || esUnidad) {
-        navigate('/rama');
+        navigate('/rama', { replace: true });
       } else {
-        navigate('/autogestion');
+        navigate('/autogestion', { replace: true });
       }
     } catch (err: any) {
       const msg = err.response?.data?.message || 'DNI o contraseña incorrectos.';

@@ -4,12 +4,16 @@ interface ModalStackEntry {
   id: number;
   close: () => void;
   isBlocked: () => boolean;
+  isClosing: boolean;
+  setClosedByPopState: (val: boolean) => void;
+  cerrarConEsc: boolean;
 }
 
 const modalStack: ModalStackEntry[] = [];
 let nextModalId = 1;
 let scrollLockCount = 0;
 let originalBodyOverflow = '';
+let ignoringPopstateCount = 0;
 
 function lockScroll() {
   if (typeof document === 'undefined') return;
@@ -28,15 +32,47 @@ function unlockScroll() {
   }
 }
 
+// Global popstate listener for browser / mobile back button (closes topmost modal)
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    if (ignoringPopstateCount > 0) {
+      ignoringPopstateCount--;
+      return;
+    }
+
+    if (modalStack.length > 0) {
+      for (let i = modalStack.length - 1; i >= 0; i--) {
+        const top = modalStack[i];
+        if (top.isClosing) continue;
+
+        if (top.isBlocked()) {
+          // Si el modal está bloqueado, reinsertamos el estado para no desfasar el historial
+          window.history.pushState({ ...window.history.state, __modalId: top.id }, '');
+          return;
+        }
+
+        top.isClosing = true;
+        top.setClosedByPopState(true);
+        top.close();
+        return;
+      }
+    }
+  });
+}
+
 // Global keydown listener for Escape key (LIFO stack: closes topmost modal first)
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Escape' && modalStack.length > 0) {
-      const top = modalStack[modalStack.length - 1];
-      if (top && !top.isBlocked()) {
-        e.preventDefault();
-        e.stopPropagation();
-        top.close();
+      for (let i = modalStack.length - 1; i >= 0; i--) {
+        const top = modalStack[i];
+        if (top.isClosing) continue;
+        if (top.cerrarConEsc && !top.isBlocked()) {
+          e.preventDefault();
+          e.stopPropagation();
+          top.close();
+        }
+        return;
       }
     }
   });
@@ -58,6 +94,7 @@ export interface UseModalOverlayOptions {
   bloquearScroll?: boolean;
   cerrarConEsc?: boolean;
   cerrarAlClickAfuera?: boolean;
+  manejarHistorial?: boolean;
 }
 
 export function useModalOverlay({
@@ -69,6 +106,7 @@ export function useModalOverlay({
   bloquearScroll = true,
   cerrarConEsc = true,
   cerrarAlClickAfuera = true,
+  manejarHistorial = true,
 }: UseModalOverlayOptions = {}) {
   const activo = abierto ?? isOpen ?? true;
   const cerrarCallback = onCerrar ?? onClose;
@@ -90,30 +128,54 @@ export function useModalOverlay({
     }
 
     const modalId = nextModalId++;
-    if (cerrarConEsc) {
-      modalStack.push({
-        id: modalId,
-        close: () => {
-          if (callbackRef.current) {
-            callbackRef.current();
-          }
-        },
-        isBlocked: () => Boolean(bloqueadoRef.current),
-      });
+    let closedByPopState = false;
+    let historyPushed = false;
+
+    if (manejarHistorial && typeof window !== 'undefined') {
+      window.history.pushState({ ...window.history.state, __modalId: modalId }, '');
+      historyPushed = true;
     }
+
+    const stackEntry: ModalStackEntry = {
+      id: modalId,
+      isClosing: false,
+      close: () => {
+        callbackRef.current?.();
+      },
+      isBlocked: () => Boolean(bloqueadoRef.current),
+      setClosedByPopState: (val: boolean) => {
+        closedByPopState = val;
+      },
+      cerrarConEsc,
+    };
+
+    modalStack.push(stackEntry);
 
     return () => {
       if (bloquearScroll) {
         unlockScroll();
       }
-      if (cerrarConEsc) {
-        const index = modalStack.findIndex((item) => item.id === modalId);
-        if (index !== -1) {
-          modalStack.splice(index, 1);
+
+      const index = modalStack.findIndex((item) => item.id === modalId);
+      if (index !== -1) {
+        modalStack.splice(index, 1);
+      }
+
+      // Si el modal se cerró programáticamente (no por popstate del botón atrás):
+      // retiramos la entrada del historial para mantenerlo sincronizado
+      if (manejarHistorial && historyPushed && !closedByPopState && typeof window !== 'undefined') {
+        if (window.history.state?.__modalId === modalId) {
+          ignoringPopstateCount++;
+          window.history.back();
+          setTimeout(() => {
+            if (ignoringPopstateCount > 0) {
+              ignoringPopstateCount--;
+            }
+          }, 300);
         }
       }
     };
-  }, [activo, tieneCallback, bloquearScroll, cerrarConEsc]);
+  }, [activo, tieneCallback, bloquearScroll, manejarHistorial, cerrarConEsc]);
 
   const handleBackdropMouseDown = useCallback((e: React.MouseEvent<HTMLElement>) => {
     mouseDownTargetRef.current = e.target;

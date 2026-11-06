@@ -115,7 +115,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
             </div>
             <div>
               <h3 className="text-sm font-extrabold text-ink font-display">
-                Instalá Scout App en tu Celular
+                Instalá Juan XXIII en tu Celular
               </h3>
               <p className="text-xs text-ink-muted mt-0.5">
                 Accedé directo desde tu pantalla de inicio y consultá fichas médicas en campamento sin conexión.

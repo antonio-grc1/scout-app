@@ -50,7 +50,18 @@ export const AutogestionPage: React.FC = () => {
     const desdeUrl = searchParams.get('vista') as VistaAutogestion | null;
     return desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : 'papeles';
   });
+
+  // Sincronizar vista activa con searchParams (al presionar Atrás/Adelante en el navegador/móvil)
+  useEffect(() => {
+    const desdeUrl = searchParams.get('vista') as VistaAutogestion | null;
+    const vistaValida = desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : 'papeles';
+    if (vistaValida !== vistaActiva) {
+      setVistaActiva(vistaValida);
+    }
+  }, [searchParams]);
+
   const cambiarVista = (nuevaVista: VistaAutogestion) => {
+    if (nuevaVista === vistaActiva) return;
     setVistaActiva(nuevaVista);
     setSearchParams(
       (prev) => {
@@ -58,7 +69,6 @@ export const AutogestionPage: React.FC = () => {
         params.set('vista', nuevaVista);
         return params;
       },
-      { replace: true },
     );
   };
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<any | null>(null);

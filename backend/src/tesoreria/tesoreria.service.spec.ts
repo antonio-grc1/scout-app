@@ -1517,6 +1517,17 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
 
       const res = await service.obtenerCuadroResultados(alcanceGlobal, { anio: 2026 });
 
+      expect(mockPrisma.pago.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            OR: [
+              { referenciaComprobante: null },
+              { referenciaComprobante: { not: 'APLICACION_SALDO_A_FAVOR' } },
+            ],
+          }),
+        }),
+      );
+
       expect(res.anio).toBe(2026);
       expect(res.resumen.totalIngresos).toBe(10000);
       expect(res.resumen.totalEgresos).toBe(3000);
@@ -1600,6 +1611,82 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       const resMayo = await service.obtenerCuadroResultados(alcanceGlobal, { anio: 2026, mes: 5 });
       expect(resMayo.mesFiltro).toBe(5);
       expect(resMayo.resumen.totalIngresos).toBe(10000);
+    });
+
+    it('obtenerCuadroResultados: suma cobros de cuotas con comprobante null y deduce rubro Cuota Social', async () => {
+      const mockPrisma = {
+        rubroContable: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 1, nombre: 'Cuota Social', tipo: 'INGRESO', activo: true },
+          ]),
+        },
+        pago: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 102,
+              fechaPago: new Date('2026-11-03T15:00:00.000Z'),
+              referenciaComprobante: null,
+              montoTotal: '45000.00',
+              imputaciones: [
+                {
+                  montoImputado: '15000.00',
+                  cargo: {
+                    concepto: {
+                      id: 40,
+                      nombre: 'Cuota Social 2026 - Octubre',
+                      tipo: 'CUOTA_MENSUAL',
+                      rubroId: null,
+                      rubro: null,
+                    },
+                  },
+                },
+                {
+                  montoImputado: '15000.00',
+                  cargo: {
+                    concepto: {
+                      id: 41,
+                      nombre: 'Cuota Social 2026 - Noviembre',
+                      tipo: 'CUOTA_MENSUAL',
+                      rubroId: null,
+                      rubro: null,
+                    },
+                  },
+                },
+                {
+                  montoImputado: '15000.00',
+                  cargo: {
+                    concepto: {
+                      id: 42,
+                      nombre: 'Cuota Social 2026 - Diciembre',
+                      tipo: 'CUOTA_MENSUAL',
+                      rubroId: null,
+                      rubro: null,
+                    },
+                  },
+                },
+              ],
+            },
+          ]),
+        },
+        movimientoFinanciero: {
+          findMany: vi.fn().mockResolvedValue([]),
+          groupBy: vi.fn().mockResolvedValue([]),
+        },
+        gasto: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        cuentaFinanciera: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+      } as any;
+      const service = new TesoreriaService(mockPrisma);
+
+      const res = await service.obtenerCuadroResultados(alcanceGlobal, { anio: 2026 });
+      expect(res.resumen.totalIngresos).toBe(45000);
+      const cuotaRubro = res.ingresosPorRubro.find((r) => r.rubroNombre === 'Cuota Social');
+      expect(cuotaRubro).toBeDefined();
+      expect(cuotaRubro?.total).toBe(45000);
+      expect(cuotaRubro?.meses[11]).toBe(45000);
     });
   });
 
@@ -1775,6 +1862,9 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
             estado: 'ACTIVO',
             item: { nombre: 'Pizza Muzza' },
             pedido: {
+              id: 99,
+              total: 5000,
+              estado: 'PENDIENTE',
               compradorNombre: 'Marta Pérez',
               evento: { titulo: 'Venta de Pizzas' },
               vendedorUsuario: { nombre: 'Lucas', apellido: 'Gómez' },
@@ -1792,6 +1882,9 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       const res = await service.validarTicketQr(actor, alcanceGlobal, { tokenQr: validToken });
       expect(res.ok).toBe(true);
       expect(res.estado).toBe('VALIDADO');
+      expect(res.pedidoId).toBe(99);
+      expect(res.alertaPagoPendiente).toBe(true);
+      expect(res.ticket?.pedidoId).toBe(99);
       expect(tx.ticketEvento.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { id: 15, estado: 'ACTIVO' },

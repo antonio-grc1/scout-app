@@ -691,6 +691,20 @@ export class TesoreriaService {
     const mesesUnicos = [...new Set(dto.mesesHabilitados)].sort((a, b) => a - b);
 
     return this.prisma.$transaction(async (tx) => {
+      let rubroIdPlan = dto.rubroId ?? null;
+      if (!rubroIdPlan) {
+        const rubroCuota = await tx.rubroContable.findFirst({
+          where: {
+            tipo: TipoRubro.INGRESO,
+            OR: [
+              { nombre: { contains: 'Cuota', mode: 'insensitive' } },
+              { nombre: { contains: 'Social', mode: 'insensitive' } },
+            ],
+          },
+        });
+        if (rubroCuota) rubroIdPlan = rubroCuota.id;
+      }
+
       const plan = await tx.planCuotaMensual.create({
         data: {
           nombre: dto.nombre,
@@ -700,7 +714,7 @@ export class TesoreriaService {
           mesesHabilitadosJson: mesesUnicos,
           destinatarioTipo: dto.destinatarioTipo,
           unidadId: dto.unidadId ?? null,
-          rubroId: dto.rubroId ?? null,
+          rubroId: rubroIdPlan,
           permiteDescuentoHermanos: dto.permiteDescuentoHermanos ?? true,
           porcentajeDescuentoHermanos:
             dto.porcentajeDescuentoHermanos !== undefined && dto.porcentajeDescuentoHermanos !== null
@@ -3708,11 +3722,14 @@ export class TesoreriaService {
       orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
     });
 
-    // 2. Obtener pagos reales del año
+    // 2. Obtener pagos reales del año (excluyendo aplicaciones contables de saldo a favor)
     const pagos = await this.prisma.pago.findMany({
       where: {
         fechaPago: { gte: desdeAnio, lte: hastaAnio },
-        referenciaComprobante: { not: 'APLICACION_SALDO_A_FAVOR' },
+        OR: [
+          { referenciaComprobante: null },
+          { referenciaComprobante: { not: 'APLICACION_SALDO_A_FAVOR' } },
+        ],
       },
       include: {
         imputaciones: {
@@ -3826,20 +3843,59 @@ export class TesoreriaService {
           const montoImp = Number(imp.montoImputado);
           totalImputado += montoImp;
           const concepto = imp.cargo?.concepto;
-          const rubroId = concepto?.rubro?.id ?? concepto?.rubroId ?? null;
+          let rubroId = concepto?.rubro?.id ?? concepto?.rubroId ?? null;
           let rubroNombre = concepto?.rubro?.nombre;
 
           if (!rubroNombre) {
             const nomLower = (concepto?.nombre || '').toLowerCase();
-            if (nomLower.includes('campa')) {
-              rubroNombre = 'Campamentos y Salidas';
-            } else if (nomLower.includes('afilia')) {
-              rubroNombre = 'Afiliación Nacional';
+            const tipoConcepto = (concepto?.tipo || '').toUpperCase();
+            if (nomLower.includes('campa') || tipoConcepto === 'CAMPAMENTO') {
+              const rCampa = Array.from(ingresosMap.values()).find((r) =>
+                r.rubroNombre.toLowerCase().includes('campa'),
+              );
+              rubroNombre = rCampa ? rCampa.rubroNombre : 'Campamento';
+            } else if (nomLower.includes('afilia') || tipoConcepto === 'AFILIACION') {
+              const rAfilia = Array.from(ingresosMap.values()).find((r) =>
+                r.rubroNombre.toLowerCase().includes('afilia'),
+              );
+              rubroNombre = rAfilia ? rAfilia.rubroNombre : 'Afiliación Nacional';
             } else if (nomLower.includes('bono') || nomLower.includes('evento')) {
-              rubroNombre = 'Eventos y Festivales';
+              const rBono = Array.from(ingresosMap.values()).find(
+                (r) =>
+                  r.rubroNombre.toLowerCase().includes('bono') ||
+                  r.rubroNombre.toLowerCase().includes('evento'),
+              );
+              rubroNombre = rBono ? rBono.rubroNombre : 'Bono Contribución';
+            } else if (
+              nomLower.includes('pañuelo') ||
+              nomLower.includes('insignia') ||
+              nomLower.includes('uniforme') ||
+              nomLower.includes('indumentaria') ||
+              tipoConcepto === 'MATERIALES'
+            ) {
+              const rInd = Array.from(ingresosMap.values()).find(
+                (r) =>
+                  r.rubroNombre.toLowerCase().includes('indumentaria') ||
+                  r.rubroNombre.toLowerCase().includes('insignia'),
+              );
+              rubroNombre = rInd ? rInd.rubroNombre : 'Indumentaria e Insignias';
+            } else if (nomLower.includes('inscri') || nomLower.includes('matricula')) {
+              const rInsc = Array.from(ingresosMap.values()).find(
+                (r) =>
+                  r.rubroNombre.toLowerCase().includes('inscri') ||
+                  r.rubroNombre.toLowerCase().includes('matr'),
+              );
+              rubroNombre = rInsc ? rInsc.rubroNombre : 'Inscripción y Matrícula';
             } else {
-              rubroNombre = 'Cuota Social';
+              const rCuota = Array.from(ingresosMap.values()).find((r) =>
+                r.rubroNombre.toLowerCase().includes('cuota'),
+              );
+              rubroNombre = rCuota ? rCuota.rubroNombre : 'Cuota Social';
             }
+          }
+
+          if (!rubroId && ingresosMap.has(rubroNombre)) {
+            rubroId = ingresosMap.get(rubroNombre)!.rubroId;
           }
 
           if (!ingresosMap.has(rubroNombre)) {
@@ -4741,12 +4797,19 @@ export class TesoreriaService {
       }
 
       if (ticket.estado === EstadoTicketEvento.UTILIZADO) {
+        const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
+        const montoTotalPedido = Number(ticket.pedido.total);
+        const resolvedPedidoId = ticket.pedido?.id ?? ticket.pedidoId;
         return {
           ok: false,
           estado: 'YA_UTILIZADO',
+          alertaPagoPendiente: esPagoPendiente,
+          montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
+          pedidoId: resolvedPedidoId,
           mensaje: `Este vale ya fue retirado/utilizado el ${ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString('es-AR') : 'previamente'}.`,
           ticket: {
             id: ticket.id,
+            pedidoId: resolvedPedidoId,
             producto: ticket.item.nombre,
             cantidad: ticket.cantidad,
             comprador: ticket.pedido.compradorNombre,
@@ -4754,6 +4817,9 @@ export class TesoreriaService {
               ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
               : null,
             evento: ticket.pedido.evento.titulo,
+            pedidoEstado: ticket.pedido.estado,
+            pedidoTotal: montoTotalPedido,
+            pedidoMetodoPago: ticket.pedido.metodoPago,
             fechaUso: ticket.fechaUso,
           },
         };
@@ -4787,17 +4853,20 @@ export class TesoreriaService {
 
       const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
       const montoTotalPedido = Number(ticket.pedido.total);
+      const resolvedPedidoId = ticket.pedido?.id ?? ticket.pedidoId;
 
       return {
         ok: true,
         estado: 'VALIDADO',
         alertaPagoPendiente: esPagoPendiente,
         montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
+        pedidoId: resolvedPedidoId,
         mensaje: esPagoPendiente
           ? `¡Entrega confirmada! (ATENCIÓN: Pago PENDIENTE de $${montoTotalPedido.toLocaleString('es-AR')} en puerta). Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`
           : `¡Entrega confirmada! Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`,
         ticket: {
           id: ticket.id,
+          pedidoId: resolvedPedidoId,
           producto: ticket.item.nombre,
           cantidad: ticket.cantidad,
           comprador: ticket.pedido.compradorNombre,
@@ -4807,6 +4876,7 @@ export class TesoreriaService {
           evento: ticket.pedido.evento.titulo,
           pedidoEstado: ticket.pedido.estado,
           pedidoTotal: montoTotalPedido,
+          pedidoMetodoPago: ticket.pedido.metodoPago,
           fechaUso: new Date(),
         },
       };

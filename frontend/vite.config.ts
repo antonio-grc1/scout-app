@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'pwa-icon.svg', 'pdf-templates/*.pdf'],
+      includeAssets: ['favicon.ico', 'favicon.svg', 'pwa-icon.svg', 'pwa-icon-192.png', 'pwa-icon-512.png', 'apple-touch-icon.png', 'pdf-templates/*.pdf'],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,pdf}'],
@@ -18,8 +18,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/],
       },
       manifest: {
-        name: 'Sistema Scout - Grupo Scout Juan XXIII',
-        short_name: 'ScoutApp',
+        name: 'Grupo Scout Juan XXIII',
+        short_name: 'Juan XXIII',
         description: 'Sistema de Gestión Integral del Grupo Scout Juan XXIII - PWA Offline',
         theme_color: '#18191e',
         background_color: '#fbfbf9',
@@ -27,8 +27,27 @@ export default defineConfig({
         icons: [
           {
             src: '/pwa-icon.svg',
-            sizes: '192x192 512x512',
+            sizes: 'any',
             type: 'image/svg+xml',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any',
+          },
+          {
+            src: '/pwa-icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
           },
         ],
       },

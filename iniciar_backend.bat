@@ -1,5 +1,5 @@
 @echo off
-title ScoutApp - Backend API
+title Juan XXIII - Backend API
 cd /d "%~dp0backend"
 echo ==============================================
 echo  Iniciando Backend NestJS (Puerto 3000)

@@ -1,5 +1,5 @@
 @echo off
-title ScoutApp - Frontend
+title Juan XXIII - Frontend
 cd /d "%~dp0frontend"
 echo ==============================================
 echo  Iniciando Frontend Vite (Puerto 5173)
