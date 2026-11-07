@@ -643,6 +643,9 @@ export class TesoreriaService {
         : {}),
     };
 
+    const cargosWhere: Prisma.CargoMiembroWhereInput =
+      alcance.tipo === 'UNIDAD' ? { usuario: filtroUsuariosPorAlcance(alcance) } : {};
+
     const planes = await this.prisma.planCuotaMensual.findMany({
       where,
       orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
@@ -652,8 +655,9 @@ export class TesoreriaService {
         conceptos: {
           orderBy: { mes: 'asc' },
           include: {
-            _count: { select: { cargos: true } },
+            _count: { select: { cargos: { where: cargosWhere } } },
             cargos: {
+              where: cargosWhere,
               select: {
                 id: true,
                 montoFinal: true,
@@ -789,7 +793,7 @@ export class TesoreriaService {
       throw new ForbiddenException();
     }
 
-    if (dto.unidadId !== undefined && dto.unidadId !== null) {
+    if (dto.unidadId !== undefined) {
       assertUnidadEnAlcance(alcance, dto.unidadId);
     }
 
@@ -923,14 +927,18 @@ export class TesoreriaService {
         : {}),
     };
 
+    const cargosWhere: Prisma.CargoMiembroWhereInput =
+      alcance.tipo === 'UNIDAD' ? { usuario: filtroUsuariosPorAlcance(alcance) } : {};
+
     const conceptos = await this.prisma.conceptoCuota.findMany({
       where,
       orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
       include: {
         unidad: { select: { id: true, nombre: true } },
         rubro: { select: { id: true, nombre: true } },
-        _count: { select: { cargos: true } },
+        _count: { select: { cargos: { where: cargosWhere } } },
         cargos: {
+          where: cargosWhere,
           select: {
             id: true,
             montoFinal: true,
@@ -1024,7 +1032,7 @@ export class TesoreriaService {
       throw new ForbiddenException('Solo usuarios globales pueden editar conceptos generales');
     }
 
-    if (dto.unidadId !== undefined && dto.unidadId !== null) {
+    if (dto.unidadId !== undefined) {
       assertUnidadEnAlcance(alcance, dto.unidadId);
     }
 
@@ -1115,8 +1123,25 @@ export class TesoreriaService {
   // 3. GRUPOS FAMILIARES Y DESCUENTO POR HERMANOS
   // ===========================================================================
 
-  async listarGruposFamiliares() {
+  async listarGruposFamiliares(alcance?: AlcanceAcceso) {
+    if (alcance?.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver grupos familiares');
+    }
+    const where: Prisma.GrupoFamiliarWhereInput =
+      alcance?.tipo === 'UNIDAD'
+        ? {
+            miembros: {
+              some: {
+                asignaciones: {
+                  some: { activo: true, unidadId: { in: alcance.unidadIds } },
+                },
+              },
+            },
+          }
+        : {};
+
     return this.prisma.grupoFamiliar.findMany({
+      where,
       orderBy: { nombreFamilia: 'asc' },
       include: {
         miembros: {
@@ -1139,12 +1164,30 @@ export class TesoreriaService {
     });
   }
 
-  async actualizarDescuentoFamilia(id: number, dto: ActualizarDescuentoFamiliaDto) {
+  async actualizarDescuentoFamilia(alcance: AlcanceAcceso, id: number, dto: ActualizarDescuentoFamiliaDto) {
+    if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede modificar grupos familiares');
+
     const familiar = await this.prisma.grupoFamiliar.findUnique({
       where: { id },
-      include: { miembros: { select: { id: true } } },
+      include: {
+        miembros: {
+          select: {
+            id: true,
+            asignaciones: { where: { activo: true }, select: { unidadId: true } },
+          },
+        },
+      },
     });
     if (!familiar) throw new NotFoundException('Grupo familiar no encontrado');
+
+    if (alcance.tipo === 'UNIDAD') {
+      const tieneMiembroEnAlcance = familiar.miembros.some((m) =>
+        m.asignaciones.some((a) => alcance.unidadIds.includes(a.unidadId)),
+      );
+      if (!tieneMiembroEnAlcance) {
+        throw new ForbiddenException('El grupo familiar no tiene miembros dentro de su unidad');
+      }
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const actualizado = await tx.grupoFamiliar.update({
@@ -1162,12 +1205,25 @@ export class TesoreriaService {
     });
   }
 
-  async vincularHermano(dto: VincularHermanoDto) {
+  async vincularHermano(alcance: AlcanceAcceso, dto: VincularHermanoDto) {
+    if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede vincular hermanos');
+
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: dto.usuarioId },
-      select: { id: true, apellido: true, grupoFamiliarId: true, datosFijosJson: true },
+      select: {
+        id: true,
+        apellido: true,
+        grupoFamiliarId: true,
+        datosFijosJson: true,
+        asignaciones: { where: { activo: true }, select: { unidadId: true } },
+      },
     });
     if (!usuario) throw new NotFoundException('Miembro no encontrado');
+
+    if (alcance.tipo === 'UNIDAD') {
+      const enUnidad = usuario.asignaciones.some((a) => alcance.unidadIds.includes(a.unidadId));
+      if (!enUnidad) throw new ForbiddenException('El miembro no pertenece a su unidad');
+    }
 
     const hermano = await this.prisma.usuario.findUnique({
       where: { dni: dto.hermanoDni },
@@ -1285,14 +1341,25 @@ export class TesoreriaService {
     });
   }
 
-  async desvincularHermano(dto: DesvincularHermanoDto) {
+  async desvincularHermano(alcance: AlcanceAcceso, dto: DesvincularHermanoDto) {
+    if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede desvincular hermanos');
+
     const usuario = await this.prisma.usuario.findUnique({
       where: { id: dto.usuarioId },
-      select: { id: true, grupoFamiliarId: true },
+      select: {
+        id: true,
+        grupoFamiliarId: true,
+        asignaciones: { where: { activo: true }, select: { unidadId: true } },
+      },
     });
     if (!usuario) throw new NotFoundException('Miembro no encontrado');
     if (!usuario.grupoFamiliarId) {
       throw new BadRequestException('El miembro no pertenece a ningún grupo familiar');
+    }
+
+    if (alcance.tipo === 'UNIDAD') {
+      const enUnidad = usuario.asignaciones.some((a) => alcance.unidadIds.includes(a.unidadId));
+      if (!enUnidad) throw new ForbiddenException('El miembro no pertenece a su unidad');
     }
 
     const grupoIdAnterior = usuario.grupoFamiliarId;
@@ -1327,12 +1394,30 @@ export class TesoreriaService {
     });
   }
 
-  async eliminarGrupoFamiliar(id: number) {
+  async eliminarGrupoFamiliar(alcance: AlcanceAcceso, id: number) {
+    if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede eliminar grupos familiares');
+
     const grupo = await this.prisma.grupoFamiliar.findUnique({
       where: { id },
-      include: { miembros: { select: { id: true } } },
+      include: {
+        miembros: {
+          select: {
+            id: true,
+            asignaciones: { where: { activo: true }, select: { unidadId: true } },
+          },
+        },
+      },
     });
     if (!grupo) throw new NotFoundException('Grupo familiar no encontrado');
+
+    if (alcance.tipo === 'UNIDAD') {
+      const tieneMiembroEnAlcance = grupo.miembros.some((m) =>
+        m.asignaciones.some((a) => alcance.unidadIds.includes(a.unidadId)),
+      );
+      if (!tieneMiembroEnAlcance) {
+        throw new ForbiddenException('El grupo familiar no tiene miembros dentro de su unidad');
+      }
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const miembroIds = grupo.miembros.map((m) => m.id);
@@ -1479,8 +1564,22 @@ export class TesoreriaService {
     }
 
     let conceptoId = dto.conceptoId;
-    if (!conceptoId) {
+    if (conceptoId) {
+      const conceptoExistente = await this.prisma.conceptoCuota.findUnique({
+        where: { id: conceptoId },
+      });
+      if (!conceptoExistente) throw new NotFoundException('Concepto no encontrado');
+      if (conceptoExistente.unidadId) {
+        assertUnidadEnAlcance(alcance, conceptoExistente.unidadId);
+      }
+    } else {
       const nombreConcepto = dto.nombreConcepto?.trim() || 'Cargo Individual Extraordinario';
+      const unidadIdConcepto =
+        alcance.tipo === 'UNIDAD'
+          ? (usuario.asignaciones.find((a) => alcance.unidadIds.includes(a.unidadId))?.unidadId ??
+            alcance.unidadIds[0])
+          : undefined;
+
       const conceptoNuevo = await this.prisma.conceptoCuota.create({
         data: {
           nombre: nombreConcepto,
@@ -1490,6 +1589,7 @@ export class TesoreriaService {
           fechaVencimiento: dto.fechaVencimiento ? new Date(dto.fechaVencimiento) : null,
           permiteDescuentoHermanos: false,
           destinatarioTipo: 'INDIVIDUAL',
+          ...(unidadIdConcepto ? { unidadId: unidadIdConcepto } : {}),
         },
       });
       conceptoId = conceptoNuevo.id;
@@ -2645,39 +2745,45 @@ export class TesoreriaService {
   }
 
   async listarPagos(alcance: AlcanceAcceso, usuarioId?: number) {
-    const where: Prisma.PagoWhereInput = {
-      ...(usuarioId ? { OR: [{ usuarioId }, { imputaciones: { some: { cargo: { usuarioId } } } }] } : {}),
-      ...(alcance.tipo === 'UNIDAD'
-        ? {
-            OR: [
-              {
-                usuario: {
-                  asignaciones: { some: { activo: true, unidadId: { in: alcance.unidadIds } } },
-                },
-              },
-              {
-                imputaciones: {
-                  some: {
-                    cargo: {
-                      usuario: {
-                        asignaciones: { some: { activo: true, unidadId: { in: alcance.unidadIds } } },
-                      },
-                    },
+    const conditions: Prisma.PagoWhereInput[] = [];
+
+    if (usuarioId) {
+      conditions.push({
+        OR: [{ usuarioId }, { imputaciones: { some: { cargo: { usuarioId } } } }],
+      });
+    }
+
+    if (alcance.tipo === 'UNIDAD') {
+      conditions.push({
+        OR: [
+          {
+            usuario: {
+              asignaciones: { some: { activo: true, unidadId: { in: alcance.unidadIds } } },
+            },
+          },
+          {
+            imputaciones: {
+              some: {
+                cargo: {
+                  usuario: {
+                    asignaciones: { some: { activo: true, unidadId: { in: alcance.unidadIds } } },
                   },
                 },
               },
-            ],
-          }
-        : {}),
-      ...(alcance.tipo === 'PROPIO'
-        ? {
-            OR: [
-              { usuarioId: alcance.usuarioId },
-              { imputaciones: { some: { cargo: { usuarioId: alcance.usuarioId } } } },
-            ],
-          }
-        : {}),
-    };
+            },
+          },
+        ],
+      });
+    } else if (alcance.tipo === 'PROPIO') {
+      conditions.push({
+        OR: [
+          { usuarioId: alcance.usuarioId },
+          { imputaciones: { some: { cargo: { usuarioId: alcance.usuarioId } } } },
+        ],
+      });
+    }
+
+    const where: Prisma.PagoWhereInput = conditions.length > 0 ? { AND: conditions } : {};
 
     return this.prisma.pago.findMany({
       where,
@@ -2753,8 +2859,8 @@ export class TesoreriaService {
   }
 
   async crearCuentaFinanciera(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearCuentaFinancieraDto) {
-    if (alcance.tipo === 'PROPIO') {
-      throw new ForbiddenException('No tiene permisos para administrar cuentas');
+    if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo usuarios con alcance global pueden administrar cuentas financieras');
     }
 
     const existe = await this.prisma.cuentaFinanciera.findFirst({
@@ -2779,8 +2885,8 @@ export class TesoreriaService {
     id: number,
     dto: ActualizarCuentaFinancieraDto,
   ) {
-    if (alcance.tipo === 'PROPIO') {
-      throw new ForbiddenException('No tiene permisos para administrar cuentas');
+    if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo usuarios con alcance global pueden administrar cuentas financieras');
     }
 
     const cuenta = await this.prisma.cuentaFinanciera.findUnique({ where: { id } });
@@ -2825,8 +2931,8 @@ export class TesoreriaService {
     alcance: AlcanceAcceso,
     id: number,
   ) {
-    if (alcance.tipo === 'PROPIO') {
-      throw new ForbiddenException('No tiene permisos para administrar cuentas');
+    if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo usuarios con alcance global pueden administrar cuentas financieras');
     }
 
     const cuenta = await this.prisma.cuentaFinanciera.findUnique({
@@ -3027,8 +3133,8 @@ export class TesoreriaService {
   }
 
   async transferirEntreCuentas(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearTransferenciaDto) {
-    if (alcance.tipo === 'PROPIO') {
-      throw new ForbiddenException('No tiene permisos para transferir fondos');
+    if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo usuarios con alcance global pueden transferir fondos entre cuentas');
     }
 
     if (dto.origenCuentaId === dto.destinoCuentaId) {
@@ -3198,7 +3304,7 @@ export class TesoreriaService {
       throw new ForbiddenException('Solo usuarios con alcance global pueden editar rubros generales');
     }
 
-    if (dto.unidadId !== undefined && dto.unidadId !== null) {
+    if (dto.unidadId !== undefined) {
       assertUnidadEnAlcance(alcance, dto.unidadId);
     }
 
@@ -3307,6 +3413,9 @@ export class TesoreriaService {
       if (!rubro.activo) throw new BadRequestException('El rubro contable se encuentra inactivo');
       if (rubro.tipo !== TipoRubro.EGRESO) {
         throw new BadRequestException('El rubro seleccionado debe ser de tipo EGRESO');
+      }
+      if (rubro.unidadId) {
+        assertUnidadEnAlcance(alcance, rubro.unidadId);
       }
 
       // Validar saldo disponible en la cuenta
@@ -3459,6 +3568,10 @@ export class TesoreriaService {
     if (!gasto) throw new NotFoundException('Gasto no encontrado');
     if (gasto.anulado) throw new BadRequestException('El gasto ya se encuentra anulado');
 
+    if (gasto.rubro.unidadId) {
+      assertUnidadEnAlcance(alcance, gasto.rubro.unidadId);
+    }
+
     return this.prisma.$transaction(async (tx) => {
       await tx.movimientoFinanciero.deleteMany({
         where: { gastoId: gasto.id },
@@ -3487,6 +3600,10 @@ export class TesoreriaService {
     });
     if (!gasto) throw new NotFoundException('Gasto no encontrado');
     if (!gasto.anulado) throw new BadRequestException('El gasto no se encuentra anulado');
+
+    if (gasto.rubro.unidadId) {
+      assertUnidadEnAlcance(alcance, gasto.rubro.unidadId);
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const gastoRestaurado = await tx.gasto.update({
@@ -3545,6 +3662,9 @@ export class TesoreriaService {
       if (rubro.tipo !== TipoRubro.INGRESO) {
         throw new BadRequestException('El rubro seleccionado debe ser de tipo INGRESO');
       }
+      if (rubro.unidadId) {
+        assertUnidadEnAlcance(alcance, rubro.unidadId);
+      }
 
       const fechaOperacion = parsearFechaOperacion(dto.fecha);
       const refTexto = dto.comprobanteNro ? ` (Comp. #${dto.comprobanteNro})` : '';
@@ -3589,6 +3709,10 @@ export class TesoreriaService {
       throw new BadRequestException('Solo se pueden modificar ingresos manuales registrados directamente');
     }
 
+    if (movimiento.rubro?.unidadId) {
+      assertUnidadEnAlcance(alcance, movimiento.rubro.unidadId);
+    }
+
     return this.prisma.$transaction(async (tx) => {
       let cuentaId = movimiento.cuentaId;
       if (dto.cuentaId !== undefined && dto.cuentaId !== movimiento.cuentaId) {
@@ -3605,6 +3729,7 @@ export class TesoreriaService {
         if (!r) throw new NotFoundException('Rubro no encontrado');
         if (!r.activo) throw new BadRequestException('El rubro seleccionado se encuentra inactivo');
         if (r.tipo !== TipoRubro.INGRESO) throw new BadRequestException('El rubro debe ser de tipo INGRESO');
+        if (r.unidadId) assertUnidadEnAlcance(alcance, r.unidadId);
         rubroId = r.id;
         rubroNombre = r.nombre;
       }
@@ -3662,6 +3787,10 @@ export class TesoreriaService {
 
     if (movimiento.tipo !== TipoMovimientoFinanciero.INGRESO_OTRO) {
       throw new BadRequestException('Solo se pueden eliminar ingresos manuales registrados directamente');
+    }
+
+    if (movimiento.rubro?.unidadId) {
+      assertUnidadEnAlcance(alcance, movimiento.rubro.unidadId);
     }
 
     await this.prisma.movimientoFinanciero.delete({
@@ -4148,7 +4277,12 @@ export class TesoreriaService {
         creadoPor: { select: { id: true, nombre: true, apellido: true } },
         items: { orderBy: { id: 'asc' } },
         pedidos: {
-          where: alcance.tipo === 'PROPIO' ? { vendedorUsuarioId: alcance.usuarioId } : {},
+          where:
+            alcance.tipo === 'PROPIO'
+              ? { vendedorUsuarioId: alcance.usuarioId }
+              : alcance.tipo === 'UNIDAD'
+                ? { vendedorUsuario: filtroUsuariosPorAlcance(alcance) }
+                : {},
           include: {
             vendedorUsuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
             registradoPor: { select: { id: true, nombre: true, apellido: true } },
@@ -4339,6 +4473,15 @@ export class TesoreriaService {
       }
       dto.vendedorUsuarioId = actor.sub;
       dto.cuentaId = undefined;
+    } else if (alcance.tipo === 'UNIDAD') {
+      if (dto.vendedorUsuarioId) {
+        const vendedor = await this.prisma.usuario.findFirst({
+          where: { AND: [{ id: dto.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
+        });
+        if (!vendedor) {
+          throw new ForbiddenException('El vendedor asignado no pertenece a su unidad');
+        }
+      }
     } else if (actor.asignaciones && actor.asignaciones.length > 0) {
       const puedeVender = actor.asignaciones.some((a) =>
         a.permisos.some((p) =>
@@ -4502,6 +4645,23 @@ export class TesoreriaService {
         throw new ForbiddenException('Solo puedes asignar pedidos a tu propio usuario');
       }
       dto.cuentaId = undefined;
+    } else if (alcance.tipo === 'UNIDAD') {
+      if (pedido.vendedorUsuarioId) {
+        const vendedorActual = await this.prisma.usuario.findFirst({
+          where: { AND: [{ id: pedido.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
+        });
+        if (!vendedorActual && pedido.registradoPorUsuarioId !== actor.sub) {
+          throw new ForbiddenException('El pedido pertenece a un miembro fuera de su unidad');
+        }
+      }
+      if (dto.vendedorUsuarioId) {
+        const nuevoVendedor = await this.prisma.usuario.findFirst({
+          where: { AND: [{ id: dto.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
+        });
+        if (!nuevoVendedor) {
+          throw new ForbiddenException('El vendedor asignado no pertenece a su unidad');
+        }
+      }
     } else if (actor.asignaciones && actor.asignaciones.length > 0) {
       const puedeVender = actor.asignaciones.some((a) =>
         a.permisos.some((p) =>
@@ -4712,6 +4872,15 @@ export class TesoreriaService {
       if (pedido.vendedorUsuarioId !== actor.sub && pedido.registradoPorUsuarioId !== actor.sub) {
         throw new ForbiddenException('No tienes permisos para eliminar este pedido');
       }
+    } else if (alcance.tipo === 'UNIDAD') {
+      if (pedido.vendedorUsuarioId) {
+        const vendedorActual = await this.prisma.usuario.findFirst({
+          where: { AND: [{ id: pedido.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
+        });
+        if (!vendedorActual && pedido.registradoPorUsuarioId !== actor.sub) {
+          throw new ForbiddenException('El pedido pertenece a un miembro fuera de su unidad');
+        }
+      }
     } else if (actor.asignaciones && actor.asignaciones.length > 0) {
       const puedeVender = actor.asignaciones.some((a) =>
         a.permisos.some((p) =>
@@ -4896,6 +5065,9 @@ export class TesoreriaService {
             vendedorUsuarioId: { not: null },
             gananciaAcreditada: false,
             estado: EstadoPedidoEvento.PAGADO,
+            ...(alcance.tipo === 'UNIDAD'
+              ? { vendedorUsuario: filtroUsuariosPorAlcance(alcance) }
+              : {}),
           },
           include: {
             tickets: true,

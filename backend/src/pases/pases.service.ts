@@ -138,6 +138,17 @@ export class PasesService {
       assertUnidadEnAlcance(alcance, origen.unidadId);
       assertPuedeOtorgar(alcance, origen.rol, origen.alcanceOverride);
 
+      // No permitir auto-pase para usuarios no globales
+      const actorUsuarioId =
+        alcance.tipo === 'UNIDAD'
+          ? alcance.usuarioIdPropio
+          : alcance.tipo === 'PROPIO'
+            ? alcance.usuarioId
+            : undefined;
+      if (alcance.tipo !== 'GLOBAL' && actorUsuarioId && origen.usuarioId === actorUsuarioId) {
+        throw new ForbiddenException('No puede auto-asignarse un pase institucional');
+      }
+
       let rolDestino = p.rolDestinoId ? await tx.rol.findUnique({ where: { id: p.rolDestinoId } }) : null;
 
       let unidadDestino = p.unidadDestinoId
@@ -170,14 +181,8 @@ export class PasesService {
               requiereRama: false,
             },
           });
-        } else if (unidadDestino.tipo === TipoUnidad.JEFATURA && tx.rol.findFirst) {
-          rolDestino = await tx.rol.findFirst({
-            where: {
-              tipoMiembro: 'EDUCADOR',
-              requiereRama: false,
-              alcancePorDefecto: AlcanceRol.GLOBAL,
-            },
-          });
+        } else if (unidadDestino.tipo === TipoUnidad.JEFATURA) {
+          throw new BadRequestException('Para pases a Jefatura debe especificar explícitamente el rol destino');
         } else if (unidadDestino.tipo === TipoUnidad.SECCION_RAMA && origen.rol.tipoMiembro === 'PROTAGONISTA') {
           const edad = calcularEdad(origen.usuario.fechaNacimiento, hoy);
           // Si el protagonista tiene edad de pase a educador (>= 21 años, egreso de Rover)
@@ -200,6 +205,12 @@ export class PasesService {
 
       // Validación dinámica de privilegios por alcance (CERO nombres fijos)
       assertPuedeOtorgar(alcance, rolDestino, alcanceOverride);
+
+      // Si el rol en la unidad destino tiene alcance distinto de PROPIO, exige que la unidad destino esté en el alcance del actor
+      const alcanceDestino = alcanceOverride ?? rolDestino.alcancePorDefecto;
+      if (alcanceDestino !== AlcanceRol.PROPIO && alcance.tipo !== 'GLOBAL') {
+        assertUnidadEnAlcance(alcance, unidadDestino.id);
+      }
 
       // Validación dinámica de vínculo con Rama según `requiereRama` del rol
       const requiereRamaEfectivo =

@@ -16,8 +16,8 @@ export const CambiarClaveSchema = z
     passwordNueva: z.string().max(200).optional(),
   })
   .transform((d) => ({
-    claveActual: (d.claveActual ?? d.passwordActual ?? '').trim(),
-    claveNueva: (d.claveNueva ?? d.passwordNueva ?? '').trim(),
+    claveActual: d.claveActual ?? d.passwordActual ?? '',
+    claveNueva: d.claveNueva ?? d.passwordNueva ?? '',
   }))
   .refine((d) => d.claveActual.length > 0, {
     path: ['claveActual'],

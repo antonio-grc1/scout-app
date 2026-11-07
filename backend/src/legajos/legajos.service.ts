@@ -457,7 +457,16 @@ export class LegajosService {
 
     if (!limpio) return null;
 
-    const includeDetalle = {
+    const selectDetalle = {
+      id: true,
+      cicloAnio: true,
+      estado: true,
+      hashVerificacion: true,
+      fechaValidacionFisica: true,
+      plantillaId: true,
+      usuarioId: true,
+      validadoPorUsuarioId: true,
+      updatedAt: true,
       plantilla: { select: { id: true, codigo: true, titulo: true, version: true } },
       usuario: {
         select: {
@@ -476,7 +485,7 @@ export class LegajosService {
 
     const exacta = await this.prisma.entregaFormulario.findFirst({
       where: { hashVerificacion: { equals: limpio, mode: 'insensitive' } },
-      include: includeDetalle,
+      select: selectDetalle,
     });
     if (exacta) return exacta;
 
@@ -484,7 +493,7 @@ export class LegajosService {
       const porPrefijo = await this.prisma.entregaFormulario.findFirst({
         where: { hashVerificacion: { startsWith: limpio, mode: 'insensitive' } },
         orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
-        include: includeDetalle,
+        select: selectDetalle,
       });
       if (porPrefijo) return porPrefijo;
     }
@@ -494,7 +503,7 @@ export class LegajosService {
       const porDni = await this.prisma.entregaFormulario.findFirst({
         where: { usuario: { dni: soloDigitos } },
         orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
-        include: includeDetalle,
+        select: selectDetalle,
       });
       if (porDni) return porDni;
     }
@@ -502,9 +511,22 @@ export class LegajosService {
     return null;
   }
 
-  async verificarQr(hashVerificacion: string) {
+  async verificarQr(alcance: AlcanceAcceso, hashVerificacion: string) {
     const entrega = await this.resolverEntregaPorCodigo(hashVerificacion);
     if (!entrega) throw new NotFoundException('Comprobante QR no válido o inexistente');
+
+    if (alcance.tipo === 'UNIDAD') {
+      const unidadesUsuario = entrega.usuario.asignaciones.map((a) => a.unidadId);
+      const enAlcance = unidadesUsuario.some((uId) => alcance.unidadIds.includes(uId));
+      if (!enAlcance && entrega.usuario.id !== alcance.usuarioIdPropio) {
+        throw new ForbiddenException('La ficha consultada pertenece a un miembro fuera de su unidad');
+      }
+    } else if (alcance.tipo === 'PROPIO') {
+      if (entrega.usuario.id !== alcance.usuarioId) {
+        throw new ForbiddenException('No tiene permisos para ver fichas de otros miembros');
+      }
+    }
+
     return entrega;
   }
 

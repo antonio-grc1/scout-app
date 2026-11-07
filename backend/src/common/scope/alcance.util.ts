@@ -71,9 +71,9 @@ export function filtroPorDuenioSegunAlcance(alcance: AlcanceAcceso): { usuario?:
 }
 
 /** Lanza 403 si la unidad no está dentro del alcance (GLOBAL siempre pasa; PROPIO nunca). */
-export function assertUnidadEnAlcance(alcance: AlcanceAcceso, unidadId: number): void {
+export function assertUnidadEnAlcance(alcance: AlcanceAcceso, unidadId: number | null | undefined): void {
   if (alcance.tipo === 'GLOBAL') return;
-  if (alcance.tipo === 'UNIDAD' && alcance.unidadIds.includes(unidadId)) return;
+  if (unidadId !== null && unidadId !== undefined && alcance.tipo === 'UNIDAD' && alcance.unidadIds.includes(unidadId)) return;
   throw new ForbiddenException('La unidad está fuera de su alcance');
 }
 
