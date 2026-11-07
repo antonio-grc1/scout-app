@@ -10,6 +10,16 @@ export interface DatosEmailBienvenida {
   rolNombre?: string;
 }
 
+function escapeHtml(text?: string | null): string {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 @Injectable()
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
@@ -36,13 +46,19 @@ export class MailerService {
     const destinatario = datos.destinatario?.trim();
     if (!destinatario) return false;
 
+    const safeNombre = escapeHtml(datos.nombre);
+    const safeApellido = escapeHtml(datos.apellido);
+    const safeUnidad = escapeHtml(datos.unidadNombre);
+    const safeRol = escapeHtml(datos.rolNombre);
+    const safeDni = escapeHtml(datos.dni);
+
     const transporter = this.crearTransporter();
     const appUrl = process.env.APP_URL?.trim() || 'http://localhost:5173';
     const remitente =
       process.env.SMTP_FROM?.trim() ||
       `"Grupo Scout Juan XXIII" <${process.env.SMTP_USER || 'no-reply@scoutjuanxxiii.org'}>`;
 
-    const asunto = `¡Bienvenido/a al Grupo Scout Juan XXIII! - Alta de ${datos.nombre} ${datos.apellido}`;
+    const asunto = `¡Bienvenido/a al Grupo Scout Juan XXIII! - Alta de ${safeNombre} ${safeApellido}`;
 
     const html = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff; color: #0f172a;">
@@ -52,15 +68,15 @@ export class MailerService {
           <p style="margin: 4px 0 0; font-size: 12px; color: #d4d4d8;">Sistema de Gestión Institucional</p>
         </div>
         <div style="padding: 24px; line-height: 1.6; font-size: 14px;">
-          <p style="margin-top: 0;">¡Hola <strong>${datos.nombre} ${datos.apellido}</strong> (y familia)!</p>
+          <p style="margin-top: 0;">¡Hola <strong>${safeNombre} ${safeApellido}</strong> (y familia)!</p>
           <p>Te informamos que se ha registrado tu alta en el padrón oficial del <strong>Grupo Scout Juan XXIII</strong>${
-            datos.unidadNombre ? ` en la sección <strong>${datos.unidadNombre}</strong>` : ''
-          }${datos.rolNombre ? ` (${datos.rolNombre})` : ''}.</p>
+            safeUnidad ? ` en la sección <strong>${safeUnidad}</strong>` : ''
+          }${safeRol ? ` (${safeRol})` : ''}.</p>
           
           <div style="background-color: #fefce8; border: 1px solid #fde047; border-radius: 12px; padding: 16px; margin: 20px 0;">
             <p style="margin: 0 0 8px; font-weight: 700; color: #854d0e; font-size: 13px; text-transform: uppercase;">Tus credenciales de ingreso:</p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Usuario (DNI):</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${datos.dni}</code></p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña inicial:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${datos.dni}</code> (tu número de DNI)</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Usuario (DNI):</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${safeDni}</code></p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña inicial:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${safeDni}</code> (tu número de DNI)</p>
           </div>
 
           <p style="font-size: 13px; color: #475569;">Al ingresar por primera vez, el sistema te solicitará elegir una contraseña personal segura. Desde la aplicación podrás completar tu ficha médica anual y consultar el estado de tus cuotas.</p>

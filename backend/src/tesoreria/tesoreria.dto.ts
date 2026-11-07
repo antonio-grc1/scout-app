@@ -122,17 +122,25 @@ export const ImputacionItemSchema = z.object({
   monto: montoDecimal,
 });
 
-export const RegistrarPagoSchema = z.object({
-  usuarioId: z.number().int().positive().optional(),
-  cuentaId: z.number().int().positive().optional(),
-  montoTotal: montoNoNegativo,
-  usarSaldoAFavor: z.boolean().default(false).optional(),
-  montoSaldoAFavor: montoNoNegativo.optional(),
-  metodoPago: z.enum(MetodoPago),
-  referenciaComprobante: z.string().trim().max(100).optional(),
-  observaciones: z.string().trim().max(500).optional(),
-  imputaciones: z.array(ImputacionItemSchema).default([]),
-});
+export const RegistrarPagoSchema = z
+  .object({
+    usuarioId: z.number().int().positive().optional(),
+    cuentaId: z.number().int().positive().optional(),
+    montoTotal: montoNoNegativo,
+    usarSaldoAFavor: z.boolean().default(false).optional(),
+    montoSaldoAFavor: montoNoNegativo.optional(),
+    metodoPago: z.enum(MetodoPago),
+    referenciaComprobante: z.string().trim().max(100).optional(),
+    observaciones: z.string().trim().max(500).optional(),
+    imputaciones: z.array(ImputacionItemSchema).default([]),
+  })
+  .refine(
+    (data) => {
+      const ids = data.imputaciones.map((i) => i.cargoId);
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'No se permiten cargos duplicados en las imputaciones', path: ['imputaciones'] },
+  );
 export type RegistrarPagoDto = z.infer<typeof RegistrarPagoSchema>;
 
 export const EditarPagoSchema = z.object({
@@ -144,10 +152,18 @@ export const EditarPagoSchema = z.object({
 export type EditarPagoDto = z.infer<typeof EditarPagoSchema>;
 
 // ---------------- Saldo a Favor ----------------
-export const AplicarSaldoAFavorSchema = z.object({
-  usuarioId: z.number().int().positive(),
-  imputaciones: z.array(ImputacionItemSchema).min(1, 'Debe seleccionar al menos un cargo para imputar saldo'),
-});
+export const AplicarSaldoAFavorSchema = z
+  .object({
+    usuarioId: z.number().int().positive(),
+    imputaciones: z.array(ImputacionItemSchema).min(1, 'Debe seleccionar al menos un cargo para imputar saldo'),
+  })
+  .refine(
+    (data) => {
+      const ids = data.imputaciones.map((i) => i.cargoId);
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'No se permiten cargos duplicados en las imputaciones', path: ['imputaciones'] },
+  );
 export type AplicarSaldoAFavorDto = z.infer<typeof AplicarSaldoAFavorSchema>;
 
 export const AjustarSaldoAFavorSchema = z.object({
@@ -311,7 +327,7 @@ export const CrearItemEventoSchema = z.object({
   descripcion: z.string().trim().max(300).optional(),
   precioVenta: montoDecimal,
   costoUnitario: montoNoNegativo.default(0).optional(),
-  gananciaUnitaria: montoNoNegativo.default(0).optional(),
+  gananciaUnitaria: montoNoNegativo.optional(),
   stockTotal: z.number().int().positive().nullable().optional(),
 });
 export type CrearItemEventoDto = z.infer<typeof CrearItemEventoSchema>;
@@ -349,27 +365,44 @@ export const ItemPedidoSchema = z.object({
   cantidad: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
 });
 
-export const CrearPedidoEventoSchema = z.object({
-  eventoId: z.number().int().positive(),
-  compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120),
-  compradorContacto: z.string().trim().max(100).optional(),
-  vendedorUsuarioId: z.number().int().positive().nullable().optional(),
-  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'OTRO']).optional(),
-  cuentaId: z.number().int().positive().nullable().optional(),
-  observaciones: z.string().trim().max(300).optional(),
-  items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto'),
-});
+export const CrearPedidoEventoSchema = z
+  .object({
+    eventoId: z.number().int().positive(),
+    compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120),
+    compradorContacto: z.string().trim().max(100).optional(),
+    vendedorUsuarioId: z.number().int().positive().nullable().optional(),
+    metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'OTRO']).optional(),
+    cuentaId: z.number().int().positive().nullable().optional(),
+    observaciones: z.string().trim().max(300).optional(),
+    items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto'),
+  })
+  .refine(
+    (data) => {
+      const ids = data.items.map((i) => i.itemId);
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'No se permiten productos duplicados en el mismo pedido', path: ['items'] },
+  );
 export type CrearPedidoEventoDto = z.infer<typeof CrearPedidoEventoSchema>;
 
-export const ActualizarPedidoEventoSchema = z.object({
-  compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120).optional(),
-  compradorContacto: z.string().trim().max(100).optional(),
-  vendedorUsuarioId: z.number().int().positive().nullable().optional(),
-  metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'OTRO']).optional(),
-  cuentaId: z.number().int().positive().nullable().optional(),
-  observaciones: z.string().trim().max(300).optional(),
-  items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto').optional(),
-});
+export const ActualizarPedidoEventoSchema = z
+  .object({
+    compradorNombre: z.string().trim().min(2, 'Indique el nombre del comprador o cliente').max(120).optional(),
+    compradorContacto: z.string().trim().max(100).optional(),
+    vendedorUsuarioId: z.number().int().positive().nullable().optional(),
+    metodoPago: z.enum(['EFECTIVO', 'TRANSFERENCIA', 'OTRO']).optional(),
+    cuentaId: z.number().int().positive().nullable().optional(),
+    observaciones: z.string().trim().max(300).optional(),
+    items: z.array(ItemPedidoSchema).min(1, 'Debe pedir al menos un producto').optional(),
+  })
+  .refine(
+    (data) => {
+      if (!data.items) return true;
+      const ids = data.items.map((i) => i.itemId);
+      return new Set(ids).size === ids.length;
+    },
+    { message: 'No se permiten productos duplicados en el mismo pedido', path: ['items'] },
+  );
 export type ActualizarPedidoEventoDto = z.infer<typeof ActualizarPedidoEventoSchema>;
 
 export const ValidarTicketQrSchema = z.object({

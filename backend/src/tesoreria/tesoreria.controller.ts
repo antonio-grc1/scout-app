@@ -149,41 +149,44 @@ export class TesoreriaController {
   }
 
   // ---------------- Grupos Familiares ----------------
-  @RequireAnyPermission(CUOTAS_VER, TESORERIA_GESTIONAR, 'miembros.ver')
+  @RequireAnyPermission(CUOTAS_VER, TESORERIA_GESTIONAR, 'miembros.ver', CUOTAS_AJUSTAR, 'miembros.editar')
   @Get('familias')
-  listarGruposFamiliares() {
-    return this.tesoreria.listarGruposFamiliares();
+  listarGruposFamiliares(@Alcance() a: AlcanceAcceso) {
+    return this.tesoreria.listarGruposFamiliares(a);
   }
 
   @RequireAnyPermission(CUOTAS_AJUSTAR, TESORERIA_GESTIONAR, TESORERIA_CONCEPTOS)
   @Patch('familias/:id')
   actualizarDescuentoFamilia(
+    @Alcance() a: AlcanceAcceso,
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(ActualizarDescuentoFamiliaSchema)) dto: ActualizarDescuentoFamiliaDto,
   ) {
-    return this.tesoreria.actualizarDescuentoFamilia(id, dto);
+    return this.tesoreria.actualizarDescuentoFamilia(a, id, dto);
   }
 
   @RequirePermission(TESORERIA_GESTIONAR)
   @Delete('familias/:id')
-  eliminarGrupoFamiliar(@Param('id', ParseIntPipe) id: number) {
-    return this.tesoreria.eliminarGrupoFamiliar(id);
+  eliminarGrupoFamiliar(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.tesoreria.eliminarGrupoFamiliar(a, id);
   }
 
   @RequireAnyPermission('miembros.editar', CUOTAS_AJUSTAR, TESORERIA_GESTIONAR)
   @Post('familias/vincular-hermano')
   vincularHermano(
+    @Alcance() a: AlcanceAcceso,
     @Body(new ZodValidationPipe(VincularHermanoSchema)) dto: VincularHermanoDto,
   ) {
-    return this.tesoreria.vincularHermano(dto);
+    return this.tesoreria.vincularHermano(a, dto);
   }
 
   @RequireAnyPermission('miembros.editar', CUOTAS_AJUSTAR, TESORERIA_GESTIONAR)
   @Post('familias/desvincular-hermano')
   desvincularHermano(
+    @Alcance() a: AlcanceAcceso,
     @Body(new ZodValidationPipe(DesvincularHermanoSchema)) dto: DesvincularHermanoDto,
   ) {
-    return this.tesoreria.desvincularHermano(dto);
+    return this.tesoreria.desvincularHermano(a, dto);
   }
 
   // ---------------- Cargos ----------------

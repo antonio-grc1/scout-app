@@ -1,6 +1,15 @@
 import { create } from 'zustand';
-import { api } from '../api/client';
+import { api, setOnAuthError, setOnRequirePasswordChange } from '../api/client';
 import { limpiarCacheApi } from '../lib/offlineCache';
+
+function safeJsonParse<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
 
 export interface AsignacionUsuario {
   unidadId: number;
@@ -52,9 +61,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
   return {
     token: savedToken,
-    usuario: savedUser ? JSON.parse(savedUser) : null,
+    usuario: safeJsonParse<UsuarioSesion | null>(savedUser, null),
     requiereCambioClave: savedCambioClave === 'true',
-    asignaciones: savedAsignaciones ? JSON.parse(savedAsignaciones) : [],
+    asignaciones: safeJsonParse<AsignacionUsuario[]>(savedAsignaciones, []),
 
     setSesion: ({ accessToken, usuario, requiereCambioClave, asignaciones }) => {
       localStorage.setItem('scout_token', accessToken);
@@ -146,8 +155,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
         'tesoreria.conceptos_planes',
         'tesoreria.caja_ver',
         'tesoreria.gastos_registrar',
+        'cuotas.ver',
         'cuotas.cobrar',
         'cuotas.ajustar',
+        'eventos.ver',
         'eventos.vender',
         'eventos.gestionar',
         'organizacion.ver',
@@ -155,9 +166,19 @@ export const useAuthStore = create<AuthState>((set, get) => {
         'roles.gestionar',
         'pases.ver',
         'pases.ejecutar',
+        'legajos.ver',
         'legajos.plantillas_gestionar',
       ];
       return tieneGlobal() || permisosPanel.some((p) => tienePermiso(p));
     },
   };
+});
+
+// Sincronizar logout y cambio obligatorio de clave con el cliente HTTP
+setOnAuthError(() => {
+  useAuthStore.getState().logout();
+});
+
+setOnRequirePasswordChange(() => {
+  useAuthStore.getState().setRequiereCambioClave(true);
 });

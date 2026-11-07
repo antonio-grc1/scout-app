@@ -35,6 +35,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let onAuthErrorCallback: (() => void) | null = null;
+export function setOnAuthError(cb: () => void) {
+  onAuthErrorCallback = cb;
+}
+
+let onRequirePasswordChangeCallback: (() => void) | null = null;
+export function setOnRequirePasswordChange(cb: () => void) {
+  onRequirePasswordChangeCallback = cb;
+}
+
+let isHandlingAuthError = false;
+
 api.interceptors.response.use(
   (response) => {
     // Almacenar en caché toda respuesta GET exitosa (excepto descargas de archivos)
@@ -77,20 +89,40 @@ api.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      limpiarCacheApi();
-      localStorage.removeItem('scout_token');
-      localStorage.removeItem('scout_user');
-      localStorage.removeItem('scout_asignaciones');
-      localStorage.removeItem('scout_cambio_clave');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      if (!isHandlingAuthError) {
+        isHandlingAuthError = true;
+        limpiarCacheApi();
+        localStorage.removeItem('scout_token');
+        localStorage.removeItem('scout_user');
+        localStorage.removeItem('scout_asignaciones');
+        localStorage.removeItem('scout_cambio_clave');
+        if (onAuthErrorCallback) {
+          try {
+            onAuthErrorCallback();
+          } catch {
+            // ignore
+          }
+        }
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        setTimeout(() => {
+          isHandlingAuthError = false;
+        }, 1500);
       }
     } else if (
       error.response?.status === 403 &&
       (error.response?.data?.code === 'REQUIERE_CAMBIO_CLAVE' ||
         error.response?.data?.message?.toLowerCase()?.includes('cambio de clave'))
     ) {
-      if (window.location.pathname !== '/cambiar-clave') {
+      if (onRequirePasswordChangeCallback) {
+        try {
+          onRequirePasswordChangeCallback();
+        } catch {
+          // ignore
+        }
+      }
+      if (typeof window !== 'undefined' && window.location.pathname !== '/cambiar-clave') {
         window.location.href = '/cambiar-clave';
       }
     }

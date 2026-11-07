@@ -129,7 +129,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
     window.print();
   };
 
-  const esSuperavit = (datos?.resumen.resultadoNeto ?? 0) >= 0;
+  const esSuperavit = (datos?.resumen?.resultadoNeto ?? 0) >= 0;
 
   return (
     <div className="space-y-4 print:space-y-2 print:text-black">
@@ -250,7 +250,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-              {formatearMoneda(datos?.resumen.totalIngresos ?? 0)}
+              {formatearMoneda(datos?.resumen?.totalIngresos ?? 0)}
             </span>
             <span className="text-xs font-semibold text-ink-muted">
               {ingresosVisibles.length} rubros
@@ -271,7 +271,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
           </div>
           <div className="mt-2 flex items-baseline justify-between">
             <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
-              {formatearMoneda(datos?.resumen.totalEgresos ?? 0)}
+              {formatearMoneda(datos?.resumen?.totalEgresos ?? 0)}
             </span>
             <span className="text-xs font-semibold text-ink-muted">
               {egresosVisibles.length} rubros
@@ -305,7 +305,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                   : 'bg-rose-100 dark:bg-rose-900 text-rose-800 dark:text-rose-200'
               }`}
             >
-              {datos?.resumen.margenOperativoPorcentaje ?? 0}% margen
+              {datos?.resumen?.margenOperativoPorcentaje ?? 0}% margen
             </span>
           </div>
           <div className="mt-2">
@@ -316,7 +316,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                   : 'text-rose-700 dark:text-rose-300'
               }`}
             >
-              {formatearMoneda(datos?.resumen.resultadoNeto ?? 0)}
+              {formatearMoneda(datos?.resumen?.resultadoNeto ?? 0)}
             </span>
           </div>
         </div>
@@ -332,16 +332,16 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
           </div>
           <div className="mt-1">
             <span className="text-xl font-black text-ink">
-              {formatearMoneda(datos?.disponibilidadActual.totalDisponible ?? 0)}
+              {formatearMoneda(datos?.disponibilidadActual?.totalDisponible ?? 0)}
             </span>
             <div className="mt-1.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-[11px] text-ink-muted">
               <span className="flex items-center gap-1">
                 <Wallet className="w-3 h-3 text-emerald-500 shrink-0" />
-                <span>Caja: {formatearMoneda(datos?.disponibilidadActual.totalCaja ?? 0)}</span>
+                <span>Caja: {formatearMoneda(datos?.disponibilidadActual?.totalCaja ?? 0)}</span>
               </span>
               <span className="flex items-center gap-1">
                 <Landmark className="w-3 h-3 text-blue-500 shrink-0" />
-                <span>Banco: {formatearMoneda(datos?.disponibilidadActual.totalBanco ?? 0)}</span>
+                <span>Banco: {formatearMoneda(datos?.disponibilidadActual?.totalBanco ?? 0)}</span>
               </span>
             </div>
           </div>
@@ -424,7 +424,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
               </h3>
             </div>
             <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-              Total: {formatearMoneda(datos?.resumen.totalIngresos ?? 0)}
+              Total: {formatearMoneda(datos?.resumen?.totalIngresos ?? 0)}
             </span>
           </div>
 
@@ -475,7 +475,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                     SUBTOTAL INGRESOS
                   </td>
                   <td className="py-3 px-4 text-right text-sm text-emerald-600 dark:text-emerald-400 font-black">
-                    {formatearMoneda(datos?.resumen.totalIngresos ?? 0)}
+                    {formatearMoneda(datos?.resumen?.totalIngresos ?? 0)}
                   </td>
                   <td className="py-3 px-4 text-right text-xs text-ink">
                     100%
@@ -496,7 +496,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
               </h3>
             </div>
             <span className="text-xs font-black text-rose-600 dark:text-rose-400">
-              Total: {formatearMoneda(datos?.resumen.totalEgresos ?? 0)}
+              Total: {formatearMoneda(datos?.resumen?.totalEgresos ?? 0)}
             </span>
           </div>
 
@@ -547,7 +547,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                     SUBTOTAL EGRESOS
                   </td>
                   <td className="py-3 px-4 text-right text-sm text-rose-600 dark:text-rose-400 font-black">
-                    {formatearMoneda(datos?.resumen.totalEgresos ?? 0)}
+                    {formatearMoneda(datos?.resumen?.totalEgresos ?? 0)}
                   </td>
                   <td className="py-3 px-4 text-right text-xs text-ink">
                     100%
@@ -594,7 +594,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                   : 'text-rose-700 dark:text-rose-300'
               }`}
             >
-              {formatearMoneda(datos?.resumen.resultadoNeto ?? 0)}
+              {formatearMoneda(datos?.resumen?.resultadoNeto ?? 0)}
             </span>
             <span
               className={`inline-block mt-1 text-xs font-extrabold px-2.5 py-0.5 rounded-full ${

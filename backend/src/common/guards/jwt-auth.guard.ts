@@ -76,6 +76,7 @@ export class JwtAuthGuard implements CanActivate {
         };
       } catch (err) {
         if (err instanceof UnauthorizedException) throw err;
+        if (process.env.NODE_ENV !== 'test') throw err;
         // En entorno de test mockeado sin tabla completa, usar payload del token
       }
     }

@@ -42,15 +42,15 @@ export class MiembrosController {
   /** Búsqueda flexible de hermanos por DNI, Apellido o Nombre en todo el padrón activo. */
   @RequireAnyPermission('miembros.editar', 'cuotas.ajustar', 'tesoreria.gestionar')
   @Get('hermanos/buscar')
-  buscarHermanosPorCriterio(@Query('q') q?: string) {
-    return this.miembros.buscarHermanosPorCriterio(q ?? '');
+  buscarHermanosPorCriterio(@Alcance() a: AlcanceAcceso, @Query('q') q?: string) {
+    return this.miembros.buscarHermanosPorCriterio(a, q ?? '');
   }
 
   /** Autocompletado de datos familiares a partir del DNI de un hermano. */
   @RequirePermission('miembros.crear')
   @Get('hermano/:dni')
-  buscarHermano(@Param('dni') dni: string) {
-    return this.miembros.buscarHermano(dni.trim());
+  buscarHermano(@Alcance() a: AlcanceAcceso, @Param('dni') dni: string) {
+    return this.miembros.buscarHermano(a, dni.trim());
   }
 
   @RequirePermission('miembros.ver')

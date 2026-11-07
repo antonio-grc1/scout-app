@@ -14,6 +14,7 @@ import {
   Alcance,
   CurrentUser,
   Public,
+  RequireAnyPermission,
   RequirePermission,
 } from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
@@ -116,12 +117,12 @@ export class LegajosController {
 
   // ---------------- Verificación / Validación QR ----------------
   /**
-   * Endpoint de lectura del QR escaneado por el educador o verificado en público
+   * Endpoint de lectura del QR escaneado por el educador o verificado con permiso
    */
-  @Public()
+  @RequireAnyPermission(VALIDAR_FISICO, VER)
   @Get('qr/verificar/:hash')
-  verificarQr(@Param('hash') hash: string) {
-    return this.legajos.verificarQr(hash);
+  verificarQr(@Alcance() a: AlcanceAcceso, @Param('hash') hash: string) {
+    return this.legajos.verificarQr(a, hash);
   }
 
   /**

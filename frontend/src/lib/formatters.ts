@@ -573,7 +573,9 @@ export function seleccionarPlantillaPorMiembro(
     unidadTipo === 'SIN_RAMA_APOYO';
 
   if (esEducador) {
-    const pEdu = plantillas.find((p) => p.codigo === 'LEGAJO_EDUCADORES_2026');
+    const pEdu =
+      plantillas.find((p) => p.codigo === 'LEGAJO_EDUCADORES_2026') ||
+      plantillas.find((p) => String(p.codigo).startsWith('LEGAJO_EDUCADORES_'));
     if (pEdu) return pEdu;
   }
 
@@ -581,12 +583,15 @@ export function seleccionarPlantillaPorMiembro(
   const esMayorEdad = edadMinRama >= 18 || (edad !== null && edad >= 18);
 
   if (esMayorEdad) {
-    const pRov = plantillas.find((p) => p.codigo === 'LEGAJO_ROVERS_2026');
+    const pRov =
+      plantillas.find((p) => p.codigo === 'LEGAJO_ROVERS_2026') ||
+      plantillas.find((p) => String(p.codigo).startsWith('LEGAJO_ROVERS_'));
     if (pRov) return pRov;
   }
 
   return (
     plantillas.find((p) => p.codigo === 'LEGAJO_MENORES_2026') ||
+    plantillas.find((p) => String(p.codigo).startsWith('LEGAJO_MENORES_')) ||
     plantillas[0]
   );
 }

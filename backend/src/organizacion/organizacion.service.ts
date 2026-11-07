@@ -200,14 +200,22 @@ export class OrganizacionService {
       throw new NotFoundException('Sección no encontrada');
     }
 
-    const asignaciones = unidad.asignaciones.map((a) => {
-      const miembroData = {
-        id: a.usuario.id,
-        nombre: a.usuario.nombre,
-        apellido: a.usuario.apellido,
-        dni: a.usuario.dni,
-        activo: a.usuario.activo,
-      };
+    const asignaciones = (unidad.asignaciones || []).map((a) => {
+      const miembroData = a.usuario
+        ? {
+            id: a.usuario.id,
+            nombre: a.usuario.nombre,
+            apellido: a.usuario.apellido,
+            dni: a.usuario.dni,
+            activo: a.usuario.activo,
+          }
+        : {
+            id: a.usuarioId,
+            nombre: 'Usuario',
+            apellido: 'Inactivo',
+            dni: '-',
+            activo: false,
+          };
       return {
         id: a.id,
         usuarioId: a.usuarioId,
@@ -219,9 +227,9 @@ export class OrganizacionService {
         miembro: miembroData,
         usuario: miembroData,
         rol: {
-          id: a.rol.id,
-          nombre: a.rol.nombre,
-          tipoMiembro: a.rol.tipoMiembro || 'EDUCADOR',
+          id: a.rol?.id ?? a.rolId,
+          nombre: a.rol?.nombre ?? 'Rol',
+          tipoMiembro: a.rol?.tipoMiembro || 'EDUCADOR',
         },
       };
     });

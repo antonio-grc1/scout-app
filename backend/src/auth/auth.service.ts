@@ -100,6 +100,19 @@ export class AuthService {
         (a) => (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL,
       );
       if (esGlobal) throw new ForbiddenException('No puede resetear la clave de un usuario con alcance global');
+
+      if (alcance.tipo === 'UNIDAD') {
+        const tieneOtrasUnidades = objetivo.asignaciones.some(
+          (a) =>
+            (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.UNIDAD &&
+            !alcance.unidadIds.includes(a.unidadId),
+        );
+        if (tieneOtrasUnidades) {
+          throw new ForbiddenException(
+            'No puede resetear la clave de un usuario con asignaciones en unidades fuera de su alcance',
+          );
+        }
+      }
     }
 
     await this.prisma.usuario.update({

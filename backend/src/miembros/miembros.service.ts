@@ -13,6 +13,7 @@ import {
   assertPuedeOtorgar,
   assertUnidadEnAlcance,
   filtroUsuariosPorAlcance,
+  resolverAlcance,
 } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
@@ -266,7 +267,10 @@ export class MiembrosService {
    * y campos de secciones con `permiteCopiarHermano`). Se permite buscar fuera del alcance
    * porque los hermanos suelen estar en ramas distintas.
    */
-  async buscarHermano(dniHermano: string) {
+  async buscarHermano(alcance: AlcanceAcceso, dniHermano: string) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para consultar datos de otros miembros');
+    }
     const hermano = await this.prisma.usuario.findUnique({
       where: { dni: dniHermano },
       select: {
@@ -303,7 +307,10 @@ export class MiembrosService {
    * Búsqueda de posibles hermanos por DNI, Apellido o Nombre en todo el grupo
    * (sin restricción de rama para permitir vincular hermanos de distintas secciones).
    */
-  async buscarHermanosPorCriterio(criterioRaw: string) {
+  async buscarHermanosPorCriterio(alcance: AlcanceAcceso, criterioRaw: string) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para buscar hermanos');
+    }
     const qNorm = normalizarSinTildes(criterioRaw);
     if (!qNorm) return [];
 
@@ -474,15 +481,17 @@ export class MiembrosService {
     }
 
     // Permisos por campo: cada grupo de campos exige su propio permiso (actualización parcial).
-    if (!esPropio) {
-      const permisosActor = new Set(actor.asignaciones.flatMap((a) => a.permisos));
-      const PERMISO_POR_CAMPO: Record<string, string> = {
-        nombre: 'miembros.editar_identidad',
-        apellido: 'miembros.editar_identidad',
-        dni: 'miembros.editar_identidad',
-        fechaNacimiento: 'miembros.editar_identidad',
-        activo: 'miembros.baja',
-      };
+    const PERMISO_POR_CAMPO: Record<string, string> = {
+      nombre: 'miembros.editar_identidad',
+      apellido: 'miembros.editar_identidad',
+      dni: 'miembros.editar_identidad',
+      fechaNacimiento: 'miembros.editar_identidad',
+      activo: 'miembros.baja',
+      emailContacto: 'miembros.editar',
+      telefonoContacto: 'miembros.editar',
+      datosFijosJson: 'miembros.editar',
+    };
+    if (!esPropio || alcance.tipo === 'GLOBAL') {
       const sinPermiso = Object.keys(dto).filter((k) => {
         const req = PERMISO_POR_CAMPO[k];
         if (!req) return false;
@@ -493,7 +502,16 @@ export class MiembrosService {
           k === 'fechaNacimiento'
             ? actual instanceof Date && String(nuevo) === actual.toISOString().slice(0, 10)
             : actual === nuevo;
-        return !igual && !permisosActor.has(req);
+        if (igual) return false;
+
+        const alcanceCampo = resolverAlcance(actor, req);
+        if (!alcanceCampo) return true;
+        if (alcanceCampo.tipo === 'GLOBAL') return false;
+        if (alcanceCampo.tipo === 'UNIDAD') {
+          const unidadesObjetivo = objetivo.asignaciones.map((a) => a.unidadId);
+          return !unidadesObjetivo.some((uId) => alcanceCampo.unidadIds.includes(uId));
+        }
+        return true;
       });
       if (sinPermiso.length) {
         throw new ForbiddenException(`No tiene permiso para modificar: ${sinPermiso.join(', ')}`);
@@ -562,8 +580,20 @@ export class MiembrosService {
     );
     assertUnidadEnAlcance(alcance, unidadIdResuelta);
 
-    const usuario = await this.prisma.usuario.findUnique({ where: { id: usuarioId } });
-    if (!usuario || !usuario.activo) throw new NotFoundException('Miembro no encontrado');
+    const usuario = await this.prisma.usuario.findFirst({
+      where: { AND: [{ id: usuarioId }, filtroUsuariosPorAlcance(alcance)] },
+      include: { asignaciones: { where: { activo: true }, include: { rol: true } } },
+    });
+    if (!usuario || !usuario.activo) throw new NotFoundException('Miembro no encontrado en su alcance');
+
+    if (alcance.tipo !== 'GLOBAL') {
+      const tieneAsignacionGlobal = usuario.asignaciones.some(
+        (a) => (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL,
+      );
+      if (tieneAsignacionGlobal) {
+        throw new ForbiddenException('No puede modificar asignaciones de un usuario con alcance global');
+      }
+    }
 
     const duplicada = await this.prisma.asignacionMiembro.findFirst({
       where: { usuarioId, unidadId: unidadIdResuelta, rolId: dto.rolId, activo: true },

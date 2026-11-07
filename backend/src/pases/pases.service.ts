@@ -1,15 +1,19 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional, Inject, forwardRef } from '@nestjs/common';
 import { AlcanceRol, TipoUnidad, type Prisma } from '@prisma/client';
 import { alcanceEfectivo, assertPuedeOtorgar, assertUnidadEnAlcance } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso } from '../common/types/auth.types.js';
 import { anioActual, calcularEdad, fechaCorteCicloEscolar, hoyUtc } from '../common/utils/fechas.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { TesoreriaService } from '../tesoreria/tesoreria.service.js';
 import type { CandidatosQueryDto, PaseDto, PasesLoteDto } from './pases.dto.js';
 import { sugerirPase } from './pases.logic.js';
 
 @Injectable()
 export class PasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(forwardRef(() => TesoreriaService)) private readonly tesoreria?: TesoreriaService,
+  ) {}
 
   /**
    * Protagonistas (asignaciones con alcance PROPIO en secciones de rama) cuya edad al corte
@@ -138,6 +142,17 @@ export class PasesService {
       assertUnidadEnAlcance(alcance, origen.unidadId);
       assertPuedeOtorgar(alcance, origen.rol, origen.alcanceOverride);
 
+      // No permitir auto-pase para usuarios no globales
+      const actorUsuarioId =
+        alcance.tipo === 'UNIDAD'
+          ? alcance.usuarioIdPropio
+          : alcance.tipo === 'PROPIO'
+            ? alcance.usuarioId
+            : undefined;
+      if (alcance.tipo !== 'GLOBAL' && actorUsuarioId && origen.usuarioId === actorUsuarioId) {
+        throw new ForbiddenException('No puede auto-asignarse un pase institucional');
+      }
+
       let rolDestino = p.rolDestinoId ? await tx.rol.findUnique({ where: { id: p.rolDestinoId } }) : null;
 
       let unidadDestino = p.unidadDestinoId
@@ -170,14 +185,8 @@ export class PasesService {
               requiereRama: false,
             },
           });
-        } else if (unidadDestino.tipo === TipoUnidad.JEFATURA && tx.rol.findFirst) {
-          rolDestino = await tx.rol.findFirst({
-            where: {
-              tipoMiembro: 'EDUCADOR',
-              requiereRama: false,
-              alcancePorDefecto: AlcanceRol.GLOBAL,
-            },
-          });
+        } else if (unidadDestino.tipo === TipoUnidad.JEFATURA) {
+          throw new BadRequestException('Para pases a Jefatura debe especificar explícitamente el rol destino');
         } else if (unidadDestino.tipo === TipoUnidad.SECCION_RAMA && origen.rol.tipoMiembro === 'PROTAGONISTA') {
           const edad = calcularEdad(origen.usuario.fechaNacimiento, hoy);
           // Si el protagonista tiene edad de pase a educador (>= 21 años, egreso de Rover)
@@ -200,6 +209,12 @@ export class PasesService {
 
       // Validación dinámica de privilegios por alcance (CERO nombres fijos)
       assertPuedeOtorgar(alcance, rolDestino, alcanceOverride);
+
+      // Si el rol en la unidad destino tiene alcance distinto de PROPIO, exige que la unidad destino esté en el alcance del actor
+      const alcanceDestino = alcanceOverride ?? rolDestino.alcancePorDefecto;
+      if (alcanceDestino !== AlcanceRol.PROPIO && alcance.tipo !== 'GLOBAL') {
+        assertUnidadEnAlcance(alcance, unidadDestino.id);
+      }
 
       // Validación dinámica de vínculo con Rama según `requiereRama` del rol
       const requiereRamaEfectivo =
@@ -225,6 +240,23 @@ export class PasesService {
         throw new BadRequestException(`El pase de la asignación ${origen.id} no cambia de rama ni de rol`);
       }
 
+      // Evitar asignación activa duplicada en la unidad destino
+      const asignacionActivaExistente = tx.asignacionMiembro.findFirst
+        ? await tx.asignacionMiembro.findFirst({
+            where: {
+              usuarioId: origen.usuarioId,
+              unidadId: unidadDestino.id,
+              rolId: rolDestino.id,
+              activo: true,
+            },
+          })
+        : null;
+      if (asignacionActivaExistente) {
+        throw new ConflictException(
+          `El miembro ya posee una asignación activa en la sección destino con el rol seleccionado (asignación #${asignacionActivaExistente.id})`,
+        );
+      }
+
       // Cierre condicional: evita que dos pases concurrentes cierren la misma asignación.
       const cierre = await tx.asignacionMiembro.updateMany({
         where: { id: origen.id, activo: true },
@@ -232,17 +264,23 @@ export class PasesService {
       });
       if (cierre.count !== 1) throw new ConflictException(`La asignación ${origen.id} fue modificada por otro proceso`);
 
+      const cicloPase = p.cicloAnio ?? anioActual();
       const nueva = await tx.asignacionMiembro.create({
         data: {
           usuarioId: origen.usuarioId,
           unidadId: unidadDestino.id,
           rolId: rolDestino.id,
           alcanceOverride,
-          cicloAnio: p.cicloAnio ?? anioActual(),
+          cicloAnio: cicloPase,
           fechaInicio: hoy,
         },
         include: { unidad: { select: { id: true, nombre: true } }, rol: { select: { id: true, nombre: true } } },
       });
+
+      if (this.tesoreria) {
+        const mesActual = new Date().getMonth() + 1;
+        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, origen.usuarioId, mesActual, cicloPase);
+      }
 
       resultados.push({ usuarioId: origen.usuarioId, asignacionCerradaId: origen.id, asignacionNueva: nueva });
     }

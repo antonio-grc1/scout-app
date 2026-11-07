@@ -17,6 +17,63 @@ import type {
   ListarEntregasQueryDto,
 } from './legajos.dto.js';
 
+export const CAMPOS_DATOS_FIJOS_PERMITIDOS = new Set([
+  'protagonista_domicilio',
+  'protagonista_telefono',
+  'obra_social',
+  'obra_social_afiliado',
+  'religion',
+  'ocupacion_estudios',
+  'profesion_ocupacion',
+  'nivel_formacion_scout',
+  'posee_licencia_conducir',
+  'menor_nacionalidad',
+  'grupo_sanguineo',
+  'factor_rh',
+  'alergias',
+  'alergias_detalle',
+  'enfermedades_cronicas',
+  'enfermedades_cronicas_detalle',
+  'medicacion_habitual',
+  'medicacion_habitual_detalle',
+  'tratamientos_actuales',
+  'dieta_especial',
+  'dieta_especial_detalle',
+  'vacunas_completas',
+  'observaciones_medicas',
+  'telefono_urgencias_medicas',
+  'medico_cabecera_nombre',
+  'medico_cabecera_telefono',
+  'emergencia_nombre',
+  'emergencia_vinculo',
+  'emergencia_telefono',
+  'madre_nombres',
+  'madre_telefono',
+  'madre_profesion',
+  'padre_nombres',
+  'padre_telefono',
+  'padre_profesion',
+  'tutor_nombres',
+  'tutor_telefono',
+  'tutor_vinculo',
+]);
+
+export const CAMPOS_FAMILIARES_PERMITIDOS_COMPARTIR = new Set([
+  'protagonista_domicilio',
+  'madre_nombres',
+  'madre_telefono',
+  'madre_profesion',
+  'padre_nombres',
+  'padre_telefono',
+  'padre_profesion',
+  'tutor_nombres',
+  'tutor_telefono',
+  'tutor_vinculo',
+  'emergencia_nombre',
+  'emergencia_vinculo',
+  'emergencia_telefono',
+]);
+
 export function calcularHashVerificacion(
   usuarioId: number,
   plantillaId: number,
@@ -298,7 +355,12 @@ export class LegajosService {
       });
       for (const h of hermanos) {
         if (h.datosFijosJson && typeof h.datosFijosJson === 'object') {
-          datosFamiliaresSugeridos = { ...h.datosFijosJson, ...datosFamiliaresSugeridos };
+          const obj = h.datosFijosJson as Record<string, unknown>;
+          for (const [k, v] of Object.entries(obj)) {
+            if (CAMPOS_FAMILIARES_PERMITIDOS_COMPARTIR.has(k) && !(k in datosFamiliaresSugeridos)) {
+              datosFamiliaresSugeridos[k] = v;
+            }
+          }
         }
       }
     }
@@ -320,9 +382,43 @@ export class LegajosService {
       where: { AND: [{ id: dto.usuarioId }, filtroUsuariosPorAlcance(alcance)] },
     });
     if (!usuario) throw new NotFoundException('Miembro no encontrado en su alcance');
+    if (!usuario.activo) {
+      throw new BadRequestException('No se pueden gestionar legajos para un miembro inactivo o dado de baja');
+    }
 
     const plantilla = await this.prisma.plantillaFormulario.findUnique({ where: { id: dto.plantillaId } });
     if (!plantilla || !plantilla.activa) throw new BadRequestException('Plantilla no encontrada o inactiva');
+
+    const hoy = new Date();
+    const nac = new Date(usuario.fechaNacimiento);
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const m = hoy.getMonth() - nac.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) {
+      edad--;
+    }
+
+    if (plantilla.codigo.startsWith('LEGAJO_MENORES_') && edad >= 18) {
+      throw new BadRequestException(
+        'La plantilla de Menores es exclusiva para menores de 18 años. Debe completar la plantilla de Rovers o Educadores.',
+      );
+    }
+    if (plantilla.codigo.startsWith('LEGAJO_ROVERS_') && edad < 18) {
+      throw new BadRequestException(
+        'La plantilla Rover es exclusivamente para miembros mayores de edad.',
+      );
+    }
+    if (plantilla.codigo.startsWith('LEGAJO_EDUCADORES_') && edad < 18) {
+      throw new BadRequestException(
+        'La plantilla de Educadores es para dirigentes y educadores adultos.',
+      );
+    }
+
+    // Sanitizar respuestas eliminando propiedades de prototipo
+    const respuestasSanitizadas: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(dto.respuestas)) {
+      if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+      respuestasSanitizadas[k] = v;
+    }
 
     return this.prisma.$transaction(async (tx) => {
       const entregaActual = await tx.entregaFormulario.findFirst({
@@ -365,7 +461,7 @@ export class LegajosService {
         dto.plantillaId,
         dto.cicloAnio,
         versionImpresion,
-        dto.respuestas,
+        respuestasSanitizadas,
       );
 
       const dataToSave = {
@@ -373,7 +469,7 @@ export class LegajosService {
         plantillaId: dto.plantillaId,
         cicloAnio: dto.cicloAnio,
         versionImpresion,
-        respuestasSnapshotJson: dto.respuestas as Prisma.InputJsonObject,
+        respuestasSnapshotJson: respuestasSanitizadas as Prisma.InputJsonObject,
         hashVerificacion,
         estado,
         fechaGeneracionPdf,
@@ -398,10 +494,18 @@ export class LegajosService {
             },
           });
 
-      // Si se pidió actualizar datos fijos, sincronizar con usuario.datosFijosJson
+      // Si se pidió actualizar datos fijos, sincronizar únicamente campos permitidos
       if (dto.actualizarDatosFijos) {
         const datosActuales = (usuario.datosFijosJson ?? {}) as Record<string, unknown>;
-        const nuevosDatos = { ...datosActuales, ...dto.respuestas };
+        const filtrados: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(respuestasSanitizadas)) {
+          if (CAMPOS_DATOS_FIJOS_PERMITIDOS.has(k)) {
+            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || v === null) {
+              filtrados[k] = v;
+            }
+          }
+        }
+        const nuevosDatos = { ...datosActuales, ...filtrados };
         await tx.usuario.update({
           where: { id: usuario.id },
           data: { datosFijosJson: nuevosDatos as Prisma.InputJsonObject },
@@ -457,7 +561,16 @@ export class LegajosService {
 
     if (!limpio) return null;
 
-    const includeDetalle = {
+    const selectDetalle = {
+      id: true,
+      cicloAnio: true,
+      estado: true,
+      hashVerificacion: true,
+      fechaValidacionFisica: true,
+      plantillaId: true,
+      usuarioId: true,
+      validadoPorUsuarioId: true,
+      updatedAt: true,
       plantilla: { select: { id: true, codigo: true, titulo: true, version: true } },
       usuario: {
         select: {
@@ -465,6 +578,7 @@ export class LegajosService {
           dni: true,
           nombre: true,
           apellido: true,
+          activo: true,
           asignaciones: {
             where: { activo: true },
             select: { unidadId: true, unidad: { select: { id: true, nombre: true } } },
@@ -476,7 +590,7 @@ export class LegajosService {
 
     const exacta = await this.prisma.entregaFormulario.findFirst({
       where: { hashVerificacion: { equals: limpio, mode: 'insensitive' } },
-      include: includeDetalle,
+      select: selectDetalle,
     });
     if (exacta) return exacta;
 
@@ -484,7 +598,7 @@ export class LegajosService {
       const porPrefijo = await this.prisma.entregaFormulario.findFirst({
         where: { hashVerificacion: { startsWith: limpio, mode: 'insensitive' } },
         orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
-        include: includeDetalle,
+        select: selectDetalle,
       });
       if (porPrefijo) return porPrefijo;
     }
@@ -494,7 +608,7 @@ export class LegajosService {
       const porDni = await this.prisma.entregaFormulario.findFirst({
         where: { usuario: { dni: soloDigitos } },
         orderBy: [{ cicloAnio: 'desc' }, { id: 'desc' }],
-        include: includeDetalle,
+        select: selectDetalle,
       });
       if (porDni) return porDni;
     }
@@ -502,9 +616,22 @@ export class LegajosService {
     return null;
   }
 
-  async verificarQr(hashVerificacion: string) {
+  async verificarQr(alcance: AlcanceAcceso, hashVerificacion: string) {
     const entrega = await this.resolverEntregaPorCodigo(hashVerificacion);
     if (!entrega) throw new NotFoundException('Comprobante QR no válido o inexistente');
+
+    if (alcance.tipo === 'UNIDAD') {
+      const unidadesUsuario = entrega.usuario.asignaciones.map((a) => a.unidadId);
+      const enAlcance = unidadesUsuario.some((uId) => alcance.unidadIds.includes(uId));
+      if (!enAlcance && entrega.usuario.id !== alcance.usuarioIdPropio) {
+        throw new ForbiddenException('La ficha consultada pertenece a un miembro fuera de su unidad');
+      }
+    } else if (alcance.tipo === 'PROPIO') {
+      if (entrega.usuario.id !== alcance.usuarioId) {
+        throw new ForbiddenException('No tiene permisos para ver fichas de otros miembros');
+      }
+    }
+
     return entrega;
   }
 
@@ -524,6 +651,14 @@ export class LegajosService {
       }
     } else if (alcance.tipo === 'PROPIO') {
       throw new ForbiddenException('No tiene permisos para validar físicamente fichas');
+    }
+
+    if (!entrega.usuario.activo) {
+      throw new BadRequestException('No se puede validar físicamente la ficha de un miembro inactivo o dado de baja');
+    }
+
+    if (!entrega.usuario.asignaciones || entrega.usuario.asignaciones.length === 0) {
+      throw new BadRequestException('El miembro no posee ninguna unidad o asignación activa en el grupo');
     }
 
     if (entrega.estado === EstadoEntrega.VALIDADO_FISICAMENTE) {

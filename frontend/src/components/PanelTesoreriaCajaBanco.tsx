@@ -370,7 +370,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   const cuentaActiva = cuentas.find((c) => c.id === cuentaSeleccionadaId);
   const hayFiltroFecha = Boolean(fechaDesde || fechaHasta);
   const datosLibroListos = Boolean(
-    libroDiario && cuentaSeleccionadaId !== null && libroDiario.cuenta.id === cuentaSeleccionadaId,
+    libroDiario && cuentaSeleccionadaId !== null && libroDiario.cuenta?.id === cuentaSeleccionadaId,
   );
   const estaCargando =
     cargandoCuentas ||

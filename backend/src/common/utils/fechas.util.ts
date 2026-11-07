@@ -34,3 +34,40 @@ export function calcularAnioCamada(fechaNacimiento: Date): number {
   const mesNac = fechaNacimiento.getUTCMonth(); // 0 = Enero .. 5 = Junio, 6 = Julio .. 11 = Diciembre
   return mesNac < 6 ? anioNac : anioNac + 1;
 }
+
+/**
+ * Parsea una fecha de operación (YYYY-MM-DD o ISO) asegurando el huso horario oficial de Argentina (GMT-3).
+ * Si es solo YYYY-MM-DD y coincide con hoy, usa la hora actual local. Si es otro día, usa mediodía GMT-3 (15:00 UTC)
+ * para evitar desfases de día anterior al persistir o convertir.
+ */
+export function parsearFechaOperacion(fechaStr?: string | null): Date {
+  if (!fechaStr) return new Date();
+
+  // Si ya es un ISO completo o incluye offset (por ej. termina en Z o -03:00):
+  if (fechaStr.includes('Z') || /[+-]\d{2}:?\d{2}$/.test(fechaStr)) {
+    const d = new Date(fechaStr);
+    return isNaN(d.getTime()) ? new Date() : d;
+  }
+
+  // Si es solo YYYY-MM-DD:
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fechaStr)) {
+    const hoyStr = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+    }).format(new Date());
+
+    if (fechaStr === hoyStr) {
+      return new Date();
+    }
+    // Para otro día: mediodía en Argentina (12:00 GMT-3 = 15:00 UTC)
+    return new Date(`${fechaStr}T15:00:00.000Z`);
+  }
+
+  // Si es YYYY-MM-DDTHH:mm sin zona, asumir hora argentina (GMT-3)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(fechaStr)) {
+    return new Date(`${fechaStr}-03:00`);
+  }
+
+  const d = new Date(fechaStr);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
