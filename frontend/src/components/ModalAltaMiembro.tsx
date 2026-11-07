@@ -223,7 +223,8 @@ export const ModalAltaMiembro: React.FC<Props> = ({
     const hermano = grupo.representante;
     const comp = hermano?.datosCompartidos || hermano?.datosFijosJson || {};
     if (hermano?.emailContacto && !emailContacto) setEmailContacto(hermano.emailContacto);
-    if (comp.domicilio) setDomicilio(comp.domicilio);
+    const dom = comp.protagonista_domicilio || comp.domicilio;
+    if (dom) setDomicilio(dom);
     if (comp.obra_social) setObraSocial(comp.obra_social);
     if (comp.madre_nombres) setMadreNombres(comp.madre_nombres);
     if (comp.madre_telefono) setMadreTelefono(comp.madre_telefono);
@@ -260,6 +261,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         hermanoDni: grupoConfirmado?.representante?.dni || undefined,
         copiarDatosHermano: Boolean(grupoConfirmado),
         datosFijosJson: {
+          protagonista_domicilio: domicilio.trim() || undefined,
           domicilio: domicilio.trim() || undefined,
           obra_social: obraSocial.trim() || undefined,
           protagonista_telefono: telefonoContacto.trim() || undefined,
