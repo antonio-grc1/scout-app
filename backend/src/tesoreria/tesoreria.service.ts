@@ -225,6 +225,7 @@ export class TesoreriaService {
     });
 
     let restante = montoRedondeado;
+    const liberadoPorUsuario = new Map<number, number>();
 
     for (const imp of imputaciones) {
       if (restante <= 0.001) break;
@@ -254,15 +255,26 @@ export class TesoreriaService {
         }
       }
 
+      const pagadorId = imp.pago?.usuarioId ?? usuarioId;
+      liberadoPorUsuario.set(pagadorId, round2((liberadoPorUsuario.get(pagadorId) ?? 0) + quitar));
+
       restante = round2(restante - quitar);
     }
 
-    await tx.usuario.update({
-      where: { id: usuarioId },
-      data: {
-        saldoAFavor: { increment: redondearDosDecimales(montoRedondeado) },
-      },
-    });
+    if (restante > 0.001) {
+      liberadoPorUsuario.set(usuarioId, round2((liberadoPorUsuario.get(usuarioId) ?? 0) + restante));
+    }
+
+    for (const [uid, monto] of liberadoPorUsuario.entries()) {
+      if (monto > 0.001) {
+        await tx.usuario.update({
+          where: { id: uid },
+          data: {
+            saldoAFavor: { increment: redondearDosDecimales(monto) },
+          },
+        });
+      }
+    }
   }
 
   /**
@@ -344,6 +356,12 @@ export class TesoreriaService {
     const montoBaseNum = Number(concepto.montoBase);
 
     for (const cargo of cargosExistentes) {
+      // Si el cargo estaba ANULADO manualmente o ya estaba PAGADO al 100%, se respeta y no se toca
+      if (cargo.estado === EstadoCargo.ANULADO || cargo.estado === EstadoCargo.PAGADO) {
+        candidatosMap.delete(cargo.usuarioId);
+        continue;
+      }
+
       const candidato = candidatosMap.get(cargo.usuarioId);
 
       if (!candidato) {
@@ -357,11 +375,6 @@ export class TesoreriaService {
       }
 
       candidatosMap.delete(cargo.usuarioId);
-
-      // Si el cargo estaba ANULADO manualmente o ya estaba PAGADO al 100%, se respeta
-      if (cargo.estado === EstadoCargo.ANULADO || cargo.estado === EstadoCargo.PAGADO) {
-        continue;
-      }
 
       // Recalcular cargo PENDIENTE o PARCIAL
       const { montoOriginal, montoDescuento, montoFinal } = this.calcularMontosCargo(
@@ -389,7 +402,7 @@ export class TesoreriaService {
         });
       } else {
         const nuevoEstado =
-          pagadoActual >= nuevoFinalNum - 0.001 && nuevoFinalNum > 0
+          nuevoFinalNum <= 0 || (pagadoActual >= nuevoFinalNum - 0.001 && nuevoFinalNum > 0)
             ? EstadoCargo.PAGADO
             : pagadoActual > 0
               ? EstadoCargo.PARCIAL
@@ -408,6 +421,7 @@ export class TesoreriaService {
     }
 
     // Crear cargos para candidatos que aún no tenían cargo en este concepto
+    const nuevosCargos: Prisma.CargoMiembroCreateManyInput[] = [];
     for (const u of candidatosMap.values()) {
       const { montoOriginal, montoDescuento, montoFinal } = this.calcularMontosCargo(
         montoBaseNum,
@@ -415,18 +429,28 @@ export class TesoreriaService {
         concepto.porcentajeDescuentoHermanos,
         u.grupoFamiliar,
       );
+      const nuevoFinalNum = Number(montoFinal);
+      const estadoInicial = nuevoFinalNum <= 0 ? EstadoCargo.PAGADO : EstadoCargo.PENDIENTE;
 
-      await tx.cargoMiembro.create({
-        data: {
-          usuarioId: u.id,
-          conceptoId: concepto.id,
-          montoOriginal,
-          montoDescuento,
-          montoFinal,
-          montoPagado: new Prisma.Decimal(0),
-          estado: EstadoCargo.PENDIENTE,
-        },
+      nuevosCargos.push({
+        usuarioId: u.id,
+        conceptoId: concepto.id,
+        montoOriginal,
+        montoDescuento,
+        montoFinal,
+        montoPagado: new Prisma.Decimal(0),
+        estado: estadoInicial,
       });
+    }
+
+    if (nuevosCargos.length > 0) {
+      if (tx.cargoMiembro?.createMany) {
+        await tx.cargoMiembro.createMany({ data: nuevosCargos });
+      } else {
+        for (const data of nuevosCargos) {
+          await tx.cargoMiembro.create({ data });
+        }
+      }
     }
   }
 
@@ -480,7 +504,7 @@ export class TesoreriaService {
           });
         } else {
           const nuevoEstado =
-            pagadoActual >= nuevoFinalNum - 0.001 && nuevoFinalNum > 0
+            nuevoFinalNum <= 0 || (pagadoActual >= nuevoFinalNum - 0.001 && nuevoFinalNum > 0)
               ? EstadoCargo.PAGADO
               : pagadoActual > 0
                 ? EstadoCargo.PARCIAL
@@ -584,6 +608,8 @@ export class TesoreriaService {
 
       if (cargoExistente) {
         if (cargoExistente.estado === EstadoCargo.ANULADO) {
+          const nuevoFinalNum = Number(montoFinal);
+          const estadoReactivado = nuevoFinalNum <= 0 ? EstadoCargo.PAGADO : EstadoCargo.PENDIENTE;
           await tx.cargoMiembro.update({
             where: { id: cargoExistente.id },
             data: {
@@ -591,11 +617,13 @@ export class TesoreriaService {
               montoDescuento,
               montoFinal,
               montoPagado: new Prisma.Decimal(0),
-              estado: EstadoCargo.PENDIENTE,
+              estado: estadoReactivado,
             },
           });
         }
       } else {
+        const nuevoFinalNum = Number(montoFinal);
+        const estadoInicial = nuevoFinalNum <= 0 ? EstadoCargo.PAGADO : EstadoCargo.PENDIENTE;
         await tx.cargoMiembro.create({
           data: {
             usuarioId: usuario.id,
@@ -604,7 +632,7 @@ export class TesoreriaService {
             montoDescuento,
             montoFinal,
             montoPagado: new Prisma.Decimal(0),
-            estado: EstadoCargo.PENDIENTE,
+            estado: estadoInicial,
           },
         });
       }
@@ -734,7 +762,7 @@ export class TesoreriaService {
       }
 
       return plan;
-    });
+    }, { timeout: 20000 });
   }
 
   async sincronizarMesesPlan(alcance: AlcanceAcceso, planId: number, dto: SincronizarMesesPlanDto) {
@@ -776,7 +804,7 @@ export class TesoreriaService {
       }
 
       return planActualizado;
-    });
+    }, { timeout: 20000 });
   }
 
   async editarPlanCuotaMensual(alcance: AlcanceAcceso, id: number, dto: EditarPlanCuotaMensualDto) {
@@ -841,7 +869,7 @@ export class TesoreriaService {
       }
 
       return planActualizado;
-    });
+    }, { timeout: 20000 });
   }
 
   async eliminarPlanCuotaMensual(alcance: AlcanceAcceso, id: number) {
@@ -865,12 +893,14 @@ export class TesoreriaService {
         await this.eliminarConceptoConCargosEnTx(tx, c.id);
       }
       return tx.planCuotaMensual.delete({ where: { id } });
-    });
+    }, { timeout: 20000 });
   }
 
   private async sincronizarMesDePlanEnTx(tx: Prisma.TransactionClient, plan: any, mesNum: number) {
     const nombreMes = NOMBRES_MESES[mesNum - 1] || `Mes ${mesNum}`;
-    const fechaVto = new Date(Date.UTC(plan.cicloAnio, mesNum - 1, plan.diaVencimiento || 10));
+    const ultimoDiaDelMes = new Date(Date.UTC(plan.cicloAnio, mesNum, 0)).getUTCDate();
+    const diaReal = Math.min(plan.diaVencimiento || 10, ultimoDiaDelMes);
+    const fechaVto = new Date(Date.UTC(plan.cicloAnio, mesNum - 1, diaReal));
 
     let concepto = await tx.conceptoCuota.findFirst({
       where: {
@@ -1520,6 +1550,8 @@ export class TesoreriaService {
           concepto.porcentajeDescuentoHermanos,
           u.grupoFamiliar,
         );
+        const nuevoFinalNum = Number(montoFinal);
+        const estadoInicial = nuevoFinalNum <= 0 ? EstadoCargo.PAGADO : EstadoCargo.PENDIENTE;
 
         const cargo = await tx.cargoMiembro.create({
           data: {
@@ -1529,7 +1561,7 @@ export class TesoreriaService {
             montoDescuento,
             montoFinal,
             montoPagado: new Prisma.Decimal(0),
-            estado: EstadoCargo.PENDIENTE,
+            estado: estadoInicial,
           },
           include: {
             usuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
@@ -1543,12 +1575,16 @@ export class TesoreriaService {
         totalGenerados: cargosCreados.length,
         cargos: cargosCreados,
       };
-    });
+    }, { timeout: 20000 });
   }
 
   async generarCargoIndividual(actor: AuthUser, alcance: AlcanceAcceso, dto: GenerarCargoIndividualDto) {
     if (alcance.tipo === 'PROPIO') {
       throw new ForbiddenException('No tiene permisos para generar cargos');
+    }
+
+    if (dto.montoDescuento !== undefined && dto.montoDescuento > dto.monto) {
+      throw new BadRequestException('El descuento no puede superar el monto original');
     }
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -1563,56 +1599,62 @@ export class TesoreriaService {
       if (!tieneUnidad) throw new ForbiddenException('El miembro no pertenece a su unidad');
     }
 
-    let conceptoId = dto.conceptoId;
-    if (conceptoId) {
+    if (dto.conceptoId) {
       const conceptoExistente = await this.prisma.conceptoCuota.findUnique({
-        where: { id: conceptoId },
+        where: { id: dto.conceptoId },
       });
       if (!conceptoExistente) throw new NotFoundException('Concepto no encontrado');
       if (conceptoExistente.unidadId) {
         assertUnidadEnAlcance(alcance, conceptoExistente.unidadId);
       }
-    } else {
-      const nombreConcepto = dto.nombreConcepto?.trim() || 'Cargo Individual Extraordinario';
-      const unidadIdConcepto =
-        alcance.tipo === 'UNIDAD'
-          ? (usuario.asignaciones.find((a) => alcance.unidadIds.includes(a.unidadId))?.unidadId ??
-            alcance.unidadIds[0])
-          : undefined;
-
-      const conceptoNuevo = await this.prisma.conceptoCuota.create({
-        data: {
-          nombre: nombreConcepto,
-          tipo: dto.tipo ?? 'OTRO',
-          montoBase: new Prisma.Decimal(dto.monto),
-          cicloAnio: dto.cicloAnio ?? new Date().getFullYear(),
-          fechaVencimiento: dto.fechaVencimiento ? new Date(dto.fechaVencimiento) : null,
-          permiteDescuentoHermanos: false,
-          destinatarioTipo: 'INDIVIDUAL',
-          ...(unidadIdConcepto ? { unidadId: unidadIdConcepto } : {}),
-        },
-      });
-      conceptoId = conceptoNuevo.id;
     }
 
     const montoOriginal = redondearDosDecimales(dto.monto);
     const montoDescuento = redondearDosDecimales(dto.montoDescuento ?? 0);
-    const montoFinal = redondearDosDecimales(Math.max(0, dto.monto - (dto.montoDescuento ?? 0)));
+    const nuevoFinalNum = round2(Math.max(0, dto.monto - (dto.montoDescuento ?? 0)));
+    const montoFinal = redondearDosDecimales(nuevoFinalNum);
+    const estadoInicial = nuevoFinalNum <= 0 ? EstadoCargo.PAGADO : EstadoCargo.PENDIENTE;
 
-    return this.prisma.cargoMiembro.create({
-      data: {
-        usuarioId: dto.usuarioId,
-        conceptoId,
-        montoOriginal,
-        montoDescuento,
-        montoFinal,
-        montoPagado: new Prisma.Decimal(0),
-        estado: EstadoCargo.PENDIENTE,
-      },
-      include: {
-        concepto: true,
-        usuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
-      },
+    return this.prisma.$transaction(async (tx) => {
+      let conceptoId = dto.conceptoId;
+      if (!conceptoId) {
+        const nombreConcepto = dto.nombreConcepto?.trim() || 'Cargo Individual Extraordinario';
+        const unidadIdConcepto =
+          alcance.tipo === 'UNIDAD'
+            ? (usuario.asignaciones.find((a) => alcance.unidadIds.includes(a.unidadId))?.unidadId ??
+              alcance.unidadIds[0])
+            : undefined;
+
+        const conceptoNuevo = await tx.conceptoCuota.create({
+          data: {
+            nombre: nombreConcepto,
+            tipo: dto.tipo ?? 'OTRO',
+            montoBase: new Prisma.Decimal(dto.monto),
+            cicloAnio: dto.cicloAnio ?? new Date().getFullYear(),
+            fechaVencimiento: dto.fechaVencimiento ? new Date(dto.fechaVencimiento) : null,
+            permiteDescuentoHermanos: false,
+            destinatarioTipo: 'INDIVIDUAL',
+            ...(unidadIdConcepto ? { unidadId: unidadIdConcepto } : {}),
+          },
+        });
+        conceptoId = conceptoNuevo.id;
+      }
+
+      return tx.cargoMiembro.create({
+        data: {
+          usuarioId: dto.usuarioId,
+          conceptoId,
+          montoOriginal,
+          montoDescuento,
+          montoFinal,
+          montoPagado: new Prisma.Decimal(0),
+          estado: estadoInicial,
+        },
+        include: {
+          concepto: true,
+          usuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
+        },
+      });
     });
   }
 
@@ -1673,7 +1715,7 @@ export class TesoreriaService {
           nuevoEstado = EstadoCargo.PAGADO;
         } else {
           nuevoEstado =
-            pagadoActual >= nuevoFinalNum - 0.001 && nuevoFinalNum > 0
+            nuevoFinalNum <= 0 || (pagadoActual >= nuevoFinalNum - 0.001 && nuevoFinalNum > 0)
               ? EstadoCargo.PAGADO
               : pagadoActual > 0
                 ? EstadoCargo.PARCIAL
@@ -2023,25 +2065,41 @@ export class TesoreriaService {
       throw new ForbiddenException('No tiene permisos para registrar pagos');
     }
 
+    const cargoIds = dto.imputaciones.map((i) => i.cargoId);
+    if (new Set(cargoIds).size !== cargoIds.length) {
+      throw new BadRequestException('No se permiten cargos duplicados en las imputaciones');
+    }
+
     const sumaImputaciones = round2(dto.imputaciones.reduce((acc, curr) => acc + curr.monto, 0));
     const montoTotalRedondeado = round2(dto.montoTotal);
 
     return this.prisma.$transaction(async (tx) => {
       let targetUsuarioId = dto.usuarioId;
+      if (!targetUsuarioId && dto.imputaciones.length > 0) {
+        const primerCargo = await tx.cargoMiembro.findUnique({
+          where: { id: dto.imputaciones[0].cargoId },
+          select: { usuarioId: true },
+        });
+        if (primerCargo) {
+          targetUsuarioId = primerCargo.usuarioId;
+        }
+      }
+
       let saldoDisponible = 0;
+      let targetUsuario: any = null;
 
       if (targetUsuarioId && tx.usuario?.findUnique) {
-        const u = await tx.usuario.findUnique({
+        targetUsuario = await tx.usuario.findUnique({
           where: { id: targetUsuarioId },
           include: {
             asignaciones: { where: { activo: true }, select: { unidadId: true } },
           },
         });
-        if (u) {
-          saldoDisponible = Number(u.saldoAFavor ?? 0);
+        if (targetUsuario) {
+          saldoDisponible = Number(targetUsuario.saldoAFavor ?? 0);
           if (alcance.tipo === 'UNIDAD') {
-            const uIds = u.asignaciones.map((a) => a.unidadId);
-            if (!uIds.some((uid) => alcance.unidadIds.includes(uid))) {
+            const uIds = targetUsuario.asignaciones.map((a: any) => a.unidadId);
+            if (!uIds.some((uid: number) => alcance.unidadIds.includes(uid))) {
               throw new ForbiddenException('El miembro no pertenece a su unidad');
             }
           }
@@ -2070,6 +2128,31 @@ export class TesoreriaService {
 
       const excedente = round2(Math.max(0, montoTotalRedondeado - requeridoEnCaja));
 
+      // 1. Si se aplicó Saldo a Favor, descontarlo atómicamente antes de mutar cargos
+      if (saldoAAplicar > 0 && targetUsuarioId) {
+        let count = 1;
+        if (tx.usuario?.updateMany) {
+          const resSaldo = await tx.usuario.updateMany({
+            where: {
+              id: targetUsuarioId,
+              saldoAFavor: { gte: redondearDosDecimales(saldoAAplicar) },
+            },
+            data: {
+              saldoAFavor: { decrement: redondearDosDecimales(saldoAAplicar) },
+            },
+          });
+          count = resSaldo.count;
+        } else if (tx.usuario?.update) {
+          await tx.usuario.update({
+            where: { id: targetUsuarioId },
+            data: { saldoAFavor: { decrement: redondearDosDecimales(saldoAAplicar) } },
+          });
+        }
+        if (count === 0) {
+          throw new BadRequestException('Saldo a favor insuficiente para aplicar a este cobro');
+        }
+      }
+
       // Validar y actualizar cada cargo imputado
       const imputacionesSaldo: Array<{ cargoId: number; monto: number }> = [];
       const imputacionesCaja: Array<{ cargoId: number; monto: number }> = [];
@@ -2082,6 +2165,7 @@ export class TesoreriaService {
             usuario: {
               select: {
                 id: true,
+                grupoFamiliarId: true,
                 asignaciones: { where: { activo: true }, select: { unidadId: true } },
               },
             },
@@ -2091,6 +2175,20 @@ export class TesoreriaService {
 
         if (!targetUsuarioId) {
           targetUsuarioId = cargo.usuario.id;
+        }
+
+        if (targetUsuarioId) {
+          const mismoUsuario = cargo.usuario.id === targetUsuarioId;
+          const mismaFamilia =
+            Boolean(targetUsuario?.grupoFamiliarId) &&
+            Boolean(cargo.usuario.grupoFamiliarId) &&
+            cargo.usuario.grupoFamiliarId === targetUsuario.grupoFamiliarId;
+
+          if (!mismoUsuario && !mismaFamilia) {
+            throw new BadRequestException(
+              `El cargo #${imp.cargoId} no pertenece al titular ni a su grupo familiar`,
+            );
+          }
         }
 
         if (alcance.tipo === 'UNIDAD') {
@@ -2143,15 +2241,9 @@ export class TesoreriaService {
         }
       }
 
-      // 1. Si se aplicó Saldo a Favor, descontarlo y registrar el movimiento de aplicación
+      // 2. Si se aplicó Saldo a Favor, registrar el comprobante de pago interno
       let pagoSaldoCreado: any = null;
       if (saldoAAplicar > 0 && targetUsuarioId) {
-        await tx.usuario.update({
-          where: { id: targetUsuarioId },
-          data: {
-            saldoAFavor: { decrement: redondearDosDecimales(saldoAAplicar) },
-          },
-        });
 
         pagoSaldoCreado = await tx.pago.create({
           data: {
@@ -2384,21 +2476,22 @@ export class TesoreriaService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const fechaOp = dto.fechaPago !== undefined ? parsearFechaOperacion(dto.fechaPago) : undefined;
       const pagoActualizado = await tx.pago.update({
         where: { id },
         data: {
           ...(dto.metodoPago !== undefined ? { metodoPago: dto.metodoPago } : {}),
           ...(dto.referenciaComprobante !== undefined ? { referenciaComprobante: dto.referenciaComprobante } : {}),
           ...(dto.observaciones !== undefined ? { observaciones: dto.observaciones } : {}),
-          ...(dto.fechaPago !== undefined ? { fechaPago: new Date(dto.fechaPago) } : {}),
+          ...(fechaOp !== undefined ? { fechaPago: fechaOp } : {}),
         },
       });
 
-      if (dto.fechaPago !== undefined) {
+      if (fechaOp !== undefined) {
         await tx.movimientoFinanciero.updateMany({
           where: { pagoId: id },
           data: {
-            fecha: new Date(dto.fechaPago),
+            fecha: fechaOp,
           },
         });
       }
@@ -2576,11 +2669,40 @@ export class TesoreriaService {
         }
       }
 
-      // 3. Eliminar explícitamente cualquier movimiento financiero asociado al pago
-      if (tx.movimientoFinanciero?.deleteMany) {
-        await tx.movimientoFinanciero.deleteMany({
-          where: { pagoId: pago.id },
-        });
+      // 3. Validar y eliminar movimientos financieros asociados al pago
+      if (tx.movimientoFinanciero) {
+        if (tx.movimientoFinanciero.findMany) {
+          const movsFinancieros = await tx.movimientoFinanciero.findMany({
+            where: { pagoId: pago.id },
+            include: { cuenta: true },
+          });
+          for (const mov of movsFinancieros) {
+            if (mov.cuenta && 'activa' in mov.cuenta && !mov.cuenta.activa) {
+              throw new BadRequestException(`La cuenta financiera ${mov.cuenta.nombre} se encuentra inactiva.`);
+            }
+            if (tx.movimientoFinanciero.aggregate) {
+              const aggCuenta = await tx.movimientoFinanciero.aggregate({
+                where: { cuentaId: mov.cuentaId },
+                _sum: { montoIngreso: true, montoEgreso: true },
+              });
+              const saldoDisponible = round2(
+                Number(aggCuenta._sum.montoIngreso ?? 0) - Number(aggCuenta._sum.montoEgreso ?? 0),
+              );
+              const impactoEgreso = Number(mov.montoIngreso);
+              if (impactoEgreso > 0 && saldoDisponible < impactoEgreso - 0.001) {
+                throw new BadRequestException(
+                  `No se puede revertir el pago porque la cuenta ${mov.cuenta?.nombre ?? mov.cuentaId} no tiene saldo suficiente para devolver los fondos ($${saldoDisponible} disponibles vs $${impactoEgreso} a revertir).`,
+                );
+              }
+            }
+          }
+        }
+
+        if (tx.movimientoFinanciero.deleteMany) {
+          await tx.movimientoFinanciero.deleteMany({
+            where: { pagoId: pago.id },
+          });
+        }
       }
 
       // 4. Eliminar el pago (cascada borra sus PagoImputacion)
@@ -2595,6 +2717,11 @@ export class TesoreriaService {
   async aplicarSaldoAFavor(actor: AuthUser, alcance: AlcanceAcceso, dto: AplicarSaldoAFavorDto) {
     if (alcance.tipo === 'PROPIO') {
       throw new ForbiddenException('No tiene permisos para aplicar saldo a favor');
+    }
+
+    const cargoIds = dto.imputaciones.map((i) => i.cargoId);
+    if (new Set(cargoIds).size !== cargoIds.length) {
+      throw new BadRequestException('No se permiten cargos duplicados en las imputaciones');
     }
 
     const usuario = await this.prisma.usuario.findUnique({
@@ -2620,12 +2747,27 @@ export class TesoreriaService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.usuario.update({
-        where: { id: dto.usuarioId },
-        data: {
-          saldoAFavor: { decrement: redondearDosDecimales(sumaRedondeada) },
-        },
-      });
+      let count = 1;
+      if (tx.usuario?.updateMany) {
+        const resSaldo = await tx.usuario.updateMany({
+          where: {
+            id: dto.usuarioId,
+            saldoAFavor: { gte: redondearDosDecimales(sumaRedondeada) },
+          },
+          data: {
+            saldoAFavor: { decrement: redondearDosDecimales(sumaRedondeada) },
+          },
+        });
+        count = resSaldo.count;
+      } else if (tx.usuario?.update) {
+        await tx.usuario.update({
+          where: { id: dto.usuarioId },
+          data: { saldoAFavor: { decrement: redondearDosDecimales(sumaRedondeada) } },
+        });
+      }
+      if (count === 0) {
+        throw new BadRequestException('Saldo a favor insuficiente para aplicar a las cuotas seleccionadas');
+      }
 
       for (const imp of dto.imputaciones) {
         const cargo = await tx.cargoMiembro.findUnique({
@@ -2701,47 +2843,63 @@ export class TesoreriaService {
       throw new ForbiddenException('No tiene permisos para ajustar el saldo a favor');
     }
 
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { id: dto.usuarioId },
-      include: { asignaciones: { where: { activo: true }, select: { unidadId: true } } },
-    });
-    if (!usuario) throw new NotFoundException('Miembro no encontrado');
+    return this.prisma.$transaction(async (tx) => {
+      const usuario = await tx.usuario.findUnique({
+        where: { id: dto.usuarioId },
+        include: { asignaciones: { where: { activo: true }, select: { unidadId: true } } },
+      });
+      if (!usuario) throw new NotFoundException('Miembro no encontrado');
 
-    if (alcance.tipo === 'UNIDAD') {
-      const unidadesMiembro = usuario.asignaciones.map((a) => a.unidadId);
-      if (!unidadesMiembro.some((uId) => alcance.unidadIds.includes(uId))) {
-        throw new ForbiddenException('El miembro no pertenece a su unidad');
+      if (alcance.tipo === 'UNIDAD') {
+        const unidadesMiembro = usuario.asignaciones.map((a) => a.unidadId);
+        if (!unidadesMiembro.some((uId) => alcance.unidadIds.includes(uId))) {
+          throw new ForbiddenException('El miembro no pertenece a su unidad');
+        }
       }
-    }
 
-    const saldoActual = Number(usuario.saldoAFavor ?? 0);
-    let nuevoSaldo = saldoActual;
+      const saldoActual = Number(usuario.saldoAFavor ?? 0);
+      let nuevoSaldo = saldoActual;
 
-    if (dto.tipoAjuste === 'CARGAR') {
-      if (dto.monto <= 0) throw new BadRequestException('El monto a acreditar debe ser mayor a 0');
-      nuevoSaldo = round2(saldoActual + dto.monto);
-    } else if (dto.tipoAjuste === 'DESCONTAR') {
-      if (dto.monto <= 0) throw new BadRequestException('El monto a descontar debe ser mayor a 0');
-      if (dto.monto > saldoActual + 0.001) {
-        throw new BadRequestException(`El monto a descontar ($${dto.monto}) supera el saldo actual ($${saldoActual})`);
+      if (dto.tipoAjuste === 'CARGAR') {
+        if (dto.monto <= 0) throw new BadRequestException('El monto a acreditar debe ser mayor a 0');
+        nuevoSaldo = round2(saldoActual + dto.monto);
+        await tx.usuario.update({
+          where: { id: dto.usuarioId },
+          data: { saldoAFavor: redondearDosDecimales(nuevoSaldo) },
+        });
+      } else if (dto.tipoAjuste === 'DESCONTAR') {
+        if (dto.monto <= 0) throw new BadRequestException('El monto a descontar debe ser mayor a 0');
+        const res = await tx.usuario.updateMany({
+          where: {
+            id: dto.usuarioId,
+            saldoAFavor: { gte: redondearDosDecimales(dto.monto) },
+          },
+          data: {
+            saldoAFavor: { decrement: redondearDosDecimales(dto.monto) },
+          },
+        });
+        if (res.count === 0) {
+          throw new BadRequestException(`El monto a descontar ($${dto.monto}) supera el saldo actual ($${saldoActual})`);
+        }
+        nuevoSaldo = round2(Math.max(0, saldoActual - dto.monto));
+      } else if (dto.tipoAjuste === 'FIJAR') {
+        nuevoSaldo = round2(Math.max(0, dto.monto));
+        await tx.usuario.update({
+          where: { id: dto.usuarioId },
+          data: { saldoAFavor: redondearDosDecimales(nuevoSaldo) },
+        });
       }
-      nuevoSaldo = round2(Math.max(0, saldoActual - dto.monto));
-    } else if (dto.tipoAjuste === 'FIJAR') {
-      nuevoSaldo = round2(Math.max(0, dto.monto));
-    }
 
-    const actualizado = await this.prisma.usuario.update({
-      where: { id: dto.usuarioId },
-      data: {
-        saldoAFavor: redondearDosDecimales(nuevoSaldo),
-      },
-      select: { id: true, nombre: true, apellido: true, saldoAFavor: true },
+      const actualizado = await tx.usuario.findUnique({
+        where: { id: dto.usuarioId },
+        select: { id: true, nombre: true, apellido: true, saldoAFavor: true },
+      });
+
+      return {
+        mensaje: `Saldo a favor actualizado a $${nuevoSaldo.toFixed(2)}`,
+        usuario: actualizado,
+      };
     });
-
-    return {
-      mensaje: `Saldo a favor actualizado a $${nuevoSaldo.toFixed(2)}`,
-      usuario: actualizado,
-    };
   }
 
   async listarPagos(alcance: AlcanceAcceso, usuarioId?: number) {
@@ -3373,8 +3531,12 @@ export class TesoreriaService {
       ...(query.desde || query.hasta
         ? {
             fecha: {
-              ...(query.desde ? { gte: new Date(query.desde) } : {}),
-              ...(query.hasta ? { lte: new Date(query.hasta) } : {}),
+              ...(query.desde
+                ? { gte: new Date(query.desde.includes('T') ? query.desde : `${query.desde}T00:00:00.000Z`) }
+                : {}),
+              ...(query.hasta
+                ? { lte: new Date(query.hasta.includes('T') ? query.hasta : `${query.hasta}T23:59:59.999Z`) }
+                : {}),
             },
           }
         : {}),
@@ -3522,6 +3684,33 @@ export class TesoreriaService {
     const nuevoComprobanteUrl = dto.comprobanteUrl !== undefined ? dto.comprobanteUrl : gasto.comprobanteUrl;
 
     return this.prisma.$transaction(async (tx) => {
+      if (!nuevaCuenta.activa) {
+        throw new BadRequestException('La cuenta financiera seleccionada no está activa');
+      }
+
+      const aggCuenta = await tx.movimientoFinanciero.aggregate({
+        where: { cuentaId: nuevaCuenta.id },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      const saldoDisponible = round2(
+        Number(aggCuenta._sum.montoIngreso ?? 0) - Number(aggCuenta._sum.montoEgreso ?? 0),
+      );
+
+      if (nuevaCuenta.id === gasto.cuentaId) {
+        const delta = round2(Number(nuevoMonto) - Number(gasto.monto));
+        if (delta > 0 && saldoDisponible < delta - 0.001) {
+          throw new BadRequestException(
+            `Saldo insuficiente en ${nuevaCuenta.nombre}. Saldo actual: $${saldoDisponible}, incremento solicitado: $${delta}`,
+          );
+        }
+      } else {
+        if (saldoDisponible < Number(nuevoMonto) - 0.001) {
+          throw new BadRequestException(
+            `Saldo insuficiente en ${nuevaCuenta.nombre}. Saldo actual: $${saldoDisponible}, gasto solicitado: $${Number(nuevoMonto)}`,
+          );
+        }
+      }
+
       const gastoActualizado = await tx.gasto.update({
         where: { id },
         data: {
@@ -3601,11 +3790,28 @@ export class TesoreriaService {
     if (!gasto) throw new NotFoundException('Gasto no encontrado');
     if (!gasto.anulado) throw new BadRequestException('El gasto no se encuentra anulado');
 
+    if (!gasto.cuenta.activa) {
+      throw new BadRequestException('La cuenta financiera se encuentra inactiva');
+    }
+
     if (gasto.rubro.unidadId) {
       assertUnidadEnAlcance(alcance, gasto.rubro.unidadId);
     }
 
     return this.prisma.$transaction(async (tx) => {
+      const aggCuenta = await tx.movimientoFinanciero.aggregate({
+        where: { cuentaId: gasto.cuentaId },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      const saldoDisponible = round2(
+        Number(aggCuenta._sum.montoIngreso ?? 0) - Number(aggCuenta._sum.montoEgreso ?? 0),
+      );
+      if (saldoDisponible < Number(gasto.monto) - 0.001) {
+        throw new BadRequestException(
+          `Saldo insuficiente en ${gasto.cuenta.nombre} para restaurar el gasto. Saldo actual: $${saldoDisponible}, gasto: $${Number(gasto.monto)}`,
+        );
+      }
+
       const gastoRestaurado = await tx.gasto.update({
         where: { id: gasto.id },
         data: { anulado: false },
@@ -3720,6 +3926,27 @@ export class TesoreriaService {
         if (!c) throw new NotFoundException('Cuenta destino no encontrada');
         if (!c.activa) throw new BadRequestException('La cuenta seleccionada está inactiva');
         cuentaId = c.id;
+
+        // Validar que la cuenta origen no quede en saldo negativo al transferir el ingreso
+        if (tx.movimientoFinanciero?.aggregate) {
+          const aggOrigen = await tx.movimientoFinanciero.aggregate({
+            where: { cuentaId: movimiento.cuentaId },
+            _sum: { montoIngreso: true, montoEgreso: true },
+          });
+          const saldoOrigen = round2(
+            Number(aggOrigen._sum.montoIngreso ?? 0) - Number(aggOrigen._sum.montoEgreso ?? 0),
+          );
+          const montoViejo = Number(movimiento.montoIngreso);
+          if (saldoOrigen < montoViejo - 0.001) {
+            throw new BadRequestException(
+              `Saldo insuficiente en ${movimiento.cuenta?.nombre ?? movimiento.cuentaId} para transferir el ingreso a otra cuenta ($${saldoOrigen} disponibles vs $${montoViejo} requeridos).`,
+            );
+          }
+        }
+      } else {
+        if (movimiento.cuenta && 'activa' in movimiento.cuenta && !movimiento.cuenta.activa) {
+          throw new BadRequestException(`La cuenta financiera ${movimiento.cuenta.nombre} se encuentra inactiva.`);
+        }
       }
 
       let rubroId = movimiento.rubroId;
@@ -3737,6 +3964,25 @@ export class TesoreriaService {
       const monto = dto.monto !== undefined ? round2(dto.monto) : Number(movimiento.montoIngreso);
       if (monto <= 0) {
         throw new BadRequestException('El monto debe ser mayor a 0');
+      }
+
+      // Si se mantiene en la misma cuenta y el nuevo monto es menor, verificar saldo disponible
+      if (cuentaId === movimiento.cuentaId) {
+        const deltaReduccion = round2(Number(movimiento.montoIngreso) - monto);
+        if (deltaReduccion > 0 && tx.movimientoFinanciero?.aggregate) {
+          const aggCuenta = await tx.movimientoFinanciero.aggregate({
+            where: { cuentaId: movimiento.cuentaId },
+            _sum: { montoIngreso: true, montoEgreso: true },
+          });
+          const saldoDisponible = round2(
+            Number(aggCuenta._sum.montoIngreso ?? 0) - Number(aggCuenta._sum.montoEgreso ?? 0),
+          );
+          if (saldoDisponible < deltaReduccion - 0.001) {
+            throw new BadRequestException(
+              `Saldo insuficiente en ${movimiento.cuenta?.nombre ?? movimiento.cuentaId} para reducir el ingreso ($${saldoDisponible} disponibles vs $${deltaReduccion} de reducción).`,
+            );
+          }
+        }
       }
 
       const fechaOperacion = dto.fecha ? parsearFechaOperacion(dto.fecha) : movimiento.fecha;
@@ -3791,6 +4037,26 @@ export class TesoreriaService {
 
     if (movimiento.rubro?.unidadId) {
       assertUnidadEnAlcance(alcance, movimiento.rubro.unidadId);
+    }
+
+    if (movimiento.cuenta && 'activa' in movimiento.cuenta && !movimiento.cuenta.activa) {
+      throw new BadRequestException(`La cuenta financiera ${movimiento.cuenta.nombre} se encuentra inactiva.`);
+    }
+
+    if (movimiento.cuentaId && this.prisma.movimientoFinanciero?.aggregate) {
+      const aggCuenta = await this.prisma.movimientoFinanciero.aggregate({
+        where: { cuentaId: movimiento.cuentaId },
+        _sum: { montoIngreso: true, montoEgreso: true },
+      });
+      const saldoDisponible = round2(
+        Number(aggCuenta._sum.montoIngreso ?? 0) - Number(aggCuenta._sum.montoEgreso ?? 0),
+      );
+      const impacto = Number(movimiento.montoIngreso);
+      if (saldoDisponible < impacto - 0.001) {
+        throw new BadRequestException(
+          `No se puede eliminar el ingreso porque la cuenta ${movimiento.cuenta?.nombre ?? movimiento.cuentaId} no tiene saldo suficiente ($${saldoDisponible} disponibles vs $${impacto} a revertir).`,
+        );
+      }
     }
 
     await this.prisma.movimientoFinanciero.delete({
@@ -4317,6 +4583,7 @@ export class TesoreriaService {
     if (dto.cuentaId) {
       const cuenta = await this.prisma.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } });
       if (!cuenta) throw new NotFoundException('La cuenta financiera indicada no existe');
+      if (!cuenta.activa) throw new BadRequestException('La cuenta financiera se encuentra inactiva');
     }
 
     return this.prisma.evento.create({
@@ -4361,45 +4628,58 @@ export class TesoreriaService {
     const evento = await this.prisma.evento.findUnique({ where: { id } });
     if (!evento) throw new NotFoundException('Evento no encontrado');
 
-    if (dto.items && dto.items.length > 0) {
-      const tienePedidos = await this.prisma.pedidoEvento.count({ where: { eventoId: id } });
-      if (tienePedidos === 0) {
-        await this.prisma.itemEvento.deleteMany({ where: { eventoId: id } });
-        await this.prisma.itemEvento.createMany({
-          data: dto.items.map((it) => ({
-            eventoId: id,
-            nombre: it.nombre,
-            descripcion: it.descripcion,
-            precioVenta: redondearDosDecimales(Number(it.precioVenta)),
-            costoUnitario: redondearDosDecimales(Number(it.costoUnitario ?? 0)),
-            gananciaUnitaria: redondearDosDecimales(
-              Number(it.gananciaUnitaria ?? (Number(it.precioVenta) - Number(it.costoUnitario ?? 0))),
-            ),
-            stockTotal: it.stockTotal ?? null,
-            stockDisponible: it.stockTotal ?? null,
-          })),
-        });
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.rubroId) {
+        const rubro = await tx.rubroContable.findUnique({ where: { id: dto.rubroId } });
+        if (!rubro) throw new NotFoundException('El rubro contable indicado no existe');
       }
-    }
 
-    return this.prisma.evento.update({
-      where: { id },
-      data: {
-        ...(dto.titulo ? { titulo: dto.titulo } : {}),
-        ...(dto.descripcion !== undefined ? { descripcion: dto.descripcion } : {}),
-        ...(dto.tipo ? { tipo: dto.tipo as TipoEvento } : {}),
-        ...(dto.estado ? { estado: dto.estado as EstadoEvento } : {}),
-        ...(dto.fechaEvento ? { fechaEvento: new Date(dto.fechaEvento) } : {}),
-        ...(dto.fechaFin !== undefined ? { fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null } : {}),
-        ...(dto.lugarEntrega !== undefined ? { lugarEntrega: dto.lugarEntrega } : {}),
-        ...(dto.rubroId !== undefined ? { rubroId: dto.rubroId } : {}),
-        ...(dto.cuentaId !== undefined ? { cuentaId: dto.cuentaId } : {}),
-      },
-      include: {
-        items: true,
-        rubro: true,
-        cuenta: true,
-      },
+      if (dto.cuentaId) {
+        const cuenta = await tx.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } });
+        if (!cuenta) throw new NotFoundException('La cuenta financiera indicada no existe');
+        if (!cuenta.activa) throw new BadRequestException('La cuenta financiera se encuentra inactiva');
+      }
+
+      if (dto.items && dto.items.length > 0) {
+        const tienePedidos = await tx.pedidoEvento.count({ where: { eventoId: id } });
+        if (tienePedidos === 0) {
+          await tx.itemEvento.deleteMany({ where: { eventoId: id } });
+          await tx.itemEvento.createMany({
+            data: dto.items.map((it) => ({
+              eventoId: id,
+              nombre: it.nombre,
+              descripcion: it.descripcion,
+              precioVenta: redondearDosDecimales(Number(it.precioVenta)),
+              costoUnitario: redondearDosDecimales(Number(it.costoUnitario ?? 0)),
+              gananciaUnitaria: redondearDosDecimales(
+                Number(it.gananciaUnitaria ?? (Number(it.precioVenta) - Number(it.costoUnitario ?? 0))),
+              ),
+              stockTotal: it.stockTotal ?? null,
+              stockDisponible: it.stockTotal ?? null,
+            })),
+          });
+        }
+      }
+
+      return tx.evento.update({
+        where: { id },
+        data: {
+          ...(dto.titulo ? { titulo: dto.titulo } : {}),
+          ...(dto.descripcion !== undefined ? { descripcion: dto.descripcion } : {}),
+          ...(dto.tipo ? { tipo: dto.tipo as TipoEvento } : {}),
+          ...(dto.estado ? { estado: dto.estado as EstadoEvento } : {}),
+          ...(dto.fechaEvento ? { fechaEvento: new Date(dto.fechaEvento) } : {}),
+          ...(dto.fechaFin !== undefined ? { fechaFin: dto.fechaFin ? new Date(dto.fechaFin) : null } : {}),
+          ...(dto.lugarEntrega !== undefined ? { lugarEntrega: dto.lugarEntrega } : {}),
+          ...(dto.rubroId !== undefined ? { rubroId: dto.rubroId } : {}),
+          ...(dto.cuentaId !== undefined ? { cuentaId: dto.cuentaId } : {}),
+        },
+        include: {
+          items: true,
+          rubro: true,
+          cuenta: true,
+        },
+      });
     });
   }
 
@@ -4545,6 +4825,12 @@ export class TesoreriaService {
     }
 
     return this.prisma.$transaction(async (tx) => {
+      if (dto.cuentaId && tx.cuentaFinanciera?.findUnique) {
+        const cuentaCobro = await tx.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } });
+        if (!cuentaCobro) throw new NotFoundException('La cuenta financiera seleccionada no existe');
+        if ('activa' in cuentaCobro && !cuentaCobro.activa) throw new BadRequestException('La cuenta financiera seleccionada se encuentra inactiva');
+      }
+
       // 1. Crear Pedido
       const pedido = await tx.pedidoEvento.create({
         data: {
@@ -4572,7 +4858,7 @@ export class TesoreriaService {
         },
       });
 
-      // 2. Generar Tickets QR (1 ticket por cada item solicitado con su cantidad)
+      // 2. Generar Tickets QR y descontar stock de forma atómica
       for (const it of itemsCalculados) {
         await tx.ticketEvento.create({
           data: {
@@ -4584,12 +4870,29 @@ export class TesoreriaService {
           },
         });
 
-        // Actualizar stock si correspondiese
+        // Actualizar stock atómicamente si correspondiese
         if (it.item.stockDisponible !== null) {
-          await tx.itemEvento.update({
-            where: { id: it.item.id },
-            data: { stockDisponible: { decrement: it.cantidad } },
-          });
+          if (tx.itemEvento?.updateMany) {
+            const resStock = await tx.itemEvento.updateMany({
+              where: {
+                id: it.item.id,
+                stockDisponible: { gte: it.cantidad },
+              },
+              data: {
+                stockDisponible: { decrement: it.cantidad },
+              },
+            });
+            if (resStock.count === 0) {
+              throw new BadRequestException(
+                `Stock insuficiente para "${it.item.nombre}". No hay suficiente disponibilidad para completar el pedido.`,
+              );
+            }
+          } else if (tx.itemEvento?.update) {
+            await tx.itemEvento.update({
+              where: { id: it.item.id },
+              data: { stockDisponible: { decrement: it.cantidad } },
+            });
+          }
         }
       }
 
@@ -4784,10 +5087,27 @@ export class TesoreriaService {
           });
 
           if (it.item.stockDisponible !== null) {
-            await tx.itemEvento.update({
-              where: { id: it.item.id },
-              data: { stockDisponible: { decrement: it.cantidad } },
-            });
+            if (tx.itemEvento?.updateMany) {
+              const resStock = await tx.itemEvento.updateMany({
+                where: {
+                  id: it.item.id,
+                  stockDisponible: { gte: it.cantidad },
+                },
+                data: {
+                  stockDisponible: { decrement: it.cantidad },
+                },
+              });
+              if (resStock.count === 0) {
+                throw new BadRequestException(
+                  `Stock insuficiente para "${it.item.nombre}". No hay suficiente disponibilidad para completar el pedido.`,
+                );
+              }
+            } else if (tx.itemEvento?.update) {
+              await tx.itemEvento.update({
+                where: { id: it.item.id },
+                data: { stockDisponible: { decrement: it.cantidad } },
+              });
+            }
           }
         }
       }
@@ -4802,7 +5122,47 @@ export class TesoreriaService {
       });
 
       if (nuevaCuentaId) {
+        if (tx.cuentaFinanciera?.findUnique) {
+          const cuentaDestino = await tx.cuentaFinanciera.findUnique({ where: { id: nuevaCuentaId } });
+          if (!cuentaDestino) throw new NotFoundException('Cuenta seleccionada no encontrada');
+          if ('activa' in cuentaDestino && !cuentaDestino.activa) throw new BadRequestException('La cuenta seleccionada está inactiva');
+        }
+
         if (movExistente) {
+          if (movExistente.cuentaId !== nuevaCuentaId) {
+            if (tx.movimientoFinanciero?.aggregate) {
+              const aggOld = await tx.movimientoFinanciero.aggregate({
+                where: { cuentaId: movExistente.cuentaId },
+                _sum: { montoIngreso: true, montoEgreso: true },
+              });
+              const saldoOld = round2(
+                Number(aggOld._sum.montoIngreso ?? 0) - Number(aggOld._sum.montoEgreso ?? 0),
+              );
+              const impOld = Number(movExistente.montoIngreso);
+              if (saldoOld < impOld - 0.001) {
+                throw new BadRequestException(
+                  `Saldo insuficiente en la cuenta para transferir el cobro del pedido ($${saldoOld} disponibles vs $${impOld} requeridos).`,
+                );
+              }
+            }
+          } else {
+            const deltaReduccion = round2(Number(movExistente.montoIngreso) - Number(nuevoTotal));
+            if (deltaReduccion > 0 && tx.movimientoFinanciero?.aggregate) {
+              const agg = await tx.movimientoFinanciero.aggregate({
+                where: { cuentaId: movExistente.cuentaId },
+                _sum: { montoIngreso: true, montoEgreso: true },
+              });
+              const saldoDisp = round2(
+                Number(agg._sum.montoIngreso ?? 0) - Number(agg._sum.montoEgreso ?? 0),
+              );
+              if (saldoDisp < deltaReduccion - 0.001) {
+                throw new BadRequestException(
+                  `Saldo insuficiente en la cuenta para reducir el cobro del pedido ($${saldoDisp} disponibles vs $${deltaReduccion} de reducción).`,
+                );
+              }
+            }
+          }
+
           await tx.movimientoFinanciero.update({
             where: { id: movExistente.id },
             data: {
@@ -4827,9 +5187,27 @@ export class TesoreriaService {
           });
         }
       } else if (movExistente) {
-        await tx.movimientoFinanciero.delete({
-          where: { id: movExistente.id },
-        });
+        if (tx.movimientoFinanciero?.aggregate) {
+          const aggOld = await tx.movimientoFinanciero.aggregate({
+            where: { cuentaId: movExistente.cuentaId },
+            _sum: { montoIngreso: true, montoEgreso: true },
+          });
+          const saldoOld = round2(
+            Number(aggOld._sum.montoIngreso ?? 0) - Number(aggOld._sum.montoEgreso ?? 0),
+          );
+          const impOld = Number(movExistente.montoIngreso);
+          if (saldoOld < impOld - 0.001) {
+            throw new BadRequestException(
+              `Saldo insuficiente en la cuenta para desasociar el pago del pedido ($${saldoOld} disponibles vs $${impOld} a revertir).`,
+            );
+          }
+        }
+
+        if (tx.movimientoFinanciero.delete) {
+          await tx.movimientoFinanciero.delete({
+            where: { id: movExistente.id },
+          });
+        }
       }
 
       // 5. Actualizar cabecera del pedido
@@ -4913,10 +5291,39 @@ export class TesoreriaService {
         }
       }
 
-      // 2. Eliminar movimientos financieros asociados
-      await tx.movimientoFinanciero.deleteMany({
-        where: { pedidoEventoId: pedido.id },
-      });
+      // 2. Validar saldo disponible y cuenta activa antes de eliminar movimientos financieros asociados
+      if (tx.movimientoFinanciero?.findMany) {
+        const movsFinancieros = await tx.movimientoFinanciero.findMany({
+          where: { pedidoEventoId: pedido.id },
+          include: { cuenta: true },
+        });
+        for (const mov of movsFinancieros) {
+          if (mov.cuenta && 'activa' in mov.cuenta && !mov.cuenta.activa) {
+            throw new BadRequestException(`La cuenta financiera ${mov.cuenta.nombre} se encuentra inactiva.`);
+          }
+          if (tx.movimientoFinanciero.aggregate) {
+            const aggCuenta = await tx.movimientoFinanciero.aggregate({
+              where: { cuentaId: mov.cuentaId },
+              _sum: { montoIngreso: true, montoEgreso: true },
+            });
+            const saldoDisponible = round2(
+              Number(aggCuenta._sum.montoIngreso ?? 0) - Number(aggCuenta._sum.montoEgreso ?? 0),
+            );
+            const impacto = Number(mov.montoIngreso);
+            if (saldoDisponible < impacto - 0.001) {
+              throw new BadRequestException(
+                `Saldo insuficiente en ${mov.cuenta?.nombre ?? mov.cuentaId} para revertir el cobro del pedido ($${saldoDisponible} disponibles vs $${impacto} a revertir).`,
+              );
+            }
+          }
+        }
+      }
+
+      if (tx.movimientoFinanciero?.deleteMany) {
+        await tx.movimientoFinanciero.deleteMany({
+          where: { pedidoEventoId: pedido.id },
+        });
+      }
 
       // 3. Eliminar tickets y detalles
       await tx.ticketEvento.deleteMany({
@@ -4936,7 +5343,7 @@ export class TesoreriaService {
   async validarTicketQr(actor: AuthUser, alcance: AlcanceAcceso, dto: ValidarTicketQrDto) {
     const verification = verifyTokenQR(dto.tokenQr);
     if (!verification.valid) {
-      throw new BadRequestException('El código QR es inválido o no corresponde a una entrada auténtica');
+      throw new BadRequestException('El código QR es inválido o no corresponde a una auténtica');
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -5086,41 +5493,44 @@ export class TesoreriaService {
       return p.tickets.length > 0 && p.tickets.every((t) => t.estado === EstadoTicketEvento.UTILIZADO);
     });
 
-    return this.prisma.$transaction(async (tx) => {
-      let totalGananciaAcreditada = 0;
-      let pedidosAcreditadosCount = 0;
+    return this.prisma.$transaction(
+      async (tx) => {
+        let totalGananciaAcreditada = 0;
+        let pedidosAcreditadosCount = 0;
 
-      for (const pedido of pedidosParaAcreditar) {
-        const ganancia = Number(pedido.totalGanancia);
-        if (pedido.vendedorUsuarioId) {
-          if (ganancia > 0) {
-            await tx.usuario.update({
-              where: { id: pedido.vendedorUsuarioId },
+        for (const pedido of pedidosParaAcreditar) {
+          const ganancia = Number(pedido.totalGanancia);
+          if (pedido.vendedorUsuarioId) {
+            if (ganancia > 0) {
+              await tx.usuario.update({
+                where: { id: pedido.vendedorUsuarioId },
+                data: {
+                  saldoAFavor: { increment: redondearDosDecimales(ganancia) },
+                },
+              });
+            }
+
+            await tx.pedidoEvento.update({
+              where: { id: pedido.id },
               data: {
-                saldoAFavor: { increment: redondearDosDecimales(ganancia) },
+                gananciaAcreditada: true,
+                fechaAcreditacion: new Date(),
               },
             });
+
+            totalGananciaAcreditada = round2(totalGananciaAcreditada + ganancia);
+            pedidosAcreditadosCount++;
           }
-
-          await tx.pedidoEvento.update({
-            where: { id: pedido.id },
-            data: {
-              gananciaAcreditada: true,
-              fechaAcreditacion: new Date(),
-            },
-          });
-
-          totalGananciaAcreditada = round2(totalGananciaAcreditada + ganancia);
-          pedidosAcreditadosCount++;
         }
-      }
 
-      return {
-        eventoId: evento.id,
-        pedidosAcreditados: pedidosAcreditadosCount,
-        totalGananciaAcreditada: round2(totalGananciaAcreditada),
-      };
-    });
+        return {
+          eventoId: evento.id,
+          pedidosAcreditados: pedidosAcreditadosCount,
+          totalGananciaAcreditada: round2(totalGananciaAcreditada),
+        };
+      },
+      { timeout: 20000 },
+    );
   }
 
   async obtenerMisTickets(actor: AuthUser) {
