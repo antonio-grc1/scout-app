@@ -23,6 +23,8 @@ export const CrearMiembroSchema = z.object({
   /** DNI de un hermano ya registrado: vincula el grupo familiar y copia datos compartidos. */
   hermanoDni: dni.optional(),
   copiarDatosHermano: z.boolean().default(true),
+  /** Si es true, envía las credenciales por correo y omite `claveTemporal` en la respuesta HTTP. */
+  soloEnviarPorCorreo: z.boolean().optional().default(false),
 });
 export type CrearMiembroDto = z.infer<typeof CrearMiembroSchema>;
 

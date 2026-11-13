@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -11,8 +12,9 @@ import * as bcrypt from 'bcrypt';
 import { filtroUsuariosPorAlcance } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AsignacionToken, AuthUser, JwtPayload } from '../common/types/auth.types.js';
 import { generarClaveTemporal } from '../common/utils/password.util.js';
+import { MailerService } from '../mailer/mailer.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import type { CambiarClaveDto, LoginDto } from './auth.dto.js';
+import type { CambiarClaveDto, LoginDto, RecuperarClaveDto, ResetearClaveDto } from './auth.dto.js';
 
 const BCRYPT_ROUNDS = 10;
 /** Hash ficticio para igualar tiempos cuando el DNI no existe (evita enumeración de usuarios). */
@@ -42,6 +44,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    @Optional() private readonly mailer?: MailerService,
   ) {}
 
   /** Login exclusivo por DNI + contraseña. */
@@ -62,8 +65,15 @@ export class AuthService {
     const usuario = await this.prisma.usuario.findUnique({ where: { id: user.sub } });
     if (!usuario || !usuario.activo) throw new UnauthorizedException();
 
-    if (!(await bcrypt.compare(dto.claveActual, usuario.passwordHash))) {
+    const claveActual = dto.claveActual ?? '';
+    if (!usuario.requiereCambioClave && claveActual.length === 0) {
+      throw new BadRequestException('Debe ingresar su clave actual');
+    }
+    if (claveActual.length > 0 && !(await bcrypt.compare(claveActual, usuario.passwordHash))) {
       throw new BadRequestException('La clave actual es incorrecta');
+    }
+    if (await bcrypt.compare(dto.claveNueva, usuario.passwordHash)) {
+      throw new BadRequestException('La nueva clave debe ser distinta de la actual');
     }
     if (dto.claveNueva.trim() === usuario.dni.trim()) {
       throw new BadRequestException('La nueva clave no puede ser igual al DNI');
@@ -82,6 +92,59 @@ export class AuthService {
   }
 
   /**
+   * Auto-recuperación pública desde el login por DNI.
+   * Por seguridad anti-enumeración devuelve siempre el mismo mensaje genérico y solo
+   * reemplaza la contraseña si el correo SMTP está operativo y el envío se confirma.
+   */
+  async recuperarClave(dto: RecuperarClaveDto): Promise<{ mensaje: string }> {
+    const mensaje =
+      'Si el DNI corresponde a una cuenta activa con correo electrónico registrado, recibirás una nueva contraseña temporal en tu casilla.';
+
+    if (!this.mailer || !(await this.mailer.estaDisponibleParaEnvio())) {
+      return { mensaje };
+    }
+
+    const usuario = await this.prisma.usuario.findUnique({
+      where: { dni: dto.dni },
+      select: {
+        id: true,
+        dni: true,
+        nombre: true,
+        apellido: true,
+        emailContacto: true,
+        activo: true,
+      },
+    });
+
+    const emailDestino = usuario?.emailContacto?.trim();
+    if (!usuario || !usuario.activo || !emailDestino) {
+      return { mensaje };
+    }
+
+    const claveTemporal = generarClaveTemporal();
+    const enviado = await this.mailer.enviarNuevaClaveTemporal({
+      destinatario: emailDestino,
+      nombre: usuario.nombre,
+      apellido: usuario.apellido,
+      dni: usuario.dni,
+      claveTemporal,
+    });
+
+    if (enviado) {
+      await this.prisma.usuario.update({
+        where: { id: usuario.id },
+        data: {
+          passwordHash: await bcrypt.hash(claveTemporal, BCRYPT_ROUNDS),
+          requiereCambioClave: true,
+          tokenVersion: { increment: 1 },
+        },
+      });
+    }
+
+    return { mensaje };
+  }
+
+  /**
    * Reset rápido de clave a una contraseña temporal aleatoria, realizado por un educador.
    * Respeta el alcance: un educador de UNIDAD solo puede resetear miembros de sus unidades
    * y nunca a usuarios con alguna asignación GLOBAL (evita escalada de privilegios).
@@ -90,7 +153,13 @@ export class AuthService {
     actor: AuthUser,
     alcance: AlcanceAcceso,
     usuarioId: number,
-  ): Promise<{ mensaje: string; claveTemporal: string }> {
+    opciones?: ResetearClaveDto,
+  ): Promise<{
+    mensaje: string;
+    claveTemporal?: string;
+    emailEnviado: boolean;
+    emailDestino: string | null;
+  }> {
     if (usuarioId === actor.sub) {
       throw new BadRequestException('Para su propia cuenta use el cambio de clave');
     }
@@ -122,6 +191,50 @@ export class AuthService {
     }
 
     const claveTemporal = generarClaveTemporal();
+    const emailDestino = objetivo.emailContacto?.trim() || null;
+    const soloPorCorreo = Boolean(opciones?.soloPorCorreo);
+
+    if (soloPorCorreo) {
+      if (!emailDestino) {
+        throw new BadRequestException(
+          'El miembro no tiene un correo electrónico de contacto registrado para enviar la clave.',
+        );
+      }
+      if (!this.mailer || !(await this.mailer.estaDisponibleParaEnvio())) {
+        throw new BadRequestException(
+          'El envío de correos no está configurado o está deshabilitado. Configuralo en Panel de Gestión → Correo y Claves.',
+        );
+      }
+
+      const emailEnviado = await this.mailer.enviarNuevaClaveTemporal({
+        destinatario: emailDestino,
+        nombre: objetivo.nombre,
+        apellido: objetivo.apellido,
+        dni: objetivo.dni,
+        claveTemporal,
+      });
+
+      if (!emailEnviado) {
+        throw new BadRequestException(
+          'No se pudo enviar el correo con la nueva contraseña. Verificá la configuración SMTP.',
+        );
+      }
+
+      await this.prisma.usuario.update({
+        where: { id: objetivo.id },
+        data: {
+          passwordHash: await bcrypt.hash(claveTemporal, BCRYPT_ROUNDS),
+          requiereCambioClave: true,
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      return {
+        mensaje: `Se generó una nueva clave temporal y se envió por correo a ${emailDestino}`,
+        emailEnviado: true,
+        emailDestino,
+      };
+    }
 
     await this.prisma.usuario.update({
       where: { id: objetivo.id },
@@ -131,9 +244,23 @@ export class AuthService {
         tokenVersion: { increment: 1 },
       },
     });
+
+    const emailEnviado =
+      emailDestino && this.mailer
+        ? await this.mailer.enviarNuevaClaveTemporal({
+            destinatario: emailDestino,
+            nombre: objetivo.nombre,
+            apellido: objetivo.apellido,
+            dni: objetivo.dni,
+            claveTemporal,
+          })
+        : false;
+
     return {
       mensaje: `Se generó una nueva clave temporal para ${objetivo.nombre} ${objetivo.apellido}`,
       claveTemporal,
+      emailEnviado,
+      emailDestino,
     };
   }
 

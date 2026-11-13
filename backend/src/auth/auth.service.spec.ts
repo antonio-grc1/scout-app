@@ -161,6 +161,56 @@ describe('AuthService - Cambio y Reset de Clave', () => {
     expect(res.accessToken).toBe('jwt-mock-token');
     expect(res.requiereCambioClave).toBe(false);
   });
+
+  it('cambiarClave permite omitir claveActual solo cuando requiereCambioClave=true y exige claveActual si es false', async () => {
+    const hash = await bcrypt.hash('TempPass123', 6);
+    const actor: AuthUser = {
+      sub: 5,
+      dni: '40111222',
+      nombre: 'Juan',
+      apellido: 'Pérez',
+      asignaciones: [],
+    };
+
+    const prismaInicial = crearMockPrisma({
+      id: 5,
+      dni: '40111222',
+      passwordHash: hash,
+      nombre: 'Juan',
+      apellido: 'Pérez',
+      activo: true,
+      requiereCambioClave: true,
+      asignaciones: [],
+    });
+    const serviceInicial = new AuthService(prismaInicial, mockJwt);
+
+    expect(CambiarClaveSchema.safeParse({ claveNueva: 'NuevaClave123' }).success).toBe(true);
+
+    await expect(
+      serviceInicial.cambiarClave(actor, { claveActual: '', claveNueva: 'TempPass123' }),
+    ).rejects.toThrow('La nueva clave debe ser distinta de la actual');
+
+    const resOk = await serviceInicial.cambiarClave(actor, {
+      claveActual: '',
+      claveNueva: 'MiClavePersonal88',
+    });
+    expect(resOk.requiereCambioClave).toBe(false);
+
+    const prismaVoluntario = crearMockPrisma({
+      id: 5,
+      dni: '40111222',
+      passwordHash: hash,
+      nombre: 'Juan',
+      apellido: 'Pérez',
+      activo: true,
+      requiereCambioClave: false,
+      asignaciones: [],
+    });
+    const serviceVoluntario = new AuthService(prismaVoluntario, mockJwt);
+    await expect(
+      serviceVoluntario.cambiarClave(actor, { claveActual: '', claveNueva: 'MiClavePersonal88' }),
+    ).rejects.toThrow('Debe ingresar su clave actual');
+  });
 });
 
 describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
@@ -264,7 +314,7 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
     );
     expect(resReset.claveTemporal).toBeDefined();
     expect(resReset.claveTemporal).not.toBe('40111222');
-    expect(resReset.claveTemporal.length).toBeGreaterThanOrEqual(8);
+    expect(resReset.claveTemporal?.length).toBeGreaterThanOrEqual(8);
     expect(updateMock).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
@@ -274,5 +324,186 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
         }),
       }),
     );
+  });
+
+  it('MailerService.enviarNuevaClaveTemporal envía la nueva clave temporal escapando HTML', async () => {
+    const sendMail = vi.fn().mockResolvedValue({});
+    const mailer = new MailerService();
+    (mailer as any).obtenerTransporter = () => ({ sendMail });
+
+    const ok = await mailer.enviarNuevaClaveTemporal({
+      destinatario: 'scout@test.com',
+      nombre: 'Juan <script>',
+      apellido: 'Pérez',
+      dni: '40111222',
+      claveTemporal: 'Temp#1234',
+    });
+
+    expect(ok).toBe(true);
+    const sent = sendMail.mock.calls[0][0];
+    expect(sent.to).toBe('scout@test.com');
+    expect(sent.html).toContain('Temp#1234');
+    expect(sent.html).toContain('40111222');
+    expect(sent.html).not.toContain('<script>');
+  });
+
+  it('AuthService.resetearClave envía la nueva clave temporal por correo cuando el usuario tiene emailContacto', async () => {
+    const prisma: any = {
+      usuario: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 7,
+          dni: '40111222',
+          nombre: 'Ana',
+          apellido: 'Scout',
+          emailContacto: 'ana@test.com',
+          asignaciones: [],
+        }),
+        update: vi.fn().mockResolvedValue({ id: 7 }),
+      },
+    };
+    const jwt: any = { signAsync: vi.fn() };
+    const mailer: any = {
+      enviarNuevaClaveTemporal: vi.fn().mockResolvedValue(true),
+    };
+    const service = new AuthService(prisma, jwt, mailer);
+
+    const res = await service.resetearClave(
+      { sub: 1, dni: '11111111', requiereCambioClave: false, asignaciones: [] },
+      { tipo: 'GLOBAL' },
+      7,
+    );
+
+    expect(res.emailEnviado).toBe(true);
+    expect(res.emailDestino).toBe('ana@test.com');
+    expect(mailer.enviarNuevaClaveTemporal).toHaveBeenCalledWith({
+      destinatario: 'ana@test.com',
+      nombre: 'Ana',
+      apellido: 'Scout',
+      dni: '40111222',
+      claveTemporal: res.claveTemporal,
+    });
+  });
+
+  it('AuthService.resetearClave con soloPorCorreo=true omite claveTemporal y exige email y SMTP operativo', async () => {
+    const prisma: any = {
+      usuario: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 7,
+          dni: '40111222',
+          nombre: 'Ana',
+          apellido: 'Scout',
+          emailContacto: 'ana@test.com',
+          asignaciones: [],
+        }),
+        update: vi.fn().mockResolvedValue({ id: 7 }),
+      },
+    };
+    const jwt: any = { signAsync: vi.fn() };
+    const mailer: any = {
+      estaDisponibleParaEnvio: vi.fn().mockResolvedValue(true),
+      enviarNuevaClaveTemporal: vi.fn().mockResolvedValue(true),
+    };
+    const service = new AuthService(prisma, jwt, mailer);
+
+    const res = await service.resetearClave(
+      { sub: 1, dni: '11111111', requiereCambioClave: false, asignaciones: [] },
+      { tipo: 'GLOBAL' },
+      7,
+      { soloPorCorreo: true },
+    );
+
+    expect(res.claveTemporal).toBeUndefined();
+    expect(res.emailEnviado).toBe(true);
+    expect(res.emailDestino).toBe('ana@test.com');
+    expect(prisma.usuario.update).toHaveBeenCalledTimes(1);
+
+    mailer.estaDisponibleParaEnvio.mockResolvedValue(false);
+    await expect(
+      service.resetearClave(
+        { sub: 1, dni: '11111111', requiereCambioClave: false, asignaciones: [] },
+        { tipo: 'GLOBAL' },
+        7,
+        { soloPorCorreo: true },
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.usuario.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('AuthService.recuperarClave devuelve mensaje genérico y solo cambia la clave si el envío se confirma', async () => {
+    const updateMock = vi.fn().mockResolvedValue({ id: 7 });
+    const prisma: any = {
+      usuario: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 7,
+          dni: '40111222',
+          nombre: 'Ana',
+          apellido: 'Scout',
+          emailContacto: 'ana@test.com',
+          activo: true,
+        }),
+        update: updateMock,
+      },
+    };
+    const jwt: any = { signAsync: vi.fn() };
+    const mailer: any = {
+      estaDisponibleParaEnvio: vi.fn().mockResolvedValue(true),
+      enviarNuevaClaveTemporal: vi.fn().mockResolvedValue(false),
+    };
+    const service = new AuthService(prisma, jwt, mailer);
+
+    const resFallo = await service.recuperarClave({ dni: '40111222' });
+    expect(resFallo.mensaje).toContain('Si el DNI corresponde');
+    expect(updateMock).not.toHaveBeenCalled();
+
+    mailer.enviarNuevaClaveTemporal.mockResolvedValue(true);
+    const resOk = await service.recuperarClave({ dni: '40111222' });
+    expect(resOk.mensaje).toBe(resFallo.mensaje);
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 7 },
+        data: expect.objectContaining({
+          requiereCambioClave: true,
+          tokenVersion: { increment: 1 },
+        }),
+      }),
+    );
+  });
+
+  it('MailerService cifra la contraseña SMTP en BD y nunca expone el secreto en obtenerConfiguracionPublica', async () => {
+    let guardado: any = null;
+    const prismaMock: any = {
+      configuracionCorreo: {
+        findUnique: vi.fn().mockImplementation(async () => guardado),
+        upsert: vi.fn().mockImplementation(async ({ create }: any) => {
+          guardado = { id: 1, ...create, updatedAt: new Date() };
+          return guardado;
+        }),
+      },
+    };
+    const mailer = new MailerService(prismaMock);
+
+    const publica = await mailer.guardarConfiguracion({
+      habilitado: true,
+      host: 'smtp.gmail.com',
+      port: 587,
+      user: 'grupo@gmail.com',
+      pass: 'secreto-smtp-1234',
+      from: '"Grupo" <grupo@gmail.com>',
+      appUrl: 'https://scout.test',
+    });
+
+    expect(guardado.passEncrypted).toBeTruthy();
+    expect(guardado.passEncrypted).not.toContain('secreto-smtp-1234');
+    expect(publica).toEqual({
+      habilitado: true,
+      host: 'smtp.gmail.com',
+      port: 587,
+      user: 'grupo@gmail.com',
+      tienePassword: true,
+      from: '"Grupo" <grupo@gmail.com>',
+      appUrl: 'https://scout.test',
+      fuente: 'db',
+    });
+    expect(await mailer.estaDisponibleParaEnvio()).toBe(true);
   });
 });

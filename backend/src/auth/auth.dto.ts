@@ -19,16 +19,25 @@ export const CambiarClaveSchema = z
     claveActual: d.claveActual ?? d.passwordActual ?? '',
     claveNueva: d.claveNueva ?? d.passwordNueva ?? '',
   }))
-  .refine((d) => d.claveActual.length > 0, {
-    path: ['claveActual'],
-    message: 'Clave actual obligatoria',
-  })
   .refine((d) => d.claveNueva.length >= 8, {
     path: ['claveNueva'],
     message: 'La nueva clave debe tener al menos 8 caracteres',
   })
-  .refine((d) => d.claveActual !== d.claveNueva, {
+  .refine((d) => d.claveActual.length === 0 || d.claveActual !== d.claveNueva, {
     path: ['claveNueva'],
     message: 'La nueva clave debe ser distinta de la actual',
   });
 export type CambiarClaveDto = z.infer<typeof CambiarClaveSchema>;
+
+export const RecuperarClaveSchema = z.object({
+  dni,
+});
+export type RecuperarClaveDto = z.infer<typeof RecuperarClaveSchema>;
+
+export const ResetearClaveSchema = z
+  .object({
+    soloPorCorreo: z.boolean().optional().default(false),
+  })
+  .optional()
+  .default({ soloPorCorreo: false });
+export type ResetearClaveDto = z.infer<typeof ResetearClaveSchema>;

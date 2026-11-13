@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseBoolPipe, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
 import { Alcance, CurrentUser, RequireAnyPermission, RequirePermission } from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
@@ -85,8 +85,9 @@ export class MiembrosController {
     @CurrentUser() u: AuthUser,
     @Alcance() a: AlcanceAcceso,
     @Param('id', ParseIntPipe) id: number,
+    @Query('forzarFichas', new ParseBoolPipe({ optional: true })) forzarFichas?: boolean,
   ) {
-    return this.miembros.eliminarDefinitivo(u, a, id);
+    return this.miembros.eliminarDefinitivo(u, a, id, Boolean(forzarFichas));
   }
 
   @RequireAnyPermission('pases.ejecutar', 'miembros.editar')

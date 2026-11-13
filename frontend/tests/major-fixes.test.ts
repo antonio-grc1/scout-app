@@ -225,3 +225,64 @@ describe('A8: sanitización de planillas y URLs de logo', () => {
     assert.equal(esLogoUrlSegura(''), false);
   });
 });
+
+describe('traducirErrorAmigable no confunde montos con códigos HTTP', () => {
+  it('preserva el mensaje real de errores 400 aunque contengan 500, 401, 403 o 404 en montos', async () => {
+    const { traducirErrorAmigable } = await vite.ssrLoadModule('/src/lib/formatters.ts');
+
+    const msgSaldo =
+      'No se puede revertir el pago porque la cuenta Caja Chica Central no tiene saldo suficiente para devolver los fondos ($5000 disponibles vs $15000 a revertir).';
+    assert.equal(
+      traducirErrorAmigable({
+        response: { status: 400, data: { statusCode: 400, message: msgSaldo } },
+        message: 'Request failed with status code 400',
+      }),
+      msgSaldo,
+    );
+
+    const msgOtrosMontos = 'El monto debe estar entre $401, $403, $404 y $500.';
+    assert.equal(
+      traducirErrorAmigable({
+        response: { status: 400, data: { statusCode: 400, message: msgOtrosMontos } },
+      }),
+      msgOtrosMontos,
+    );
+  });
+
+  it('traduce códigos HTTP 500/401/403/404 reales y errores técnicos', async () => {
+    const { traducirErrorAmigable } = await vite.ssrLoadModule('/src/lib/formatters.ts');
+
+    assert.equal(
+      traducirErrorAmigable({
+        response: { status: 500, data: { message: 'Error inesperado' } },
+        message: 'Request failed with status code 500',
+      }),
+      'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.',
+    );
+
+    assert.equal(
+      traducirErrorAmigable(new Error('Request failed with status code 500')),
+      'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.',
+    );
+
+    assert.equal(
+      traducirErrorAmigable({ response: { status: 401, data: { message: 'Unauthorized' } } }),
+      'El DNI o la contraseña ingresados no son correctos.',
+    );
+
+    assert.equal(
+      traducirErrorAmigable({ response: { status: 403, data: { message: 'Forbidden resource' } } }),
+      'No tienes permisos para realizar esta acción.',
+    );
+
+    assert.equal(
+      traducirErrorAmigable({ response: { status: 404, data: { message: 'Pago no encontrado' } } }),
+      'Pago no encontrado',
+    );
+
+    assert.equal(
+      traducirErrorAmigable({ response: { status: 404, data: { message: 'Not Found' } } }),
+      'No encontramos la información solicitada.',
+    );
+  });
+});

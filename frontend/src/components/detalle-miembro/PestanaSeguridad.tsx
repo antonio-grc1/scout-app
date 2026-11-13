@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Check, Copy, KeyRound } from 'lucide-react';
+import { Check, Copy, KeyRound, Mail } from 'lucide-react';
 
 export interface PestanaSeguridadProps {
   miembro: any;
   reseteandoClave: boolean;
   claveTemporalGenerada?: string | null;
-  onResetClave: () => void;
+  onResetClave: (soloPorCorreo?: boolean) => void;
 }
 
 export const PestanaSeguridad: React.FC<PestanaSeguridadProps> = ({
@@ -59,17 +59,46 @@ export const PestanaSeguridad: React.FC<PestanaSeguridadProps> = ({
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onResetClave}
-        disabled={reseteandoClave}
-        className="min-h-[44px] px-4 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
-      >
-        <KeyRound className="w-4 h-4" />
-        <span>
-          {reseteandoClave ? 'Generando clave...' : 'Generar clave temporal'}
-        </span>
-      </button>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => onResetClave(false)}
+          disabled={reseteandoClave}
+          className="min-h-[44px] px-4 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+        >
+          <KeyRound className="w-4 h-4" />
+          <span>
+            {reseteandoClave ? 'Generando clave...' : 'Generar clave temporal'}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onResetClave(true)}
+          disabled={reseteandoClave || !miembro?.emailContacto}
+          title={
+            miembro?.emailContacto
+              ? `Enviar nueva clave únicamente a ${miembro.emailContacto}`
+              : 'El miembro no tiene un correo electrónico registrado'
+          }
+          className="min-h-[44px] px-4 border border-brand/40 bg-surface hover:bg-paper-2 text-ink font-bold rounded-xl text-xs inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Mail className="w-4 h-4 text-brand" />
+          <span>Enviar nueva clave solo por correo</span>
+        </button>
+      </div>
+
+      {miembro?.emailContacto ? (
+        <p className="text-[11px] text-ink-muted">
+          Si usás <strong>Enviar nueva clave solo por correo</strong>, la contraseña se enviará a{' '}
+          <strong className="text-ink-2">{miembro.emailContacto}</strong> y no se mostrará en
+          pantalla.
+        </p>
+      ) : (
+        <p className="text-[11px] text-ink-muted">
+          Este miembro no tiene un email de contacto registrado para envío exclusivo por correo.
+        </p>
+      )}
     </div>
   );
 };

@@ -23,6 +23,7 @@ import {
   MapPin,
   Copy,
   Check,
+  Mail,
 } from 'lucide-react';
 
 interface Props {
@@ -67,16 +68,20 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [soloEnviarPorCorreo, setSoloEnviarPorCorreo] = useState(false);
   const [altaResultado, setAltaResultado] = useState<{
     nombreCompleto: string;
     dni: string;
-    claveTemporal: string;
+    claveTemporal?: string;
+    emailDestino?: string;
+    emailEnviado?: boolean;
   } | null>(null);
   const [copiadaClave, setCopiadaClave] = useState(false);
 
   const cerrarModal = () => {
     setAltaResultado(null);
     setCopiadaClave(false);
+    setSoloEnviarPorCorreo(false);
     setError(null);
     onCerrar();
   };
@@ -275,6 +280,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         rolId: Number(rolId),
         hermanoDni: grupoConfirmado?.representante?.dni || undefined,
         copiarDatosHermano: Boolean(grupoConfirmado),
+        soloEnviarPorCorreo: Boolean(soloEnviarPorCorreo && emailContacto.trim()),
         datosFijosJson: {
           protagonista_domicilio: domicilio.trim() || undefined,
           domicilio: domicilio.trim() || undefined,
@@ -291,11 +297,15 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
       onCreado();
       const claveTemporal: string | undefined = res.data?.claveTemporal;
-      if (claveTemporal) {
+      const emailEnviado = Boolean(res.data?.emailEnviado);
+      const emailDestino: string | undefined = res.data?.emailDestino;
+      if (claveTemporal || emailEnviado) {
         setAltaResultado({
           nombreCompleto: `${nombre.trim()} ${apellido.trim()}`,
           dni: dni.trim(),
           claveTemporal,
+          emailDestino,
+          emailEnviado,
         });
       } else {
         cerrarModal();
@@ -337,38 +347,60 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 <span>Miembro registrado correctamente</span>
               </div>
               <p className="text-ink-2">
-                Entregá esta clave temporal a <strong>{altaResultado.nombreCompleto}</strong> (DNI{' '}
-                <strong>{altaResultado.dni}</strong>). Al ingresar por primera vez el sistema le
-                pedirá elegir una contraseña propia.
+                {altaResultado.claveTemporal ? (
+                  <>
+                    Entregá esta clave temporal a <strong>{altaResultado.nombreCompleto}</strong>{' '}
+                    (DNI <strong>{altaResultado.dni}</strong>). Al ingresar por primera vez el
+                    sistema le pedirá elegir una contraseña propia.
+                    {altaResultado.emailEnviado && altaResultado.emailDestino && (
+                      <>
+                        {' '}
+                        También se envió por correo a{' '}
+                        <strong>{altaResultado.emailDestino}</strong>.
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    Se generó una contraseña temporal para{' '}
+                    <strong>{altaResultado.nombreCompleto}</strong> (DNI{' '}
+                    <strong>{altaResultado.dni}</strong>) y se envió únicamente por correo a{' '}
+                    <strong>{altaResultado.emailDestino}</strong>. Al ingresar por primera vez el
+                    sistema le pedirá elegir una contraseña propia.
+                  </>
+                )}
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3">
-              <div>
-                <span className="block text-[11px] font-semibold text-ink-muted">
-                  Contraseña temporal generada (se muestra una única vez):
-                </span>
-                <code className="text-base font-mono font-extrabold text-ink select-all">
-                  {altaResultado.claveTemporal}
-                </code>
+            {altaResultado.claveTemporal && (
+              <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3">
+                <div>
+                  <span className="block text-[11px] font-semibold text-ink-muted">
+                    Contraseña temporal generada (se muestra una única vez):
+                  </span>
+                  <code className="text-base font-mono font-extrabold text-ink select-all">
+                    {altaResultado.claveTemporal}
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!altaResultado.claveTemporal) return;
+                    try {
+                      await navigator.clipboard.writeText(altaResultado.claveTemporal);
+                      setCopiadaClave(true);
+                      setTimeout(() => setCopiadaClave(false), 2000);
+                    } catch {
+                      // Clipboard no disponible
+                    }
+                  }}
+                  className="min-h-[40px] px-3.5 rounded-xl border border-rule bg-surface hover:bg-paper-3 text-ink font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  {copiadaClave ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiadaClave ? 'Copiada' : 'Copiar clave'}</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(altaResultado.claveTemporal);
-                    setCopiadaClave(true);
-                    setTimeout(() => setCopiadaClave(false), 2000);
-                  } catch {
-                    // Clipboard no disponible
-                  }
-                }}
-                className="min-h-[40px] px-3.5 rounded-xl border border-rule bg-surface hover:bg-paper-3 text-ink font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                {copiadaClave ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                <span>{copiadaClave ? 'Copiada' : 'Copiar clave'}</span>
-              </button>
-            </div>
+            )}
 
             <div className="flex justify-end pt-2">
               <button
@@ -620,10 +652,28 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               <input
                 type="email"
                 value={emailContacto}
-                onChange={(e) => setEmailContacto(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setEmailContacto(next);
+                  if (!next.trim()) setSoloEnviarPorCorreo(false);
+                }}
                 placeholder="correo@ejemplo.com"
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
+              {emailContacto.trim() && (
+                <label className="mt-2 flex items-start gap-2 text-[11px] text-ink-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={soloEnviarPorCorreo}
+                    onChange={(e) => setSoloEnviarPorCorreo(e.target.checked)}
+                    className="mt-0.5 rounded border-rule text-brand focus:ring-brand/30"
+                  />
+                  <span className="inline-flex items-center gap-1 leading-snug">
+                    <Mail className="w-3.5 h-3.5 text-brand shrink-0" />
+                    Enviar credenciales solo por correo (no mostrar contraseña en pantalla)
+                  </span>
+                </label>
+              )}
             </div>
 
             <div>

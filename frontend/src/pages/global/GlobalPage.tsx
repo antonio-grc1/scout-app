@@ -13,6 +13,7 @@ import { PanelAdminRamas } from '../../components/PanelAdminRamas';
 import { PanelGestorRoles } from '../../components/PanelGestorRoles';
 import { PanelPasesPorCamada } from '../../components/PanelPasesPorCamada';
 import { PanelAdminPlantillas } from '../../components/PanelAdminPlantillas';
+import { PanelConfiguracionCorreo } from '../../components/PanelConfiguracionCorreo';
 import { PanelTesoreriaCajaBanco } from '../../components/PanelTesoreriaCajaBanco';
 import { PanelGastosTesoreria } from '../../components/PanelGastosTesoreria';
 import { PanelCuadroResultados } from '../../components/PanelCuadroResultados';
@@ -50,11 +51,11 @@ import {
   Loader2,
 } from 'lucide-react';
 
-type TabGestion = 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas';
+type TabGestion = 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas' | 'correo';
 type SubTabTesoreria = 'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias';
 
 export const GlobalPage: React.FC = () => {
-  const { tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
+  const { tienePermiso, asignaciones, refrescarSesionDesdeServidor } = useAuthStore();
   const puedeVerTesoreria =
     tienePermiso('tesoreria.gestionar') ||
     tienePermiso('tesoreria.conceptos_planes') ||
@@ -75,6 +76,11 @@ export const GlobalPage: React.FC = () => {
     tienePermiso('organizacion.ver');
   const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
   const puedeVerPlantillas = tienePermiso('legajos.plantillas_gestionar') || tienePermiso('legajos.ver');
+  const puedeVerCorreo = asignaciones.some(
+    (a) =>
+      a.alcance === 'GLOBAL' &&
+      (a.permisos.includes('organizacion.gestionar') || a.permisos.includes('roles.gestionar')),
+  );
 
   const puedeVerCaja = tienePermiso('tesoreria.caja_ver') || tienePermiso('tesoreria.gestionar');
   const puedeVerGastos =
@@ -119,6 +125,7 @@ export const GlobalPage: React.FC = () => {
     roles: puedeVerRoles,
     pases: puedeVerPases,
     plantillas: puedeVerPlantillas,
+    correo: puedeVerCorreo,
   };
   const [searchParams, setSearchParams] = useSearchParams();
   const tabInicial = (): TabGestion => {
@@ -561,6 +568,19 @@ export const GlobalPage: React.FC = () => {
                 }`}
               >
                 Formularios y Fichas
+              </button>
+            )}
+            {puedeVerCorreo && (
+              <button
+                onClick={() => cambiarTab('correo')}
+                aria-current={tab === 'correo' ? 'page' : undefined}
+                className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition cursor-pointer shrink-0 ${
+                  tab === 'correo'
+                    ? 'bg-brand text-brand-contrast shadow-2xs'
+                    : 'bg-paper-2 text-ink-2 hover:bg-surface hover:text-ink'
+                }`}
+              >
+                Correo y Claves
               </button>
             )}
           </nav>
@@ -1283,6 +1303,11 @@ export const GlobalPage: React.FC = () => {
         {/* TAB 6: FORMULARIOS Y FICHAS OFICIALES */}
         {tab === 'plantillas' && (
           <PanelAdminPlantillas onToast={mostrarToast} />
+        )}
+
+        {/* TAB 7: CONFIGURACIÓN DE CORREO Y ENVÍO DE CLAVES */}
+        {tab === 'correo' && (
+          <PanelConfiguracionCorreo onToast={mostrarToast} />
         )}
       </main>
 

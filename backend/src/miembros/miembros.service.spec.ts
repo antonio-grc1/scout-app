@@ -672,13 +672,80 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
     });
     expect(res.claveTemporal).toBeDefined();
     expect(res.claveTemporal).not.toBe('44555666');
-    expect(res.claveTemporal.length).toBeGreaterThanOrEqual(8);
+    expect(res.claveTemporal?.length).toBeGreaterThanOrEqual(8);
     expect(mailerMock.enviarBienvenidaAlta).toHaveBeenCalledWith(
       expect.objectContaining({
         dni: '44555666',
         claveTemporal: res.claveTemporal,
       }),
     );
+  });
+
+  it('MiembrosService.crear con soloEnviarPorCorreo=true omite claveTemporal y exige email y SMTP activo', async () => {
+    const mailerMock = {
+      estaDisponibleParaEnvio: vi.fn().mockResolvedValue(true),
+      enviarBienvenidaAlta: vi.fn().mockResolvedValue(true),
+    };
+    const txUsuarioCreate = vi.fn().mockResolvedValue({ id: 92 });
+    const mockPrisma: any = {
+      rol: { findUnique: vi.fn().mockResolvedValue({ id: 2, requiereRama: true }) },
+      unidadOrganizativa: { findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }) },
+      $transaction: vi.fn((cb: any) =>
+        cb({
+          usuario: { create: txUsuarioCreate },
+        }),
+      ),
+      usuario: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: 92,
+          dni: '44555777',
+          nombre: 'Mateo',
+          apellido: 'Scout',
+          emailContacto: 'mateo@scout.test',
+          asignaciones: [{ unidad: { nombre: 'Manada' }, rol: { nombre: 'Protagonista' } }],
+        }),
+      },
+    };
+    const service = new MiembrosService(mockPrisma, undefined, mailerMock as any);
+
+    const res = await service.crear(
+      { tipo: 'GLOBAL' },
+      {
+        dni: '44555777',
+        nombre: 'Mateo',
+        apellido: 'Scout',
+        fechaNacimiento: '2014-05-10',
+        emailContacto: 'mateo@scout.test',
+        unidadId: 1,
+        rolId: 2,
+        soloEnviarPorCorreo: true,
+      },
+    );
+
+    expect(res.claveTemporal).toBeUndefined();
+    expect(res.emailEnviado).toBe(true);
+    expect(res.emailDestino).toBe('mateo@scout.test');
+    expect(mailerMock.enviarBienvenidaAlta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destinatario: 'mateo@scout.test',
+        dni: '44555777',
+      }),
+    );
+
+    await expect(
+      service.crear(
+        { tipo: 'GLOBAL' },
+        {
+          dni: '44555888',
+          nombre: 'SinMail',
+          apellido: 'Scout',
+          fechaNacimiento: '2014-05-10',
+          unidadId: 1,
+          rolId: 2,
+          soloEnviarPorCorreo: true,
+        },
+      ),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('P1-20: listar y buscarHermanosPorCriterio usan SQL unaccent/ILIKE paginado cuando $queryRaw está disponible', async () => {
@@ -776,7 +843,10 @@ describe('MiembrosService - Eliminación definitiva de miembros dados de baja', 
       evento: { count: vi.fn().mockResolvedValue(0) },
       pedidoEvento: { count: vi.fn().mockResolvedValue(0) },
       ticketEvento: { count: vi.fn().mockResolvedValue(0) },
-      entregaFormulario: { count: vi.fn().mockResolvedValue(0) },
+      entregaFormulario: {
+        count: vi.fn().mockResolvedValue(0),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
       grupoFamiliar: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $transaction: vi.fn(async (cb: any) => cb(mock)),
       ...overrides,
@@ -862,6 +932,57 @@ describe('MiembrosService - Eliminación definitiva de miembros dados de baja', 
     });
     expect(tesoreriaMock.recalcularCargosPendientesDeUsuariosEnTx).toHaveBeenCalledWith(prisma, [51]);
     expect(prisma.grupoFamiliar.deleteMany).toHaveBeenCalledWith({ where: { id: 9 } });
+  });
+
+  it('indica puedeForzarFichas cuando el único historial bloqueante son fichas médicas propias y permite eliminar con forzarFichas=true', async () => {
+    const entregaCount = vi.fn().mockImplementation(async ({ where }: any) => {
+      if (where?.usuarioId === 50 && where?.estado) return 1;
+      return 0;
+    });
+    const entregaDeleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const prisma = crearPrismaMock({
+      entregaFormulario: { count: entregaCount, deleteMany: entregaDeleteMany },
+    });
+    const service = new MiembrosService(prisma);
+
+    let errorSinForzar: any;
+    try {
+      await service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50);
+    } catch (err) {
+      errorSinForzar = err;
+    }
+    expect(errorSinForzar).toBeInstanceOf(ConflictException);
+    expect(errorSinForzar.getResponse()).toMatchObject({
+      statusCode: 409,
+      puedeForzarFichas: true,
+    });
+    expect(prisma.usuario.delete).not.toHaveBeenCalled();
+
+    const res = await service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50, true);
+    expect(res.eliminado).toBe(true);
+    expect(entregaDeleteMany).toHaveBeenCalledWith({ where: { usuarioId: 50 } });
+    expect(prisma.usuario.delete).toHaveBeenCalledWith({ where: { id: 50 } });
+  });
+
+  it('mantiene el bloqueo con ConflictException aunque forzarFichas=true si posee pagos o validó fichas ajenas', async () => {
+    const prisma = crearPrismaMock({
+      pago: { count: vi.fn().mockResolvedValue(1) },
+      entregaFormulario: {
+        count: vi.fn().mockResolvedValue(1),
+        deleteMany: vi.fn(),
+      },
+    });
+    const service = new MiembrosService(prisma);
+
+    let errorConForzar: any;
+    try {
+      await service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50, true);
+    } catch (err) {
+      errorConForzar = err;
+    }
+    expect(errorConForzar).toBeInstanceOf(ConflictException);
+    expect(errorConForzar.getResponse()?.puedeForzarFichas).toBeUndefined();
+    expect(prisma.usuario.delete).not.toHaveBeenCalled();
   });
 });
 

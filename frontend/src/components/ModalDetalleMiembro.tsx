@@ -464,11 +464,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     miembro && !miembro.activo && tieneBajaGlobal && miembro.id !== usuarioActual?.id,
   );
 
-  const handleEjecutarEliminarDefinitivo = async (miembroObjetivo: any) => {
+  const handleEjecutarEliminarDefinitivo = async (miembroObjetivo: any, forzarFichas = false) => {
     setEliminandoDefinitivo(true);
     setModalConf((prev) => (prev ? { ...prev, cargando: true } : null));
     try {
-      const res = await api.delete(`/miembros/${miembroObjetivo.id}`);
+      const res = await api.delete(`/miembros/${miembroObjetivo.id}`, {
+        params: forzarFichas ? { forzarFichas: true } : undefined,
+      });
       const msg =
         res.data?.mensaje ||
         `Miembro "${miembroObjetivo.nombre} ${miembroObjetivo.apellido}" eliminado definitivamente.`;
@@ -485,17 +487,32 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         const msg =
           err.response?.data?.message ||
           'No se puede eliminar definitivamente porque posee historial asociado.';
-        setModalConf({
-          abierto: true,
-          tipo: 'alerta',
-          titulo: 'No se puede eliminar definitivamente',
-          mensaje: `${msg}\n\nPara proteger el legajo histórico y la integridad contable del Grupo, este miembro debe permanecer dado de baja.`,
-          textoConfirmar: 'Entendido',
-          textoCancelar: null,
-          cargando: false,
-          onCerrar: () => setModalConf(null),
-          onConfirmar: () => setModalConf(null),
-        });
+        const puedeForzarFichas = Boolean(err.response?.data?.puedeForzarFichas) && !forzarFichas;
+        if (puedeForzarFichas) {
+          setModalConf({
+            abierto: true,
+            tipo: 'peligro',
+            titulo: 'El miembro posee fichas médicas emitidas o validadas',
+            mensaje: `${msg}\n\nSi deseas eliminar este registro (por ejemplo, una cuenta de prueba), puedes forzar la eliminación definitiva borrando también sus fichas médicas. Esta acción es irreversible.`,
+            textoConfirmar: 'Sí, eliminar con sus fichas médicas',
+            textoCancelar: 'Cancelar',
+            cargando: false,
+            onCerrar: () => setModalConf(null),
+            onConfirmar: () => handleEjecutarEliminarDefinitivo(miembroObjetivo, true),
+          });
+        } else {
+          setModalConf({
+            abierto: true,
+            tipo: 'alerta',
+            titulo: 'No se puede eliminar definitivamente',
+            mensaje: `${msg}\n\nPara proteger el legajo histórico y la integridad contable del Grupo, este miembro debe permanecer dado de baja.`,
+            textoConfirmar: 'Entendido',
+            textoCancelar: null,
+            cargando: false,
+            onCerrar: () => setModalConf(null),
+            onConfirmar: () => setModalConf(null),
+          });
+        }
       } else {
         setModalConf(null);
         setAlerta({
@@ -700,30 +717,44 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     }
   };
 
-  const handleResetClave = () => {
+  const handleResetClave = (soloPorCorreo = false) => {
     if (!miembro) return;
 
     setModalConf({
       abierto: true,
-      titulo: 'Restablecer Contraseña',
-      mensaje: `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido} y se revocarán sus sesiones activas.`,
+      titulo: soloPorCorreo ? 'Enviar Clave Solo por Correo' : 'Restablecer Contraseña',
+      mensaje: soloPorCorreo
+        ? `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido}, se enviará únicamente a ${miembro.emailContacto || 'su correo'} (sin mostrarla en pantalla) y se revocarán sus sesiones activas.`
+        : `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido} y se revocarán sus sesiones activas.`,
       tipo: 'peligro',
-      textoConfirmar: 'Generar clave temporal',
+      textoConfirmar: soloPorCorreo ? 'Enviar por correo' : 'Generar clave temporal',
       textoCancelar: 'Cancelar',
       onCerrar: () => setModalConf(null),
       onConfirmar: async () => {
         setReseteandoClave(true);
         setAlerta(null);
         try {
-          const res = await api.post(`/auth/usuarios/${miembro.id}/resetear-clave`);
+          const res = await api.post(`/auth/usuarios/${miembro.id}/resetear-clave`, {
+            soloPorCorreo,
+          });
           const claveTemporal: string | undefined = res.data?.claveTemporal;
+          const emailEnviado = Boolean(res.data?.emailEnviado);
+          const emailDestino: string | undefined = res.data?.emailDestino;
           setClaveTemporalGenerada(claveTemporal ?? null);
           setModalConf(null);
+          const detalleEmail = emailEnviado
+            ? ` Se envió por correo a ${emailDestino}.`
+            : emailDestino
+              ? ' No se pudo enviar por correo; compartila manualmente.'
+              : ' El miembro no tiene email registrado; compartila manualmente.';
           setAlerta({
             tipo: 'exito',
             texto: claveTemporal
-              ? `Nueva clave temporal generada: ${claveTemporal}`
-              : res.data?.mensaje || 'Se generó una nueva clave temporal.',
+              ? `Nueva clave temporal generada: ${claveTemporal}.${detalleEmail}`
+              : res.data?.mensaje ||
+                (emailDestino
+                  ? `Se generó una nueva clave temporal y se envió únicamente por correo a ${emailDestino}.`
+                  : 'Se generó una nueva clave temporal.'),
           });
           if (onClaveReseteada) onClaveReseteada(res.data?.mensaje || 'Clave restablecida.');
           cargarDatos(miembro.id);

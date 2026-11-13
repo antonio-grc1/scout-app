@@ -578,3 +578,17 @@ model TicketEvento {
   @@index([itemId])
   @@map("tickets_evento")
 }
+
+model ConfiguracionCorreo {
+  id            Int      @id @default(1)
+  habilitado    Boolean  @default(true)
+  host          String?  @db.VarChar(255)
+  port          Int      @default(587)
+  user          String?  @db.VarChar(255)
+  passEncrypted String?  @map("pass_encrypted") @db.Text
+  from          String?  @db.VarChar(255)
+  appUrl        String?  @map("app_url") @db.VarChar(255)
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("configuracion_correo")
+}
