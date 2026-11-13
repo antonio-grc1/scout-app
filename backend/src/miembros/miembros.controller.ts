@@ -78,6 +78,17 @@ export class MiembrosController {
     return this.miembros.editar(u, a, id, dto);
   }
 
+  /** Elimina definitivamente un miembro dado de baja sin historial asociado (solo alcance GLOBAL). */
+  @RequirePermission('miembros.baja')
+  @Delete(':id')
+  eliminarDefinitivo(
+    @CurrentUser() u: AuthUser,
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.miembros.eliminarDefinitivo(u, a, id);
+  }
+
   @RequireAnyPermission('pases.ejecutar', 'miembros.editar')
   @Post(':id/asignaciones')
   agregarAsignacion(

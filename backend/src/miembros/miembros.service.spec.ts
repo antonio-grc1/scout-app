@@ -735,3 +735,133 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
   });
 });
 
+describe('MiembrosService - Eliminación definitiva de miembros dados de baja', () => {
+  const actorGlobal: AuthUser = {
+    sub: 1,
+    dni: '10000001',
+    requiereCambioClave: false,
+    asignaciones: [
+      {
+        unidadId: 1,
+        unidadNombre: 'Jefatura',
+        rol: 'Jefe de Grupo',
+        alcance: 'GLOBAL',
+        permisos: ['miembros.ver', 'miembros.baja'],
+      },
+    ],
+  };
+
+  const crearPrismaMock = (overrides: Record<string, any> = {}) => {
+    const mock: any = {
+      usuario: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 50,
+          nombre: 'Miembro',
+          apellido: 'Prueba',
+          activo: false,
+          saldoAFavor: 0,
+          grupoFamiliarId: null,
+        }),
+        findMany: vi.fn().mockResolvedValue([]),
+        update: vi.fn(),
+        delete: vi.fn().mockResolvedValue({ id: 50 }),
+      },
+      cargoMiembro: {
+        count: vi.fn().mockResolvedValue(0),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+      pago: { count: vi.fn().mockResolvedValue(0) },
+      movimientoFinanciero: { count: vi.fn().mockResolvedValue(0) },
+      gasto: { count: vi.fn().mockResolvedValue(0) },
+      evento: { count: vi.fn().mockResolvedValue(0) },
+      pedidoEvento: { count: vi.fn().mockResolvedValue(0) },
+      ticketEvento: { count: vi.fn().mockResolvedValue(0) },
+      entregaFormulario: { count: vi.fn().mockResolvedValue(0) },
+      grupoFamiliar: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      $transaction: vi.fn(async (cb: any) => cb(mock)),
+      ...overrides,
+    };
+    return mock;
+  };
+
+  it('rechaza eliminación definitiva si el alcance no es GLOBAL', async () => {
+    const prisma = crearPrismaMock();
+    const service = new MiembrosService(prisma);
+
+    await expect(
+      service.eliminarDefinitivo(actorGlobal, { tipo: 'UNIDAD', unidadIds: [1] }, 50),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('rechaza auto-eliminación definitiva', async () => {
+    const prisma = crearPrismaMock();
+    const service = new MiembrosService(prisma);
+
+    await expect(
+      service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 1),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('rechaza eliminar un miembro que todavía está activo', async () => {
+    const prisma = crearPrismaMock();
+    prisma.usuario.findUnique.mockResolvedValueOnce({
+      id: 50,
+      nombre: 'Activo',
+      apellido: 'Prueba',
+      activo: true,
+      saldoAFavor: 0,
+      grupoFamiliarId: null,
+    });
+    const service = new MiembrosService(prisma);
+
+    await expect(
+      service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50),
+    ).rejects.toThrow(BadRequestException);
+    expect(prisma.usuario.delete).not.toHaveBeenCalled();
+  });
+
+  it('rechaza con ConflictException si el miembro posee historial asociado', async () => {
+    const prisma = crearPrismaMock({
+      pago: { count: vi.fn().mockResolvedValue(2) },
+      entregaFormulario: { count: vi.fn().mockResolvedValue(1) },
+    });
+    const service = new MiembrosService(prisma);
+
+    await expect(
+      service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.usuario.delete).not.toHaveBeenCalled();
+  });
+
+  it('elimina definitivamente un miembro dado de baja sin historial y limpia grupo familiar huérfano', async () => {
+    const prisma = crearPrismaMock();
+    prisma.usuario.findUnique.mockResolvedValueOnce({
+      id: 50,
+      nombre: 'Test',
+      apellido: 'Usuario',
+      activo: false,
+      saldoAFavor: 0,
+      grupoFamiliarId: 9,
+    });
+    prisma.usuario.findMany.mockResolvedValueOnce([{ id: 51 }]);
+    const tesoreriaMock: any = {
+      recalcularCargosPendientesDeUsuariosEnTx: vi.fn().mockResolvedValue(undefined),
+    };
+    const service = new MiembrosService(prisma, tesoreriaMock);
+
+    const res = await service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50);
+
+    expect(res.eliminado).toBe(true);
+    expect(prisma.cargoMiembro.deleteMany).toHaveBeenCalledWith({
+      where: { usuarioId: 50, estado: 'ANULADO' },
+    });
+    expect(prisma.usuario.delete).toHaveBeenCalledWith({ where: { id: 50 } });
+    expect(prisma.usuario.update).toHaveBeenCalledWith({
+      where: { id: 51 },
+      data: { grupoFamiliarId: null },
+    });
+    expect(tesoreriaMock.recalcularCargosPendientesDeUsuariosEnTx).toHaveBeenCalledWith(prisma, [51]);
+    expect(prisma.grupoFamiliar.deleteMany).toHaveBeenCalledWith({ where: { id: 9 } });
+  });
+});
+

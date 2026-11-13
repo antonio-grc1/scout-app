@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
+import { useToastStore } from '../store/toastStore';
 import { ModalConfirmacion, type ModalConfirmacionProps } from './ModalConfirmacion';
 import { ModalCobrarDeuda } from './ModalCobrarDeuda';
 import { ModalGenerarDeudaManual } from './ModalGenerarDeudaManual';
@@ -50,6 +51,7 @@ interface Props {
   usuarioId: number | null;
   onCerrar: () => void;
   onActualizado?: () => void;
+  onEliminado?: (mensaje: string) => void;
   onClaveReseteada?: (mensaje: string) => void;
   tabInicial?: 'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas';
 }
@@ -69,15 +71,19 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   usuarioId,
   onCerrar,
   onActualizado,
+  onEliminado,
   onClaveReseteada,
   tabInicial = 'datos',
 }) => {
-  const { tieneGlobal, tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
+  const { usuario: usuarioActual, asignaciones: asignacionesActuales, tieneGlobal, tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
   const { canEdit, canView } = usePermisosUI();
   const puedeEditarIdentidad = canEdit('miembro', 'identidad');
   const puedeEditarContacto = canEdit('miembro', 'contacto');
   const puedeDarBaja = canEdit('miembro', 'estado');
   const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
+  const tieneBajaGlobal = asignacionesActuales.some(
+    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('miembros.baja'),
+  );
   const puedeVerCuotas = canView('cuotas');
   const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
   const puedeCrearCargoIndividual = canEdit('cuotas', 'cargoIndividual');
@@ -98,6 +104,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [eliminandoDefinitivo, setEliminandoDefinitivo] = useState(false);
   const [ejecutandoPase, setEjecutandoPase] = useState(false);
   const [reseteandoClave, setReseteandoClave] = useState(false);
   const [claveTemporalGenerada, setClaveTemporalGenerada] = useState<string | null>(null);
@@ -451,6 +458,69 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     } finally {
       setGuardando(false);
     }
+  };
+
+  const puedeEliminarDefinitivo = Boolean(
+    miembro && !miembro.activo && tieneBajaGlobal && miembro.id !== usuarioActual?.id,
+  );
+
+  const handleEjecutarEliminarDefinitivo = async (miembroObjetivo: any) => {
+    setEliminandoDefinitivo(true);
+    setModalConf((prev) => (prev ? { ...prev, cargando: true } : null));
+    try {
+      const res = await api.delete(`/miembros/${miembroObjetivo.id}`);
+      const msg =
+        res.data?.mensaje ||
+        `Miembro "${miembroObjetivo.nombre} ${miembroObjetivo.apellido}" eliminado definitivamente.`;
+      setModalConf(null);
+      if (onEliminado) {
+        onEliminado(msg);
+      } else {
+        useToastStore.getState().mostrarToast(msg);
+        if (onActualizado) onActualizado();
+      }
+      onCerrar();
+    } catch (err: any) {
+      if (err?.response?.status === 409) {
+        const msg =
+          err.response?.data?.message ||
+          'No se puede eliminar definitivamente porque posee historial asociado.';
+        setModalConf({
+          abierto: true,
+          tipo: 'alerta',
+          titulo: 'No se puede eliminar definitivamente',
+          mensaje: `${msg}\n\nPara proteger el legajo histórico y la integridad contable del Grupo, este miembro debe permanecer dado de baja.`,
+          textoConfirmar: 'Entendido',
+          textoCancelar: null,
+          cargando: false,
+          onCerrar: () => setModalConf(null),
+          onConfirmar: () => setModalConf(null),
+        });
+      } else {
+        setModalConf(null);
+        setAlerta({
+          tipo: 'error',
+          texto: traducirErrorAmigable(err, 'No se pudo eliminar definitivamente el miembro.'),
+        });
+      }
+    } finally {
+      setEliminandoDefinitivo(false);
+    }
+  };
+
+  const handleSolicitarEliminarDefinitivo = () => {
+    if (!miembro || !puedeEliminarDefinitivo) return;
+    setModalConf({
+      abierto: true,
+      tipo: 'peligro',
+      titulo: `Eliminar definitivamente a ${miembro.nombre} ${miembro.apellido}`,
+      mensaje: `¿Estás seguro de que deseas eliminar permanentemente a ${miembro.nombre} ${miembro.apellido} (DNI ${miembro.dni})?\n\nEsta acción es irreversible y solo se completará si no posee historial contable, pagos, cargos activos ni fichas médicas emitidas o validadas. Si posee registros asociados, la eliminación será rechazada.`,
+      textoConfirmar: 'Eliminar definitivamente',
+      textoCancelar: 'Cancelar',
+      cargando: false,
+      onCerrar: () => setModalConf(null),
+      onConfirmar: () => handleEjecutarEliminarDefinitivo(miembro),
+    });
   };
 
   const handleDesvincularRapido = async (targetUserId: number, targetNombre: string) => {
@@ -1307,10 +1377,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   puedeDarBaja={puedeDarBaja}
                   puedeEditarMiembro={puedeEditarMiembro}
                   puedeGestionarTesoreria={puedeGestionarTesoreria}
+                  puedeEliminarDefinitivo={puedeEliminarDefinitivo}
+                  eliminandoDefinitivo={eliminandoDefinitivo}
                   onGuardarDatos={handleGuardarDatos}
                   onDesvincularRapido={handleDesvincularRapido}
                   onAbrirEditarFamilia={() => setModalEditarFamiliaAbierto(true)}
                   onAbrirVincularHermano={() => setModalVincularHermanoAbierto(true)}
+                  onSolicitarEliminarDefinitivo={handleSolicitarEliminarDefinitivo}
                 />
               )}
 

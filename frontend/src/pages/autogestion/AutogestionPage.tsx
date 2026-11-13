@@ -89,7 +89,7 @@ export const AutogestionPage: React.FC = () => {
   // Estados para Eventos y Vales QR
   const [misPedidos, setMisPedidos] = useState<any[]>([]);
   const [eventosActivos, setEventosActivos] = useState<any[]>([]);
-  const [cargandoEventos, setCargandoEventos] = useState(false);
+  const [cargandoEventos, setCargandoEventos] = useState(true);
   const [modalCargarPedidoAbierto, setModalCargarPedidoAbierto] = useState(false);
   const [pedidoAEditar, setPedidoAEditar] = useState<any | null>(null);
   const [eventoParaCargar, setEventoParaCargar] = useState<any | null>(null);
@@ -607,25 +607,44 @@ export const AutogestionPage: React.FC = () => {
                 Estado de Cuenta
               </span>
               <div className="flex items-center gap-2 flex-wrap">
-                {Number(estadoCuenta?.resumen?.saldoAFavor || 0) > 0 && (
-                  <span className="px-2.5 py-1 rounded-xl text-xs font-extrabold bg-brand/10 text-brand border border-brand/30">
-                    Saldo a favor: {formatearMoneda(estadoCuenta.resumen.saldoAFavor)}
-                  </span>
+                {cargandoInicial ? (
+                  <div className="h-6 w-28 rounded-lg bg-paper-3 animate-pulse" />
+                ) : (
+                  <>
+                    {Number(estadoCuenta?.resumen?.saldoAFavor || 0) > 0 && (
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-extrabold bg-brand/10 text-brand border border-brand/30">
+                        Saldo a favor: {formatearMoneda(estadoCuenta.resumen.saldoAFavor)}
+                      </span>
+                    )}
+                    <span
+                      className={`text-base font-black ${
+                        saldoPendiente > 0
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-brand'
+                      }`}
+                    >
+                      {saldoPendiente > 0 ? `Deuda: ${formatearMoneda(saldoPendiente)}` : 'Cuotas al día'}
+                    </span>
+                  </>
                 )}
-                <span
-                  className={`text-base font-black ${
-                    saldoPendiente > 0
-                      ? 'text-rose-600 dark:text-rose-400'
-                      : 'text-brand'
-                  }`}
-                >
-                  {saldoPendiente > 0 ? `Deuda: ${formatearMoneda(saldoPendiente)}` : 'Cuotas al día'}
-                </span>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {estadoCuenta?.cargos?.map((cargo: any) => {
+              {cargandoInicial ? (
+                Array.from({ length: 2 }).map((_, idx) => (
+                  <div
+                    key={`skel-cuota-${idx}`}
+                    className="p-3.5 rounded-xl border border-rule bg-paper-2 animate-pulse space-y-2"
+                  >
+                    <div className="h-4 w-36 rounded bg-paper-3" />
+                    <div className="h-3 w-24 rounded bg-paper-3" />
+                    <div className="h-5 w-20 rounded bg-paper-3" />
+                  </div>
+                ))
+              ) : (
+                <>
+                  {estadoCuenta?.cargos?.map((cargo: any) => {
                 const cConf = ESTADO_CARGO_CONFIG[cargo.estado] || ESTADO_CARGO_CONFIG.PENDIENTE;
                 return (
                   <div
@@ -654,6 +673,8 @@ export const AutogestionPage: React.FC = () => {
                 <div className="col-span-full py-6 text-center text-xs text-ink-muted">
                   No tenés cuotas pendientes este año.
                 </div>
+              )}
+                </>
               )}
             </div>
 
@@ -808,9 +829,13 @@ export const AutogestionPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
                 <span className="text-xs font-semibold text-ink-muted">Pedidos Registrados</span>
-                <span className="text-2xl font-black text-ink mt-1">
-                  {pedidosEventoSeleccionado.length}
-                </span>
+                {cargandoEventos ? (
+                  <div className="h-7 w-12 mt-1.5 rounded-lg bg-paper-3 animate-pulse" />
+                ) : (
+                  <span className="text-2xl font-black text-ink mt-1">
+                    {pedidosEventoSeleccionado.length}
+                  </span>
+                )}
               </div>
 
               <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex flex-col justify-between">
@@ -818,18 +843,26 @@ export const AutogestionPage: React.FC = () => {
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                   Ganancia de Ventas
                 </span>
-                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
-                  +{formatearMoneda(
-                    pedidosEventoSeleccionado.reduce((acc, p) => acc + Number(p.totalGanancia || 0), 0),
-                  )}
-                </span>
+                {cargandoEventos ? (
+                  <div className="h-7 w-28 mt-1.5 rounded-lg bg-emerald-200/70 dark:bg-emerald-900/60 animate-pulse" />
+                ) : (
+                  <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                    +{formatearMoneda(
+                      pedidosEventoSeleccionado.reduce((acc, p) => acc + Number(p.totalGanancia || 0), 0),
+                    )}
+                  </span>
+                )}
               </div>
 
               <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
                 <span className="text-xs font-semibold text-ink-muted">Saldo a Favor en Grupo</span>
-                <span className="text-2xl font-black text-ink mt-1">
-                  {formatearMoneda(estadoCuenta?.resumen?.saldoAFavor || 0)}
-                </span>
+                {cargandoInicial ? (
+                  <div className="h-7 w-24 mt-1.5 rounded-lg bg-paper-3 animate-pulse" />
+                ) : (
+                  <span className="text-2xl font-black text-ink mt-1">
+                    {formatearMoneda(estadoCuenta?.resumen?.saldoAFavor || 0)}
+                  </span>
+                )}
               </div>
             </div>
 

@@ -7,7 +7,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { AlcanceRol, EstadoCargo, Prisma, TipoUnidad } from '@prisma/client';
+import { AlcanceRol, EstadoCargo, EstadoEntrega, Prisma, TipoUnidad } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import {
   alcanceEfectivo,
@@ -771,6 +771,136 @@ export class MiembrosService {
     return this.prisma.$transaction
       ? this.prisma.$transaction((tx) => ejecutarEdicion(tx))
       : ejecutarEdicion(this.prisma as unknown as Prisma.TransactionClient);
+  }
+
+  // ---------------- Eliminación definitiva ----------------
+  /**
+   * Elimina físicamente un miembro dado de baja (activo=false) cuando no posee
+   * historial contable, de auditoría ni legajos impresos/validados. Solo alcance GLOBAL.
+   */
+  async eliminarDefinitivo(actor: AuthUser, alcance: AlcanceAcceso, id: number) {
+    if (alcance.tipo !== 'GLOBAL') {
+      throw new ForbiddenException('Solo un usuario con alcance global puede eliminar miembros definitivamente');
+    }
+    if (id === actor.sub) {
+      throw new BadRequestException('No puede eliminar definitivamente su propio usuario');
+    }
+
+    const ejecutarEliminacion = async (tx: Prisma.TransactionClient) => {
+      if ('$queryRaw' in tx && typeof tx.$queryRaw === 'function') {
+        await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${id} FOR UPDATE`;
+      }
+
+      const objetivo = await tx.usuario.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          nombre: true,
+          apellido: true,
+          activo: true,
+          saldoAFavor: true,
+          grupoFamiliarId: true,
+        },
+      });
+      if (!objetivo) throw new NotFoundException('Miembro no encontrado');
+      if (objetivo.activo) {
+        throw new BadRequestException('Solo se pueden eliminar definitivamente miembros dados de baja (inactivos)');
+      }
+
+      const [
+        cargosBloqueantes,
+        pagos,
+        movimientos,
+        gastos,
+        eventos,
+        pedidos,
+        tickets,
+        entregasBloqueantes,
+      ] = await Promise.all([
+        tx.cargoMiembro.count({
+          where: {
+            usuarioId: id,
+            OR: [
+              { estado: { not: EstadoCargo.ANULADO } },
+              { montoPagado: { gt: 0 } },
+              { imputaciones: { some: {} } },
+            ],
+          },
+        }),
+        tx.pago.count({ where: { OR: [{ usuarioId: id }, { registradoPorUsuarioId: id }] } }),
+        tx.movimientoFinanciero.count({ where: { creadoPorUsuarioId: id } }),
+        tx.gasto.count({ where: { registradoPorId: id } }),
+        tx.evento.count({ where: { creadoPorUsuarioId: id } }),
+        tx.pedidoEvento.count({ where: { OR: [{ registradoPorUsuarioId: id }, { vendedorUsuarioId: id }] } }),
+        tx.ticketEvento.count({ where: { validadorUsuarioId: id } }),
+        tx.entregaFormulario.count({
+          where: {
+            OR: [
+              { usuarioId: id, estado: { not: EstadoEntrega.BORRADOR } },
+              { validadoPorUsuarioId: id },
+            ],
+          },
+        }),
+      ]);
+
+      const saldoAFavor = Number(objetivo.saldoAFavor ?? 0);
+      const detalles: string[] = [];
+      if (cargosBloqueantes > 0) detalles.push(`${cargosBloqueantes} cargo(s) activo(s) o con pagos`);
+      if (pagos > 0) detalles.push(`${pagos} pago(s)`);
+      if (movimientos > 0) detalles.push(`${movimientos} movimiento(s) de caja/banco`);
+      if (gastos > 0) detalles.push(`${gastos} gasto(s)`);
+      if (eventos > 0 || pedidos > 0 || tickets > 0) {
+        detalles.push(`${eventos + pedidos + tickets} registro(s) de eventos`);
+      }
+      if (entregasBloqueantes > 0) detalles.push(`${entregasBloqueantes} ficha(s) médica(s) emitida(s) o validada(s)`);
+      if (saldoAFavor > 0) detalles.push('saldo a favor pendiente');
+
+      if (detalles.length > 0) {
+        throw new ConflictException(
+          `No se puede eliminar definitivamente a ${objetivo.nombre} ${objetivo.apellido}: posee historial asociado (${detalles.join(', ')}). Debe permanecer dado de baja para preservar el legajo y la integridad contable.`,
+        );
+      }
+
+      // Los cargos anulados sin imputaciones ni pagos (p. ej. generados al crear un miembro de prueba y anulados al darlo de baja) se limpian antes de borrar al usuario.
+      await tx.cargoMiembro.deleteMany({
+        where: { usuarioId: id, estado: EstadoCargo.ANULADO },
+      });
+
+      await tx.usuario.delete({ where: { id } });
+
+      if (objetivo.grupoFamiliarId) {
+        const grupoIdAnterior = objetivo.grupoFamiliarId;
+        const restantes = await tx.usuario.findMany({
+          where: { grupoFamiliarId: grupoIdAnterior },
+          select: { id: true },
+        });
+        if (restantes.length <= 1) {
+          if (restantes.length === 1) {
+            await tx.usuario.update({
+              where: { id: restantes[0].id },
+              data: { grupoFamiliarId: null },
+            });
+            if (this.tesoreria) {
+              await this.tesoreria.recalcularCargosPendientesDeUsuariosEnTx(tx, [restantes[0].id]);
+            }
+          }
+          if (tx.grupoFamiliar?.deleteMany) {
+            await tx.grupoFamiliar.deleteMany({ where: { id: grupoIdAnterior } });
+          } else {
+            await tx.grupoFamiliar.delete({ where: { id: grupoIdAnterior } });
+          }
+        }
+      }
+
+      return {
+        eliminado: true,
+        mensaje: `Miembro "${objetivo.nombre} ${objetivo.apellido}" eliminado definitivamente.`,
+      };
+    };
+
+    return this.prisma.$transaction
+      ? this.prisma.$transaction((tx) => ejecutarEliminacion(tx))
+      : ejecutarEliminacion(this.prisma as unknown as Prisma.TransactionClient);
   }
 
   // ---------------- Asignaciones adicionales ----------------

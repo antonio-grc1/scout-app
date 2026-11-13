@@ -61,7 +61,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
   }, [onToast]);
   const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermiso('tesoreria.gestionar'));
   const [gastos, setGastos] = useState<GastoItem[]>([]);
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Filtros
@@ -243,14 +243,23 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
           <span className="text-xs font-semibold text-ink-muted">Total Gastos (Período)</span>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
-              {formatearMoneda(totalGastos)}
-            </span>
-            <span className="text-xs font-bold text-ink-muted">
-              {gastosFiltrados.length} {gastosFiltrados.length === 1 ? 'gasto' : 'gastos'}
-              {busqueda && ` (de ${gastosActivos.length})`}
-            </span>
+          <div className="mt-2 flex items-baseline justify-between gap-2">
+            {cargando ? (
+              <>
+                <div className="h-8 w-32 rounded-lg bg-paper-3 animate-pulse" aria-label="Cargando total de gastos" />
+                <div className="h-4 w-16 rounded-md bg-paper-3 animate-pulse" />
+              </>
+            ) : (
+              <>
+                <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                  {formatearMoneda(totalGastos)}
+                </span>
+                <span className="text-xs font-bold text-ink-muted">
+                  {gastosFiltrados.length} {gastosFiltrados.length === 1 ? 'gasto' : 'gastos'}
+                  {busqueda && ` (de ${gastosActivos.length})`}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -260,9 +269,13 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             Pagado en Efectivo (Cajas)
           </span>
           <div className="mt-2">
-            <span className="text-2xl font-black text-ink">
-              {formatearMoneda(totalCaja)}
-            </span>
+            {cargando ? (
+              <div className="h-8 w-32 rounded-lg bg-paper-3 animate-pulse" aria-label="Cargando total en efectivo" />
+            ) : (
+              <span className="text-2xl font-black text-ink">
+                {formatearMoneda(totalCaja)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -272,9 +285,13 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             Pagado por Transferencia (Bancos)
           </span>
           <div className="mt-2">
-            <span className="text-2xl font-black text-ink">
-              {formatearMoneda(totalBanco)}
-            </span>
+            {cargando ? (
+              <div className="h-8 w-32 rounded-lg bg-paper-3 animate-pulse" aria-label="Cargando total por transferencia" />
+            ) : (
+              <span className="text-2xl font-black text-ink">
+                {formatearMoneda(totalBanco)}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -381,11 +398,20 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             </thead>
             <tbody className="divide-y divide-rule font-medium">
               {cargando && gastos.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-ink-muted">
-                    Cargando gastos operativos...
-                  </td>
-                </tr>
+                <>
+                  {[1, 2, 3, 4].map((i) => (
+                    <tr key={i} className="animate-pulse">
+                      <td className="py-3.5 px-4"><div className="h-3.5 w-24 rounded bg-paper-2" /></td>
+                      <td className="py-3.5 px-4"><div className="h-3.5 w-40 rounded bg-paper-2" /></td>
+                      <td className="py-3.5 px-4"><div className="h-5 w-20 rounded-md bg-paper-2" /></td>
+                      <td className="py-3.5 px-4"><div className="h-5 w-24 rounded-md bg-paper-2" /></td>
+                      <td className="py-3.5 px-4"><div className="h-3.5 w-16 rounded bg-paper-2" /></td>
+                      <td className="py-3.5 px-4 text-right"><div className="h-4 w-20 rounded bg-paper-2 ml-auto" /></td>
+                      <td className="py-3.5 px-4"><div className="h-3.5 w-24 rounded bg-paper-2" /></td>
+                      <td className="py-3.5 px-4"><div className="h-4 w-12 rounded bg-paper-2 mx-auto" /></td>
+                    </tr>
+                  ))}
+                </>
               ) : gastos.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-ink-muted">
@@ -501,8 +527,18 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
         {/* Mobile Responsive Cards View */}
         <div className="md:hidden divide-y divide-rule">
           {cargando && gastos.length === 0 ? (
-            <div className="p-8 text-center text-xs text-ink-muted">
-              Cargando gastos operativos...
+            <div className="p-3.5 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-3 rounded-xl bg-paper-2/60 animate-pulse space-y-2">
+                  <div className="flex justify-between gap-3">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 w-40 rounded bg-paper-3" />
+                      <div className="h-3 w-24 rounded bg-paper-3" />
+                    </div>
+                    <div className="h-5 w-20 rounded bg-paper-3" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : gastos.length === 0 ? (
             <div className="p-8 text-center text-xs text-ink-muted">

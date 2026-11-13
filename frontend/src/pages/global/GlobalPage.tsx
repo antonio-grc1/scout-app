@@ -201,7 +201,7 @@ export const GlobalPage: React.FC = () => {
   const [roles, setRoles] = useState<any[]>([]);
   const [permisosCatalogo, setPermisosCatalogo] = useState<any[]>([]);
   const [colaboradores, setColaboradores] = useState<any[]>([]);
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] = useState(true);
   const [sincronizandoPlanId, setSincronizandoPlanId] = useState<string | null>(null);
 
   // Estados de Modales
@@ -650,7 +650,9 @@ export const GlobalPage: React.FC = () => {
                   }`}
                 >
                   <Layers className="w-4 h-4" />
-                  <span>Cuotas Mensuales ({planesMensuales.length})</span>
+                  <span>
+                    Cuotas Mensuales{!(cargando && planesMensuales.length === 0) ? ` (${planesMensuales.length})` : ''}
+                  </span>
                 </button>
               )}
 
@@ -682,7 +684,9 @@ export const GlobalPage: React.FC = () => {
                   }`}
                 >
                   <Users className="w-4 h-4" />
-                  <span>Descuento Hermanos ({familias.length})</span>
+                  <span>
+                    Descuento Hermanos{!(cargando && familias.length === 0) ? ` (${familias.length})` : ''}
+                  </span>
                 </button>
               )}
 
@@ -738,6 +742,19 @@ export const GlobalPage: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {cargando && planesMensuales.length === 0 && (
+                    Array.from({ length: 2 }).map((_, i) => (
+                      <div
+                        key={`skel-plan-${i}`}
+                        className="p-4 rounded-2xl border border-rule bg-paper-2/60 animate-pulse space-y-3"
+                      >
+                        <div className="h-5 w-44 rounded bg-paper-3" />
+                        <div className="h-3.5 w-64 rounded bg-paper-3" />
+                        <div className="h-8 w-full rounded-xl bg-paper-3" />
+                      </div>
+                    ))
+                  )}
+
                   {planesMensuales.map((plan) => {
                     const mesesHabilitados: number[] = Array.isArray(plan.mesesHabilitadosJson)
                       ? plan.mesesHabilitadosJson
@@ -903,6 +920,19 @@ export const GlobalPage: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {cargando && conceptos.length === 0 && (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <div
+                        key={`skel-camp-${i}`}
+                        className="p-4 rounded-2xl border border-rule bg-paper-2/60 animate-pulse space-y-3"
+                      >
+                        <div className="h-5 w-40 rounded bg-paper-3" />
+                        <div className="h-4 w-24 rounded bg-paper-3" />
+                        <div className="h-8 w-full rounded-xl bg-paper-3" />
+                      </div>
+                    ))
+                  )}
+
                   {conceptos
                     .filter((con) => !con.planCuotaMensualId)
                     .map((con) => {
@@ -1028,6 +1058,19 @@ export const GlobalPage: React.FC = () => {
             {/* SUB-TAB 3: GRUPOS FAMILIARES Y DESCUENTO POR HERMANOS */}
             {subTabTesoreria === 'familias' && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {cargando && familias.length === 0 && (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div
+                      key={`skel-fam-${i}`}
+                      className="p-4 rounded-2xl border border-rule bg-paper-2/60 animate-pulse space-y-3"
+                    >
+                      <div className="h-5 w-36 rounded bg-paper-3" />
+                      <div className="h-3.5 w-48 rounded bg-paper-3" />
+                      <div className="h-12 w-full rounded-xl bg-paper-3" />
+                    </div>
+                  ))
+                )}
+
                 {familias.map((fam) => {
                   const pct = Number(fam.porcentajeDescuentoHermanos ?? 0);
                   const miembros = fam.miembros || [];
@@ -1293,6 +1336,10 @@ export const GlobalPage: React.FC = () => {
           onCerrar={() => setMiembroDetalleId(null)}
           onActualizado={() => {
             cargarDatos();
+          }}
+          onEliminado={(msg) => {
+            cargarDatos();
+            mostrarToast(msg);
           }}
         />
       )}

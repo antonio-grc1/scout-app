@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, Save } from 'lucide-react';
+import { Users, Save, Trash2 } from 'lucide-react';
 import { TrayectoriaMiembro } from './TrayectoriaMiembro';
 
 export interface FormDatosMiembro {
@@ -34,10 +34,13 @@ export interface PestanaDatosMiembroProps {
   puedeDarBaja: boolean;
   puedeEditarMiembro: boolean;
   puedeGestionarTesoreria?: boolean;
+  puedeEliminarDefinitivo?: boolean;
+  eliminandoDefinitivo?: boolean;
   onGuardarDatos: (e: React.FormEvent) => Promise<void>;
   onDesvincularRapido: (targetUserId: number, targetNombre: string) => Promise<void>;
   onAbrirEditarFamilia: () => void;
   onAbrirVincularHermano: () => void;
+  onSolicitarEliminarDefinitivo?: () => void;
 }
 
 export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
@@ -52,10 +55,13 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   puedeDarBaja: _puedeDarBaja,
   puedeEditarMiembro,
   puedeGestionarTesoreria,
+  puedeEliminarDefinitivo = false,
+  eliminandoDefinitivo = false,
   onGuardarDatos,
   onDesvincularRapido,
   onAbrirEditarFamilia,
   onAbrirVincularHermano,
+  onSolicitarEliminarDefinitivo,
 }) => {
   type Campo = {
     key: keyof FormDatosMiembro;
@@ -234,6 +240,29 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
           >
             <Save className="w-4 h-4" />
             <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Eliminación definitiva (solo alcance global cuando el miembro ya está dado de baja) */}
+      {!miembro?.activo && puedeEliminarDefinitivo && onSolicitarEliminarDefinitivo && (
+        <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <span className="block text-xs font-extrabold text-rose-700 dark:text-rose-300">
+              Eliminar miembro definitivamente
+            </span>
+            <p className="text-[11px] text-ink-2 leading-relaxed">
+              Borra permanentemente este registro del padrón. Solo es posible si no posee pagos, cargos activos ni fichas emitidas.
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={eliminandoDefinitivo || guardando}
+            onClick={onSolicitarEliminarDefinitivo}
+            className="min-h-[42px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>{eliminandoDefinitivo ? 'Eliminando...' : 'Eliminar definitivamente'}</span>
           </button>
         </div>
       )}
