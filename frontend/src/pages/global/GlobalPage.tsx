@@ -1337,6 +1337,10 @@ export const GlobalPage: React.FC = () => {
           onActualizado={() => {
             cargarDatos();
           }}
+          onEliminado={(msg) => {
+            cargarDatos();
+            mostrarToast(msg);
+          }}
         />
       )}
 

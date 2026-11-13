@@ -2080,6 +2080,10 @@ export const UnidadPage: React.FC = () => {
             cargarDatos();
             mostrarToast('Cambios guardados.');
           }}
+          onEliminado={(msg) => {
+            cargarDatos();
+            mostrarToast(msg);
+          }}
           onClaveReseteada={(msg) => mostrarToast(msg)}
         />
       )}
