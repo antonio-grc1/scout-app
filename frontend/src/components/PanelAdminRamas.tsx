@@ -37,7 +37,9 @@ export const PanelAdminRamas: React.FC<Props> = ({
   onRecargar,
   onToast,
 }) => {
-  const puedeGestionar = useAuthStore((s) => s.tienePermiso('organizacion.gestionar'));
+  const puedeGestionar = useAuthStore(
+    (s) => s.tieneGlobal() && s.tienePermiso('organizacion.gestionar'),
+  );
 
   // Estado formulario de Rama (Crear / Editar)
   const [editandoRama, setEditandoRama] = useState<any | null>(null);

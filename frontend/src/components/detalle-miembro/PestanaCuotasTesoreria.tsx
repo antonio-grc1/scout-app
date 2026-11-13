@@ -20,6 +20,7 @@ import {
   NOMBRES_MESES_CORTOS,
   METODO_PAGO_LABELS,
 } from '../../lib/formatters';
+import { puedeDesvincularIntegrantePorAlcance } from '../../lib/permisos';
 
 export interface CargoEditando {
   id: number;
@@ -46,6 +47,10 @@ export interface PestanaCuotasTesoreriaProps {
   puedeCobrarCuotas: boolean;
   puedeCrearCargoIndividual?: boolean;
   puedeAjustarCuotas?: boolean;
+  puedeVincularHermano?: boolean;
+  puedeEditarDescuentoFamilia?: boolean;
+  esGlobal?: boolean;
+  unidadesEnAlcanceIds?: readonly number[];
   ajustandoSaldo: boolean;
   setAjustandoSaldo: (val: boolean) => void;
   tipoAjusteSaldo: 'CARGAR' | 'DESCONTAR' | 'FIJAR';
@@ -86,6 +91,10 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
   puedeCobrarCuotas,
   puedeCrearCargoIndividual,
   puedeAjustarCuotas,
+  puedeVincularHermano,
+  puedeEditarDescuentoFamilia,
+  esGlobal = true,
+  unidadesEnAlcanceIds = [],
   ajustandoSaldo,
   setAjustandoSaldo,
   tipoAjusteSaldo,
@@ -122,6 +131,15 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
   const habilitarCargoIndividual =
     puedeCrearCargoIndividual ?? (puedeGestionarTesoreria || puedeCobrarCuotas);
   const habilitarAjustes = puedeAjustarCuotas ?? puedeGestionarTesoreria;
+  const habilitarVincularHermano = puedeVincularHermano ?? puedeGestionarTesoreria;
+  const habilitarEditarDescuento = puedeEditarDescuentoFamilia ?? puedeGestionarTesoreria;
+  const puedeDesvincularIntegrante = (h: any) =>
+    habilitarVincularHermano &&
+    puedeDesvincularIntegrantePorAlcance(h, {
+      esGlobal,
+      unidadesEnAlcanceIds,
+      miembroActualId: miembro?.id,
+    });
 
   return (
     <div className="space-y-4">
@@ -297,9 +315,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               </span>
             )}
           </div>
-          {puedeGestionarTesoreria && (
+          {(habilitarVincularHermano || habilitarEditarDescuento) && (
             <div className="flex items-center gap-1.5">
-              {familiar && (
+              {familiar && habilitarEditarDescuento && (
                 <button
                   type="button"
                   onClick={onAbrirModalEditarFamilia}
@@ -308,13 +326,15 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                   Editar Familia ({pctDesc}%)
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onAbrirModalVincularHermano}
-                className="px-2.5 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[11px] cursor-pointer transition-colors"
-              >
-                + Hermano
-              </button>
+              {habilitarVincularHermano && (
+                <button
+                  type="button"
+                  onClick={onAbrirModalVincularHermano}
+                  className="px-2.5 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[11px] cursor-pointer transition-colors"
+                >
+                  + Hermano
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -332,7 +352,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                 <span>
                   {h.nombre} {h.apellido}
                 </span>
-                {puedeGestionarTesoreria && (
+                {puedeDesvincularIntegrante(h) && (
                   <button
                     type="button"
                     disabled={desvinculandoMiembroId === h.id}

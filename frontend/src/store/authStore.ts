@@ -160,13 +160,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
       );
       if (!tieneAsignacionGestion) return false;
 
-      const permisosPanel = [
+      const permisosPanelNoGlobal = [
         'tesoreria.gestionar',
         'tesoreria.conceptos_planes',
-        'tesoreria.caja_ver',
-        'tesoreria.gastos_registrar',
         'cuotas.ver',
-        'cuotas.cobrar',
         'cuotas.ajustar',
         'eventos.ver',
         'eventos.vender',
@@ -175,11 +172,9 @@ export const useAuthStore = create<AuthState>((set, get) => {
         'organizacion.gestionar',
         'roles.gestionar',
         'pases.ver',
-        'pases.ejecutar',
         'legajos.ver',
-        'legajos.plantillas_gestionar',
       ];
-      return tieneGlobal() || permisosPanel.some((p) => tienePermiso(p));
+      return tieneGlobal() || permisosPanelNoGlobal.some((p) => tienePermiso(p));
     },
   };
 });

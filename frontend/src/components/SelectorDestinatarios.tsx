@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
 import { normalizarTextoBusqueda } from '../lib/formatters';
+import { filtrarUnidadesPorAlcance } from '../lib/permisos';
+import { useAuthStore } from '../store/authStore';
 import { Users, UserX, Search, X, Check } from 'lucide-react';
 
 export interface SelectorDestinatariosProps {
@@ -31,6 +33,20 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
   unidades,
   disabled = false,
 }) => {
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
+  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const unidadesPermitidas = useMemo(
+    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
+    [unidades, esGlobal, asignaciones],
+  );
+
+  // Si el usuario no tiene alcance global, nunca puede quedar seleccionado "Todo el Grupo" (null)
+  useEffect(() => {
+    if (!esGlobal && unidadId === null && unidadesPermitidas.length > 0) {
+      onChangeUnidadId(unidadesPermitidas[0].id);
+    }
+  }, [esGlobal, unidadId, unidadesPermitidas, onChangeUnidadId]);
+
   // Buscador de excepciones
   const [busqueda, setBusqueda] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState<MiembroResumen[]>([]);
@@ -200,16 +216,18 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
           2. ¿En qué Rama o Sección?
         </label>
         <select
-          disabled={disabled}
+          disabled={disabled || (!esGlobal && unidadesPermitidas.length <= 1)}
           value={unidadId === null ? '' : String(unidadId)}
           onChange={(e) => {
             const val = e.target.value;
             onChangeUnidadId(val === '' ? null : Number(val));
           }}
-          className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors"
+          className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors disabled:opacity-75"
         >
-          <option value="">Todo el Grupo Scout (Todas las Ramas y Secciones)</option>
-          {unidades.map((u) => (
+          {esGlobal && (
+            <option value="">Todo el Grupo Scout (Todas las Ramas y Secciones)</option>
+          )}
+          {unidadesPermitidas.map((u) => (
             <option key={u.id} value={u.id}>
               {u.nombre}
             </option>
@@ -229,7 +247,9 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
           {' de '}
           {unidadId === null
             ? 'todo el Grupo Scout'
-            : unidades.find((u) => u.id === unidadId)?.nombre || 'la unidad seleccionada'}
+            : unidadesPermitidas.find((u) => u.id === unidadId)?.nombre ||
+              unidades.find((u) => u.id === unidadId)?.nombre ||
+              'la unidad seleccionada'}
         </span>
       </div>
 

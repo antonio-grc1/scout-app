@@ -90,7 +90,7 @@ export class MiembrosController {
     return this.miembros.eliminarDefinitivo(u, a, id, Boolean(forzarFichas));
   }
 
-  @RequireAnyPermission('pases.ejecutar', 'miembros.editar')
+  @RequirePermission('pases.ejecutar')
   @Post(':id/asignaciones')
   agregarAsignacion(
     @Alcance() a: AlcanceAcceso,
@@ -101,7 +101,7 @@ export class MiembrosController {
   }
 
   /** Cierra la asignación (activo=false, fechaFin=hoy). Nunca borra el registro. */
-  @RequireAnyPermission('pases.ejecutar', 'miembros.editar')
+  @RequirePermission('pases.ejecutar')
   @Delete(':id/asignaciones/:asignacionId')
   cerrarAsignacion(
     @CurrentUser() u: AuthUser,

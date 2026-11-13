@@ -44,6 +44,13 @@ enum TipoCuenta {
   BANCO
 }
 
+enum EstadoSolicitudPase {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  CANCELADA
+}
+
 enum TipoMovimientoFinanciero {
   INGRESO_COBRANZA
   INGRESO_OTRO
@@ -75,6 +82,8 @@ model UnidadOrganizativa {
   conceptos    ConceptoCuota[]
   planesCuota  PlanCuotaMensual[]
   rubros       RubroContable[]
+  solicitudesPaseOrigen  SolicitudPase[] @relation("SolicitudesPaseOrigen")
+  solicitudesPaseDestino SolicitudPase[] @relation("SolicitudesPaseDestino")
 
   @@map("unidades_organizativas")
 }
@@ -121,6 +130,9 @@ model Usuario {
   ticketsValidados       TicketEvento[]         @relation("TicketsValidados")
   conceptosExcepcion     ConceptoExcepcion[]
   planesCuotaExcepcion   PlanCuotaExcepcion[]
+  solicitudesPaseMiembro     SolicitudPase[] @relation("SolicitudesPaseMiembro")
+  solicitudesPaseSolicitadas SolicitudPase[] @relation("SolicitudesPaseSolicitadas")
+  solicitudesPaseResueltas   SolicitudPase[] @relation("SolicitudesPaseResueltas")
 
   @@index([grupoFamiliarId])
   @@map("usuarios")
@@ -135,6 +147,7 @@ model Rol {
   esSistema         Boolean             @default(false) @map("es_sistema")
   permisos          RolPermiso[]
   asignaciones      AsignacionMiembro[]
+  solicitudesPase   SolicitudPase[]
 
   @@map("roles")
 }
@@ -173,10 +186,42 @@ model AsignacionMiembro {
   usuario         Usuario            @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   unidad          UnidadOrganizativa @relation(fields: [unidadId], references: [id])
   rol             Rol                @relation(fields: [rolId], references: [id])
+  solicitudesPase SolicitudPase[]
 
   @@index([usuarioId, activo])
   @@index([unidadId, activo])
   @@map("asignaciones_miembro")
+}
+
+model SolicitudPase {
+  id                 Int                 @id @default(autoincrement())
+  asignacionOrigenId Int                 @map("asignacion_origen_id")
+  usuarioId          Int                 @map("usuario_id")
+  unidadOrigenId     Int                 @map("unidad_origen_id")
+  unidadDestinoId    Int                 @map("unidad_destino_id")
+  rolDestinoId       Int                 @map("rol_destino_id")
+  alcanceOverride    AlcanceRol?         @map("alcance_override")
+  modo               String              @default("MOVER") @db.VarChar(20)
+  estado             EstadoSolicitudPase @default(PENDIENTE)
+  solicitadoPorId    Int                 @map("solicitado_por_id")
+  resueltoPorId      Int?                @map("resuelto_por_id")
+  motivoRechazo      String?             @map("motivo_rechazo") @db.VarChar(255)
+  createdAt          DateTime            @default(now()) @map("created_at")
+  resueltoAt         DateTime?           @map("resuelto_at")
+
+  asignacionOrigen   AsignacionMiembro   @relation(fields: [asignacionOrigenId], references: [id], onDelete: Cascade)
+  usuario            Usuario             @relation("SolicitudesPaseMiembro", fields: [usuarioId], references: [id], onDelete: Cascade)
+  unidadOrigen       UnidadOrganizativa  @relation("SolicitudesPaseOrigen", fields: [unidadOrigenId], references: [id])
+  unidadDestino      UnidadOrganizativa  @relation("SolicitudesPaseDestino", fields: [unidadDestinoId], references: [id])
+  rolDestino         Rol                 @relation(fields: [rolDestinoId], references: [id])
+  solicitadoPor      Usuario             @relation("SolicitudesPaseSolicitadas", fields: [solicitadoPorId], references: [id])
+  resueltoPor        Usuario?            @relation("SolicitudesPaseResueltas", fields: [resueltoPorId], references: [id])
+
+  @@index([estado, unidadDestinoId])
+  @@index([estado, unidadOrigenId])
+  @@index([asignacionOrigenId, estado])
+  @@index([usuarioId, estado])
+  @@map("solicitudes_pase")
 }
 
 model PlantillaFormulario {

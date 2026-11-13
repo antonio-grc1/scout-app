@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { filtrarUnidadesPorAlcance, obtenerUnidadesEnAlcanceIds, puedeModificarPorAlcanceUnidad } from '../lib/permisos';
+import { useAuthStore } from '../store/authStore';
 import {
   X,
   CheckCircle2,
@@ -58,6 +60,18 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   onGuardado,
 }) => {
   const anioActual = new Date().getFullYear();
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
+  const tienePermiso = useAuthStore((s) => s.tienePermiso);
+  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const unidadesEnAlcanceIds = useMemo(
+    () => obtenerUnidadesEnAlcanceIds(asignaciones),
+    [asignaciones],
+  );
+  const unidadesPermitidas = useMemo(
+    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
+    [unidades, esGlobal, asignaciones],
+  );
+  const puedeCrearRubroGlobal = esGlobal && tienePermiso('tesoreria.gestionar');
 
   const [nombre, setNombre] = useState('');
   const [cicloAnio, setCicloAnio] = useState(anioActual);
@@ -67,7 +81,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   const [destinatarioTipo, setDestinatarioTipo] = useState<'TODOS' | 'PROTAGONISTAS' | 'EDUCADORES'>('PROTAGONISTAS');
   const [unidadId, setUnidadId] = useState<number | null>(null);
   const [rubroId, setRubroId] = useState<number | ''>('');
-  const [rubros, setRubros] = useState<Array<{ id: number; nombre: string; permiteDescuentoDefault?: boolean }>>([]);
+  const [rubros, setRubros] = useState<Array<{ id: number; nombre: string; permiteDescuentoDefault?: boolean; unidadId?: number | null }>>([]);
   const [permiteDescuentoHermanos, setPermiteDescuentoHermanos] = useState(true);
   const [usarPorcentajePersonalizado, setUsarPorcentajePersonalizado] = useState(false);
   const [porcentajeDescuentoHermanos, setPorcentajeDescuentoHermanos] = useState<number | ''>('');
@@ -126,7 +140,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
       setDiaVencimiento(10);
       setMesesHabilitados([3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
       setDestinatarioTipo('PROTAGONISTAS');
-      setUnidadId(null);
+      setUnidadId(esGlobal ? null : (unidadesPermitidas[0]?.id ?? null));
       setRubroId('');
       setPermiteDescuentoHermanos(true);
       setUsarPorcentajePersonalizado(false);
@@ -286,7 +300,12 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 Categoría / Rubro Contable (Opcional)
               </label>
               <div className="flex items-center gap-2">
-                {rubroId && (
+                {rubroId !== '' &&
+                  tienePermiso('tesoreria.gestionar') &&
+                  puedeModificarPorAlcanceUnidad(
+                    rubros.find((x) => x.id === rubroId)?.unidadId ?? null,
+                    { esGlobal, unidadesEnAlcanceIds },
+                  ) && (
                   <button
                     type="button"
                     onClick={() => {
@@ -307,17 +326,19 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                     <span>Editar</span>
                   </button>
                 )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setRubroAEditar(null);
-                    setModalCrearRubroAbierto(true);
-                  }}
-                  className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <PlusCircle className="w-3 h-3" />
-                  <span>+ Nueva</span>
-                </button>
+                {puedeCrearRubroGlobal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRubroAEditar(null);
+                      setModalCrearRubroAbierto(true);
+                    }}
+                    className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <PlusCircle className="w-3 h-3" />
+                    <span>+ Nueva</span>
+                  </button>
+                )}
               </div>
             </div>
             <select

@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { TipoUnidad } from '@prisma/client';
+import { AlcanceRol, TipoUnidad } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { ActualizarMiPerfilSchema } from './miembros.dto.js';
@@ -983,6 +983,95 @@ describe('MiembrosService - Eliminación definitiva de miembros dados de baja', 
     expect(errorConForzar).toBeInstanceOf(ConflictException);
     expect(errorConForzar.getResponse()?.puedeForzarFichas).toBeUndefined();
     expect(prisma.usuario.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('MiembrosService - Reglas de Educadores en Asignaciones', () => {
+  it('impide que un usuario UNIDAD otorgue un rol EDUCADOR en agregarAsignacion', async () => {
+    const prisma: any = {
+      rol: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 2,
+          nombre: 'Educador de Rama',
+          tipoMiembro: 'EDUCADOR',
+          requiereRama: true,
+          alcancePorDefecto: AlcanceRol.UNIDAD,
+        }),
+      },
+      unidadOrganizativa: {
+        findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }),
+      },
+    };
+    const service = new MiembrosService(prisma);
+
+    await expect(
+      service.agregarAsignacion({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
+        unidadId: 1,
+        rolId: 2,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('impide que un usuario UNIDAD agregue o cierre asignaciones de un miembro EDUCADOR', async () => {
+    const prisma: any = {
+      rol: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 1,
+          nombre: 'Protagonista',
+          tipoMiembro: 'PROTAGONISTA',
+          requiereRama: true,
+          alcancePorDefecto: AlcanceRol.PROPIO,
+        }),
+      },
+      unidadOrganizativa: {
+        findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }),
+      },
+      usuario: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 50,
+          activo: true,
+          asignaciones: [
+            {
+              id: 20,
+              unidadId: 1,
+              activo: true,
+              alcanceOverride: null,
+              rol: { id: 2, tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD },
+            },
+          ],
+        }),
+      },
+      asignacionMiembro: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 20,
+          usuarioId: 50,
+          unidadId: 1,
+          activo: true,
+          alcanceOverride: null,
+          rol: { id: 2, tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD, permisos: [] },
+        }),
+      },
+      $transaction: vi.fn(async (cb: any) => cb(prisma)),
+    };
+    const service = new MiembrosService(prisma);
+    const actor: AuthUser = {
+      sub: 999,
+      dni: '12345678',
+      nombre: 'Edu',
+      apellido: 'Test',
+      asignaciones: [],
+    };
+
+    await expect(
+      service.agregarAsignacion({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
+        unidadId: 1,
+        rolId: 1,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+
+    await expect(
+      service.cerrarAsignacion(actor, { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, 20),
+    ).rejects.toThrow(ForbiddenException);
   });
 });
 

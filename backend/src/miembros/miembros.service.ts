@@ -13,6 +13,7 @@ import {
   alcanceEfectivo,
   assertPuedeOtorgar,
   assertUnidadEnAlcance,
+  esRolEducadorEfectivo,
   filtroUsuariosPorAlcance,
   resolverAlcance,
 } from '../common/scope/alcance.util.js';
@@ -985,11 +986,18 @@ export class MiembrosService {
     if (!usuario || !usuario.activo) throw new NotFoundException('Miembro no encontrado en su alcance');
 
     if (alcance.tipo !== 'GLOBAL') {
-      const tieneAsignacionGlobal = usuario.asignaciones.some(
-        (a) => (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL,
+      const tieneAsignacionGlobalOEducador = usuario.asignaciones.some(
+        (a) =>
+          (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL ||
+          esRolEducadorEfectivo(a.rol, a.alcanceOverride),
       );
-      if (tieneAsignacionGlobal) {
-        throw new ForbiddenException('No puede modificar asignaciones de un usuario con alcance global');
+      if (tieneAsignacionGlobalOEducador) {
+        throw new ForbiddenException(
+          'Solo un usuario con alcance global puede gestionar asignaciones de educadores o usuarios con alcance global',
+        );
+      }
+      if (alcance.tipo === 'UNIDAD' && alcance.usuarioIdPropio && usuarioId === alcance.usuarioIdPropio) {
+        throw new ForbiddenException('No puede agregar asignaciones a su propio usuario');
       }
     }
 
@@ -1042,6 +1050,9 @@ export class MiembrosService {
       if (!asig) throw new NotFoundException('Asignación activa no encontrada');
       assertUnidadEnAlcance(alcance, asig.unidadId);
       assertPuedeOtorgar(alcance, asig.rol, asig.alcanceOverride);
+      if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(asig.rol, asig.alcanceOverride)) {
+        throw new ForbiddenException('Solo un usuario con alcance global puede cerrar asignaciones de educadores');
+      }
 
       if (this.esAsignacionAdminGlobal(asig)) {
         await this.asegurarNoDesactivarUltimoAdmin(usuarioId, asignacionId, tx);
@@ -1145,6 +1156,9 @@ export class MiembrosService {
     const rol = await this.prisma.rol.findUnique({ where: { id: rolId } });
     if (!rol) throw new BadRequestException('Rol inexistente');
     assertPuedeOtorgar(alcance, rol, alcanceOverride);
+    if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(rol, alcanceOverride)) {
+      throw new ForbiddenException('Solo un usuario con alcance global puede otorgar roles de educador');
+    }
 
     let unidad = unidadId
       ? await this.prisma.unidadOrganizativa.findUnique({ where: { id: unidadId } })

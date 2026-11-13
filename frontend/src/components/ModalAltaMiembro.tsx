@@ -13,6 +13,13 @@ import {
   type OpcionGrupoHermanos,
 } from '../lib/formatters';
 import {
+  esUnidadJefatura,
+  esUnidadRama,
+  esUnidadSinRama,
+  filtrarRolesAsignablesPorAlcance,
+  filtrarUnidadesPorAlcance,
+} from '../lib/permisos';
+import {
   X,
   UserPlus,
   Search,
@@ -41,7 +48,8 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   unidadesDisponibles,
   rolesDisponibles,
 }) => {
-  const { tieneGlobal } = useAuthStore();
+  const { tieneGlobal, asignaciones } = useAuthStore();
+  const esGlobal = tieneGlobal();
   const [dni, setDni] = useState('');
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -92,25 +100,28 @@ export const ModalAltaMiembro: React.FC<Props> = ({
     bloqueado: cargando,
   });
 
-  const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null;
-  const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA';
-  const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO';
+  const unidadesPermitidas = useMemo(
+    () => filtrarUnidadesPorAlcance(unidadesDisponibles, { esGlobal, asignaciones }),
+    [unidadesDisponibles, esGlobal, asignaciones],
+  );
+
+  const rolesPermitidos = useMemo(
+    () => filtrarRolesAsignablesPorAlcance(rolesDisponibles, unidadesPermitidas, esGlobal),
+    [rolesDisponibles, unidadesPermitidas, esGlobal],
+  );
 
   const unidadSeleccionada = useMemo(
-    () => unidadesDisponibles.find((u) => u.id === Number(unidadId)),
-    [unidadesDisponibles, unidadId],
+    () => unidadesPermitidas.find((u) => u.id === Number(unidadId)),
+    [unidadesPermitidas, unidadId],
   );
 
   const rolSeleccionado = useMemo(
-    () => rolesDisponibles.find((r) => r.id === Number(rolId)),
-    [rolesDisponibles, rolId],
+    () => rolesPermitidos.find((r) => r.id === Number(rolId)),
+    [rolesPermitidos, rolId],
   );
 
   const rolesFiltrados = useMemo(() => {
-    let list = rolesDisponibles;
-    if (!tieneGlobal()) {
-      list = list.filter((r) => !esRolAlcanceGlobal(r));
-    }
+    const list = rolesPermitidos;
     if (unidadSeleccionada) {
       if (esUnidadRama(unidadSeleccionada)) {
         const deRama = list.filter(esRolRama);
@@ -126,80 +137,102 @@ export const ModalAltaMiembro: React.FC<Props> = ({
       }
     }
     return list;
-  }, [rolesDisponibles, unidadSeleccionada, tieneGlobal]);
+  }, [rolesPermitidos, unidadSeleccionada]);
 
   const unidadesFiltradas = useMemo(() => {
     if (rolSeleccionado) {
       if (!rolRequiereRama(rolSeleccionado)) {
         if (esRolAlcanceGlobal(rolSeleccionado)) {
-          const uJef = unidadesDisponibles.filter(esUnidadJefatura);
+          const uJef = unidadesPermitidas.filter(esUnidadJefatura);
           if (uJef.length > 0) return uJef;
         }
-        const uSin = unidadesDisponibles.filter((u) => !esUnidadRama(u));
+        const uSin = unidadesPermitidas.filter((u) => !esUnidadRama(u));
         if (uSin.length > 0) return uSin;
       } else {
-        const uRama = unidadesDisponibles.filter(esUnidadRama);
+        const uRama = unidadesPermitidas.filter(esUnidadRama);
         if (uRama.length > 0) return uRama;
       }
     }
-    return unidadesDisponibles;
-  }, [unidadesDisponibles, rolSeleccionado]);
+    return unidadesPermitidas;
+  }, [unidadesPermitidas, rolSeleccionado]);
 
   const handleCambioUnidad = (nuevaUnidadId: number) => {
     setUnidadId(nuevaUnidadId);
-    const u = unidadesDisponibles.find((x) => x.id === nuevaUnidadId);
+    const u = unidadesPermitidas.find((x) => x.id === nuevaUnidadId);
     if (!u) return;
 
     if (esUnidadRama(u)) {
-      const rActual = rolesDisponibles.find((r) => r.id === Number(rolId));
+      const rActual = rolesPermitidos.find((r) => r.id === Number(rolId));
       if (!rActual || !rolRequiereRama(rActual)) {
         const prota =
-          rolesDisponibles.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-          rolesDisponibles.find(esRolRama);
+          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+          rolesPermitidos.find(esRolRama);
         if (prota) setRolId(prota.id);
       }
     } else if (esUnidadSinRama(u)) {
-      const rSinRama = rolesDisponibles.find(esRolSinRama) || rolesDisponibles.find((r) => !rolRequiereRama(r));
+      const rSinRama =
+        rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
       if (rSinRama) setRolId(rSinRama.id);
     } else if (esUnidadJefatura(u)) {
-      const rJefe = rolesDisponibles.find(esRolJefe) || rolesDisponibles.find((r) => !rolRequiereRama(r));
+      const rJefe =
+        rolesPermitidos.find(esRolJefe) || rolesPermitidos.find((r) => !rolRequiereRama(r));
       if (rJefe) setRolId(rJefe.id);
     }
   };
 
   const handleCambioRol = (nuevoRolId: number) => {
     setRolId(nuevoRolId);
-    const r = rolesDisponibles.find((x) => x.id === nuevoRolId);
+    const r = rolesPermitidos.find((x) => x.id === nuevoRolId);
     if (!r) return;
 
     if (!rolRequiereRama(r)) {
       if (esRolAlcanceGlobal(r)) {
-        const uJefatura = unidadesDisponibles.find(esUnidadJefatura) || unidadesDisponibles.find((u) => !esUnidadRama(u));
+        const uJefatura =
+          unidadesPermitidas.find(esUnidadJefatura) ||
+          unidadesPermitidas.find((u) => !esUnidadRama(u));
         setUnidadId(uJefatura ? uJefatura.id : '');
       } else {
-        const uSinRama = unidadesDisponibles.find(esUnidadSinRama) || unidadesDisponibles.find((u) => !esUnidadRama(u));
+        const uSinRama =
+          unidadesPermitidas.find(esUnidadSinRama) ||
+          unidadesPermitidas.find((u) => !esUnidadRama(u));
         setUnidadId(uSinRama ? uSinRama.id : '');
       }
     } else {
-      const uActual = unidadesDisponibles.find((x) => x.id === Number(unidadId));
+      const uActual = unidadesPermitidas.find((x) => x.id === Number(unidadId));
       if (!uActual || !esUnidadRama(uActual)) {
-        const primerRama = unidadesDisponibles.find(esUnidadRama);
+        const primerRama = unidadesPermitidas.find(esUnidadRama);
         if (primerRama) setUnidadId(primerRama.id);
       }
     }
   };
 
   useEffect(() => {
-    if (unidadesDisponibles.length > 0 && !unidadId) {
-      setUnidadId(unidadesDisponibles[0].id);
+    if (unidadesPermitidas.length > 0 && (!unidadId || !unidadesPermitidas.some((u) => u.id === Number(unidadId)))) {
+      const unitIni = unidadesPermitidas[0];
+      setUnidadId(unitIni.id);
+      if (esUnidadRama(unitIni)) {
+        const prota =
+          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+          rolesPermitidos.find(esRolRama);
+        if (prota) {
+          setRolId(prota.id);
+          return;
+        }
+      } else if (esUnidadSinRama(unitIni)) {
+        const rSin = rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
+        if (rSin) {
+          setRolId(rSin.id);
+          return;
+        }
+      }
     }
-    if (rolesDisponibles.length > 0 && !rolId) {
+    if (rolesPermitidos.length > 0 && (!rolId || !rolesPermitidos.some((r) => r.id === Number(rolId)))) {
       const prota =
-        rolesDisponibles.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-        rolesDisponibles[0];
-      setRolId(prota ? prota.id : rolesDisponibles[0].id);
+        rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+        rolesPermitidos[0];
+      setRolId(prota ? prota.id : rolesPermitidos[0].id);
     }
-  }, [unidadesDisponibles, rolesDisponibles]);
+  }, [unidadesPermitidas, rolesPermitidos, unidadId, rolId]);
 
   // Búsqueda automática en vivo al escribir DNI, Nombre o Apellido
   useEffect(() => {

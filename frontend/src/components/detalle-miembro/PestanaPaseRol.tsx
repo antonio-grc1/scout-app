@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Sparkles, ArrowRightLeft, PlusCircle, Trash2, ShieldCheck } from 'lucide-react';
 import { RAMA_COLORS } from '../../lib/ramaColors';
+import {
+  esUnidadRama,
+  filtrarRolesParaPase,
+  obtenerRamasPermitidasParaPase,
+} from '../../lib/permisos';
 import { ModalConfirmacion } from '../ModalConfirmacion';
 
 export interface PestanaPaseRolProps {
@@ -8,6 +13,9 @@ export interface PestanaPaseRolProps {
   categoriaDestino: 'RAMA' | 'SIN_RAMA' | 'JEFATURA';
   onCambioCategoria: (cat: 'RAMA' | 'SIN_RAMA' | 'JEFATURA') => void;
   tieneGlobal: () => boolean;
+  unidades?: any[];
+  unidadesEnAlcanceIds?: readonly number[];
+  ramaOrigenId?: number | null;
   ramas: any[];
   ramaSeleccionadaId: number | null;
   ramaSeleccionadaObj: any;
@@ -24,6 +32,7 @@ export interface PestanaPaseRolProps {
   ejecutandoPase: boolean;
   esMismoDestino: boolean;
   asignacionesActivas?: any[];
+  puedeCerrarAsignacion?: (asignacion: any) => boolean;
   onCerrarAsignacion?: (asignacionId: number) => Promise<void>;
   onAgregarAsignacion?: (datos: { rolId: number; unidadId?: number }) => Promise<void>;
   asignacionPrincipalId?: number;
@@ -43,6 +52,9 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
   categoriaDestino,
   onCambioCategoria,
   tieneGlobal,
+  unidades = [],
+  unidadesEnAlcanceIds = [],
+  ramaOrigenId = null,
   ramas,
   ramaSeleccionadaId,
   ramaSeleccionadaObj,
@@ -59,6 +71,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
   ejecutandoPase,
   esMismoDestino,
   asignacionesActivas = [],
+  puedeCerrarAsignacion,
   onCerrarAsignacion,
   onAgregarAsignacion,
   asignacionPrincipalId,
@@ -66,6 +79,104 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
   const [modoAccion, setModoAccion] = useState<'MUDAR' | 'AGREGAR'>('MUDAR');
   const [cerrandoId, setCerrandoId] = useState<number | null>(null);
   const [asigACerrarId, setAsigACerrarId] = useState<number | null>(null);
+
+  const esGlobal = tieneGlobal();
+  const alcanceSet = useMemo(() => new Set(unidadesEnAlcanceIds), [unidadesEnAlcanceIds]);
+  const unidadesPermitidas = useMemo(
+    () => (esGlobal ? unidades : unidades.filter((u) => alcanceSet.has(u.id))),
+    [unidades, esGlobal, alcanceSet],
+  );
+  // Sin Rama / Apoyo y Jefatura requieren rol de Educador o alcance Global.
+  const puedeMostrarSinRama = esGlobal;
+
+  // Sin alcance GLOBAL: MUDAR solo muestra misma rama o inmediatamente siguiente; AGREGAR solo unidades en alcance.
+  const ramasVisibles = useMemo(() => {
+    const permitidasPorProgresion = obtenerRamasPermitidasParaPase({
+      esGlobal,
+      ramas,
+      ramaOrigenId,
+    });
+    if (esGlobal || modoAccion === 'MUDAR') return permitidasPorProgresion;
+    return permitidasPorProgresion.filter((r) =>
+      unidadesPermitidas.some((u) => esUnidadRama(u) && u.ramaId === r.id),
+    );
+  }, [ramas, esGlobal, modoAccion, unidadesPermitidas, ramaOrigenId]);
+
+  const unidadesRamaVisibles = useMemo(() => {
+    if (esGlobal || modoAccion === 'MUDAR') return unidadesRamaSeleccionada;
+    return unidadesRamaSeleccionada.filter((u) => alcanceSet.has(u.id));
+  }, [unidadesRamaSeleccionada, esGlobal, modoAccion, alcanceSet]);
+
+  const unidadDestinoEnAlcance = useMemo(() => {
+    if (esGlobal) return true;
+    const uid = Number(unidadDestinoId);
+    return Number.isFinite(uid) && alcanceSet.has(uid);
+  }, [esGlobal, unidadDestinoId, alcanceSet]);
+
+  const rolesMostrados = useMemo(
+    () =>
+      filtrarRolesParaPase({
+        categoriaDestino,
+        modoAccion,
+        esGlobal,
+        unidadDestinoEnAlcance,
+        rolesRama,
+        rolesSinRama,
+        rolesJefatura,
+      }),
+    [
+      categoriaDestino,
+      modoAccion,
+      esGlobal,
+      unidadDestinoEnAlcance,
+      rolesRama,
+      rolesSinRama,
+      rolesJefatura,
+    ],
+  );
+
+  useEffect(() => {
+    if (categoriaDestino === 'JEFATURA' && !esGlobal) {
+      onCambioCategoria('RAMA');
+      return;
+    }
+    if (categoriaDestino === 'SIN_RAMA' && !puedeMostrarSinRama) {
+      onCambioCategoria('RAMA');
+      return;
+    }
+    if (
+      categoriaDestino === 'RAMA' &&
+      ramasVisibles.length > 0 &&
+      !ramasVisibles.some((r) => r.id === ramaSeleccionadaId)
+    ) {
+      onSeleccionarRama(ramasVisibles[0]);
+      return;
+    }
+    if (
+      categoriaDestino === 'RAMA' &&
+      unidadesRamaVisibles.length > 0 &&
+      !unidadesRamaVisibles.some((u) => u.id === Number(unidadDestinoId))
+    ) {
+      setUnidadDestinoId(String(unidadesRamaVisibles[0].id));
+      return;
+    }
+    if (
+      rolesMostrados.length > 0 &&
+      !rolesMostrados.some((r) => r.id === Number(rolDestinoId))
+    ) {
+      setRolDestinoId(String(rolesMostrados[0].id));
+    }
+  }, [
+    categoriaDestino,
+    esGlobal,
+    puedeMostrarSinRama,
+    ramasVisibles,
+    ramaSeleccionadaId,
+    unidadesRamaVisibles,
+    unidadDestinoId,
+    rolesMostrados,
+    rolDestinoId,
+  ]);
 
   const handleCerrar = (asigId: number) => {
     if (!onCerrarAsignacion) return;
@@ -128,7 +239,9 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                     </div>
                   </div>
 
-                  {asignacionesActivas.length > 1 && onCerrarAsignacion && (
+                  {asignacionesActivas.length > 1 &&
+                    onCerrarAsignacion &&
+                    (!puedeCerrarAsignacion || puedeCerrarAsignacion(asig)) && (
                     <button
                       type="button"
                       disabled={cerrandoId === asig.id || ejecutandoPase}
@@ -197,48 +310,58 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
       )}
 
       {/* Tipo de Destino */}
-      <div className="grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          onClick={() => onCambioCategoria('RAMA')}
-          className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
-            categoriaDestino === 'RAMA'
-              ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30 font-bold'
-              : 'border-rule text-ink-2'
+      {(puedeMostrarSinRama || esGlobal) && (
+        <div
+          className={`grid gap-2 ${
+            esGlobal && puedeMostrarSinRama
+              ? 'grid-cols-3'
+              : 'grid-cols-2'
           }`}
         >
-          Rama
-        </button>
-        <button
-          type="button"
-          onClick={() => onCambioCategoria('SIN_RAMA')}
-          className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
-            categoriaDestino === 'SIN_RAMA'
-              ? 'border-neutral-900 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 ring-2 ring-neutral-400/30 font-bold'
-              : 'border-rule text-ink-2'
-          }`}
-        >
-          Sin Rama / Apoyo
-        </button>
-        {tieneGlobal() && (
           <button
             type="button"
-            onClick={() => onCambioCategoria('JEFATURA')}
+            onClick={() => onCambioCategoria('RAMA')}
             className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
-              categoriaDestino === 'JEFATURA'
-                ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30'
+              categoriaDestino === 'RAMA'
+                ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30 font-bold'
                 : 'border-rule text-ink-2'
             }`}
           >
-            Jefatura / Global
+            Rama
           </button>
-        )}
-      </div>
+          {puedeMostrarSinRama && (
+            <button
+              type="button"
+              onClick={() => onCambioCategoria('SIN_RAMA')}
+              className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
+                categoriaDestino === 'SIN_RAMA'
+                  ? 'border-neutral-900 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 ring-2 ring-neutral-400/30 font-bold'
+                  : 'border-rule text-ink-2'
+              }`}
+            >
+              Sin Rama / Apoyo
+            </button>
+          )}
+          {esGlobal && (
+            <button
+              type="button"
+              onClick={() => onCambioCategoria('JEFATURA')}
+              className={`min-h-[44px] p-2.5 rounded-xl border font-bold text-xs transition cursor-pointer ${
+                categoriaDestino === 'JEFATURA'
+                  ? 'border-brand bg-brand/10 text-brand ring-2 ring-brand/30'
+                  : 'border-rule text-ink-2'
+              }`}
+            >
+              Jefatura / Global
+            </button>
+          )}
+        </div>
+      )}
 
       {categoriaDestino === 'RAMA' && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {ramas.map((rama) => {
+            {ramasVisibles.map((rama) => {
               const config = getRamaColorConfig(rama.nombre);
               const seleccionada = ramaSeleccionadaId === rama.id;
               return (
@@ -266,13 +389,13 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
             })}
           </div>
 
-          {unidadesRamaSeleccionada.length > 1 && (
+          {unidadesRamaVisibles.length > 1 && (
             <div className="space-y-1.5">
               <span className="text-xs font-bold text-ink-2 block">
                 Sección de {ramaSeleccionadaObj?.nombre}:
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {unidadesRamaSeleccionada.map((u) => {
+                {unidadesRamaVisibles.map((u) => {
                   const activa = Number(unidadDestinoId) === u.id;
                   return (
                     <button
@@ -290,6 +413,11 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                   );
                 })}
               </div>
+              {!esGlobal && modoAccion === 'MUDAR' && !unidadDestinoEnAlcance && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl px-3 py-2">
+                  Como {ramaSeleccionadaObj?.nombre || 'esta rama'} tiene múltiples secciones fuera de tu alcance, al confirmar se enviará una solicitud pendiente para que la sección receptora la apruebe.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -300,37 +428,42 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
         <span className="text-xs font-bold text-ink-2 block">
           Función / Rol:
         </span>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {(categoriaDestino === 'RAMA'
-            ? rolesRama
-            : categoriaDestino === 'SIN_RAMA'
-              ? rolesSinRama
-              : rolesJefatura
-          ).map((r) => {
-            const activo = Number(rolDestinoId) === r.id;
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setRolDestinoId(String(r.id))}
-                className={`min-h-[42px] px-3 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                  activo
-                    ? 'border-brand bg-brand/10 text-brand font-bold'
-                    : 'border-rule text-ink-2'
-                }`}
-              >
-                {r.nombre}
-              </button>
-            );
-          })}
-        </div>
+        {rolesMostrados.length === 0 ? (
+          <p className="text-xs text-ink-muted p-3 rounded-xl border border-rule bg-paper-2">
+            No tenés roles habilitados para asignar en esta sección fuera de tu alcance.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {rolesMostrados.map((r) => {
+              const activo = Number(rolDestinoId) === r.id;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => setRolDestinoId(String(r.id))}
+                  className={`min-h-[42px] px-3 py-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                    activo
+                      ? 'border-brand bg-brand/10 text-brand font-bold'
+                      : 'border-rule text-ink-2'
+                  }`}
+                >
+                  {r.nombre}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <button
         type="button"
         disabled={
           ejecutandoPase ||
-          (!unidadDestinoId && !rolDestinoId) ||
+          rolesMostrados.length === 0 ||
+          !rolDestinoId ||
+          !rolesMostrados.some((r) => r.id === Number(rolDestinoId)) ||
+          (categoriaDestino === 'RAMA' &&
+            (!unidadDestinoId || (modoAccion === 'AGREGAR' && !unidadDestinoEnAlcance))) ||
           (modoAccion === 'MUDAR' && esMismoDestino)
         }
         onClick={handleConfirmar}

@@ -201,7 +201,9 @@ export const PanelGestorRoles: React.FC<Props> = ({
   onToast,
 }) => {
   const puedeGestionarRoles = useAuthStore(
-    (s) => s.tienePermiso('roles.gestionar') || s.tienePermiso('organizacion.gestionar'),
+    (s) =>
+      s.tieneGlobal() &&
+      (s.tienePermiso('roles.gestionar') || s.tienePermiso('organizacion.gestionar')),
   );
   const [rolEditando, setRolEditando] = useState<any | null>(null);
   const [modalAbierto, setModalAbierto] = useState(false);

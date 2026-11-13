@@ -9,14 +9,17 @@ import { ModalDetalleMiembro } from '../../components/ModalDetalleMiembro';
 import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
 import { ModalImportarMiembros } from '../../components/ModalImportarMiembros';
 import { MiembroCard } from '../../components/MiembroCard';
+import { PanelSolicitudesPase } from '../../components/PanelSolicitudesPase';
 import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
 import { useModalOverlay } from '../../hooks/useModalOverlay';
 import { obtenerConfigRama, obtenerOrdenRama } from '../../lib/ramaColors';
+import { filtrarUnidadesPorAlcance } from '../../lib/permisos';
 import {
   ESTADO_FICHA_CONFIG,
   calcularCamada,
   calcularEdad,
   esErrorOffline,
+  esRolAlcanceGlobal,
   esRolDeEducador,
   formatearFecha,
   formatearNombreFamilia,
@@ -95,7 +98,8 @@ const obtenerTextoDireccion = (campo: CampoOrden, dir: DireccionOrden): string =
 };
 
 export const UnidadPage: React.FC = () => {
-  const { tienePermiso } = useAuthStore();
+  const { tienePermiso, tieneGlobal, asignaciones } = useAuthStore();
+  const esGlobal = tieneGlobal();
   const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
   const puedeEjecutarPases = tienePermiso('pases.ejecutar');
   const puedeVerCuotas = tienePermiso('cuotas.ver') || tienePermiso('tesoreria.gestionar');
@@ -104,6 +108,7 @@ export const UnidadPage: React.FC = () => {
 
   const [miembros, setMiembros] = useState<any[]>([]);
   const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
+  const [solicitudesPase, setSolicitudesPase] = useState<any[]>([]);
   const [entregas, setEntregas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
@@ -236,10 +241,11 @@ export const UnidadPage: React.FC = () => {
   const cargarDatos = async () => {
     setCargando(true);
     try {
-      const [miembrosLista, resCandidatos, resEntregas, resUnidades, resRoles, resRamas] =
+      const [miembrosLista, resCandidatos, resSolicitudes, resEntregas, resUnidades, resRoles, resRamas] =
         await Promise.all([
           cargarTodosLosMiembrosPaginados(),
           puedeVerPases ? api.get('/pases/candidatos').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          puedeVerPases ? api.get('/pases/solicitudes').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           puedeVerFichas ? api.get(`/legajos/entregas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/organizacion/unidades').catch(() => ({ data: [] })),
           api.get('/organizacion/roles').catch(() => ({ data: [] })),
@@ -248,6 +254,7 @@ export const UnidadPage: React.FC = () => {
 
       setMiembros(miembrosLista);
       setCandidatosPase(resCandidatos.data || []);
+      setSolicitudesPase(resSolicitudes.data || []);
       setEntregas(resEntregas.data || []);
       setUnidades(resUnidades.data || []);
       setRoles(resRoles.data || []);
@@ -288,8 +295,12 @@ export const UnidadPage: React.FC = () => {
   }, [entregas]);
 
   const candidatosIds = useMemo(() => {
-    return new Set(candidatosPase.map((c) => c.usuario?.id));
-  }, [candidatosPase]);
+    return new Set(
+      candidatosPase
+        .filter((c) => esGlobal || (!c.requiereAlcanceGlobal && c.tipo !== 'EGRESO'))
+        .map((c) => c.usuario?.id),
+    );
+  }, [candidatosPase, esGlobal]);
 
   // Acción rápida 1-Tap: Recibir y validar ficha física sin abrir modales
   const handleValidarFichaDirecto = async (entrega: any) => {
@@ -354,6 +365,19 @@ export const UnidadPage: React.FC = () => {
     }
     return mapa;
   }, [miembros]);
+
+  const unidadesVisibles = useMemo(
+    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
+    [unidades, esGlobal, asignaciones],
+  );
+
+  const rolesVisibles = useMemo(
+    () =>
+      esGlobal
+        ? roles
+        : roles.filter((r) => !esRolAlcanceGlobal(r) || (conteoPorRol.get(r.id) || 0) > 0),
+    [roles, esGlobal, conteoPorRol],
+  );
 
   const toggleSeccion = (id: number) => {
     setSeccionesFiltro((prev) =>
@@ -625,6 +649,8 @@ export const UnidadPage: React.FC = () => {
         edadAlCorte: number;
         unidadActual: string;
         ramaSugeridaNombre: string;
+        tipo: string;
+        requiereAlcanceGlobal: boolean;
         unidadesDestino: Array<{ id: number; nombre: string }>;
         miembros: any[];
       }
@@ -641,6 +667,8 @@ export const UnidadPage: React.FC = () => {
           unidadActual: c.unidadActual?.nombre || 'Rama',
           ramaSugeridaNombre:
             c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Educador / Apoyo',
+          tipo: c.tipo,
+          requiereAlcanceGlobal: Boolean(c.requiereAlcanceGlobal),
           unidadesDestino: c.unidadesDestino || [],
           miembros: [],
         });
@@ -655,19 +683,32 @@ export const UnidadPage: React.FC = () => {
     key: string;
     camada: number;
     ramaSugeridaNombre: string;
+    tipo: string;
+    requiereAlcanceGlobal: boolean;
     unidadesDestino: Array<{ id: number; nombre: string }>;
     miembros: any[];
   }) => {
     if (ejecutandoCamadaKey) return;
+    if (!esGlobal && (grupo.tipo === 'EGRESO' || grupo.requiereAlcanceGlobal)) {
+      mostrarToast('El pase a Educador requiere alcance global (Jefatura).', 'error');
+      return;
+    }
+    const elegibles = grupo.miembros.filter((m) => !m.solicitudPendiente);
+    if (elegibles.length === 0) {
+      mostrarToast('Todos los integrantes de esta camada ya tienen una solicitud pendiente.', 'error');
+      return;
+    }
     const destinoId =
       destinoPorCamada[grupo.key] ||
       grupo.unidadesDestino?.[0]?.id ||
-      unidades.find(
-        (u) =>
-          u.tipo === 'SIN_RAMA_APOYO' ||
-          u.nombre?.toLowerCase().includes('sin rama') ||
-          u.nombre?.toLowerCase().includes('apoyo'),
-      )?.id;
+      (esGlobal
+        ? unidades.find(
+            (u) =>
+              u.tipo === 'SIN_RAMA_APOYO' ||
+              u.nombre?.toLowerCase().includes('sin rama') ||
+              u.nombre?.toLowerCase().includes('apoyo'),
+          )?.id
+        : undefined);
 
     if (!destinoId) {
       mostrarToast('Seleccioná una sección de destino para ejecutar el pase.', 'error');
@@ -676,8 +717,8 @@ export const UnidadPage: React.FC = () => {
 
     setEjecutandoCamadaKey(grupo.key);
     try {
-      await api.post('/pases/lote', {
-        pases: grupo.miembros.map((c) => ({
+      const res = await api.post('/pases/lote', {
+        pases: elegibles.map((c) => ({
           asignacionOrigenId: c.asignacionId,
           unidadDestinoId: Number(destinoId),
         })),
@@ -685,9 +726,17 @@ export const UnidadPage: React.FC = () => {
       const destNombre =
         grupo.unidadesDestino.find((u) => u.id === Number(destinoId))?.nombre ||
         grupo.ramaSugeridaNombre;
-      mostrarToast(
-        `Camada ${grupo.camada} (${grupo.miembros.length} miembro${grupo.miembros.length === 1 ? '' : 's'}) pasó a ${destNombre}.`,
-      );
+      const pendientes = res.data?.pendientesAprobacion ?? 0;
+      const directos = res.data?.ejecutadosDirectos ?? elegibles.length;
+      if (pendientes > 0 && directos === 0) {
+        mostrarToast(
+          `Se enviaron ${pendientes} solicitud(es) de pase hacia ${destNombre} para confirmación de la sección receptora.`,
+        );
+      } else {
+        mostrarToast(
+          `Camada ${grupo.camada} (${elegibles.length} miembro${elegibles.length === 1 ? '' : 's'}) pasó a ${destNombre}.`,
+        );
+      }
       await cargarDatos();
     } catch (err) {
       mostrarToast(traducirErrorAmigable(err, 'No se pudo ejecutar el pase de la camada.'), 'error');
@@ -1134,12 +1183,12 @@ export const UnidadPage: React.FC = () => {
                   <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
                     <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
                       <span className="font-bold text-xs text-ink">
-                        Secciones ({unidades.length})
+                        Secciones ({unidadesVisibles.length})
                       </span>
                       <div className="flex items-center gap-2 text-[11px] font-bold">
                         <button
                           type="button"
-                          onClick={() => setSeccionesFiltro(unidades.map((u) => u.id))}
+                          onClick={() => setSeccionesFiltro(unidadesVisibles.map((u) => u.id))}
                           className="text-brand hover:underline cursor-pointer"
                         >
                           Marcar todas
@@ -1170,7 +1219,7 @@ export const UnidadPage: React.FC = () => {
 
                     {/* Lista con Checkboxes */}
                     <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
-                      {unidades.map((u) => {
+                      {unidadesVisibles.map((u) => {
                         const estaMarcada = seccionesFiltro.includes(u.id);
                         const cant = conteoPorUnidad.get(u.id) || 0;
                         return (
@@ -1255,12 +1304,12 @@ export const UnidadPage: React.FC = () => {
                   <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
                     <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
                       <span className="font-bold text-xs text-ink">
-                        Roles ({roles.length})
+                        Roles ({rolesVisibles.length})
                       </span>
                       <div className="flex items-center gap-2 text-[11px] font-bold">
                         <button
                           type="button"
-                          onClick={() => setRolesFiltro(roles.map((r) => r.id))}
+                          onClick={() => setRolesFiltro(rolesVisibles.map((r) => r.id))}
                           className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                         >
                           Marcar todos
@@ -1291,7 +1340,7 @@ export const UnidadPage: React.FC = () => {
 
                     {/* Lista con Checkboxes */}
                     <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
-                      {roles.map((r) => {
+                      {rolesVisibles.map((r) => {
                         const estaMarcado = rolesFiltro.includes(r.id);
                         const cant = conteoPorRol.get(r.id) || 0;
                         return (
@@ -1667,6 +1716,19 @@ export const UnidadPage: React.FC = () => {
         </div>
 
 
+        {/* Solicitudes de pase pendientes entre secciones */}
+        {puedeVerPases &&
+          solicitudesPase.length > 0 &&
+          (chipActivo === 'PASE_SUGERIDO' || solicitudesPase.some((s) => s.puedeAprobar)) && (
+            <PanelSolicitudesPase
+              solicitudes={solicitudesPase}
+              puedeEjecutar={puedeEjecutarPases}
+              onResuelto={cargarDatos}
+              onToast={mostrarToast}
+              onAbrirMiembro={(id) => abrirMiembro(id, 'datos')}
+            />
+          )}
+
         {/* Panel de Pase en Lote por Camada cuando se activa el filtro PASE_SUGERIDO */}
         {puedeVerPases && chipActivo === 'PASE_SUGERIDO' && gruposCamadaPase.length > 0 && (
           <div className="bg-brand/10 border border-brand/30 rounded-2xl p-4 space-y-3">
@@ -1729,21 +1791,32 @@ export const UnidadPage: React.FC = () => {
                       )}
 
                       {puedeEjecutarPases ? (
-                        <button
-                          type="button"
-                          disabled={Boolean(ejecutandoCamadaKey)}
-                          onClick={() => handlePasarCamada(g)}
-                          className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
-                        >
-                          {ejecutando ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          ) : (
-                            <ArrowRightLeft className="w-3.5 h-3.5" />
-                          )}
-                          <span>
-                            Pasar Camada {g.camada} ({g.miembros.length})
+                        !esGlobal && (g.tipo === 'EGRESO' || g.requiereAlcanceGlobal) ? (
+                          <span className="text-xs font-bold text-amber-700 dark:text-amber-300 px-2">
+                            Requiere Jefatura (Global)
                           </span>
-                        </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={
+                              Boolean(ejecutandoCamadaKey) ||
+                              g.miembros.every((m) => Boolean(m.solicitudPendiente))
+                            }
+                            onClick={() => handlePasarCamada(g)}
+                            className="min-h-[38px] px-4 py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 active:opacity-100 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs"
+                          >
+                            {ejecutando ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                            )}
+                            <span>
+                              {g.miembros.every((m) => Boolean(m.solicitudPendiente))
+                                ? `Camada ${g.camada} con solicitud pendiente`
+                                : `Pasar Camada ${g.camada} (${g.miembros.filter((m) => !m.solicitudPendiente).length})`}
+                            </span>
+                          </button>
+                        )
                       ) : (
                         <span className="text-xs text-brand font-semibold px-2">
                           Sugerencia de pase por edad

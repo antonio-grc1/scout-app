@@ -72,9 +72,8 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   }, [onToast]);
   const puedeGestionarEventos = useAuthStore(
     (s) =>
-      s.tienePermiso('eventos.gestionar') ||
-      s.tienePermiso('tesoreria.gestionar') ||
-      s.tienePermiso('tesoreria.conceptos_planes'),
+      s.tieneGlobal() &&
+      (s.tienePermiso('eventos.gestionar') || s.tienePermiso('tesoreria.gestionar')),
   );
   const puedeVender = useAuthStore(
     (s) =>

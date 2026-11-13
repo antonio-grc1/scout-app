@@ -15,6 +15,7 @@ import {
   obtenerCicloAnioActual,
   obtenerRolPrincipal,
   obtenerRolesSecundarios,
+  esRolAlcanceGlobal,
   esRolDeEducador,
   esRolDeProtagonista,
   esRolJefe,
@@ -26,7 +27,17 @@ import {
   traducirErrorAmigable,
 } from '../lib/formatters';
 import { BotonLlamarMiembro } from './BotonLlamarMiembro';
-import { usePermisosUI } from '../lib/permisos';
+import {
+  esUnidadJefatura,
+  esUnidadRama,
+  esUnidadSinRama,
+  miembroEsEducador,
+  miembroTieneAlcanceGlobal,
+  obtenerUnidadesEnAlcanceIds,
+  puedeCerrarAsignacionPorAlcance,
+  puedeEditarFamiliaPorAlcance,
+  usePermisosUI,
+} from '../lib/permisos';
 import {
   X,
   User,
@@ -56,16 +67,7 @@ interface Props {
   tabInicial?: 'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas';
 }
 
-const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null;
-const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA';
-const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO';
-
-
-
-
-
 const CARGOS_VACIOS: any[] = [];
-
 
 export const ModalDetalleMiembro: React.FC<Props> = ({
   usuarioId,
@@ -77,10 +79,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 }) => {
   const { usuario: usuarioActual, asignaciones: asignacionesActuales, tieneGlobal, tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
   const { canEdit, canView } = usePermisosUI();
-  const puedeEditarIdentidad = canEdit('miembro', 'identidad');
-  const puedeEditarContacto = canEdit('miembro', 'contacto');
-  const puedeDarBaja = canEdit('miembro', 'estado');
-  const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
+  const esGlobal = tieneGlobal();
+  const unidadesEnAlcanceIds = useMemo(
+    () => obtenerUnidadesEnAlcanceIds(asignacionesActuales),
+    [asignacionesActuales],
+  );
   const tieneBajaGlobal = asignacionesActuales.some(
     (a) => a.alcance === 'GLOBAL' && a.permisos.includes('miembros.baja'),
   );
@@ -92,10 +95,21 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const puedeVerFicha = canView('ficha');
   const puedeCompletarFicha = canEdit('ficha', 'completar');
   const puedeValidarFisico = canEdit('ficha', 'validarFisico');
-  const puedeHacerPases = canEdit('miembro', 'pase');
-  const puedeResetearClave = canEdit('miembro', 'clave');
   const [tab, setTab] = useState<'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'>(tabInicial);
   const [miembro, setMiembro] = useState<any | null>(null);
+  const targetEsGlobal = useMemo(() => miembroTieneAlcanceGlobal(miembro), [miembro]);
+  const targetEsEducador = useMemo(() => miembroEsEducador(miembro), [miembro]);
+  const esMismoUsuario = Boolean(miembro && usuarioActual && miembro.id === usuarioActual.id);
+  const bloqueadoPorTargetGlobal = !esGlobal && targetEsGlobal;
+  const puedeEditarIdentidad = canEdit('miembro', 'identidad') && !bloqueadoPorTargetGlobal;
+  const puedeEditarContacto = canEdit('miembro', 'contacto') && !bloqueadoPorTargetGlobal;
+  const puedeDarBaja = canEdit('miembro', 'estado') && !bloqueadoPorTargetGlobal;
+  const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
+  const puedeHacerPases =
+    canEdit('miembro', 'pase') &&
+    !bloqueadoPorTargetGlobal &&
+    !(!esGlobal && (esMismoUsuario || targetEsEducador));
+  const puedeResetearClave = canEdit('miembro', 'clave') && !bloqueadoPorTargetGlobal;
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
   const [entregas, setEntregas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
@@ -211,20 +225,32 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   }, [candidatoPase, miembro]);
 
   const rolesRama = useMemo(() => {
-    if (esEgreso) {
-      const edus = roles.filter((r) => esRolRama(r) && esRolDeEducador(r));
-      return edus.length > 0 ? edus : roles.filter(esRolRama);
+    const base = roles.filter((r) => esRolRama(r) && (esGlobal || !esRolAlcanceGlobal(r)));
+    if (esEgreso && esGlobal) {
+      const edus = base.filter((r) => esRolDeEducador(r));
+      return edus.length > 0 ? edus : base;
     }
-    return roles.filter(esRolRama);
-  }, [roles, esEgreso]);
+    return base;
+  }, [roles, esEgreso, esGlobal]);
   const rolesSinRama = useMemo(() => {
-    const sr = roles.filter(esRolSinRama);
-    return sr.length > 0 ? sr : roles.filter((r) => !rolRequiereRama(r) && !esRolJefe(r));
-  }, [roles]);
+    const permitidos = esGlobal ? roles : roles.filter((r) => !esRolAlcanceGlobal(r));
+    const sr = permitidos.filter(esRolSinRama);
+    return sr.length > 0 ? sr : permitidos.filter((r) => !rolRequiereRama(r) && !esRolJefe(r));
+  }, [roles, esGlobal]);
   const rolesJefatura = useMemo(() => {
+    if (!esGlobal) return [];
     const jf = roles.filter(esRolJefe);
     return jf.length > 0 ? jf : roles.filter((r) => !rolRequiereRama(r));
-  }, [roles]);
+  }, [roles, esGlobal]);
+
+  const familiaActual = miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar;
+  const puedeVincularHermano = !bloqueadoPorTargetGlobal && canEdit('miembro', 'familia');
+  const puedeEditarDescuentoFamilia = Boolean(
+    familiaActual &&
+      !bloqueadoPorTargetGlobal &&
+      canEdit('miembro', 'descuentoFamiliar') &&
+      puedeEditarFamiliaPorAlcance(familiaActual, { esGlobal, unidadesEnAlcanceIds }),
+  );
 
   const asignacionPrincipal = miembro ? obtenerRolPrincipal(miembro) : null;
   const asignacionesActivas = useMemo(() => obtenerAsignacionesActivas(miembro), [miembro]);
@@ -648,7 +674,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     setEjecutandoPase(true);
     setAlerta(null);
     try {
-      await api.post('/pases', {
+      const resPase = await api.post('/pases', {
         asignacionOrigenId: asignacionPrincipal.id,
         unidadDestinoId: unidadDestinoId ? Number(unidadDestinoId) : undefined,
         rolDestinoId: rolDestinoId ? Number(rolDestinoId) : undefined,
@@ -656,7 +682,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
       setAlerta({
         tipo: 'exito',
-        texto: `Pase / cambio de rol a ${nombreDestino} realizado.`,
+        texto: resPase.data?.pendienteAprobacion
+          ? `Solicitud de pase a ${nombreDestino} enviada para confirmación de la sección receptora.`
+          : `Pase / cambio de rol a ${nombreDestino} realizado.`,
       });
       await refrescarSesionDesdeServidor();
       if (onActualizado) onActualizado();
@@ -1408,6 +1436,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   puedeDarBaja={puedeDarBaja}
                   puedeEditarMiembro={puedeEditarMiembro}
                   puedeGestionarTesoreria={puedeGestionarTesoreria}
+                  puedeVincularHermano={puedeVincularHermano}
+                  puedeEditarDescuentoFamilia={puedeEditarDescuentoFamilia}
+                  esGlobal={esGlobal}
+                  unidadesEnAlcanceIds={unidadesEnAlcanceIds}
                   puedeEliminarDefinitivo={puedeEliminarDefinitivo}
                   eliminandoDefinitivo={eliminandoDefinitivo}
                   onGuardarDatos={handleGuardarDatos}
@@ -1431,6 +1463,10 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   puedeCobrarCuotas={puedeCobrarCuotas}
                   puedeCrearCargoIndividual={puedeCrearCargoIndividual}
                   puedeAjustarCuotas={puedeAjustarCuotas}
+                  puedeVincularHermano={puedeVincularHermano}
+                  puedeEditarDescuentoFamilia={puedeEditarDescuentoFamilia}
+                  esGlobal={esGlobal}
+                  unidadesEnAlcanceIds={unidadesEnAlcanceIds}
                   ajustandoSaldo={ajustandoSaldo}
                   setAjustandoSaldo={setAjustandoSaldo}
                   tipoAjusteSaldo={tipoAjusteSaldo}
@@ -1503,6 +1539,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   categoriaDestino={categoriaDestino}
                   onCambioCategoria={handleCambioCategoria}
                   tieneGlobal={tieneGlobal}
+                  unidades={unidades}
+                  unidadesEnAlcanceIds={unidadesEnAlcanceIds}
+                  ramaOrigenId={asignacionPrincipal?.unidad?.ramaId ?? null}
                   ramas={ramas}
                   ramaSeleccionadaId={ramaSeleccionadaId}
                   ramaSeleccionadaObj={ramaSeleccionadaObj}
@@ -1519,8 +1558,19 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   ejecutandoPase={ejecutandoPase}
                   esMismoDestino={esMismoDestino}
                   asignacionesActivas={asignacionesActivas}
+                  puedeCerrarAsignacion={(asig) =>
+                    puedeCerrarAsignacionPorAlcance(asig, {
+                      esGlobal,
+                      unidadesEnAlcanceIds,
+                      esMismoUsuario,
+                    })
+                  }
                   onCerrarAsignacion={handleCerrarAsignacion}
-                  onAgregarAsignacion={handleAgregarAsignacion}
+                  onAgregarAsignacion={
+                    esGlobal || unidadesEnAlcanceIds.length > 0
+                      ? handleAgregarAsignacion
+                      : undefined
+                  }
                   asignacionPrincipalId={asignacionPrincipal?.id}
                 />
               )}

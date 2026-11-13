@@ -15,6 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
@@ -92,6 +93,8 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
   });
   const [modalConfirmarEliminar, setModalConfirmarEliminar] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
+  const puedeImputarCuenta = !bloquearVendedor && esGlobal;
 
   // Buscador de miembros
   const [busquedaMiembro, setBusquedaMiembro] = useState('');
@@ -169,7 +172,9 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
     try {
       const [resMiembros, resCuentas] = await Promise.all([
         api.get('/miembros?porPagina=100').catch(() => ({ data: { items: [] } })),
-        api.get('/tesoreria/cuentas').catch(() => ({ data: [] })),
+        esGlobal
+          ? api.get('/tesoreria/cuentas').catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] }),
       ]);
       const mData = resMiembros.data;
       const mList = Array.isArray(mData)
@@ -298,7 +303,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
       return;
     }
 
-    if (metodoPago !== 'PENDIENTE' && !cuentaId) {
+    if (puedeImputarCuenta && metodoPago !== 'PENDIENTE' && !cuentaId) {
       setError('Por favor seleccioná en qué cuenta financiera ingresa el cobro');
       return;
     }
@@ -326,8 +331,11 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         compradorNombre: compradorNombre.trim(),
         compradorContacto: compradorContacto.trim() || undefined,
         vendedorUsuarioId: vendedorUsuarioId ? Number(vendedorUsuarioId) : null,
-        metodoPago: metodoPago === 'PENDIENTE' ? undefined : metodoPago,
-        cuentaId: metodoPago !== 'PENDIENTE' && cuentaId ? Number(cuentaId) : undefined,
+        metodoPago: puedeImputarCuenta && metodoPago !== 'PENDIENTE' ? metodoPago : undefined,
+        cuentaId:
+          puedeImputarCuenta && metodoPago !== 'PENDIENTE' && cuentaId
+            ? Number(cuentaId)
+            : undefined,
         observaciones: observaciones.trim() || undefined,
       };
 
@@ -687,8 +695,8 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             />
           </div>
 
-          {/* Cobro en el momento (solo si no es autogestión con vendedor bloqueado) */}
-          {!bloquearVendedor && (
+          {/* Cobro en el momento (solo con alcance global y fuera de autogestión) */}
+          {puedeImputarCuenta && (
             <div className="space-y-2 pt-2 border-t border-rule">
               <label className="block text-xs font-bold text-ink">Estado del Cobro:</label>
               <div className="grid grid-cols-3 gap-2">

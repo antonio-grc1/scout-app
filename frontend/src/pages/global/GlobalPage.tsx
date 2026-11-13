@@ -1,8 +1,15 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../../store/toastStore';
+import {
+  calcularPermisosPanelGlobal,
+  filtrarUnidadesPorAlcance,
+  obtenerUnidadesEnAlcanceIds,
+  puedeEditarFamiliaPorAlcance,
+  puedeModificarPorAlcanceUnidad,
+} from '../../lib/permisos';
 import { Navbar } from '../../components/Navbar';
 import { ModalPlanCuotaMensual } from '../../components/ModalPlanCuotaMensual';
 import { ModalCobroCampamento } from '../../components/ModalCobroCampamento';
@@ -55,58 +62,38 @@ type TabGestion = 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pa
 type SubTabTesoreria = 'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias';
 
 export const GlobalPage: React.FC = () => {
-  const { tienePermiso, asignaciones, refrescarSesionDesdeServidor } = useAuthStore();
-  const puedeVerTesoreria =
-    tienePermiso('tesoreria.gestionar') ||
-    tienePermiso('tesoreria.conceptos_planes') ||
-    tienePermiso('tesoreria.caja_ver') ||
-    tienePermiso('tesoreria.gastos_registrar') ||
-    tienePermiso('cuotas.ver') ||
-    tienePermiso('cuotas.cobrar') ||
-    tienePermiso('cuotas.ajustar') ||
-    tienePermiso('eventos.ver') ||
-    tienePermiso('eventos.vender') ||
-    tienePermiso('eventos.gestionar');
-  const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
-  const puedeVerColaboradores = tienePermiso('legajos.ver');
-  const puedeVerOrganizacion = tienePermiso('organizacion.ver') || tienePermiso('organizacion.gestionar');
-  const puedeVerRoles =
-    tienePermiso('roles.gestionar') ||
-    tienePermiso('organizacion.gestionar') ||
-    tienePermiso('organizacion.ver');
-  const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.ejecutar');
-  const puedeVerPlantillas = tienePermiso('legajos.plantillas_gestionar') || tienePermiso('legajos.ver');
-  const puedeVerCorreo = asignaciones.some(
-    (a) =>
-      a.alcance === 'GLOBAL' &&
-      (a.permisos.includes('organizacion.gestionar') || a.permisos.includes('roles.gestionar')),
+  const { tienePermiso, tieneGlobal, asignaciones, refrescarSesionDesdeServidor } = useAuthStore();
+  const esGlobal = tieneGlobal();
+  const unidadesEnAlcanceIds = useMemo(
+    () => obtenerUnidadesEnAlcanceIds(asignaciones),
+    [asignaciones],
   );
 
-  const puedeVerCaja = tienePermiso('tesoreria.caja_ver') || tienePermiso('tesoreria.gestionar');
-  const puedeVerGastos =
-    tienePermiso('tesoreria.gastos_registrar') ||
-    tienePermiso('tesoreria.caja_ver') ||
-    tienePermiso('tesoreria.gestionar');
-  const puedeVerBalance = tienePermiso('tesoreria.caja_ver') || tienePermiso('tesoreria.gestionar');
-  const puedeVerEventos =
-    tienePermiso('eventos.ver') ||
-    tienePermiso('eventos.vender') ||
-    tienePermiso('eventos.gestionar') ||
-    tienePermiso('tesoreria.gestionar') ||
-    tienePermiso('tesoreria.conceptos_planes') ||
-    tienePermiso('cuotas.ver');
-  const puedeVerPlanes =
-    tienePermiso('tesoreria.conceptos_planes') ||
-    tienePermiso('tesoreria.gestionar') ||
-    tienePermiso('cuotas.ver');
-  const puedeVerCampamentos =
-    tienePermiso('tesoreria.conceptos_planes') ||
-    tienePermiso('cuotas.cobrar') ||
-    tienePermiso('tesoreria.gestionar');
-  const puedeVerFamilias =
-    tienePermiso('tesoreria.gestionar') ||
+  const {
+    puedeVerCaja,
+    puedeVerGastos,
+    puedeVerBalance,
+    puedeVerEventos,
+    puedeVerPlanes,
+    puedeVerCampamentos,
+    puedeVerFamilias,
+    puedeVerTesoreria,
+    puedeVerColaboradores,
+    puedeVerOrganizacion,
+    puedeVerRoles,
+    puedeVerPases,
+    puedeVerPlantillas,
+    puedeVerCorreo,
+  } = calcularPermisosPanelGlobal({ esGlobal, tienePermiso, asignaciones });
+
+  const puedeGestionarRubrosGlobales = esGlobal && tienePermiso('tesoreria.gestionar');
+  const puedeCrearConceptosYPlanes =
+    (tienePermiso('tesoreria.conceptos_planes') || tienePermiso('tesoreria.gestionar')) &&
+    (esGlobal || unidadesEnAlcanceIds.length > 0);
+  const puedeEditarDescuentoFamilia =
     tienePermiso('cuotas.ajustar') ||
-    tienePermiso('miembros.editar');
+    tienePermiso('tesoreria.gestionar') ||
+    tienePermiso('tesoreria.conceptos_planes');
 
   const tabPorDefecto = (): TabGestion => {
     if (puedeVerTesoreria) return 'tesoreria';
@@ -114,6 +101,7 @@ export const GlobalPage: React.FC = () => {
     if (puedeVerOrganizacion) return 'organizacion';
     if (puedeVerPlantillas) return 'plantillas';
     if (puedeVerPases) return 'pases';
+    if (puedeVerCorreo) return 'correo';
     return 'colaboradores';
   };
 
@@ -231,7 +219,17 @@ export const GlobalPage: React.FC = () => {
     cargarDatos();
   }, [tab, mostrarInactivasOrg]);
 
+  const unidadesEnAlcance = useMemo(
+    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
+    [unidades, esGlobal, asignaciones],
+  );
+  const tieneAlgunTabPermitido = Object.values(permisoPorTab).some(Boolean);
+
   const cargarDatos = async () => {
+    if (!tieneAlgunTabPermitido || !permisoPorTab[tab]) {
+      setCargando(false);
+      return;
+    }
     setCargando(true);
     try {
       if (tab === 'pases') {
@@ -249,26 +247,32 @@ export const GlobalPage: React.FC = () => {
           resUnidades,
           resCuentas,
         ] = await Promise.all([
-          api.get('/tesoreria/planes-mensuales').catch(() => ({ data: [] })),
-          api.get('/tesoreria/conceptos').catch(() => ({ data: [] })),
-          api.get('/tesoreria/familias').catch(() => ({ data: [] })),
-          unidades.length === 0 ? api.get('/organizacion/unidades') : Promise.resolve({ data: unidades }),
-          api.get('/tesoreria/cuentas').catch(() => ({ data: [] })),
-          api.get('/tesoreria/rubros').catch(() => ({ data: [] })),
-          api.get('/tesoreria/gastos').catch(() => ({ data: [] })),
-          api.get('/tesoreria/eventos').catch(() => ({ data: [] })),
-          api.get(`/tesoreria/cuadro-resultados?anio=${new Date().getFullYear()}`).catch(() => ({ data: null })),
+          puedeVerPlanes
+            ? api.get('/tesoreria/planes-mensuales').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          puedeVerCampamentos
+            ? api.get('/tesoreria/conceptos').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          puedeVerFamilias
+            ? api.get('/tesoreria/familias').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          unidades.length === 0 && (puedeVerPlanes || puedeVerCampamentos)
+            ? api.get('/organizacion/unidades')
+            : Promise.resolve({ data: unidades }),
+          puedeVerCaja
+            ? api.get('/tesoreria/cuentas').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
         ]);
         setPlanesMensuales(resPlanes.data || []);
         setConceptos(resConceptos.data || []);
         setFamilias(resFamilias.data || []);
-        if (unidades.length === 0) {
+        if (unidades.length === 0 && Array.isArray(resUnidades.data) && resUnidades.data.length > 0) {
           setUnidades(resUnidades.data);
         }
 
-        // Pre-cachear el libro diario de cada cuenta financiera para disponibilidad offline (solo si hay red)
+        // Pre-cachear el libro diario de cada cuenta financiera para disponibilidad offline (solo alcance GLOBAL)
         const online = typeof navigator === 'undefined' || navigator.onLine !== false;
-        if (online && Array.isArray(resCuentas.data) && resCuentas.data.length > 0) {
+        if (puedeVerCaja && online && Array.isArray(resCuentas.data) && resCuentas.data.length > 0) {
           for (const c of resCuentas.data.slice(0, 10)) {
             if (c?.id) {
               api.get(`/tesoreria/cuentas/${c.id}/libro-diario`).catch(() => {});
@@ -587,7 +591,13 @@ export const GlobalPage: React.FC = () => {
         </div>
 
         {/* TAB 2: TESORERÍA */}
-        {tab === 'tesoreria' && (
+        {!tieneAlgunTabPermitido && (
+          <div className="bg-surface rounded-2xl border border-rule p-10 text-center text-sm text-ink-muted">
+            No tenés permisos habilitados para operar secciones en este panel con tu alcance actual.
+          </div>
+        )}
+
+        {tab === 'tesoreria' && puedeVerTesoreria && (
           <div className="bg-surface rounded-2xl border border-rule shadow-xs p-4 sm:p-6 space-y-5 transition-colors">
             {/* Sub-pestañas de Tesorería */}
             <nav
@@ -710,7 +720,7 @@ export const GlobalPage: React.FC = () => {
                 </button>
               )}
 
-              {puedeGestionarTesoreria && (
+              {puedeGestionarRubrosGlobales && (
                 <button
                   type="button"
                   onClick={() => setModalGestionRubrosAbierto(true)}
@@ -724,33 +734,33 @@ export const GlobalPage: React.FC = () => {
             </nav>
 
             {/* SUB-TAB 0: CAJA Y BANCO (LIBRO DIARIO) */}
-            {subTabTesoreria === 'caja-banco' && (
+            {subTabTesoreria === 'caja-banco' && puedeVerCaja && (
               <PanelTesoreriaCajaBanco onToast={mostrarToast} />
             )}
 
             {/* SUB-TAB 0.5: GASTOS Y EGRESOS */}
-            {subTabTesoreria === 'gastos' && (
+            {subTabTesoreria === 'gastos' && puedeVerGastos && (
               <PanelGastosTesoreria onToast={mostrarToast} />
             )}
 
             {/* SUB-TAB 0.7: BALANCE Y CUADRO DE RESULTADOS */}
-            {subTabTesoreria === 'balance' && (
+            {subTabTesoreria === 'balance' && puedeVerBalance && (
               <PanelCuadroResultados onToast={mostrarToast} />
             )}
 
             {/* SUB-TAB 0.8: EVENTOS ECONÓMICOS Y VALES QR */}
-            {subTabTesoreria === 'eventos-qr' && (
+            {subTabTesoreria === 'eventos-qr' && puedeVerEventos && (
               <PanelEventosEconomicos onToast={mostrarToast} />
             )}
 
             {/* SUB-TAB 1: PLANES DE CUOTA MENSUAL */}
-            {subTabTesoreria === 'planes' && (
+            {subTabTesoreria === 'planes' && puedeVerPlanes && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center gap-2">
                   <p className="text-xs text-ink-muted">
                     Toca un mes para habilitar o desactivar su cobro en el grupo.
                   </p>
-                  {puedeGestionarTesoreria && (
+                  {puedeCrearConceptosYPlanes && (
                     <button
                       onClick={handleCrearPlan}
                       className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand text-brand-contrast hover:opacity-95 font-extrabold text-xs cursor-pointer transition-colors shadow-2xs shrink-0"
@@ -781,6 +791,9 @@ export const GlobalPage: React.FC = () => {
                       : [];
                     const excepciones: number[] = Array.isArray(plan.excepcionesJson) ? plan.excepcionesJson : [];
                     const rec = plan.recaudacion;
+                    const puedeEditarPlan =
+                      puedeCrearConceptosYPlanes &&
+                      puedeModificarPorAlcanceUnidad(plan.unidadId, { esGlobal, unidadesEnAlcanceIds });
 
                     return (
                       <div
@@ -821,10 +834,10 @@ export const GlobalPage: React.FC = () => {
                                 <button
                                   key={num}
                                   type="button"
-                                  disabled={!puedeGestionarTesoreria || cargandoMes}
-                                  onClick={() => puedeGestionarTesoreria && handleToggleMesPlan(plan, num)}
+                                  disabled={!puedeEditarPlan || cargandoMes}
+                                  onClick={() => puedeEditarPlan && handleToggleMesPlan(plan, num)}
                                   className={`min-h-[38px] sm:min-h-[42px] py-1 sm:py-1.5 px-0.5 sm:px-1 rounded-xl text-center font-bold text-[10px] sm:text-[11px] transition flex flex-col items-center justify-center gap-0.5 border ${
-                                    !puedeGestionarTesoreria ? 'cursor-default' : 'cursor-pointer'
+                                    !puedeEditarPlan ? 'cursor-default' : 'cursor-pointer'
                                   } ${
                                     activo
                                       ? 'bg-brand text-brand-contrast border-brand font-extrabold shadow-2xs hover:opacity-90'
@@ -887,7 +900,7 @@ export const GlobalPage: React.FC = () => {
                             {excepciones.length > 0 && ` • ${excepciones.length} becados`}
                           </span>
 
-                          {puedeGestionarTesoreria && (
+                          {puedeEditarPlan && (
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
@@ -922,13 +935,13 @@ export const GlobalPage: React.FC = () => {
             )}
 
             {/* SUB-TAB 2: CAMPAMENTOS Y EVENTOS */}
-            {subTabTesoreria === 'campamentos' && (
+            {subTabTesoreria === 'campamentos' && puedeVerCampamentos && (
               <div className="space-y-4">
                 <div className="flex flex-wrap justify-between items-center gap-2">
                   <p className="text-xs text-ink-muted">
                     Creá o editá campamentos, eventos, inscripciones o indumentaria para el grupo o una sección.
                   </p>
-                  {puedeGestionarTesoreria && (
+                  {puedeCrearConceptosYPlanes && (
                     <button
                       onClick={handleCrearCobroEspecial}
                       className="min-h-[42px] flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition shadow-xs"
@@ -960,6 +973,9 @@ export const GlobalPage: React.FC = () => {
                       const excepciones: number[] = Array.isArray(con.excepcionesJson)
                         ? con.excepcionesJson
                         : [];
+                      const puedeEditarConcepto =
+                        puedeCrearConceptosYPlanes &&
+                        puedeModificarPorAlcanceUnidad(con.unidadId, { esGlobal, unidadesEnAlcanceIds });
 
                       return (
                         <div
@@ -1041,7 +1057,7 @@ export const GlobalPage: React.FC = () => {
                             )}
                           </div>
 
-                          {puedeGestionarTesoreria && (
+                          {puedeEditarConcepto && (
                             <div className="pt-3 border-t border-rule flex items-center justify-between gap-2">
                               <button
                                 type="button"
@@ -1076,7 +1092,7 @@ export const GlobalPage: React.FC = () => {
             )}
 
             {/* SUB-TAB 3: GRUPOS FAMILIARES Y DESCUENTO POR HERMANOS */}
-            {subTabTesoreria === 'familias' && (
+            {subTabTesoreria === 'familias' && puedeVerFamilias && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {cargando && familias.length === 0 && (
                   Array.from({ length: 3 }).map((_, i) => (
@@ -1094,6 +1110,9 @@ export const GlobalPage: React.FC = () => {
                 {familias.map((fam) => {
                   const pct = Number(fam.porcentajeDescuentoHermanos ?? 0);
                   const miembros = fam.miembros || [];
+                  const puedeEditarFamilia =
+                    puedeEditarDescuentoFamilia &&
+                    puedeEditarFamiliaPorAlcance(fam, { esGlobal, unidadesEnAlcanceIds });
                   return (
                     <div
                       key={fam.id}
@@ -1146,7 +1165,7 @@ export const GlobalPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {puedeGestionarTesoreria && (
+                      {puedeEditarFamilia && (
                         <button
                           type="button"
                           onClick={() => {
@@ -1199,7 +1218,7 @@ export const GlobalPage: React.FC = () => {
         )}
 
         {/* TAB 4: COLABORADORES Y RECURSOS DE FAMILIAS */}
-        {tab === 'colaboradores' && (
+        {tab === 'colaboradores' && puedeVerColaboradores && (
           <div className="space-y-4">
             {cargando && colaboradores.length === 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1314,7 +1333,7 @@ export const GlobalPage: React.FC = () => {
       <ModalPlanCuotaMensual
         abierto={modalPlanAbierto}
         planAEditar={planAEditar}
-        unidades={unidades}
+        unidades={unidadesEnAlcance}
         onCerrar={() => {
           setModalPlanAbierto(false);
           setPlanAEditar(null);
@@ -1328,7 +1347,7 @@ export const GlobalPage: React.FC = () => {
       <ModalCobroCampamento
         abierto={modalCampamentoAbierto}
         conceptoAEditar={conceptoAEditar}
-        unidades={unidades}
+        unidades={unidadesEnAlcance}
         onCerrar={() => {
           setModalCampamentoAbierto(false);
           setConceptoAEditar(null);
