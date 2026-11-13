@@ -85,7 +85,8 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   const [eventos, setEventos] = useState<EventoItem[]>([]);
   const [eventoSeleccionadoId, setEventoSeleccionadoId] = useState<number | null>(null);
   const [eventoDetalle, setEventoDetalle] = useState<any | null>(null);
-  const [cargando, setCargando] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
 
@@ -143,11 +144,14 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
   }, []);
 
   const cargarDetalleEvento = useCallback(async (id: number) => {
+    setCargandoDetalle(true);
     try {
       const res = await api.get(`/tesoreria/eventos/${id}`);
       setEventoDetalle(res.data);
     } catch (err) {
       console.error(err);
+    } finally {
+      setCargandoDetalle(false);
     }
   }, []);
 
@@ -157,10 +161,11 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
 
   useEffect(() => {
     setBusqueda('');
+    setEventoDetalle(null);
     if (eventoSeleccionadoId) {
       cargarDetalleEvento(eventoSeleccionadoId);
     } else {
-      setEventoDetalle(null);
+      setCargandoDetalle(false);
     }
   }, [eventoSeleccionadoId, cargarDetalleEvento]);
 
@@ -343,7 +348,9 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
           </div>
 
           {/* Selector de Evento */}
-          {eventos.length > 0 && (
+          {cargando && eventos.length === 0 ? (
+            <div className="h-8 w-52 rounded-xl bg-paper-3 animate-pulse" aria-label="Cargando eventos" />
+          ) : eventos.length > 0 && (
             <div className="flex items-center gap-2 pl-0 sm:pl-2 border-l-0 sm:border-l border-rule flex-wrap w-full sm:w-auto">
               <label htmlFor="selector-evento-tesoreria" className="text-xs font-bold text-ink-muted shrink-0">
                 Evento:
@@ -515,6 +522,26 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
         </div>
       )}
 
+      {/* Skeleton inicial mientras cargan los eventos */}
+      {cargando && eventos.length === 0 && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-3 animate-pulse">
+                <div className="h-3.5 w-28 rounded bg-paper-3" />
+                <div className="h-8 w-32 rounded-lg bg-paper-3" />
+              </div>
+            ))}
+          </div>
+          <div className="rounded-2xl border border-rule bg-surface p-4 space-y-3 animate-pulse">
+            <div className="h-5 w-48 rounded bg-paper-2" />
+            <div className="h-8 w-full rounded-xl bg-paper-2" />
+            <div className="h-8 w-full rounded-xl bg-paper-2" />
+            <div className="h-8 w-full rounded-xl bg-paper-2" />
+          </div>
+        </div>
+      )}
+
       {/* Tarjetas Métricas del Evento Activo */}
       {eventoActivo && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -629,9 +656,16 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
           <div className="flex items-center justify-between sm:justify-start gap-2">
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-brand shrink-0" />
-              <h3 className="text-xs font-black text-ink">
-                Pedidos y Vales QR ({pedidosFiltrados.length}
-                {busqueda && ` de ${eventoDetalle?.pedidos?.length || 0}`})
+              <h3 className="text-xs font-black text-ink flex items-center gap-1.5">
+                <span>Pedidos y Vales QR</span>
+                {cargandoDetalle ? (
+                  <span className="inline-block h-3.5 w-8 rounded bg-paper-3 animate-pulse" />
+                ) : (
+                  <span>
+                    ({pedidosFiltrados.length}
+                    {busqueda && ` de ${eventoDetalle?.pedidos?.length || 0}`})
+                  </span>
+                )}
               </h3>
             </div>
 
@@ -824,7 +858,20 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
                 );
               })}
 
-              {(!eventoDetalle?.pedidos || eventoDetalle.pedidos.length === 0) ? (
+              {cargandoDetalle ? (
+                [1, 2, 3].map((i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td className="py-3 px-4"><div className="h-3.5 w-28 rounded bg-paper-2" /></td>
+                    <td className="py-3 px-4"><div className="h-3.5 w-24 rounded bg-paper-2" /></td>
+                    <td className="py-3 px-4"><div className="h-3.5 w-32 rounded bg-paper-2" /></td>
+                    <td className="py-3 px-4 text-right"><div className="h-3.5 w-16 rounded bg-paper-2 ml-auto" /></td>
+                    <td className="py-3 px-4 text-right"><div className="h-3.5 w-16 rounded bg-paper-2 ml-auto" /></td>
+                    <td className="py-3 px-4"><div className="h-4 w-16 rounded-full bg-paper-2 mx-auto" /></td>
+                    <td className="py-3 px-4"><div className="h-6 w-20 rounded-xl bg-paper-2 mx-auto" /></td>
+                    <td className="py-3 px-4"><div className="h-6 w-16 rounded-xl bg-paper-2 mx-auto" /></td>
+                  </tr>
+                ))
+              ) : (!eventoDetalle?.pedidos || eventoDetalle.pedidos.length === 0) ? (
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-ink-muted">
                     No hay pedidos registrados para este evento. Hacé clic en "Cargar Pedido" para registrar la primera venta.
@@ -850,7 +897,21 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
 
         {/* Mobile Responsive Cards View */}
         <div className="md:hidden divide-y divide-rule">
-          {(!eventoDetalle?.pedidos || eventoDetalle.pedidos.length === 0) ? (
+          {cargandoDetalle ? (
+            <div className="p-3.5 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-3 rounded-xl bg-paper-2/60 animate-pulse space-y-2">
+                  <div className="flex justify-between gap-3">
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 w-32 rounded bg-paper-3" />
+                      <div className="h-3 w-24 rounded bg-paper-3" />
+                    </div>
+                    <div className="h-5 w-16 rounded bg-paper-3" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (!eventoDetalle?.pedidos || eventoDetalle.pedidos.length === 0) ? (
             <div className="p-8 text-center text-xs text-ink-muted">
               No hay pedidos registrados para este evento. Hacé clic en "Cargar Pedido" para registrar la primera venta.
             </div>
