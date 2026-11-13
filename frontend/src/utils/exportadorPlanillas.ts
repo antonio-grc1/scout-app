@@ -19,9 +19,25 @@ export interface OpcionesExportacion<T> {
   resumenInferior?: FilaResumen[];
 }
 
+const FORMULA_PREFIX_REGEX = /^[\t\r=+\-@]/;
+
+/**
+ * Neutraliza fórmulas DDE/CSV/Excel en valores de texto anteponiendo un apóstrofo (').
+ * Mantiene intactos los valores numéricos nativos en hojas .xlsx.
+ */
+export function sanitizarCeldaPlanilla(valor: unknown): string | number {
+  if (valor === null || valor === undefined) return '';
+  if (typeof valor === 'number') return valor;
+  const str = String(valor);
+  if (FORMULA_PREFIX_REGEX.test(str)) {
+    return `'${str}`;
+  }
+  return str;
+}
+
 function escaparValorCSV(valor: unknown): string {
   if (valor === null || valor === undefined) return '';
-  const str = String(valor);
+  const str = String(sanitizarCeldaPlanilla(valor));
   if (str.includes(';') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -41,13 +57,11 @@ function descargarBlob(blob: Blob, nombreCompleto: string): void {
 
 function obtenerValorCelda<T>(col: ColumnaExportacion<T>, fila: T): string | number {
   if (col.formatear) {
-    return col.formatear(fila);
+    return sanitizarCeldaPlanilla(col.formatear(fila));
   }
   if (col.clave) {
     const v = (fila as Record<string, unknown>)[col.clave as string];
-    if (v === null || v === undefined) return '';
-    if (typeof v === 'number' || typeof v === 'string') return v;
-    return String(v);
+    return sanitizarCeldaPlanilla(v);
   }
   return '';
 }
@@ -103,13 +117,13 @@ export async function exportarAExcel<T>(opciones: OpcionesExportacion<T>): Promi
   // Resumen superior
   if (opciones.resumenSuperior && opciones.resumenSuperior.length > 0) {
     for (const r of opciones.resumenSuperior) {
-      matrizDatos.push([r.etiqueta, r.valor]);
+      matrizDatos.push([sanitizarCeldaPlanilla(r.etiqueta), sanitizarCeldaPlanilla(r.valor)]);
     }
     matrizDatos.push([]); // Fila vacía
   }
 
   // Encabezados
-  matrizDatos.push(opciones.columnas.map((c) => c.header));
+  matrizDatos.push(opciones.columnas.map((c) => sanitizarCeldaPlanilla(c.header)));
 
   // Filas
   for (const fila of opciones.filas) {
@@ -120,7 +134,7 @@ export async function exportarAExcel<T>(opciones: OpcionesExportacion<T>): Promi
   if (opciones.resumenInferior && opciones.resumenInferior.length > 0) {
     matrizDatos.push([]);
     for (const r of opciones.resumenInferior) {
-      matrizDatos.push([r.etiqueta, r.valor]);
+      matrizDatos.push([sanitizarCeldaPlanilla(r.etiqueta), sanitizarCeldaPlanilla(r.valor)]);
     }
   }
 

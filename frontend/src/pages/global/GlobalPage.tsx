@@ -21,7 +21,10 @@ import { ModalGestionRubros } from '../../components/ModalGestionRubros';
 import {
   NOMBRES_MESES_CORTOS,
   NOMBRES_MESES_LARGOS,
+  esErrorOffline,
   formatearMoneda,
+  obtenerCicloAnioActual,
+  obtenerRolPrincipal,
   traducirErrorAmigable,
 } from '../../lib/formatters';
 import {
@@ -45,15 +48,13 @@ import {
   Tag,
   Check,
   Loader2,
-  X,
-  FileText,
 } from 'lucide-react';
 
 type TabGestion = 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas';
 type SubTabTesoreria = 'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias';
 
 export const GlobalPage: React.FC = () => {
-  const { tienePermiso, tieneGlobal, refrescarSesionDesdeServidor } = useAuthStore();
+  const { tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
   const puedeVerTesoreria =
     tienePermiso('tesoreria.gestionar') ||
     tienePermiso('tesoreria.conceptos_planes') ||
@@ -258,9 +259,10 @@ export const GlobalPage: React.FC = () => {
           setUnidades(resUnidades.data);
         }
 
-        // Pre-cachear el libro diario de cada cuenta financiera para disponibilidad offline
-        if (Array.isArray(resCuentas.data) && resCuentas.data.length > 0) {
-          for (const c of resCuentas.data) {
+        // Pre-cachear el libro diario de cada cuenta financiera para disponibilidad offline (solo si hay red)
+        const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+        if (online && Array.isArray(resCuentas.data) && resCuentas.data.length > 0) {
+          for (const c of resCuentas.data.slice(0, 10)) {
             if (c?.id) {
               api.get(`/tesoreria/cuentas/${c.id}/libro-diario`).catch(() => {});
             }
@@ -282,16 +284,11 @@ export const GlobalPage: React.FC = () => {
         setRoles(resRoles.data || []);
         setPermisosCatalogo(resPermisos.data || []);
       } else if (tab === 'colaboradores') {
-        const res = await api.get('/legajos/colaboradores-adultos?cicloAnio=2026');
+        const res = await api.get(`/legajos/colaboradores-adultos?cicloAnio=${obtenerCicloAnioActual()}`);
         setColaboradores(res.data);
       }
     } catch (err) {
-      const esOffline =
-        (typeof navigator !== 'undefined' && !navigator.onLine) ||
-        String(err).toLowerCase().includes('offline') ||
-        String(err).toLowerCase().includes('sin conexión') ||
-        String(err).toLowerCase().includes('sin conexion');
-      if (!esOffline) {
+      if (!esErrorOffline(err)) {
         mostrarToast(traducirErrorAmigable(err, 'No se pudieron cargar los datos.'), 'error');
       }
     } finally {
@@ -330,36 +327,40 @@ export const GlobalPage: React.FC = () => {
           setModalConf(null);
           await cargarDatos();
 
-          mostrarToastConDeshacer(
-            `Cuadro "${planAEliminar.nombre}" eliminado.`,
-            async () => {
-              try {
-                const meses = Array.isArray(planAEliminar.mesesHabilitadosJson)
-                  ? planAEliminar.mesesHabilitadosJson
-                  : Array.isArray(planAEliminar.mesesHabilitados)
-                  ? planAEliminar.mesesHabilitados
-                  : [];
+          if (cobrado === 0) {
+            mostrarToastConDeshacer(
+              `Cuadro "${planAEliminar.nombre}" eliminado.`,
+              async () => {
+                try {
+                  const meses = Array.isArray(planAEliminar.mesesHabilitadosJson)
+                    ? planAEliminar.mesesHabilitadosJson
+                    : Array.isArray(planAEliminar.mesesHabilitados)
+                    ? planAEliminar.mesesHabilitados
+                    : [];
 
-                await api.post('/tesoreria/planes-mensuales', {
-                  nombre: planAEliminar.nombre,
-                  montoMensual: Number(planAEliminar.montoMensual || planAEliminar.montoBase || 0),
-                  cicloAnio: planAEliminar.cicloAnio,
-                  diaVencimiento: planAEliminar.diaVencimiento || 10,
-                  mesesHabilitados: meses,
-                  destinatarioTipo: planAEliminar.destinatarioTipo || 'PROTAGONISTAS',
-                  unidadId: planAEliminar.unidadId || undefined,
-                  rubroId: planAEliminar.rubroId || undefined,
-                  permiteDescuentoHermanos: planAEliminar.permiteDescuentoHermanos ?? true,
-                  porcentajeDescuentoHermanos: planAEliminar.porcentajeDescuentoHermanos ? Number(planAEliminar.porcentajeDescuentoHermanos) : undefined,
-                  excepcionesIds: Array.isArray(planAEliminar.excepcionesJson) ? planAEliminar.excepcionesJson : [],
-                });
-                await cargarDatos();
-                useToastStore.getState().mostrarToast(`Cuadro "${planAEliminar.nombre}" restaurado.`);
-              } catch (err) {
-                useToastStore.getState().mostrarToast(traducirErrorAmigable(err, 'No se pudo restaurar el cuadro.'), 'error');
-              }
-            },
-          );
+                  await api.post('/tesoreria/planes-mensuales', {
+                    nombre: planAEliminar.nombre,
+                    montoMensual: Number(planAEliminar.montoMensual || planAEliminar.montoBase || 0),
+                    cicloAnio: planAEliminar.cicloAnio,
+                    diaVencimiento: planAEliminar.diaVencimiento || 10,
+                    mesesHabilitados: meses,
+                    destinatarioTipo: planAEliminar.destinatarioTipo || 'PROTAGONISTAS',
+                    unidadId: planAEliminar.unidadId || undefined,
+                    rubroId: planAEliminar.rubroId || undefined,
+                    permiteDescuentoHermanos: planAEliminar.permiteDescuentoHermanos ?? true,
+                    porcentajeDescuentoHermanos: planAEliminar.porcentajeDescuentoHermanos ? Number(planAEliminar.porcentajeDescuentoHermanos) : undefined,
+                    excepcionesIds: Array.isArray(planAEliminar.excepcionesJson) ? planAEliminar.excepcionesJson : [],
+                  });
+                  await cargarDatos();
+                  useToastStore.getState().mostrarToast(`Cuadro "${planAEliminar.nombre}" restaurado.`);
+                } catch (err) {
+                  useToastStore.getState().mostrarToast(traducirErrorAmigable(err, 'No se pudo restaurar el cuadro.'), 'error');
+                }
+              },
+            );
+          } else {
+            mostrarToast(`Cuadro "${planAEliminar.nombre}" eliminado.`);
+          }
         } catch (err) {
           setModalConf(null);
           mostrarToast(traducirErrorAmigable(err, 'No se pudo eliminar el cuadro de cuota.'), 'error');
@@ -426,32 +427,36 @@ export const GlobalPage: React.FC = () => {
           setModalConf(null);
           await cargarDatos();
 
-          mostrarToastConDeshacer(
-            `"${conAEliminar.nombre}" eliminado.`,
-            async () => {
-              try {
-                await api.post('/tesoreria/conceptos', {
-                  nombre: conAEliminar.nombre,
-                  tipo: conAEliminar.tipo,
-                  montoBase: Number(conAEliminar.montoBase),
-                  cicloAnio: conAEliminar.cicloAnio,
-                  fechaVencimiento: conAEliminar.fechaVencimiento ? String(conAEliminar.fechaVencimiento).slice(0, 10) : undefined,
-                  permiteDescuentoHermanos: conAEliminar.permiteDescuentoHermanos ?? true,
-                  porcentajeDescuentoHermanos: conAEliminar.porcentajeDescuentoHermanos ? Number(conAEliminar.porcentajeDescuentoHermanos) : undefined,
-                  esParaEducadores: conAEliminar.esParaEducadores ?? false,
-                  destinatarioTipo: conAEliminar.destinatarioTipo || 'TODOS',
-                  excepcionesIds: Array.isArray(conAEliminar.excepcionesJson) ? conAEliminar.excepcionesJson : [],
-                  rubroId: conAEliminar.rubroId || undefined,
-                  unidadId: conAEliminar.unidadId || undefined,
-                  generarCargosInmediatos: true,
-                });
-                await cargarDatos();
-                useToastStore.getState().mostrarToast(`"${conAEliminar.nombre}" restaurado.`);
-              } catch (err) {
-                useToastStore.getState().mostrarToast(traducirErrorAmigable(err, 'No se pudo restaurar el concepto.'), 'error');
-              }
-            },
-          );
+          if (cobrado === 0) {
+            mostrarToastConDeshacer(
+              `"${conAEliminar.nombre}" eliminado.`,
+              async () => {
+                try {
+                  await api.post('/tesoreria/conceptos', {
+                    nombre: conAEliminar.nombre,
+                    tipo: conAEliminar.tipo,
+                    montoBase: Number(conAEliminar.montoBase),
+                    cicloAnio: conAEliminar.cicloAnio,
+                    fechaVencimiento: conAEliminar.fechaVencimiento ? String(conAEliminar.fechaVencimiento).slice(0, 10) : undefined,
+                    permiteDescuentoHermanos: conAEliminar.permiteDescuentoHermanos ?? true,
+                    porcentajeDescuentoHermanos: conAEliminar.porcentajeDescuentoHermanos ? Number(conAEliminar.porcentajeDescuentoHermanos) : undefined,
+                    esParaEducadores: conAEliminar.esParaEducadores ?? false,
+                    destinatarioTipo: conAEliminar.destinatarioTipo || 'TODOS',
+                    excepcionesIds: Array.isArray(conAEliminar.excepcionesJson) ? conAEliminar.excepcionesJson : [],
+                    rubroId: conAEliminar.rubroId || undefined,
+                    unidadId: conAEliminar.unidadId || undefined,
+                    generarCargosInmediatos: true,
+                  });
+                  await cargarDatos();
+                  useToastStore.getState().mostrarToast(`"${conAEliminar.nombre}" restaurado.`);
+                } catch (err) {
+                  useToastStore.getState().mostrarToast(traducirErrorAmigable(err, 'No se pudo restaurar el concepto.'), 'error');
+                }
+              },
+            );
+          } else {
+            mostrarToast(`"${conAEliminar.nombre}" eliminado.`);
+          }
         } catch (err) {
           setModalConf(null);
           mostrarToast(traducirErrorAmigable(err, 'No se pudo eliminar el concepto.'), 'error');
@@ -1055,7 +1060,7 @@ export const GlobalPage: React.FC = () => {
 
                         <div className="space-y-1.5">
                           {miembros.map((m: any) => {
-                            const uNombre = m.asignaciones?.[0]?.unidad?.nombre || 'Sin rama';
+                            const uNombre = obtenerRolPrincipal(m)?.unidad?.nombre || 'Sin rama';
                             return (
                               <button
                                 key={m.id}

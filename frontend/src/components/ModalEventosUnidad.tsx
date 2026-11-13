@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
+import { formatearFechaLargaUTC, formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalCargarPedidoEvento } from './ModalCargarPedidoEvento';
 import { ModalScannerQR } from './ModalScannerQR';
@@ -266,12 +266,7 @@ export const ModalEventosUnidad: React.FC<ModalEventosUnidadProps> = ({
                       <span className="flex items-center gap-1.5">
                         <Calendar className="w-4 h-4 text-brand" />
                         <strong>Fecha de entrega:</strong>{' '}
-                        {new Date(eventoSeleccionado.fechaEvento).toLocaleDateString('es-AR', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })}
+                        {formatearFechaLargaUTC(eventoSeleccionado.fechaEvento)}
                       </span>
                     )}
                     {eventoSeleccionado.lugarEntrega && (

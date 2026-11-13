@@ -143,7 +143,9 @@
             if (rule) s.setProperty('--color-rule', rule);
             if (fontScale) s.setProperty('--font-scale', fontScale);
             if (logoScale) s.setProperty('--brand-logo-scale', String(logoScale));
-            if (cfg.logoUrl) s.setProperty('--brand-logo-url', cfg.logoUrl);
+            if (typeof cfg.logoUrl === 'string' && !cfg.logoUrl.includes('..') && (/^\/[a-zA-Z0-9_.\-/% ]+$/.test(cfg.logoUrl.trim()) || /^https:\/\/[a-zA-Z0-9_.\-/:?=&%#]+$/.test(cfg.logoUrl.trim()))) {
+              s.setProperty('--brand-logo-url', cfg.logoUrl.trim());
+            }
             if (metaEl) metaEl.setAttribute('content', nav || (isDark ? '#18191e' : '#ffffff'));
           }
         } catch (e) {

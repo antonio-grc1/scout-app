@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
 import {
   X,
   Camera,
@@ -16,6 +15,7 @@ import { api } from '../api/client';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { useHtml5QrScanner } from '../hooks/useHtml5QrScanner';
 import { ModalDefinirPagoPedido } from './ModalDefinirPagoPedido';
 
 export interface ModalScannerQRProps {
@@ -72,11 +72,9 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
   onCerrar,
   onTicketValidado,
 }) => {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanInProgressRef = useRef<boolean>(false);
+  const scanResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [iniciandoCamara, setIniciandoCamara] = useState<boolean>(false);
-  const [errorCamara, setErrorCamara] = useState<string | null>(null);
   const [tokenManual, setTokenManual] = useState<string>('');
   const [validando, setValidando] = useState<boolean>(false);
 
@@ -98,91 +96,44 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
     vendedor?: string | null;
   } | null>(null);
 
-  // Inicializar o detener scanner según si el modal está abierto
+  const { iniciandoCamara, errorCamara, setErrorCamara } = useHtml5QrScanner({
+    containerId: 'qr-reader',
+    activo: abierto && !modoManual,
+    qrboxSize: 250,
+    mensajeErrorCamara:
+      'No se pudo encender la cámara (permiso denegado o no disponible). Podés ingresar el código manualmente.',
+    onErrorCamara: () => {
+      setModoManual(true);
+    },
+    onDecode: async (decodedText) => {
+      if (scanInProgressRef.current) return;
+      scanInProgressRef.current = true;
+      await procesarToken(decodedText);
+    },
+  });
+
+  const limpiarScanResetTimer = () => {
+    if (scanResetTimerRef.current !== null) {
+      clearTimeout(scanResetTimerRef.current);
+      scanResetTimerRef.current = null;
+    }
+  };
+
   useEffect(() => {
     if (!abierto) {
-      detenerScanner();
+      limpiarScanResetTimer();
       setResultado(null);
       setErrorCamara(null);
       setTokenManual('');
       setModalCobroAbierto(false);
       setModalCobroDatos(null);
       scanInProgressRef.current = false;
-      return;
-    }
-
-    if (!modoManual) {
-      iniciarScanner();
     }
 
     return () => {
-      detenerScanner();
+      limpiarScanResetTimer();
     };
-  }, [abierto, modoManual]);
-
-  const iniciarScanner = async () => {
-    setErrorCamara(null);
-    setIniciandoCamara(true);
-
-    try {
-      // Breve pausa para asegurar que el elemento DOM #qr-reader esté montado
-      await new Promise((r) => setTimeout(r, 150));
-
-      const readerElement = document.getElementById('qr-reader');
-      if (!readerElement) {
-        setIniciandoCamara(false);
-        return;
-      }
-
-      if (scannerRef.current) {
-        try {
-          await scannerRef.current.stop();
-        } catch {
-          // Ignorar si no estaba corriendo
-        }
-      }
-
-      const html5QrCode = new Html5Qrcode('qr-reader');
-      scannerRef.current = html5QrCode;
-
-      await html5QrCode.start(
-        { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-        },
-        async (decodedText) => {
-          if (scanInProgressRef.current) return;
-          scanInProgressRef.current = true;
-          await procesarToken(decodedText);
-        },
-        () => {
-          // Ignorar errores de frame no-encontrado en video continuo
-        },
-      );
-    } catch (err: unknown) {
-      console.warn('No se pudo acceder a la cámara:', err);
-      setErrorCamara('No se pudo encender la cámara (permiso denegado o no disponible). Podés ingresar el código manualmente.');
-      setModoManual(true);
-    } finally {
-      setIniciandoCamara(false);
-    }
-  };
-
-  const detenerScanner = () => {
-    if (scannerRef.current) {
-      try {
-        scannerRef.current.stop().then(() => {
-          scannerRef.current?.clear();
-          scannerRef.current = null;
-        }).catch(() => {
-          scannerRef.current = null;
-        });
-      } catch {
-        scannerRef.current = null;
-      }
-    }
-  };
+  }, [abierto, setErrorCamara]);
 
   const procesarToken = async (token: string) => {
     const raw = token.trim();
@@ -222,8 +173,10 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
           setModalCobroAbierto(true);
           // La cámara permanece pausada mientras esté el modal abierto
         } else {
-          setTimeout(() => {
+          limpiarScanResetTimer();
+          scanResetTimerRef.current = setTimeout(() => {
             scanInProgressRef.current = false;
+            scanResetTimerRef.current = null;
           }, 2500);
         }
       } else {
@@ -232,8 +185,10 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
         } else {
           playFeedbackTone(220); // Tono grave de error
         }
-        setTimeout(() => {
+        limpiarScanResetTimer();
+        scanResetTimerRef.current = setTimeout(() => {
           scanInProgressRef.current = false;
+          scanResetTimerRef.current = null;
         }, 2500);
       }
     } catch (err) {
@@ -244,8 +199,10 @@ export const ModalScannerQR: React.FC<ModalScannerQRProps> = ({
         estado: 'ERROR',
         mensaje: msg,
       });
-      setTimeout(() => {
+      limpiarScanResetTimer();
+      scanResetTimerRef.current = setTimeout(() => {
         scanInProgressRef.current = false;
+        scanResetTimerRef.current = null;
       }, 2500);
     } finally {
       setValidando(false);

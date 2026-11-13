@@ -1,20 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Sparkles,
   PlusCircle,
   Camera,
   ShoppingBag,
-  Calendar,
   CheckCircle2,
   Clock,
   QrCode,
-  User,
-  Phone,
-  Scale,
   RefreshCw,
   Award,
-  ChevronRight,
-  Filter,
   Edit2,
   Trash2,
   Landmark,
@@ -26,13 +20,15 @@ import {
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
-import { formatearMoneda, traducirErrorAmigable, normalizarTextoBusqueda } from '../lib/formatters';
+import { formatearFecha, formatearMoneda, traducirErrorAmigable, normalizarTextoBusqueda, esErrorOffline } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalCrearEventoEconomico } from './ModalCrearEventoEconomico';
 import { ModalCargarPedidoEvento } from './ModalCargarPedidoEvento';
 import { ModalScannerQR } from './ModalScannerQR';
 import { ModalTicketQR, type TicketData } from './ModalTicketQR';
 import { ModalConfirmacion } from './ModalConfirmacion';
+
+const EMPTY_ITEMS: EventoItem['items'] = [];
 
 export interface PanelEventosEconomicosProps {
   onToast?: (texto: string, tipo?: 'exito' | 'error') => void;
@@ -45,13 +41,18 @@ interface EventoItem {
   tipo: 'RECAUDACION_PEDIDOS' | 'FESTIVAL_ENTRADAS';
   estado: 'BORRADOR' | 'PUBLICADO' | 'FINALIZADO' | 'CANCELADO';
   fechaEvento: string;
+  fechaFin?: string | null;
   lugarEntrega?: string | null;
+  _count?: { pedidos?: number };
+  pedidos?: unknown[];
   items: Array<{
     id: number;
     nombre: string;
+    descripcion?: string | null;
     precioVenta: string | number;
     costoUnitario: string | number;
     gananciaUnitaria: string | number;
+    stockTotal?: number | null;
     stockDisponible: number | null;
   }>;
   metricas: {
@@ -65,6 +66,10 @@ interface EventoItem {
 }
 
 export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ onToast }) => {
+  const onToastRef = useRef(onToast);
+  useEffect(() => {
+    onToastRef.current = onToast;
+  }, [onToast]);
   const puedeGestionarEventos = useAuthStore(
     (s) =>
       s.tienePermiso('eventos.gestionar') ||
@@ -110,33 +115,32 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
       const res = await api.get('/tesoreria/eventos');
       const lista: EventoItem[] = res.data || [];
       setEventos(lista);
-      if (lista.length > 0 && !eventoSeleccionadoId) {
-        // Priorizar el primer evento habilitado / publicado
+      if (lista.length > 0) {
+        // Priorizar el primer evento habilitado / publicado solo si no hay selección activa
         const primerHabilitado = lista.find((e) => e.estado === 'PUBLICADO');
-        setEventoSeleccionadoId(primerHabilitado ? primerHabilitado.id : lista[0].id);
+        setEventoSeleccionadoId((prev) =>
+          prev ?? (primerHabilitado ? primerHabilitado.id : lista[0].id),
+        );
       }
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudieron cargar los eventos económicos.');
-      const esOffline =
-        (typeof navigator !== 'undefined' && !navigator.onLine) ||
-        msg.toLowerCase().includes('offline') ||
-        msg.toLowerCase().includes('sin conexión') ||
-        msg.toLowerCase().includes('sin conexion');
-
-      if (esOffline) {
-        if (eventos.length === 0) {
-          setError('Estás sin conexión y los eventos aún no han sido sincronizados en este dispositivo.');
-        } else {
-          setError(null);
-        }
+      if (esErrorOffline(err, msg)) {
+        setEventos((prev) => {
+          if (prev.length === 0) {
+            setError('Estás sin conexión y los eventos aún no han sido sincronizados en este dispositivo.');
+          } else {
+            setError(null);
+          }
+          return prev;
+        });
       } else {
         setError(msg);
-        if (onToast) onToast(msg, 'error');
+        onToastRef.current?.(msg, 'error');
       }
     } finally {
       setCargando(false);
     }
-  }, [eventoSeleccionadoId, onToast]);
+  }, []);
 
   const cargarDetalleEvento = useCallback(async (id: number) => {
     try {
@@ -251,34 +255,46 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
       setEventoDetalle(null);
       await cargarEventos();
 
-      mostrarToastConDeshacer(
-        `Evento "${eventoAEliminar.titulo}" eliminado.`,
-        async () => {
-          try {
-            await api.post('/tesoreria/eventos', {
-              titulo: eventoAEliminar.titulo,
-              descripcion: eventoAEliminar.descripcion || undefined,
-              tipo: eventoAEliminar.tipo,
-              fechaEvento: eventoAEliminar.fechaEvento,
-              lugarEntrega: eventoAEliminar.lugarEntrega || undefined,
-              rubroId: eventoDetalle?.rubroId || undefined,
-              cuentaId: eventoDetalle?.cuentaId || undefined,
-              items: (eventoAEliminar.items || []).map((it) => ({
-                nombre: it.nombre,
-                precioVenta: Number(it.precioVenta),
-                costoUnitario: Number(it.costoUnitario || 0),
-                gananciaUnitaria: Number(it.gananciaUnitaria || 0),
-                stockTotal: it.stockDisponible,
-              })),
-            });
-            await cargarEventos();
-            useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" restaurado.`);
-          } catch (err: any) {
-            const msg = traducirErrorAmigable(err, 'No se pudo restaurar el evento.');
-            useToastStore.getState().mostrarToast(msg, 'error');
-          }
-        },
-      );
+      const sinPedidos =
+        (eventoAEliminar.metricas?.cantidadPedidos ||
+          eventoAEliminar._count?.pedidos ||
+          eventoAEliminar.pedidos?.length ||
+          0) === 0;
+      if (sinPedidos) {
+        mostrarToastConDeshacer(
+          `Evento "${eventoAEliminar.titulo}" eliminado.`,
+          async () => {
+            try {
+              await api.post('/tesoreria/eventos', {
+                titulo: eventoAEliminar.titulo,
+                descripcion: eventoAEliminar.descripcion || undefined,
+                tipo: eventoAEliminar.tipo,
+                estado: eventoAEliminar.estado,
+                fechaEvento: eventoAEliminar.fechaEvento,
+                fechaFin: eventoAEliminar.fechaFin || undefined,
+                lugarEntrega: eventoAEliminar.lugarEntrega || undefined,
+                rubroId: eventoDetalle?.rubroId || undefined,
+                cuentaId: eventoDetalle?.cuentaId || undefined,
+                items: (eventoAEliminar.items || []).map((it: any) => ({
+                  nombre: it.nombre,
+                  descripcion: it.descripcion || undefined,
+                  precioVenta: Number(it.precioVenta),
+                  costoUnitario: Number(it.costoUnitario || 0),
+                  gananciaUnitaria: Number(it.gananciaUnitaria || 0),
+                  stockTotal: it.stockTotal ?? it.stockDisponible ?? null,
+                })),
+              });
+              await cargarEventos();
+              useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" restaurado.`);
+            } catch (err: any) {
+              const msg = traducirErrorAmigable(err, 'No se pudo restaurar el evento.');
+              useToastStore.getState().mostrarToast(msg, 'error');
+            }
+          },
+        );
+      } else {
+        useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" eliminado.`);
+      }
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudo eliminar el evento.');
       if (onToast) onToast(msg, 'error');
@@ -342,7 +358,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
                   <optgroup label="🟢 Habilitados para venta">
                     {eventosHabilitados.map((ev) => (
                       <option key={ev.id} value={ev.id}>
-                        {ev.titulo} ({new Date(ev.fechaEvento).toLocaleDateString('es-AR')})
+                        {ev.titulo} ({formatearFecha(ev.fechaEvento)})
                       </option>
                     ))}
                   </optgroup>
@@ -682,7 +698,6 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
             </thead>
             <tbody className="divide-y divide-rule font-medium">
               {pedidosFiltrados.map((p: any) => {
-                const todosRetirados = p.tickets?.length > 0 && p.tickets.every((t: any) => t.estado === 'UTILIZADO');
                 const algunoRetirado = p.tickets?.some((t: any) => t.estado === 'UTILIZADO');
 
                 return (
@@ -996,7 +1011,7 @@ export const PanelEventosEconomicos: React.FC<PanelEventosEconomicosProps> = ({ 
           }}
           eventoId={eventoActivo.id}
           eventoTitulo={eventoActivo.titulo}
-          itemsEvento={eventoDetalle?.items || eventoActivo.items || []}
+          itemsEvento={eventoDetalle?.items || eventoActivo.items || EMPTY_ITEMS}
           pedidoAEditar={pedidoAEditar}
           onToast={onToast}
         />

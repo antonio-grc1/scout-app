@@ -259,7 +259,7 @@ const getInitialThemeMode = (): ThemeMode => {
     if (saved === 'light' || saved === 'dark' || saved === 'system') {
       return saved;
     }
-  } catch (e) {}
+  } catch {}
   return 'system';
 };
 
@@ -286,7 +286,7 @@ const getInitialCustomization = (): ThemeCustomizationConfig => {
         ...parsed,
       };
     }
-  } catch (e) {}
+  } catch {}
   return DEFAULT_THEME_CUSTOMIZATION;
 };
 
@@ -304,6 +304,16 @@ const applyDocumentThemeMode = (theme: ThemeMode): 'light' | 'dark' => {
   root.style.colorScheme = resolved;
   return resolved;
 };
+
+export function esLogoUrlSegura(url: unknown): url is string {
+  if (typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || trimmed.includes('..')) return false;
+  return (
+    /^\/[a-zA-Z0-9_.\-/% ]+$/.test(trimmed) ||
+    /^https:\/\/[a-zA-Z0-9_.\-/:?=&%#]+$/.test(trimmed)
+  );
+}
 
 const applyDocumentCustomization = (
   cfg: ThemeCustomizationConfig,
@@ -402,7 +412,11 @@ const applyDocumentCustomization = (
   if (rule) s.setProperty('--color-rule', rule);
   if (fontScale) s.setProperty('--font-scale', fontScale);
   if (logoScale) s.setProperty('--brand-logo-scale', String(logoScale));
-  if (logoUrl) s.setProperty('--brand-logo-url', logoUrl);
+  if (esLogoUrlSegura(logoUrl)) {
+    s.setProperty('--brand-logo-url', logoUrl.trim());
+  } else {
+    s.setProperty('--brand-logo-url', '/brand/Logo%20Juancho%20Icono.png');
+  }
 
   if (nav) {
     s.setProperty('--color-navbar', nav);
@@ -455,7 +469,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
   const persistAndApply = (newCustom: ThemeCustomizationConfig) => {
     try {
       localStorage.setItem(STORAGE_CUSTOM_KEY, JSON.stringify(newCustom));
-    } catch (e) {}
+    } catch {}
     applyDocumentCustomization(newCustom, get().resolvedTheme);
     set({ customization: newCustom });
   };
@@ -463,7 +477,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
   const resetAll = () => {
     try {
       localStorage.removeItem(STORAGE_CUSTOM_KEY);
-    } catch (e) {}
+    } catch {}
     applyDocumentCustomization(DEFAULT_THEME_CUSTOMIZATION, get().resolvedTheme);
     set({ customization: DEFAULT_THEME_CUSTOMIZATION });
   };
@@ -480,7 +494,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
     setTheme: (theme: ThemeMode) => {
       try {
         localStorage.setItem(STORAGE_MODE_KEY, theme);
-      } catch (e) {}
+      } catch {}
       const resolved = applyDocumentThemeMode(theme);
       applyDocumentCustomization(get().customization, resolved);
       set({ theme, resolvedTheme: resolved });
@@ -491,7 +505,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       const nextTheme: ThemeMode = currentResolved === 'dark' ? 'light' : 'dark';
       try {
         localStorage.setItem(STORAGE_MODE_KEY, nextTheme);
-      } catch (e) {}
+      } catch {}
       const resolved = applyDocumentThemeMode(nextTheme);
       applyDocumentCustomization(get().customization, resolved);
       set({ theme: nextTheme, resolvedTheme: resolved });

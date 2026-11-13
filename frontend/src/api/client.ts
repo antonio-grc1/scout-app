@@ -1,5 +1,10 @@
-import axios from 'axios';
-import { guardarEnCache, obtenerDeCache, limpiarCacheApi } from '../lib/offlineCache';
+import axios, { type AxiosRequestConfig } from 'axios';
+import {
+  generarClaveCache,
+  guardarEnCache,
+  obtenerDeCache,
+  limpiarCacheApi,
+} from '../lib/offlineCache';
 import { useOfflineStore } from '../store/offlineStore';
 
 const rawApiUrl = import.meta.env?.VITE_API_URL?.trim();
@@ -7,11 +12,40 @@ const baseURL = rawApiUrl ? `${rawApiUrl.replace(/\/$/, '')}/api` : '/api';
 
 export const api = axios.create({
   baseURL,
+  withCredentials: true,
   timeout: 7000, // Evita cuelgues prolongados en conexiones móviles débiles
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Deduplicación de peticiones GET concurrentes idénticas en vuelo
+const inFlightGetRequests = new Map<string, Promise<unknown>>();
+const rawApiGet = api.get.bind(api);
+
+api.get = ((url: string, config?: AxiosRequestConfig) => {
+  if (
+    config?.signal ||
+    config?.responseType === 'blob' ||
+    config?.responseType === 'arraybuffer'
+  ) {
+    return rawApiGet(url, config);
+  }
+
+  const dedupeKey = generarClaveCache(url, config?.params as Record<string, unknown> | undefined);
+  const existing = inFlightGetRequests.get(dedupeKey);
+  if (existing) {
+    return existing as ReturnType<typeof rawApiGet>;
+  }
+
+  const requestPromise = rawApiGet(url, config).finally(() => {
+    if (inFlightGetRequests.get(dedupeKey) === requestPromise) {
+      inFlightGetRequests.delete(dedupeKey);
+    }
+  });
+  inFlightGetRequests.set(dedupeKey, requestPromise);
+  return requestPromise;
+}) as typeof api.get;
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('scout_token');
@@ -22,14 +56,16 @@ api.interceptors.request.use((config) => {
   // Si el dispositivo está sin red, responder de inmediato con la caché sin esperar timeout
   if (
     typeof navigator !== 'undefined' &&
-    !navigator.onLine &&
+    navigator.onLine === false &&
     config.method?.toLowerCase() === 'get'
   ) {
-    return Promise.reject({
-      __isOfflineFastFail: true,
-      config,
-      message: 'Sin conexión a internet (offline)',
-    });
+    const offlineErr = new Error('Sin conexión a internet (offline)') as Error & {
+      __isOfflineFastFail: boolean;
+      config: typeof config;
+    };
+    offlineErr.__isOfflineFastFail = true;
+    offlineErr.config = config;
+    return Promise.reject(offlineErr);
   }
 
   return config;
@@ -71,7 +107,7 @@ api.interceptors.response.use(
       !error.response ||
       error.code === 'ECONNABORTED' ||
       error.message?.includes('Network Error') ||
-      (typeof navigator !== 'undefined' && !navigator.onLine);
+      (typeof navigator !== 'undefined' && navigator.onLine === false);
 
     if (esGet && esErrorRed) {
       const cached = obtenerDeCache(config.url, config.params);
@@ -81,7 +117,7 @@ api.interceptors.response.use(
           data: cached.data,
           status: 200,
           statusText: 'OK (Desde memoria local)',
-          headers: {},
+          headers: { 'x-from-cache': 'true' },
           config: config,
           request: {},
         });
@@ -102,8 +138,7 @@ api.interceptors.response.use(
           } catch {
             // ignore
           }
-        }
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        } else if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
           window.location.href = '/login';
         }
         setTimeout(() => {
@@ -121,8 +156,7 @@ api.interceptors.response.use(
         } catch {
           // ignore
         }
-      }
-      if (typeof window !== 'undefined' && window.location.pathname !== '/cambiar-clave') {
+      } else if (typeof window !== 'undefined' && window.location.pathname !== '/cambiar-clave') {
         window.location.href = '/cambiar-clave';
       }
     }

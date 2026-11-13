@@ -9,7 +9,6 @@ import {
   Tag,
   Users2,
   Percent,
-  HelpCircle,
   PlusCircle,
   Pencil,
 } from 'lucide-react';

@@ -18,7 +18,6 @@ import {
   Users,
   KeyRound,
   Save,
-  Loader2,
   Eye,
   EyeOff,
   CheckCircle2,
@@ -136,14 +135,25 @@ export const PerfilPage: React.FC = () => {
     e.preventDefault();
     setAlertaClave(null);
 
-    if (formClave.passwordNueva !== formClave.confirmar) {
-      setAlertaClave({ tipo: 'error', texto: 'Las contraseñas nuevas no coinciden.' });
-      return;
-    }
-    if (formClave.passwordNueva.length < 8) {
+    const actual = formClave.passwordActual.trim();
+    const nueva = formClave.passwordNueva.trim();
+    const confirmar = formClave.confirmar.trim();
+
+    if (nueva.length < 8) {
       setAlertaClave({
         tipo: 'error',
         texto: 'La nueva contraseña debe tener al menos 8 caracteres.',
+      });
+      return;
+    }
+    if (nueva !== confirmar) {
+      setAlertaClave({ tipo: 'error', texto: 'Las contraseñas nuevas no coinciden.' });
+      return;
+    }
+    if (nueva === actual) {
+      setAlertaClave({
+        tipo: 'error',
+        texto: 'La nueva contraseña debe ser distinta de la actual.',
       });
       return;
     }
@@ -151,10 +161,14 @@ export const PerfilPage: React.FC = () => {
     setGuardandoClave(true);
     try {
       const res = await api.post('/auth/cambiar-clave', {
-        claveActual: formClave.passwordActual.trim(),
-        claveNueva: formClave.passwordNueva.trim(),
+        claveActual: actual,
+        claveNueva: nueva,
       });
-      if (res.data?.accessToken) {
+      if (
+        res.data?.accessToken &&
+        res.data?.usuario &&
+        Array.isArray(res.data?.asignaciones)
+      ) {
         setSesion(res.data);
       }
       setFormClave({ passwordActual: '', passwordNueva: '', confirmar: '' });
@@ -173,8 +187,10 @@ export const PerfilPage: React.FC = () => {
   };
 
   const asigPrincipal =
-    perfil?.asignaciones?.find((a: any) => a.activo) ?? perfil?.asignaciones?.[0];
-  const cfgRama = obtenerConfigRama(asigPrincipal?.unidad);
+    perfil?.asignaciones?.find((a: any) => a.activo !== false) ?? perfil?.asignaciones?.[0];
+  const cfgRama = obtenerConfigRama(
+    asigPrincipal ? { asignaciones: [asigPrincipal] } : null,
+  );
   const hermanos = (perfil?.grupoFamiliar?.miembros || []).filter(
     (h: any) => h.id !== perfil?.id,
   );
@@ -231,7 +247,7 @@ export const PerfilPage: React.FC = () => {
                 {/* Asignaciones activas */}
                 <div className="flex flex-wrap gap-1.5">
                   {asignacionesActivas.map((a: any) => {
-                    const c = obtenerConfigRama(a.unidad);
+                    const c = obtenerConfigRama({ asignaciones: [a] });
                     return (
                       <span
                         key={a.id}

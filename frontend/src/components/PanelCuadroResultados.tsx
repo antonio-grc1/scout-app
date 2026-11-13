@@ -7,7 +7,6 @@ import {
   Landmark,
   ArrowDownLeft,
   ArrowUpRight,
-  Filter,
   RefreshCw,
   Printer,
   Scale,
@@ -15,7 +14,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { api } from '../api/client';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
+import { formatearMoneda, obtenerCicloAnioActual, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 
 export interface PanelCuadroResultadosProps {
@@ -150,7 +149,10 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                 onChange={(e) => setAnio(Number(e.target.value))}
                 className="py-1 px-2.5 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand cursor-pointer"
               >
-                {[2024, 2025, 2026, 2027].map((y) => (
+                {(() => {
+                  const anioBase = obtenerCicloAnioActual();
+                  return [anioBase - 2, anioBase - 1, anioBase, anioBase + 1];
+                })().map((y) => (
                   <option key={y} value={y}>
                     {y}
                   </option>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   X,
   CreditCard,
@@ -56,8 +56,10 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
   const [observaciones, setObservaciones] = useState<string>('');
   const [cuentas, setCuentas] = useState<CuentaFinancieraItem[]>([]);
   const [cargandoCuentas, setCargandoCuentas] = useState<boolean>(false);
+  const [errorCuentas, setErrorCuentas] = useState<string | null>(null);
   const [guardando, setGuardando] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const enviandoRef = useRef<boolean>(false);
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto,
@@ -93,6 +95,7 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
 
   const cargarCuentas = async () => {
     setCargandoCuentas(true);
+    setErrorCuentas(null);
     try {
       const res = await api.get('/tesoreria/cuentas');
       const data = Array.isArray(res.data) ? res.data : [];
@@ -100,10 +103,13 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
 
       if (data.length > 0) {
         seleccionarCuentaPorMetodo(data, 'EFECTIVO');
+      } else {
+        setCuentaId('');
       }
-    } catch {
-      // Si no tiene permisos de tesorería o falla la carga, continúa con cuentas vacías
+    } catch (err) {
       setCuentas([]);
+      setCuentaId('');
+      setErrorCuentas(traducirErrorAmigable(err, 'No se pudieron cargar las cuentas financieras.'));
     } finally {
       setCargandoCuentas(false);
     }
@@ -112,8 +118,14 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
   useEffect(() => {
     if (!abierto) return;
 
+    setEstaAbonado(true);
+    setMetodoPago('EFECTIVO');
+    setCuentaId('');
+    setObservaciones('');
+    setError(null);
+    setErrorCuentas(null);
     void cargarCuentas();
-  }, [abierto]);
+  }, [abierto, pedidoId]);
 
   const handleChangeMetodo = (nuevoMetodo: 'EFECTIVO' | 'TRANSFERENCIA' | 'OTRO') => {
     setMetodoPago(nuevoMetodo);
@@ -122,6 +134,7 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviandoRef.current || guardando) return;
     setError(null);
 
     if (!estaAbonado) {
@@ -131,11 +144,17 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
       return;
     }
 
+    if (errorCuentas) {
+      setError(errorCuentas);
+      return;
+    }
+
     if (!cuentaId && cuentas.length > 0) {
       setError('Por favor seleccione la cuenta financiera donde ingresa el dinero.');
       return;
     }
 
+    enviandoRef.current = true;
     setGuardando(true);
     try {
       const payload: Record<string, unknown> = {
@@ -154,6 +173,7 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
       const msg = traducirErrorAmigable(err, 'No se pudo registrar el cobro del pedido.');
       setError(msg);
     } finally {
+      enviandoRef.current = false;
       setGuardando(false);
     }
   };

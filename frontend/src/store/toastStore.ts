@@ -26,6 +26,12 @@ interface ToastState {
     onDeshacer: () => void | Promise<void>,
     duracionMs?: number,
   ) => void;
+  mostrarToastAccion: (
+    texto: string,
+    label: string,
+    onEjecutar: () => void | Promise<void>,
+    duracionMs?: number,
+  ) => void;
   cerrarToast: () => void;
   ejecutarAccion: () => Promise<void>;
 }
@@ -42,8 +48,8 @@ export const useToastStore = create<ToastState>((set, get) => ({
       (texto.toLowerCase().includes('sin conexión') ||
         texto.toLowerCase().includes('sin conexion') ||
         texto.toLowerCase().includes('offline') ||
-        texto.toLowerCase().includes('red') ||
-        (typeof navigator !== 'undefined' && !navigator.onLine))
+        texto.toLowerCase().includes('network error') ||
+        (typeof navigator !== 'undefined' && navigator.onLine === false))
     ) {
       return;
     }
@@ -69,7 +75,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
     }, duracionMs);
   },
 
-  mostrarToastConDeshacer: (texto, onDeshacer, duracionMs = 7500) => {
+  mostrarToastAccion: (texto, label, onEjecutar, duracionMs = 7500) => {
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
@@ -80,8 +86,8 @@ export const useToastStore = create<ToastState>((set, get) => ({
         texto,
         tipo: 'info',
         accion: {
-          label: 'Deshacer',
-          onEjecutar: onDeshacer,
+          label,
+          onEjecutar,
         },
         duracionMs,
         creadoEn: Date.now(),
@@ -93,6 +99,10 @@ export const useToastStore = create<ToastState>((set, get) => ({
         set({ toast: null });
       }
     }, duracionMs);
+  },
+
+  mostrarToastConDeshacer: (texto, onDeshacer, duracionMs = 7500) => {
+    get().mostrarToastAccion(texto, 'Deshacer', onDeshacer, duracionMs);
   },
 
   cerrarToast: () => {
@@ -114,6 +124,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
       await accion.onEjecutar();
     } catch (err) {
       console.error('Error al ejecutar acción de deshacer:', err);
+      get().mostrarToast('No se pudo deshacer la acción.', 'error');
     }
   },
 }));

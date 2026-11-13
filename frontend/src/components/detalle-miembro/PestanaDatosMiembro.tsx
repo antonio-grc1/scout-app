@@ -49,7 +49,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   desvinculandoMiembroId,
   puedeEditarIdentidad,
   puedeEditarContacto,
-  puedeDarBaja,
+  puedeDarBaja: _puedeDarBaja,
   puedeEditarMiembro,
   puedeGestionarTesoreria,
   onGuardarDatos,

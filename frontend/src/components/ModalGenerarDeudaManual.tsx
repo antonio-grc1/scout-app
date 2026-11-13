@@ -4,10 +4,7 @@ import { api } from '../api/client';
 import {
   X,
   PlusCircle,
-  DollarSign,
-  Calendar,
   CheckCircle2,
-  AlertTriangle,
 } from 'lucide-react';
 
 interface Props {

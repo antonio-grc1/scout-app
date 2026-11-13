@@ -1,3 +1,5 @@
+import { obtenerRolPrincipal } from './formatters';
+
 export interface RamaColorConfig {
   key: 'lobatos' | 'scout' | 'caminantes' | 'rover' | 'adultos' | 'otro';
   nombre: string;
@@ -84,7 +86,7 @@ export const RAMA_COLORS: Record<string, RamaColorConfig> = {
  * Determina la configuración de color de la rama para un miembro
  */
 export function obtenerConfigRama(m: any, unidades: any[] = []): RamaColorConfig {
-  const asig = m?.asignaciones?.[0];
+  const asig = obtenerRolPrincipal(m) ?? m?.asignaciones?.[0];
   const ramaObj = asig?.unidad?.rama;
   const unidadObj = unidades.find((u) => u.id === asig?.unidadId);
 
@@ -130,7 +132,7 @@ export function obtenerConfigRama(m: any, unidades: any[] = []): RamaColorConfig
  * Determina el orden numérico de progresión de la rama de un miembro
  */
 export function obtenerOrdenRama(m: any, unidades: any[] = [], ramas: any[] = []): number {
-  const asig = m?.asignaciones?.[0];
+  const asig = obtenerRolPrincipal(m) ?? m?.asignaciones?.[0];
   if (!asig) return 999;
 
   if (asig.unidad?.rama?.ordenProgresion != null) {

@@ -168,7 +168,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
     }
     try {
       const [resMiembros, resCuentas] = await Promise.all([
-        api.get('/miembros?porPagina=200').catch(() => ({ data: { items: [] } })),
+        api.get('/miembros?porPagina=100').catch(() => ({ data: { items: [] } })),
         api.get('/tesoreria/cuentas').catch(() => ({ data: [] })),
       ]);
       const mData = resMiembros.data;
@@ -306,7 +306,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
     setGuardando(true);
     try {
       const itemsPayload = Object.entries(cantidades)
-        .filter(([_, cant]) => cant > 0)
+        .filter(([, cant]) => cant > 0)
         .map(([itemIdStr, cant]) => ({
           itemId: Number(itemIdStr),
           cantidad: cant,

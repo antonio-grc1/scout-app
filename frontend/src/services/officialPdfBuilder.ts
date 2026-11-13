@@ -1,11 +1,13 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import QRCode from 'qrcode';
+import { obtenerCicloAnioActual, obtenerHoyLocalISO } from '../lib/formatters';
 import { PDF_ASSETS } from './pdfAssets';
 
 export interface OfficialPdfBuilderOptions {
   blank?: boolean;
   hashVerificacion?: string;
   versionImpresion?: number;
+  qrPngBytes?: Uint8Array;
   usuario?: {
     nombre: string;
     apellido: string;
@@ -42,12 +44,14 @@ function parseDateParts(val: unknown): { dia: string; mes: string; anio: string 
       anio: isoMatch[1],
     };
   }
-  const parts = s.split(/[\/\-]/);
+  const parts = s.split(/[/-]/);
   if (parts.length === 3) {
     return { dia: parts[0].trim(), mes: parts[1].trim(), anio: parts[2].trim() };
   }
   return { dia: s, mes: '', anio: '' };
 }
+
+const decodedAssetCache = new Map<string, Uint8Array>();
 
 function dataUriToUint8Array(dataUri: string): Uint8Array {
   const base64 = dataUri.split(',')[1];
@@ -58,6 +62,77 @@ function dataUriToUint8Array(dataUri: string): Uint8Array {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
+}
+
+function getDecodedAssetBytes(assetKey: keyof typeof PDF_ASSETS): Uint8Array {
+  const cached = decodedAssetCache.get(assetKey);
+  if (cached) return cached;
+  const bytes = dataUriToUint8Array(PDF_ASSETS[assetKey]);
+  decodedAssetCache.set(assetKey, bytes);
+  return bytes;
+}
+
+const WINANSI_TRANSLITERATIONS: Record<string, string> = {
+  '≥': '>=',
+  '≤': '<=',
+  '≠': '!=',
+  '≈': '~',
+  '→': '->',
+  '←': '<-',
+  '↔': '<->',
+  '✓': '[x]',
+  '✔': '[x]',
+  '✗': '[ ]',
+  '✘': '[ ]',
+  '×': 'x',
+  '÷': '/',
+  '−': '-',
+  '‐': '-',
+  '‑': '-',
+  '\u00A0': ' ',
+  '\u200B': '',
+  '\uFEFF': '',
+};
+
+/**
+ * Normaliza y sanitiza texto para fuentes estándar WinAnsi (StandardFonts.Helvetica),
+ * transliterando símbolos frecuentes y descartando caracteres no codificables (ej. emojis).
+ */
+export function sanitizarTextoWinAnsi(
+  texto: unknown,
+  puedeCodificar?: (candidato: string) => boolean,
+): string {
+  if (texto === null || texto === undefined) return '';
+  const limpio = String(texto)
+    .normalize('NFC')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .replace(/[\r\n\t]+/g, ' ');
+
+  let out = '';
+  for (const ch of limpio) {
+    out += WINANSI_TRANSLITERATIONS[ch] ?? ch;
+  }
+
+  if (puedeCodificar) {
+    try {
+      if (puedeCodificar(out)) return out;
+    } catch {
+      // Continuar con filtrado carácter por carácter
+    }
+    let seguro = '';
+    for (const ch of out) {
+      try {
+        if (puedeCodificar(ch)) {
+          seguro += ch;
+        }
+      } catch {
+        // Omitir caracteres fuera de WinAnsi
+      }
+    }
+    return seguro;
+  }
+
+  return out.replace(/[^\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/g, '');
 }
 
 export async function buildOfficialPdf(
@@ -71,18 +146,43 @@ export async function buildOfficialPdf(
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
 
-  // Load embedded high-res assets
-  const logoScoutsColor = await pdfDoc.embedJpg(dataUriToUint8Array(PDF_ASSETS.logoScoutsColor));
-  // Clean PNG without black box for Juan XXIII logo
-  const logoJuanXXIII = await pdfDoc.embedPng(dataUriToUint8Array(PDF_ASSETS.logoJuanXXIII));
-  const logoScoutsSalud = await pdfDoc.embedJpg(dataUriToUint8Array(PDF_ASSETS.logoScoutsSalud));
-  const logoScoutsFooterPurple = await pdfDoc.embedJpg(dataUriToUint8Array(PDF_ASSETS.logoScoutsFooterPurple));
-  const logoScoutsHeaderAuth = await pdfDoc.embedJpg(dataUriToUint8Array(PDF_ASSETS.logoScoutsHeaderAuth));
+  const puedeCodificarWinAnsi = (candidato: string): boolean => {
+    fontRegular.encodeText(candidato);
+    return true;
+  };
+  const sanitizar = (texto: unknown): string =>
+    sanitizarTextoWinAnsi(texto, puedeCodificarWinAnsi);
 
-  // Generate QR Code
-  const qrHash = options.hashVerificacion || (rawRespuestas.hashVerificacion as string) || 'LEGAJO-OFICIAL-2026-VERIFICADO';
-  const qrDataUrl = await QRCode.toDataURL(qrHash, { margin: 1, width: 160 });
-  const qrImage = await pdfDoc.embedPng(dataUriToUint8Array(qrDataUrl));
+  for (const font of [fontRegular, fontBold, fontItalic]) {
+    const origWidthOfTextAtSize = font.widthOfTextAtSize.bind(font);
+    font.widthOfTextAtSize = (text: string, size: number) =>
+      origWidthOfTextAtSize(sanitizar(text), size);
+  }
+
+  const origAddPage = pdfDoc.addPage.bind(pdfDoc);
+  pdfDoc.addPage = ((...args: Parameters<typeof origAddPage>) => {
+    const page = origAddPage(...args);
+    const origDrawText = page.drawText.bind(page);
+    page.drawText = ((text: string, drawOptions?: Parameters<typeof origDrawText>[1]) =>
+      origDrawText(sanitizar(text), drawOptions)) as typeof page.drawText;
+    return page;
+  }) as typeof pdfDoc.addPage;
+
+  // Load embedded high-res assets
+  const logoScoutsColor = await pdfDoc.embedJpg(getDecodedAssetBytes('logoScoutsColor'));
+  // Clean PNG without black box for Juan XXIII logo
+  const logoJuanXXIII = await pdfDoc.embedPng(getDecodedAssetBytes('logoJuanXXIII'));
+  const logoScoutsSalud = await pdfDoc.embedJpg(getDecodedAssetBytes('logoScoutsSalud'));
+  const logoScoutsFooterPurple = await pdfDoc.embedJpg(getDecodedAssetBytes('logoScoutsFooterPurple'));
+  const logoScoutsHeaderAuth = await pdfDoc.embedJpg(getDecodedAssetBytes('logoScoutsHeaderAuth'));
+
+  // Generate QR Code (usa bytes pregenerados cuando corre dentro de Web Worker)
+  const cicloActual = obtenerCicloAnioActual();
+  const qrHash = options.hashVerificacion || (rawRespuestas.hashVerificacion as string) || `LEGAJO-OFICIAL-${cicloActual}-VERIFICADO`;
+  const qrBytes =
+    options.qrPngBytes ??
+    dataUriToUint8Array(await QRCode.toDataURL(qrHash, { margin: 1, width: 160 }));
+  const qrImage = await pdfDoc.embedPng(qrBytes);
 
   const black = rgb(0, 0, 0);
   const labelColor = rgb(0.25, 0.25, 0.25);
@@ -741,7 +841,7 @@ export async function buildOfficialPdf(
     page2.drawText(`DNI: `, { x: 305, y: rightY, size: 8, font: fontRegular, color: labelColor });
     page2.drawText(respDni, { x: 325, y: rightY, size: 8, font: fontBold, color: memberDataColor });
     page2.drawText(`       Fecha: `, { x: 400, y: rightY, size: 8, font: fontRegular, color: labelColor });
-    page2.drawText(normalizeDate(data.fecha_declaracion || new Date().toISOString().slice(0, 10)), { x: 440, y: rightY, size: 8, font: fontBold, color: memberDataColor });
+    page2.drawText(normalizeDate(data.fecha_declaracion || obtenerHoyLocalISO()), { x: 440, y: rightY, size: 8, font: fontBold, color: memberDataColor });
 
     page2.drawImage(qrImage, { x: width - 85, y: 25, width: 50, height: 50 });
   }
@@ -759,7 +859,7 @@ export async function buildOfficialPdf(
 
     const autDate = parseDateParts(data.autorizante_fecha_nac);
     const minDate = parseDateParts(data.protagonista_fecha_nac);
-    const todayDate = parseDateParts(new Date().toISOString().slice(0, 10));
+    const todayDate = parseDateParts(obtenerHoyLocalISO());
 
     const pNombre = [data.protagonista_nombre, data.protagonista_apellido].filter(Boolean).join(' ') || String(data.nombre_completo || '');
     const aNombre = String(data.autorizante_nombre || data.madre_nombres || '');
@@ -878,7 +978,7 @@ export async function buildOfficialPdf(
 
     const autDate = parseDateParts(data.autorizante_fecha_nac);
     const minDate = parseDateParts(data.protagonista_fecha_nac);
-    const todayDate = parseDateParts(new Date().toISOString().slice(0, 10));
+    const todayDate = parseDateParts(obtenerHoyLocalISO());
 
     const pNombre = [data.protagonista_nombre, data.protagonista_apellido].filter(Boolean).join(' ') || String(data.nombre_completo || '');
     const aNombre = String(data.autorizante_nombre || data.madre_nombres || '');
@@ -1156,7 +1256,7 @@ export async function buildOfficialPdf(
     page6.drawText(soloStr, { x: 210, y: curY, size: 9, font: fontBold, color: memberDataColor });
 
     curY -= 30;
-    const todayDate = parseDateParts(new Date().toISOString().slice(0, 10));
+    const todayDate = parseDateParts(obtenerHoyLocalISO());
     page6.drawText(`Fecha: `, { x: 40, y: curY, size: 8.5, font: fontRegular, color: labelColor });
     page6.drawText(`${todayDate.dia} / ${todayDate.mes} / ${todayDate.anio}`, { x: 80, y: curY, size: 8.5, font: fontBold, color: memberDataColor });
     curY -= 18;
@@ -1374,7 +1474,7 @@ export async function buildOfficialPdf(
   for (let i = 0; i < totalPaginas; i++) {
     const page = pdfDoc.getPage(i);
     const { width } = page.getSize();
-    const textoSeguridad = `Grupo Scout Juan XXIII • Ciclo 2026 • DNI ${dniProtagonista} • Código: ${shortHash} • Hoja ${i + 1} de ${totalPaginas}`;
+    const textoSeguridad = `Grupo Scout Juan XXIII • Ciclo ${cicloActual} • DNI ${dniProtagonista} • Código: ${shortHash} • Hoja ${i + 1} de ${totalPaginas}`;
 
     const textWidth = fontRegular.widthOfTextAtSize(textoSeguridad, 7);
     const xCentrado = Math.max(20, (width - textWidth) / 2);

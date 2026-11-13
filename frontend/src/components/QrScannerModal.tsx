@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
 import {
   X,
   Camera,
@@ -12,8 +11,9 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { api } from '../api/client';
-import { ESTADO_FICHA_CONFIG, traducirErrorAmigable } from '../lib/formatters';
+import { ESTADO_FICHA_CONFIG, obtenerRolPrincipal, traducirErrorAmigable } from '../lib/formatters';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { useHtml5QrScanner } from '../hooks/useHtml5QrScanner';
 
 interface Props {
   abierto: boolean;
@@ -35,95 +35,38 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
   });
   const [exito, setExito] = useState<string | null>(null);
   const [previaEntrega, setPreviaEntrega] = useState<any | null>(null);
+  const detenerCamaraRef = useRef<() => Promise<void>>(async () => {});
 
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const transicionRef = useRef<Promise<void>>(Promise.resolve());
+  const { detenerCamara } = useHtml5QrScanner({
+    containerId: 'qr-reader-container',
+    activo: abierto && modo === 'camara' && !previaEntrega,
+    qrboxSize: 240,
+    mensajeErrorCamara: 'Cámara no disponible. Ingresá el código al pie de la hoja o DNI.',
+    onErrorCamara: () => {
+      setError('Cámara no disponible. Ingresá el código al pie de la hoja o DNI.');
+      setModo('manual');
+    },
+    onDecode: async (decodedText) => {
+      await detenerCamaraRef.current();
+      await consultarFicha(decodedText);
+    },
+  });
 
-  const detenerCamara = () => {
-    transicionRef.current = transicionRef.current
-      .then(async () => {
-        const inst = scannerRef.current;
-        if (!inst) return;
-        try {
-          if (inst.isScanning) {
-            await inst.stop();
-          }
-        } catch {
-          // Ignorar errores de transición DOM de html5-qrcode
-        }
-        try {
-          inst.clear();
-        } catch {
-          // Ignorar si el contenedor ya no está visible
-        }
-        scannerRef.current = null;
-      })
-      .catch(() => {});
-    return transicionRef.current;
-  };
-
-  const iniciarCamara = () => {
-    transicionRef.current = transicionRef.current
-      .then(async () => {
-        if (scannerRef.current?.isScanning) return;
-        const container = document.getElementById('qr-reader-container');
-        if (!container) return;
-
-        try {
-          setError(null);
-          setExito(null);
-          const html5QrCode = new Html5Qrcode('qr-reader-container');
-          scannerRef.current = html5QrCode;
-
-          await html5QrCode.start(
-            { facingMode: 'environment' },
-            {
-              fps: 10,
-              qrbox: { width: 240, height: 240 },
-            },
-            async (decodedText) => {
-              await detenerCamara();
-              await consultarFicha(decodedText);
-            },
-            () => {},
-          );
-        } catch {
-          scannerRef.current = null;
-          setError('Cámara no disponible. Ingresá el código al pie de la hoja o DNI.');
-          setModo('manual');
-        }
-      })
-      .catch(() => {});
-    return transicionRef.current;
-  };
-
-  const limpiarEstado = () => {
-    void detenerCamara();
-    setModo('camara');
-    setCodigoManual('');
-    setCargando(false);
-    setValidando(false);
-    setError(null);
-    setExito(null);
-    setPreviaEntrega(null);
-  };
+  useEffect(() => {
+    detenerCamaraRef.current = detenerCamara;
+  }, [detenerCamara]);
 
   useEffect(() => {
     if (!abierto) {
-      limpiarEstado();
-      return;
+      setModo('camara');
+      setCodigoManual('');
+      setCargando(false);
+      setValidando(false);
+      setError(null);
+      setExito(null);
+      setPreviaEntrega(null);
     }
-
-    if (modo === 'camara' && !previaEntrega) {
-      void iniciarCamara();
-    } else {
-      void detenerCamara();
-    }
-
-    return () => {
-      void detenerCamara();
-    };
-  }, [abierto, modo, previaEntrega]);
+  }, [abierto]);
 
   const consultarFicha = async (hash: string) => {
     const hashLimpio = hash.trim();
@@ -276,7 +219,7 @@ export const QrScannerModal: React.FC<Props> = ({ abierto, onCerrar, onValidadoE
                       </h4>
                       <p className="text-xs text-ink-muted">
                         DNI {previaEntrega.usuario?.dni} •{' '}
-                        {previaEntrega.usuario?.asignaciones?.[0]?.unidad?.nombre || 'Sin Sección'}
+                        {obtenerRolPrincipal(previaEntrega.usuario)?.unidad?.nombre || 'Sin Sección'}
                       </p>
                     </div>
                   </div>

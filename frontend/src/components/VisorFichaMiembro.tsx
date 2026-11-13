@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import {
   HeartPulse,
   Users,
@@ -13,7 +13,11 @@ import {
   Car,
   UserCheck,
 } from 'lucide-react';
-import { PdfViewerModal } from './PdfViewerModal';
+import { obtenerCicloAnioActual } from '../lib/formatters';
+
+const PdfViewerModal = lazy(() =>
+  import('./PdfViewerModal').then((m) => ({ default: m.PdfViewerModal })),
+);
 
 interface VisorFichaMiembroProps {
   miembro: any;
@@ -215,13 +219,17 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   return (
     <div className="space-y-3">
       {/* Modal Visor de PDF en pantalla (compatible con celulares Android/iOS sin apps externas) */}
-      <PdfViewerModal
-        url={pdfPreviewUrl}
-        titulo={`Vista Previa: ${miembro?.apellido || ''}, ${miembro?.nombre || ''}`}
-        subtitulo="Planilla Oficial 2026"
-        onCerrar={onCerrarPdfPreview}
-        onDescargar={onDescargarPdf}
-      />
+      {pdfPreviewUrl && (
+        <Suspense fallback={null}>
+          <PdfViewerModal
+            url={pdfPreviewUrl}
+            titulo={`Vista Previa: ${miembro?.apellido || ''}, ${miembro?.nombre || ''}`}
+            subtitulo={`Planilla Oficial ${obtenerCicloAnioActual()}`}
+            onCerrar={onCerrarPdfPreview}
+            onDescargar={onDescargarPdf}
+          />
+        </Suspense>
+      )}
 
       {!tieneDatosCargados ? (
         <div className="p-6 text-center bg-paper-2 rounded-2xl border border-dashed border-rule space-y-1.5">

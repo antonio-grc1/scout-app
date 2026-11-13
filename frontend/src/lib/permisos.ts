@@ -71,3 +71,16 @@ export const usePermisosUI = () => {
 
   return { canEdit, canView };
 };
+
+export function obtenerRutaInicialUsuario(opts: {
+  token: string | null;
+  requiereCambioClave: boolean;
+  puedeVerPadron: () => boolean;
+  puedeAccederPanelGestion: () => boolean;
+}): string {
+  if (!opts.token) return '/login';
+  if (opts.requiereCambioClave) return '/cambiar-clave';
+  if (opts.puedeVerPadron()) return '/rama';
+  if (opts.puedeAccederPanelGestion()) return '/global';
+  return '/autogestion';
+}

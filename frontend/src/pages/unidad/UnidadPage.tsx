@@ -16,10 +16,14 @@ import {
   ESTADO_FICHA_CONFIG,
   calcularCamada,
   calcularEdad,
+  esErrorOffline,
   esRolDeEducador,
   formatearFecha,
   formatearNombreFamilia,
   normalizarTextoBusqueda,
+  obtenerCicloAnioActual,
+  obtenerHoyLocalISO,
+  obtenerRolPrincipal,
   traducirErrorAmigable,
 } from '../../lib/formatters';
 import { BotonExportar } from '../../components/ui';
@@ -135,10 +139,10 @@ export const UnidadPage: React.FC = () => {
     setModalFamiliasVoluntariasAbierto(true);
     setCargandoVoluntarias(true);
     try {
-      const res = await api.get('/legajos/colaboradores-adultos?cicloAnio=2026');
+      const res = await api.get(`/legajos/colaboradores-adultos?cicloAnio=${obtenerCicloAnioActual()}`);
       setFamiliasVoluntarias(res.data || []);
     } catch (err) {
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      if (esErrorOffline(err)) return;
       setToast({
         texto: traducirErrorAmigable(err, 'No se pudieron cargar las familias voluntarias.'),
         tipo: 'error',
@@ -175,8 +179,7 @@ export const UnidadPage: React.FC = () => {
       (texto.toLowerCase().includes('sin conexión') ||
         texto.toLowerCase().includes('sin conexion') ||
         texto.toLowerCase().includes('offline') ||
-        texto.toLowerCase().includes('red') ||
-        (typeof navigator !== 'undefined' && !navigator.onLine))
+        (typeof navigator !== 'undefined' && navigator.onLine === false))
     ) {
       return;
     }
@@ -210,23 +213,40 @@ export const UnidadPage: React.FC = () => {
     cargarDatos();
   }, []);
 
+  const cargarTodosLosMiembrosPaginados = async (): Promise<any[]> => {
+    const porPagina = 200;
+    const primera = await api.get(`/miembros?pagina=1&porPagina=${porPagina}&incluirInactivos=true`);
+    const primerosItems: any[] = primera.data?.items || [];
+    const total: number = Number(primera.data?.total ?? primerosItems.length);
+    const totalPaginas = Math.ceil(total / porPagina);
+    if (totalPaginas <= 1) return primerosItems;
+
+    const resto = await Promise.all(
+      Array.from({ length: totalPaginas - 1 }, (_, i) =>
+        api.get(`/miembros?pagina=${i + 2}&porPagina=${porPagina}&incluirInactivos=true`),
+      ),
+    );
+    const acumulados = [...primerosItems];
+    for (const r of resto) {
+      if (Array.isArray(r.data?.items)) acumulados.push(...r.data.items);
+    }
+    return acumulados;
+  };
+
   const cargarDatos = async () => {
     setCargando(true);
     try {
-      const [resMiembros, resCandidatos, resEntregas, resUnidades, resRoles, resRamas] =
+      const [miembrosLista, resCandidatos, resEntregas, resUnidades, resRoles, resRamas] =
         await Promise.all([
-          api.get('/miembros?porPagina=2000&incluirInactivos=true'),
+          cargarTodosLosMiembrosPaginados(),
           puedeVerPases ? api.get('/pases/candidatos').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-          puedeVerFichas ? api.get('/legajos/entregas?cicloAnio=2026').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+          puedeVerFichas ? api.get(`/legajos/entregas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
           api.get('/organizacion/unidades').catch(() => ({ data: [] })),
           api.get('/organizacion/roles').catch(() => ({ data: [] })),
           api.get('/organizacion/ramas').catch(() => ({ data: [] })),
-          puedeVerFichas
-            ? api.get('/legajos/plantillas?cicloAnio=2026').catch(() => ({ data: [] }))
-            : Promise.resolve({ data: [] }),
         ]);
 
-      setMiembros(resMiembros.data.items || []);
+      setMiembros(miembrosLista);
       setCandidatosPase(resCandidatos.data || []);
       setEntregas(resEntregas.data || []);
       setUnidades(resUnidades.data || []);
@@ -391,7 +411,7 @@ export const UnidadPage: React.FC = () => {
         if (!m.activo) return false;
       }
 
-      const asig = m.asignaciones?.[0];
+      const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
       const esEdu = esRolDeEducador(asig?.rol);
       const entrega = entregasPorUsuario.get(m.id);
 
@@ -476,8 +496,10 @@ export const UnidadPage: React.FC = () => {
           }
 
           // 2. Si pertenecen a la misma rama, agrupar por nombre de la sección (ej: dos secciones scouts)
-          const seccionA = a.asignaciones?.[0]?.unidad?.nombre || '';
-          const seccionB = b.asignaciones?.[0]?.unidad?.nombre || '';
+          const asigA = obtenerRolPrincipal(a) ?? a.asignaciones?.[0];
+          const asigB = obtenerRolPrincipal(b) ?? b.asignaciones?.[0];
+          const seccionA = asigA?.unidad?.nombre || '';
+          const seccionB = asigB?.unidad?.nombre || '';
           const compSeccion = seccionA.localeCompare(seccionB, 'es');
           if (compSeccion !== 0) {
             comp = compSeccion;
@@ -485,8 +507,6 @@ export const UnidadPage: React.FC = () => {
           }
 
           // 3. Rol: Protagonistas (menores) primero, Educadores (adultos) después
-          const asigA = a.asignaciones?.[0];
-          const asigB = b.asignaciones?.[0];
           const esEduA = esRolDeEducador(asigA?.rol) ? 1 : 0;
           const esEduB = esRolDeEducador(asigB?.rol) ? 1 : 0;
           if (esEduA !== esEduB) {
@@ -517,7 +537,19 @@ export const UnidadPage: React.FC = () => {
           break;
         }
         case 'edad': {
-          comp = new Date(b.fechaNacimiento).getTime() - new Date(a.fechaNacimiento).getTime();
+          const tsA = a.fechaNacimiento ? new Date(a.fechaNacimiento).getTime() : NaN;
+          const tsB = b.fechaNacimiento ? new Date(b.fechaNacimiento).getTime() : NaN;
+          const validA = Number.isFinite(tsA);
+          const validB = Number.isFinite(tsB);
+          if (validA && validB) {
+            comp = tsB - tsA;
+          } else if (validA) {
+            comp = -1;
+          } else if (validB) {
+            comp = 1;
+          } else {
+            comp = 0;
+          }
           break;
         }
         case 'ficha': {
@@ -553,7 +585,7 @@ export const UnidadPage: React.FC = () => {
     const mapa = new Map<number, number>();
     for (const m of miembros) {
       if (!m.activo) continue;
-      const asig = m.asignaciones?.[0];
+      const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
       const esEdu = esRolDeEducador(asig?.rol);
       if (esEdu) continue;
       if (seccionesFiltro.length > 0) {
@@ -704,7 +736,7 @@ export const UnidadPage: React.FC = () => {
     {
       header: 'Rol / Función',
       formatear: (m) => {
-        const asig = m.asignaciones?.[0];
+        const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
         return asig?.rol?.nombre || (typeof asig?.rol === 'string' ? asig.rol : '') || '';
       },
     },
@@ -737,7 +769,7 @@ export const UnidadPage: React.FC = () => {
       mostrarToast('No hay miembros para exportar con los filtros seleccionados.', 'error');
       return;
     }
-    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const fechaHoy = obtenerHoyLocalISO();
     await exportarAExcel({
       nombreArchivo: `Padron_Grupo_Juan_XXIII_${fechaHoy}`,
       nombreHoja: 'Padrón',
@@ -758,7 +790,7 @@ export const UnidadPage: React.FC = () => {
       mostrarToast('No hay miembros para exportar con los filtros seleccionados.', 'error');
       return;
     }
-    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const fechaHoy = obtenerHoyLocalISO();
     exportarACSV({
       nombreArchivo: `Padron_Grupo_Juan_XXIII_${fechaHoy}`,
       columnas: prepararColumnasPadron(),
@@ -1850,7 +1882,7 @@ export const UnidadPage: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-rule">
                   {miembrosFiltrados.map((m) => {
-                    const asig = m.asignaciones?.[0];
+                    const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
                     const entrega = entregasPorUsuario.get(m.id);
                     const tienePase = candidatosIds.has(m.id);
                     const cfg = obtenerConfigRama(m, unidades);

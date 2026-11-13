@@ -56,7 +56,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             type={type}
             required={required}
-            aria-invalid={Boolean(error) ? 'true' : undefined}
+            aria-invalid={error ? 'true' : undefined}
             aria-describedby={
               error ? errorId : helperText ? helperId : undefined
             }
@@ -157,7 +157,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             required={required}
-            aria-invalid={Boolean(error) ? 'true' : undefined}
+            aria-invalid={error ? 'true' : undefined}
             aria-describedby={
               error ? errorId : helperText ? helperId : undefined
             }
@@ -245,7 +245,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           id={textareaId}
           rows={rows}
           required={required}
-          aria-invalid={Boolean(error) ? 'true' : undefined}
+          aria-invalid={error ? 'true' : undefined}
           aria-describedby={
             error ? errorId : helperText ? helperId : undefined
           }

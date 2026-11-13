@@ -8,6 +8,7 @@ import {
   formatearFecha,
   formatearFechaHora,
   normalizarTextoBusqueda,
+  obtenerHoyLocalISO,
 } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { BotonExportar } from './ui/BotonExportar';
@@ -185,6 +186,13 @@ function obtenerEtiquetaTipoMovimiento(tipo: MovimientoFinancieroItem['tipo']): 
   }
 }
 
+export function debeMostrarErrorOfflineLibro(
+  libroActual: { cuenta?: { id?: number } } | null,
+  cuentaSeleccionadaId: number | null,
+): boolean {
+  return !libroActual || libroActual.cuenta?.id !== cuentaSeleccionadaId;
+}
+
 export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = ({ onToast }) => {
   const { tienePermiso } = useAuthStore();
   const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
@@ -205,6 +213,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
   // Datos del libro diario
   const [libroDiario, setLibroDiario] = useState<LibroDiarioRespuesta | null>(null);
+  const libroDiarioRef = useRef<LibroDiarioRespuesta | null>(null);
   const [cargandoLibro, setCargandoLibro] = useState(false);
   const [errorLibro, setErrorLibro] = useState<string | null>(null);
 
@@ -266,6 +275,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   // Cargar libro diario de la cuenta seleccionada
   const cargarLibroDiario = useCallback(async () => {
     if (!cuentaSeleccionadaId) {
+      libroDiarioRef.current = null;
       setLibroDiario(null);
       return;
     }
@@ -281,6 +291,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       const res = await api.get(`/tesoreria/cuentas/${cuentaSeleccionadaId}/libro-diario`, {
         params,
       });
+      libroDiarioRef.current = res.data;
       setLibroDiario(res.data);
     } catch (err: any) {
       const msg = traducirErrorAmigable(err, 'No se pudo cargar el libro diario.');
@@ -291,7 +302,9 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         msg.toLowerCase().includes('sin conexion');
 
       if (esOffline) {
-        if (!libroDiario) {
+        if (debeMostrarErrorOfflineLibro(libroDiarioRef.current, cuentaSeleccionadaId)) {
+          libroDiarioRef.current = null;
+          setLibroDiario(null);
           setErrorLibro('Estás sin conexión y esta cuenta aún no ha sido sincronizada en este dispositivo.');
         } else {
           setErrorLibro(null);
@@ -326,7 +339,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             await api.post('/tesoreria/ingresos', {
               fecha: mov.fecha,
               monto: Number(mov.montoIngreso),
-              descripcion: mov.conceptoTexto.replace(/^Ingreso:\s*/, '').split(' - ')[0],
+              descripcion: mov.conceptoTexto.replace(/^Ingreso:\s*/, ''),
               cuentaId: mov.cuentaId,
               rubroId: mov.rubroId || mov.rubro?.id,
             });
@@ -378,7 +391,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     (cuentaSeleccionadaId !== null && !datosLibroListos && !errorLibro);
 
   const saldoAnterior = datosLibroListos ? (libroDiario?.saldoAnterior ?? 0) : 0;
-  const movimientos = datosLibroListos ? (libroDiario?.movimientos ?? []) : [];
+  const movimientos = useMemo(
+    () => (datosLibroListos ? (libroDiario?.movimientos ?? []) : []),
+    [datosLibroListos, libroDiario],
+  );
   const saldoHero =
     datosLibroListos && libroDiario?.saldoActualConsolidado !== undefined
       ? libroDiario.saldoActualConsolidado
@@ -491,7 +507,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       if (onToastRef.current) onToastRef.current('No hay movimientos para exportar.', 'error');
       return;
     }
-    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const fechaHoy = obtenerHoyLocalISO();
     const nombreSanitizado = (cuentaActiva?.nombre || 'Cuenta').replace(/[^a-zA-Z0-9_-]/g, '_');
     const periodoTexto = `${fechaDesde ? formatearFecha(fechaDesde) : 'Histórico'} al ${fechaHasta ? formatearFecha(fechaHasta) : 'Hoy'}`;
 
@@ -509,7 +525,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         },
         { etiqueta: 'Período', valor: periodoTexto },
         { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
-        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(obtenerHoyLocalISO()) },
       ],
       resumenInferior: [
         { etiqueta: 'Total Ingresos del Período ($)', valor: libroDiario?.totalIngresosPeriodo ?? 0 },
@@ -526,7 +542,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       if (onToastRef.current) onToastRef.current('No hay movimientos para exportar.', 'error');
       return;
     }
-    const fechaHoy = new Date().toISOString().slice(0, 10);
+    const fechaHoy = obtenerHoyLocalISO();
     const nombreSanitizado = (cuentaActiva?.nombre || 'Cuenta').replace(/[^a-zA-Z0-9_-]/g, '_');
     const periodoTexto = `${fechaDesde ? formatearFecha(fechaDesde) : 'Histórico'} al ${fechaHasta ? formatearFecha(fechaHasta) : 'Hoy'}`;
 
@@ -543,7 +559,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         },
         { etiqueta: 'Período', valor: periodoTexto },
         { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
-        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(obtenerHoyLocalISO()) },
       ],
       resumenInferior: [
         { etiqueta: 'Total Ingresos del Período ($)', valor: libroDiario?.totalIngresosPeriodo ?? 0 },
@@ -1450,9 +1466,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                       tipo: cuenta.tipo,
                     });
                   } else {
-                    await api.patch(`/tesoreria/cuentas/${cuenta.id}`, {
-                      activa: true,
-                    });
+                    await api.post(`/tesoreria/cuentas/${cuenta.id}/restaurar`);
                   }
                   await cargarCuentas(cuenta.id);
                   useToastStore.getState().mostrarToast(`Cuenta "${cuenta.nombre}" restaurada.`);

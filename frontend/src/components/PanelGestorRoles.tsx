@@ -94,7 +94,7 @@ const ETIQUETAS_PERMISOS_HUMANAS: Record<
   },
   'auth.resetear_clave': {
     titulo: 'Puede restablecer contraseñas olvidadas',
-    detalle: 'Permite volver la clave de acceso de una persona a su número de DNI cuando no puede entrar.',
+    detalle: 'Permite generar una nueva clave temporal de acceso para una persona cuando no puede entrar.',
     categoria: 'Personas y Padrón',
   },
   'legajos.ver': {

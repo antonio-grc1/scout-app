@@ -7,14 +7,11 @@ import { ModalCobrarDeuda } from './ModalCobrarDeuda';
 import { ModalGenerarDeudaManual } from './ModalGenerarDeudaManual';
 import { ModalEditarFamilia } from './ModalEditarFamilia';
 import { ModalVincularHermano } from './ModalVincularHermano';
-import { obtenerConfigRama, RAMA_COLORS } from '../lib/ramaColors';
+import { obtenerConfigRama } from '../lib/ramaColors';
 import {
-  ESTADO_FICHA_CONFIG,
-  ESTADO_CARGO_CONFIG,
-  METODO_PAGO_LABELS,
-  NOMBRES_MESES_CORTOS,
   calcularEdad,
   obtenerAsignacionesActivas,
+  obtenerCicloAnioActual,
   obtenerRolPrincipal,
   obtenerRolesSecundarios,
   esRolDeEducador,
@@ -32,27 +29,10 @@ import { usePermisosUI } from '../lib/permisos';
 import {
   X,
   User,
-  Users,
   FileCheck2,
   CreditCard,
   KeyRound,
   ArrowRightLeft,
-  Save,
-  Sparkles,
-  FileText,
-  Download,
-  Wallet,
-  PlusCircle,
-  Receipt,
-  Phone,
-  Ban,
-  Pencil,
-  Loader2,
-  Eye,
-  RotateCcw,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import {
   generarFichaPdf,
@@ -82,14 +62,7 @@ const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO';
 
 
 
-const getRamaColorConfig = (nombreRama: string) => {
-  const n = (nombreRama || '').toLowerCase();
-  if (n.includes('lobat')) return RAMA_COLORS.lobatos;
-  if (n.includes('scout')) return RAMA_COLORS.scout;
-  if (n.includes('caminant')) return RAMA_COLORS.caminantes;
-  if (n.includes('rover')) return RAMA_COLORS.rover;
-  return RAMA_COLORS.otro;
-};
+const CARGOS_VACIOS: any[] = [];
 
 
 export const ModalDetalleMiembro: React.FC<Props> = ({
@@ -104,11 +77,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const puedeEditarIdentidad = canEdit('miembro', 'identidad');
   const puedeEditarContacto = canEdit('miembro', 'contacto');
   const puedeDarBaja = canEdit('miembro', 'estado');
-  const puedeEditarFamilia = canEdit('miembro', 'familia');
-  const puedeEditarDescuento = canEdit('miembro', 'descuentoFamiliar');
   const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
   const puedeVerCuotas = canView('cuotas');
   const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
+  const puedeCrearCargoIndividual = canEdit('cuotas', 'cargoIndividual');
+  const puedeAjustarCuotas = canEdit('cuotas', 'editarCargo');
   const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
   const puedeVerFicha = canView('ficha');
   const puedeCompletarFicha = canEdit('ficha', 'completar');
@@ -127,6 +100,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const [guardando, setGuardando] = useState(false);
   const [ejecutandoPase, setEjecutandoPase] = useState(false);
   const [reseteandoClave, setReseteandoClave] = useState(false);
+  const [claveTemporalGenerada, setClaveTemporalGenerada] = useState<string | null>(null);
   const [validandoFichaId, setValidandoFichaId] = useState<number | null>(null);
   const [descargandoPdfId, setDescargandoPdfId] = useState<number | null>(null);
   const [generandoVistaPrevia, setGenerandoVistaPrevia] = useState(false);
@@ -224,7 +198,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const esEgreso = useMemo(() => {
     if (candidatoPase?.tipo === 'EGRESO' || candidatoPase?.tipo === 'EGRESO_SIN_RAMA') return true;
     const edad = miembro?.fechaNacimiento ? calcularEdad(miembro.fechaNacimiento) : 0;
-    const asigActiva = miembro?.asignaciones?.find((a: any) => a.activo) ?? miembro?.asignaciones?.[0];
+    const asigActiva = obtenerRolPrincipal(miembro) ?? miembro?.asignaciones?.[0];
     const esRover = asigActiva?.unidad?.rama?.nombre?.toLowerCase().includes('rover');
     return Boolean(esRover && (edad ?? 0) >= 21);
   }, [candidatoPase, miembro]);
@@ -266,11 +240,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     if (!usuarioId) {
       setMiembro(null);
       setAlerta(null);
+      setClaveTemporalGenerada(null);
       setEditandoFicha(false);
       return;
     }
     setTab(tabInicial);
     setAlerta(null);
+    setClaveTemporalGenerada(null);
     setEditandoFicha(false);
     setPlantillaActiva(null);
     cargarDatos(usuarioId);
@@ -322,7 +298,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         activo: m.activo ?? true,
       });
 
-      const asig = m.asignaciones?.[0];
+      const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
       const asigUnidadId = asig?.unidad?.id ?? asig?.unidadId;
       const candidato = (resCandidatos.data || []).find((c: any) => c.usuario?.id === id);
 
@@ -660,9 +636,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     setModalConf({
       abierto: true,
       titulo: 'Restablecer Contraseña',
-      mensaje: `La contraseña de ${miembro.nombre} ${miembro.apellido} volverá a ser su DNI (${miembro.dni}).`,
+      mensaje: `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido} y se revocarán sus sesiones activas.`,
       tipo: 'peligro',
-      textoConfirmar: 'Restablecer a DNI',
+      textoConfirmar: 'Generar clave temporal',
       textoCancelar: 'Cancelar',
       onCerrar: () => setModalConf(null),
       onConfirmar: async () => {
@@ -670,12 +646,16 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         setAlerta(null);
         try {
           const res = await api.post(`/auth/usuarios/${miembro.id}/resetear-clave`);
+          const claveTemporal: string | undefined = res.data?.claveTemporal;
+          setClaveTemporalGenerada(claveTemporal ?? null);
           setModalConf(null);
           setAlerta({
             tipo: 'exito',
-            texto: `Contraseña restablecida a su DNI (${miembro.dni}).`,
+            texto: claveTemporal
+              ? `Nueva clave temporal generada: ${claveTemporal}`
+              : res.data?.mensaje || 'Se generó una nueva clave temporal.',
           });
-          if (onClaveReseteada) onClaveReseteada(res.data.mensaje);
+          if (onClaveReseteada) onClaveReseteada(res.data?.mensaje || 'Clave restablecida.');
           cargarDatos(miembro.id);
         } catch (err: any) {
           setModalConf(null);
@@ -788,12 +768,30 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const handleGuardarEdicionCargo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cargoEditando) return;
+    const montoOriginalNum = Number(cargoEditando.montoOriginal);
+    const montoDescuentoNum = Number(cargoEditando.montoDescuento || 0);
+    if (!Number.isFinite(montoOriginalNum) || montoOriginalNum < 0) {
+      setAlerta({ tipo: 'error', texto: 'El monto original debe ser un número mayor o igual a 0.' });
+      return;
+    }
+    if (!Number.isFinite(montoDescuentoNum) || montoDescuentoNum < 0) {
+      setAlerta({ tipo: 'error', texto: 'El descuento no puede ser negativo.' });
+      return;
+    }
+    if (montoDescuentoNum > montoOriginalNum) {
+      setAlerta({
+        tipo: 'error',
+        texto: 'El descuento no puede superar el monto original de la cuota.',
+      });
+      return;
+    }
+
     setProcesandoAccionCuota(true);
     setAlerta(null);
     try {
       const payload: any = {
-        montoOriginal: Number(cargoEditando.montoOriginal),
-        montoDescuento: Number(cargoEditando.montoDescuento || 0),
+        montoOriginal: montoOriginalNum,
+        montoDescuento: montoDescuentoNum,
       };
       if (cargoEditando.esIndividual) {
         payload.nombreConcepto = cargoEditando.nombreConcepto.trim();
@@ -931,7 +929,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const obtenerPlantillaActiva = async () => {
     if (plantillaActiva) return plantillaActiva;
     try {
-      const res = await api.get('/legajos/plantillas?cicloAnio=2026');
+      const res = await api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`);
       let lista = Array.isArray(res.data) ? res.data : [];
       if (lista.length === 0) {
         const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
@@ -946,24 +944,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const generarBytesPdfMiembro = async (ent?: any): Promise<Uint8Array> => {
-    let mapeo: MapeoPdf = { pdfBaseUrl: '', campos: {} };
-    if (ent?.plantillaId) {
-      try {
-        const res = await api.get(`/legajos/plantillas/${ent.plantillaId}`);
-        mapeo = res.data?.mapeoPdfJson || mapeo;
-      } catch {
-        // Fallback seguro
-      }
-    } else {
-      try {
-        const p = await obtenerPlantillaActiva();
-        mapeo = p?.mapeoPdfJson || mapeo;
-      } catch {
-        // Fallback seguro
-      }
-    }
-
-    const ramaNombre = miembro.asignaciones?.[0]?.unidad?.nombre || '';
+    const mapeo: MapeoPdf = { pdfBaseUrl: '', campos: {} };
+    const ramaNombre = obtenerRolPrincipal(miembro)?.unidad?.nombre || '';
     const respuestasBase = ent?.respuestasSnapshotJson || {
       protagonista_telefono: miembro.telefonoContacto || '',
       protagonista_domicilio: miembro.datosFijosJson?.domicilio || '',
@@ -973,7 +955,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     return await generarFichaPdf(
       mapeo,
       respuestasBase,
-      ent?.hashVerificacion || `FICHA-${miembro.dni}-2026`,
+      ent?.hashVerificacion || `FICHA-${miembro.dni}-${obtenerCicloAnioActual()}`,
       {
         nombre: miembro.nombre,
         apellido: miembro.apellido,
@@ -985,6 +967,14 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       ent?.versionImpresion || 1,
     );
   };
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
 
   const cerrarVistaPreviaPdf = () => {
     if (pdfPreviewUrl) {
@@ -1039,7 +1029,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         return;
       }
       const resPrecarga = await api.get(
-        `/legajos/miembro/${miembro.id}/plantilla/${p.id}/precarga?cicloAnio=${p.cicloAnio || 2026}`,
+        `/legajos/miembro/${miembro.id}/plantilla/${p.id}/precarga?cicloAnio=${p.cicloAnio || obtenerCicloAnioActual()}`,
       );
       setPrecargaFicha(resPrecarga.data);
       setEditandoFicha(true);
@@ -1064,7 +1054,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       const res = await api.post('/legajos/entregas', {
         usuarioId: miembro.id,
         plantillaId: plantillaActiva.id,
-        cicloAnio: plantillaActiva.cicloAnio || 2026,
+        cicloAnio: plantillaActiva.cicloAnio || obtenerCicloAnioActual(),
         respuestas: datos,
         finalizarParaFirma,
         actualizarDatosFijos: true,
@@ -1072,7 +1062,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
       const entrega = res.data;
       if (finalizarParaFirma && entrega.hashVerificacion) {
-        const ramaNombre = miembro.asignaciones?.[0]?.unidad?.nombre || '';
+        const ramaNombre = obtenerRolPrincipal(miembro)?.unidad?.nombre || '';
         const pdfBytes = await generarFichaPdf(
           plantillaActiva.mapeoPdfJson,
           datos,
@@ -1335,6 +1325,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   saldoAFavor={saldoAFavor}
                   puedeGestionarTesoreria={puedeGestionarTesoreria}
                   puedeCobrarCuotas={puedeCobrarCuotas}
+                  puedeCrearCargoIndividual={puedeCrearCargoIndividual}
+                  puedeAjustarCuotas={puedeAjustarCuotas}
                   ajustandoSaldo={ajustandoSaldo}
                   setAjustandoSaldo={setAjustandoSaldo}
                   tipoAjusteSaldo={tipoAjusteSaldo}
@@ -1436,6 +1428,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                 <PestanaSeguridad
                   miembro={miembro}
                   reseteandoClave={reseteandoClave}
+                  claveTemporalGenerada={claveTemporalGenerada}
                   onResetClave={handleResetClave}
                 />
               )}
@@ -1456,7 +1449,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             dni: miembro.dni,
             saldoAFavor,
           }}
-          cargosPendientes={estadoCuenta?.cargos || []}
+          cargosPendientes={estadoCuenta?.cargos || CARGOS_VACIOS}
           cargoInicialId={cargoIdACobrar}
           onCerrar={() => setModalCobrarAbierto(false)}
           onPagoExitoso={(mensaje) => {

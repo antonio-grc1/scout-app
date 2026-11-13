@@ -3,6 +3,7 @@ import '../lib/pdfPolyfills';
 import * as pdfjsLib from 'pdfjs-dist';
 import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { obtenerCicloAnioActual } from '../lib/formatters';
 import {
   ExternalLink,
   Download,
@@ -106,6 +107,16 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
     };
   }, [pdfDoc, pageNumber, zoom, containerWidth]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    return () => {
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+    };
+  }, []);
+
   return (
     <div className="relative bg-white shadow-md rounded-lg overflow-hidden border border-rule my-2 w-fit">
       <div className="bg-paper-2 px-3 py-1 text-[10px] font-bold text-ink-muted flex items-center justify-between border-b border-rule select-none">
@@ -126,7 +137,7 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
 export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   url,
   titulo,
-  subtitulo = 'Planilla Oficial 2026',
+  subtitulo = `Planilla Oficial ${obtenerCicloAnioActual()}`,
   onCerrar,
   onDescargar,
 }) => {
@@ -166,6 +177,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
     let cancelado = false;
     let currentTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
+    let loadedDoc: pdfjsLib.PDFDocumentProxy | null = null;
 
     const cargarDocumento = async () => {
       setCargando(true);
@@ -186,6 +198,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           return;
         }
 
+        loadedDoc = doc;
         setPdfDoc(doc);
         setNumPages(doc.numPages);
         if (containerRef.current) {
@@ -207,6 +220,9 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
     return () => {
       cancelado = true;
+      if (loadedDoc) {
+        void loadedDoc.cleanup();
+      }
       if (currentTask) {
         void currentTask.destroy();
       }

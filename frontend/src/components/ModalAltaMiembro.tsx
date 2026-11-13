@@ -21,6 +21,8 @@ import {
   Users,
   Loader2,
   MapPin,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface Props {
@@ -65,10 +67,23 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [altaResultado, setAltaResultado] = useState<{
+    nombreCompleto: string;
+    dni: string;
+    claveTemporal: string;
+  } | null>(null);
+  const [copiadaClave, setCopiadaClave] = useState(false);
+
+  const cerrarModal = () => {
+    setAltaResultado(null);
+    setCopiadaClave(false);
+    setError(null);
+    onCerrar();
+  };
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto,
-    onCerrar,
+    onCerrar: cerrarModal,
     bloqueado: cargando,
   });
 
@@ -249,7 +264,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
     setError(null);
 
     try {
-      await api.post('/miembros', {
+      const res = await api.post('/miembros', {
         dni: dni.trim(),
         nombre: nombre.trim(),
         apellido: apellido.trim(),
@@ -275,7 +290,16 @@ export const ModalAltaMiembro: React.FC<Props> = ({
       });
 
       onCreado();
-      onCerrar();
+      const claveTemporal: string | undefined = res.data?.claveTemporal;
+      if (claveTemporal) {
+        setAltaResultado({
+          nombreCompleto: `${nombre.trim()} ${apellido.trim()}`,
+          dni: dni.trim(),
+          claveTemporal,
+        });
+      } else {
+        cerrarModal();
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al crear el miembro.');
     } finally {
@@ -298,13 +322,65 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             <h3 className="font-bold text-ink text-base">Nuevo Miembro</h3>
           </div>
           <button
-            onClick={onCerrar}
+            onClick={cerrarModal}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {altaResultado ? (
+          <div className="p-5 sm:p-6 space-y-4 text-xs">
+            <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+              <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-sm">
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
+                <span>Miembro registrado correctamente</span>
+              </div>
+              <p className="text-ink-2">
+                Entregá esta clave temporal a <strong>{altaResultado.nombreCompleto}</strong> (DNI{' '}
+                <strong>{altaResultado.dni}</strong>). Al ingresar por primera vez el sistema le
+                pedirá elegir una contraseña propia.
+              </p>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3">
+              <div>
+                <span className="block text-[11px] font-semibold text-ink-muted">
+                  Contraseña temporal generada (se muestra una única vez):
+                </span>
+                <code className="text-base font-mono font-extrabold text-ink select-all">
+                  {altaResultado.claveTemporal}
+                </code>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(altaResultado.claveTemporal);
+                    setCopiadaClave(true);
+                    setTimeout(() => setCopiadaClave(false), 2000);
+                  } catch {
+                    // Clipboard no disponible
+                  }
+                }}
+                className="min-h-[40px] px-3.5 rounded-xl border border-rule bg-surface hover:bg-paper-3 text-ink font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                {copiadaClave ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                <span>{copiadaClave ? 'Copiada' : 'Copiar clave'}</span>
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={cerrarModal}
+                className="min-h-[44px] px-5 py-2 rounded-xl bg-brand text-brand-contrast font-bold text-xs cursor-pointer"
+              >
+                Listo
+              </button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1">
           {error && (
             <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-center gap-2 text-xs font-medium">
@@ -643,7 +719,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
           <div className="flex justify-end gap-2.5 pt-3 border-t border-rule">
             <button
               type="button"
-              onClick={onCerrar}
+              onClick={cerrarModal}
               className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-bold text-xs hover:bg-paper-2 transition cursor-pointer"
             >
               Cancelar
@@ -657,6 +733,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );
