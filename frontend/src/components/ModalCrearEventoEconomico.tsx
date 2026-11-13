@@ -6,15 +6,13 @@ import {
   Calendar,
   MapPin,
   Tag,
-  DollarSign,
   Landmark,
   Sparkles,
   Edit2,
-  Clock,
 } from 'lucide-react';
 import { api } from '../api/client';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
+import { obtenerHoyLocalISO, sumarDiasLocalISO, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { useModalOverlay } from '../hooks/useModalOverlay';
@@ -32,6 +30,9 @@ export interface EventoAEditar {
   cuentaId?: number | null;
   rubro?: { id: number; nombre: string } | null;
   cuenta?: { id: number; nombre: string } | null;
+  _count?: { pedidos?: number };
+  metricas?: { cantidadPedidos?: number };
+  pedidos?: unknown[];
   items?: Array<{
     id?: number;
     nombre: string;
@@ -106,8 +107,6 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
 
   useEffect(() => {
     if (abierto) {
-      cargarSelectores();
-
       if (eventoAEditar) {
         setTitulo(eventoAEditar.titulo || '');
         setDescripcion(eventoAEditar.descripcion || '');
@@ -115,8 +114,8 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
         setEstado(eventoAEditar.estado || 'PUBLICADO');
         setFechaEvento(
           eventoAEditar.fechaEvento
-            ? new Date(eventoAEditar.fechaEvento).toISOString().slice(0, 10)
-            : new Date().toISOString().slice(0, 10),
+            ? String(eventoAEditar.fechaEvento).slice(0, 10)
+            : obtenerHoyLocalISO(),
         );
         setLugarEntrega(eventoAEditar.lugarEntrega || '');
         const rId = eventoAEditar.rubroId ?? eventoAEditar.rubro?.id;
@@ -138,16 +137,28 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
               stockTotal: it.stockTotal ? String(it.stockTotal) : '',
             })),
           );
+        } else {
+          setItems([
+            {
+              nombre: '',
+              descripcion: '',
+              precioVenta: '',
+              costoUnitario: '',
+              gananciaUnitaria: '',
+              stockTotal: '',
+            },
+          ]);
         }
+        void cargarSelectores(Boolean(rId), Boolean(cId));
       } else {
-        const d = new Date();
-        d.setDate(d.getDate() + 14);
         setTitulo('');
         setDescripcion('');
         setTipo('RECAUDACION_PEDIDOS');
         setEstado('PUBLICADO');
-        setFechaEvento(d.toISOString().slice(0, 10));
+        setFechaEvento(sumarDiasLocalISO(14));
         setLugarEntrega('');
+        setRubroId('');
+        setCuentaId('');
         setItems([
           {
             nombre: '',
@@ -158,12 +169,13 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             stockTotal: '',
           },
         ]);
+        void cargarSelectores(false, false);
       }
       setError(null);
     }
   }, [abierto, eventoAEditar]);
 
-  const cargarSelectores = async () => {
+  const cargarSelectores = async (tieneRubroPrevio: boolean, tieneCuentaPrevia: boolean) => {
     try {
       const [resRubros, resCuentas] = await Promise.all([
         api.get('/tesoreria/rubros?tipo=INGRESO'),
@@ -171,7 +183,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
       ]);
       const rubrosList = resRubros.data || [];
       setRubros(rubrosList);
-      if (!rubroId) {
+      if (!tieneRubroPrevio) {
         const rubroEv = rubrosList.find((r: any) =>
           r.nombre.toLowerCase().includes('evento') || r.nombre.toLowerCase().includes('campa'),
         );
@@ -180,9 +192,9 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
 
       const cuentasList = resCuentas.data || [];
       setCuentas(cuentasList);
-      if (cuentasList.length > 0 && !cuentaId) setCuentaId(String(cuentasList[0].id));
-    } catch {
-      // Ignorar
+      if (cuentasList.length > 0 && !tieneCuentaPrevia) setCuentaId(String(cuentasList[0].id));
+    } catch (err) {
+      setError(traducirErrorAmigable(err, 'No se pudieron cargar los rubros o cuentas financieras.'));
     }
   };
 
@@ -289,36 +301,46 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
       onCerrar();
       onGuardado();
 
-      mostrarToastConDeshacer(
-        `Evento "${eventoAEliminar.titulo}" eliminado.`,
-        async () => {
-          try {
-            await api.post('/tesoreria/eventos', {
-              titulo: eventoAEliminar.titulo,
-              descripcion: eventoAEliminar.descripcion || undefined,
-              tipo: eventoAEliminar.tipo,
-              fechaEvento: eventoAEliminar.fechaEvento,
-              fechaFin: eventoAEliminar.fechaFin || undefined,
-              lugarEntrega: eventoAEliminar.lugarEntrega || undefined,
-              rubroId: eventoAEliminar.rubroId || undefined,
-              cuentaId: eventoAEliminar.cuentaId || undefined,
-              items: (eventoAEliminar.items || []).map((it: any) => ({
-                nombre: it.nombre,
-                descripcion: it.descripcion || undefined,
-                precioVenta: Number(it.precioVenta),
-                costoUnitario: Number(it.costoUnitario || 0),
-                gananciaUnitaria: Number(it.gananciaUnitaria || 0),
-                stockTotal: it.stockTotal ? Number(it.stockTotal) : null,
-              })),
-            });
-            onGuardado();
-            useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" restaurado.`);
-          } catch (err: any) {
-            const msg = traducirErrorAmigable(err, 'No se pudo restaurar el evento.');
-            useToastStore.getState().mostrarToast(msg, 'error');
-          }
-        },
-      );
+      const sinPedidos =
+        (eventoAEliminar.metricas?.cantidadPedidos ||
+          eventoAEliminar._count?.pedidos ||
+          eventoAEliminar.pedidos?.length ||
+          0) === 0;
+      if (sinPedidos) {
+        mostrarToastConDeshacer(
+          `Evento "${eventoAEliminar.titulo}" eliminado.`,
+          async () => {
+            try {
+              await api.post('/tesoreria/eventos', {
+                titulo: eventoAEliminar.titulo,
+                descripcion: eventoAEliminar.descripcion || undefined,
+                tipo: eventoAEliminar.tipo,
+                estado: eventoAEliminar.estado,
+                fechaEvento: eventoAEliminar.fechaEvento,
+                fechaFin: eventoAEliminar.fechaFin || undefined,
+                lugarEntrega: eventoAEliminar.lugarEntrega || undefined,
+                rubroId: eventoAEliminar.rubroId ?? eventoAEliminar.rubro?.id ?? undefined,
+                cuentaId: eventoAEliminar.cuentaId ?? eventoAEliminar.cuenta?.id ?? undefined,
+                items: (eventoAEliminar.items || []).map((it: any) => ({
+                  nombre: it.nombre,
+                  descripcion: it.descripcion || undefined,
+                  precioVenta: Number(it.precioVenta),
+                  costoUnitario: Number(it.costoUnitario || 0),
+                  gananciaUnitaria: Number(it.gananciaUnitaria || 0),
+                  stockTotal: it.stockTotal ? Number(it.stockTotal) : null,
+                })),
+              });
+              onGuardado();
+              useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" restaurado.`);
+            } catch (err: any) {
+              const msg = traducirErrorAmigable(err, 'No se pudo restaurar el evento.');
+              useToastStore.getState().mostrarToast(msg, 'error');
+            }
+          },
+        );
+      } else {
+        useToastStore.getState().mostrarToast(`Evento "${eventoAEliminar.titulo}" eliminado.`);
+      }
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudo eliminar el evento.');
       if (onToast) onToast(msg, 'error');

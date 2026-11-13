@@ -149,6 +149,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
     register,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     trigger,
     formState: { errors },
@@ -166,24 +167,30 @@ export const DynamicFormRenderer: React.FC<Props> = ({
     return 1;
   });
 
-  // Prellenado del Adulto Autorizante en el Paso 3 solo cuando el usuario elige quién firma (evita tipear dos veces al mismo familiar)
+  // Prellenado del Adulto Autorizante en el Paso 3 solo cuando el usuario cambia quién firma (sin pisar datos cargados al montar)
   const autorizanteTipo = watch('autorizante_tipo');
+  const prevAutorizanteTipoRef = useRef<unknown>(valoresIniciales.autorizante_tipo);
   useEffect(() => {
-    if (!autorizanteTipo) return;
+    if (!autorizanteTipo || prevAutorizanteTipoRef.current === autorizanteTipo) {
+      prevAutorizanteTipoRef.current = autorizanteTipo;
+      return;
+    }
+    prevAutorizanteTipoRef.current = autorizanteTipo;
+    const currentValues = getValues();
     const mapCaract: Record<string, string> = {
       madre: 'Madre',
       padre: 'Padre',
       tutor: 'Tutor judicial',
     };
-    const prefix = autorizanteTipo as 'madre' | 'padre' | 'tutor';
-    if (formData[`${prefix}_nombres`]) setValue('autorizante_nombre', formData[`${prefix}_nombres`]);
-    if (formData[`${prefix}_dni`]) setValue('autorizante_dni', formData[`${prefix}_dni`]);
-    if (formData[`${prefix}_telefono`]) setValue('autorizante_telefono', formData[`${prefix}_telefono`]);
-    if (formData[`${prefix}_domicilio`]) setValue('autorizante_domicilio', formData[`${prefix}_domicilio`]);
+    const prefix = String(autorizanteTipo) as 'madre' | 'padre' | 'tutor';
+    if (currentValues[`${prefix}_nombres`]) setValue('autorizante_nombre', currentValues[`${prefix}_nombres`]);
+    if (currentValues[`${prefix}_dni`]) setValue('autorizante_dni', currentValues[`${prefix}_dni`]);
+    if (currentValues[`${prefix}_telefono`]) setValue('autorizante_telefono', currentValues[`${prefix}_telefono`]);
+    if (currentValues[`${prefix}_domicilio`]) setValue('autorizante_domicilio', currentValues[`${prefix}_domicilio`]);
     if (mapCaract[prefix]) setValue('autorizante_caracter', mapCaract[prefix]);
-    if (!formData.autorizante_nacionalidad) setValue('autorizante_nacionalidad', 'Argentina');
-    if (!formData.menor_nacionalidad) setValue('menor_nacionalidad', 'Argentina');
-  }, [autorizanteTipo, setValue]);
+    if (!currentValues.autorizante_nacionalidad) setValue('autorizante_nacionalidad', 'Argentina');
+    if (!currentValues.menor_nacionalidad) setValue('menor_nacionalidad', 'Argentina');
+  }, [autorizanteTipo, getValues, setValue]);
 
   // Solo copiar el domicilio del protagonista si el familiar marca explícitamente que convive en el mismo hogar y su domicilio está vacío
   const protagonistaDomicilio = watch('protagonista_domicilio');

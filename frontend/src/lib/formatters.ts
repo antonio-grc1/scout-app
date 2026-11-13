@@ -129,6 +129,65 @@ export function formatearMoneda(valor: number | string | null | undefined): stri
   });
 }
 
+export function obtenerHoyLocalISO(fecha: Date = new Date()): string {
+  const y = fecha.getFullYear();
+  const m = String(fecha.getMonth() + 1).padStart(2, '0');
+  const d = String(fecha.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+export function obtenerCicloAnioActual(fecha: Date = new Date()): number {
+  return fecha.getFullYear();
+}
+
+export function esFechaCalendarioValida(anio: number, mes: number, dia: number): boolean {
+  if (!Number.isInteger(anio) || !Number.isInteger(mes) || !Number.isInteger(dia)) return false;
+  if (anio < 1900 || anio > 2100 || mes < 1 || mes > 12 || dia < 1 || dia > 31) return false;
+  const d = new Date(Date.UTC(anio, mes - 1, dia));
+  return d.getUTCFullYear() === anio && d.getUTCMonth() === mes - 1 && d.getUTCDate() === dia;
+}
+
+export function sumarDiasLocalISO(dias: number, base: Date = new Date()): string {
+  const copia = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias);
+  return obtenerHoyLocalISO(copia);
+}
+
+export function formatearFechaLargaUTC(fechaIso?: string | null): string {
+  if (!fechaIso) return '';
+  try {
+    const soloFecha = String(fechaIso).match(/^(\d{4})-(\d{2})-(\d{2})(?:T00:00:00(?:\.000)?Z?)?$/);
+    const d = soloFecha
+      ? new Date(Date.UTC(Number(soloFecha[1]), Number(soloFecha[2]) - 1, Number(soloFecha[3])))
+      : new Date(fechaIso);
+    if (isNaN(d.getTime())) return String(fechaIso);
+    return d.toLocaleDateString('es-AR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      timeZone: soloFecha ? 'UTC' : undefined,
+    });
+  } catch {
+    return String(fechaIso);
+  }
+}
+
+export function esErrorOffline(err?: unknown, texto?: string): boolean {
+  const e = err as Record<string, any> | undefined;
+  if (e?.__isOfflineFastFail === true) return true;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return true;
+  if (e && typeof e === 'object' && e.isAxiosError && !e.response) return true;
+  if (e?.code === 'ECONNABORTED' || e?.code === 'ERR_NETWORK') return true;
+
+  const msg = String(texto ?? e?.message ?? '').toLowerCase();
+  return (
+    msg.includes('sin conexión') ||
+    msg.includes('sin conexion') ||
+    msg.includes('offline') ||
+    msg.includes('network error')
+  );
+}
+
 export function ahoraLocalDatetime(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -437,7 +496,7 @@ export function agruparCandidatosPorFamilia(
       dni: m.dni,
       nombre: m.nombre,
       apellido: m.apellido,
-      ramaNombre: m.asignaciones?.[0]?.unidad?.nombre || 'Sin rama',
+      ramaNombre: obtenerRolPrincipal(m)?.unidad?.nombre || 'Sin rama',
     }));
 
     gruposMap.set(key, {

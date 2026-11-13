@@ -18,6 +18,7 @@ export interface JwtPayload {
   sub: number;
   dni: string;
   requiereCambioClave: boolean;
+  tokenVersion?: number;
   asignaciones: AsignacionToken[];
 }
 

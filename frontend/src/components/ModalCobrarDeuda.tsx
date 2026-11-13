@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import {
@@ -82,6 +82,8 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCuentas, setErrorCuentas] = useState<string | null>(null);
+  const enviandoRef = useRef(false);
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto,
@@ -141,14 +143,19 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
   // Cargar cuentas financieras activas
   useEffect(() => {
     if (abierto) {
+      setErrorCuentas(null);
       api
         .get('/tesoreria/cuentas')
         .then((res) => {
           const activas: CuentaSimple[] = (res.data || []).filter((c: CuentaSimple) => c.activa);
           setCuentas(activas);
+          setErrorCuentas(null);
         })
-        .catch(() => {
-          // Fallback silencioso
+        .catch((err) => {
+          setCuentas([]);
+          setErrorCuentas(
+            traducirErrorAmigable(err, 'No se pudieron cargar las cuentas financieras activas.'),
+          );
         });
     }
   }, [abierto]);
@@ -263,6 +270,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (enviandoRef.current || procesando) return;
     setError(null);
 
     const itemsAImputar = Object.entries(imputaciones)
@@ -284,6 +292,20 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       return;
     }
 
+    if (montoEfectivoFinal > 0 && errorCuentas) {
+      setError(errorCuentas);
+      return;
+    }
+
+    const tieneCuentasParaMetodo =
+      (metodoPago === 'TRANSFERENCIA' && cuentas.some((c) => c.tipo === 'BANCO')) ||
+      (metodoPago === 'EFECTIVO' && cuentas.some((c) => c.tipo === 'CAJA_EFECTIVO'));
+    if (montoEfectivoFinal > 0 && tieneCuentasParaMetodo && !cuentaId) {
+      setError('Seleccioná la cuenta financiera donde ingresa el cobro.');
+      return;
+    }
+
+    enviandoRef.current = true;
     setProcesando(true);
     try {
       const res = await api.post('/tesoreria/pagos', {
@@ -317,6 +339,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
     } catch (err: any) {
       setError(traducirErrorAmigable(err, 'No se pudo registrar el pago.'));
     } finally {
+      enviandoRef.current = false;
       setProcesando(false);
     }
   };

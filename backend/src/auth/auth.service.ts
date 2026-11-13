@@ -10,6 +10,7 @@ import { AlcanceRol, type Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { filtroUsuariosPorAlcance } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AsignacionToken, AuthUser, JwtPayload } from '../common/types/auth.types.js';
+import { generarClaveTemporal } from '../common/utils/password.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CambiarClaveDto, LoginDto } from './auth.dto.js';
 
@@ -73,6 +74,7 @@ export class AuthService {
       data: {
         passwordHash: await bcrypt.hash(dto.claveNueva, BCRYPT_ROUNDS),
         requiereCambioClave: false,
+        tokenVersion: { increment: 1 },
       },
       include: INCLUDE_ASIGNACIONES,
     });
@@ -80,11 +82,15 @@ export class AuthService {
   }
 
   /**
-   * Reset rápido de clave al DNI, realizado por un educador.
+   * Reset rápido de clave a una contraseña temporal aleatoria, realizado por un educador.
    * Respeta el alcance: un educador de UNIDAD solo puede resetear miembros de sus unidades
    * y nunca a usuarios con alguna asignación GLOBAL (evita escalada de privilegios).
    */
-  async resetearClave(actor: AuthUser, alcance: AlcanceAcceso, usuarioId: number): Promise<{ mensaje: string }> {
+  async resetearClave(
+    actor: AuthUser,
+    alcance: AlcanceAcceso,
+    usuarioId: number,
+  ): Promise<{ mensaje: string; claveTemporal: string }> {
     if (usuarioId === actor.sub) {
       throw new BadRequestException('Para su propia cuenta use el cambio de clave');
     }
@@ -115,14 +121,20 @@ export class AuthService {
       }
     }
 
+    const claveTemporal = generarClaveTemporal();
+
     await this.prisma.usuario.update({
       where: { id: objetivo.id },
       data: {
-        passwordHash: await bcrypt.hash(objetivo.dni, BCRYPT_ROUNDS),
+        passwordHash: await bcrypt.hash(claveTemporal, BCRYPT_ROUNDS),
         requiereCambioClave: true,
+        tokenVersion: { increment: 1 },
       },
     });
-    return { mensaje: `La clave de ${objetivo.nombre} ${objetivo.apellido} fue reseteada a su DNI` };
+    return {
+      mensaje: `Se generó una nueva clave temporal para ${objetivo.nombre} ${objetivo.apellido}`,
+      claveTemporal,
+    };
   }
 
   /** Datos actualizados del usuario autenticado. */
@@ -141,6 +153,7 @@ export class AuthService {
       sub: usuario.id,
       dni: usuario.dni,
       requiereCambioClave: usuario.requiereCambioClave,
+      tokenVersion: usuario.tokenVersion ?? 1,
       asignaciones,
     };
     return {

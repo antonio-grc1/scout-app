@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { calcularCamada, traducirErrorAmigable } from '../lib/formatters';
 import { ArrowRightLeft, Loader2, Sparkles, Users } from 'lucide-react';
+import { ModalConfirmacion } from './ModalConfirmacion';
 
 interface Props {
   candidatos: any[];
@@ -22,6 +23,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
   const [ejecutandoPaseId, setEjecutandoPaseId] = useState<number | null>(null);
+  const [camadaAConfirmar, setCamadaAConfirmar] = useState<(typeof gruposCamada)[number] | null>(null);
 
   const unidadSinRamaFallback = useMemo(
     () =>
@@ -101,7 +103,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
     );
   }, [candidatos, unidadSinRamaFallback]);
 
-  const handlePasarCamada = async (grupo: (typeof gruposCamada)[number]) => {
+  const solicitarPaseCamada = (grupo: (typeof gruposCamada)[number]) => {
     const destinoLoteId =
       destinoPorCamada[grupo.key] ?? grupo.unidadesDestino?.[0]?.id;
 
@@ -109,7 +111,22 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
       onToast('No hay sección de destino disponible para este pase.', 'error');
       return;
     }
+    setCamadaAConfirmar(grupo);
+  };
 
+  const ejecutarPaseCamadaConfirmado = async () => {
+    const grupo = camadaAConfirmar;
+    if (!grupo) return;
+    const destinoLoteId =
+      destinoPorCamada[grupo.key] ?? grupo.unidadesDestino?.[0]?.id;
+
+    if (!destinoLoteId) {
+      setCamadaAConfirmar(null);
+      onToast('No hay sección de destino disponible para este pase.', 'error');
+      return;
+    }
+
+    setCamadaAConfirmar(null);
     setEjecutandoCamadaKey(grupo.key);
     try {
       await api.post('/pases/lote', {
@@ -247,7 +264,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                     <button
                       type="button"
                       disabled={ejecutandoLote}
-                      onClick={() => handlePasarCamada(g)}
+                      onClick={() => solicitarPaseCamada(g)}
                       className="min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
                     >
                       {ejecutandoLote ? (
@@ -358,6 +375,30 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
           })}
         </div>
       )}
+
+      <ModalConfirmacion
+        abierto={camadaAConfirmar !== null}
+        titulo={`Confirmar Pase de Camada ${camadaAConfirmar?.camada ?? ''}`}
+        mensaje={
+          camadaAConfirmar
+            ? `¿Confirmás pasar los ${camadaAConfirmar.miembros.length} integrante(s) de ${camadaAConfirmar.unidadActualNombre} hacia ${
+                camadaAConfirmar.unidadesDestino.find(
+                  (u) =>
+                    u.id ===
+                    Number(
+                      destinoPorCamada[camadaAConfirmar.key] ??
+                        camadaAConfirmar.unidadesDestino?.[0]?.id,
+                    ),
+                )?.nombre || camadaAConfirmar.ramaSugeridaNombre
+              }?`
+            : ''
+        }
+        tipo="confirmacion"
+        textoConfirmar="Sí, ejecutar pase"
+        textoCancelar="Cancelar"
+        onCerrar={() => setCamadaAConfirmar(null)}
+        onConfirmar={ejecutarPaseCamadaConfirmado}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
+import { obtenerRutaInicialUsuario } from '../lib/permisos';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BotonInstalarPwa } from '../components/BotonInstalarPwa';
 import { Button } from '../components/ui/Button';
@@ -25,13 +26,12 @@ export const Login: React.FC = () => {
   // Si ya tiene sesión activa, redirigir inmediatamente a su pantalla inicial
   // para evitar caer en el login al navegar hacia atrás en móviles.
   if (token && usuario) {
-    const destino = requiereCambioClave
-      ? '/cambiar-clave'
-      : puedeVerPadron()
-        ? '/rama'
-        : puedeAccederPanelGestion()
-          ? '/global'
-          : '/autogestion';
+    const destino = obtenerRutaInicialUsuario({
+      token,
+      requiereCambioClave,
+      puedeVerPadron,
+      puedeAccederPanelGestion,
+    });
     return <Navigate to={destino} replace />;
   }
 
@@ -49,22 +49,14 @@ export const Login: React.FC = () => {
 
       setSesion(res.data);
 
-      if (res.data.requiereCambioClave) {
-        navigate('/cambiar-clave', { replace: true });
-        return;
-      }
-
-      // Redirección inteligente según el alcance de sus asignaciones (pestaña por defecto: Padrón).
-      // Usar replace: true para que el login no quede en el historial de navegación móvil al presionar atrás.
-      const asignaciones = res.data.asignaciones || [];
-      const esGlobal = asignaciones.some((a: any) => a.alcance === 'GLOBAL');
-      const esUnidad = asignaciones.some((a: any) => a.alcance === 'UNIDAD');
-
-      if (esGlobal || esUnidad) {
-        navigate('/rama', { replace: true });
-      } else {
-        navigate('/autogestion', { replace: true });
-      }
+      const estadoAuth = useAuthStore.getState();
+      const destino = obtenerRutaInicialUsuario({
+        token: estadoAuth.token,
+        requiereCambioClave: Boolean(res.data?.requiereCambioClave),
+        puedeVerPadron: estadoAuth.puedeVerPadron,
+        puedeAccederPanelGestion: estadoAuth.puedeAccederPanelGestion,
+      });
+      navigate(destino, { replace: true });
     } catch (err: any) {
       const msg = err.response?.data?.message || 'DNI o contraseña incorrectos.';
       setError(msg);
@@ -170,7 +162,7 @@ export const Login: React.FC = () => {
                 </button>
               </div>
               <p className="text-xs text-ink-muted mt-1.5">
-                Si ingresas por primera vez, tu clave inicial es tu DNI.
+                Si ingresas por primera vez o te restablecieron el acceso, usá la clave temporal que recibiste al darte de alta.
               </p>
             </div>
 

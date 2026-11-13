@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { normalizarTextoBusqueda } from '../lib/formatters';
-import { Users, UserX, Search, X, ShieldAlert, Check } from 'lucide-react';
+import { Users, UserX, Search, X, Check } from 'lucide-react';
 
 export interface SelectorDestinatariosProps {
   destinatarioTipo: 'TODOS' | 'PROTAGONISTAS' | 'EDUCADORES';
@@ -51,7 +51,13 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
 
     if (idsFaltantes.length > 0) {
       api
-        .get('/miembros', { params: { porPagina: 100 } })
+        .get('/miembros', {
+          params: {
+            ids: idsFaltantes.slice(0, 200).join(','),
+            porPagina: Math.min(200, Math.max(idsFaltantes.length, 20)),
+            incluirInactivos: true,
+          },
+        })
         .then((res) => {
           const todos: MiembroResumen[] = res.data?.items || res.data || [];
           const encontrados = todos.filter((m) => excepcionesIds.includes(m.id));
@@ -103,7 +109,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
         });
 
         setResultadosBusqueda(filtrados);
-      } catch (err) {
+      } catch {
         setResultadosBusqueda([]);
       } finally {
         setBuscando(false);

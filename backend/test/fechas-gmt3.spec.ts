@@ -1,6 +1,8 @@
+import { BadRequestException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { prepararRespuestasParaImpresion } from '../../frontend/src/services/pdfGenerator.js';
 import { calcularEdad, formatearFecha, formatearFechaHora } from '../../frontend/src/lib/formatters.js';
+import { parsearFechaOperacion, validarFechaCalendarioIso } from '../src/common/utils/fechas.util.js';
 
 describe('Husos horarios y fechas oficiales (GMT-3)', () => {
   it("valida que una fecha '2015-05-01T00:00:00.000Z' formateada en GMT-3 imprima '01 / 05 / 2015' y no '30 / 04 / 2015'", () => {
@@ -41,5 +43,13 @@ describe('Husos horarios y fechas oficiales (GMT-3)', () => {
     const fecha = '2026-11-03T18:18:00.000Z';
     expect(formatearFechaHora(fecha)).toContain('03/11/2026');
     expect(formatearFechaHora(fecha)).toContain('15:18');
+  });
+
+  it('P1-9: parsearFechaOperacion y validarFechaCalendarioIso rechazan fechas inexistentes o inválidas', () => {
+    expect(() => validarFechaCalendarioIso('2026-02-30')).toThrow(BadRequestException);
+    expect(() => parsearFechaOperacion('2026-02-30')).toThrow(BadRequestException);
+    expect(() => parsearFechaOperacion('fecha-basura')).toThrow(BadRequestException);
+    const valida = parsearFechaOperacion('2026-05-10');
+    expect(valida.toISOString()).toBe('2026-05-10T15:00:00.000Z');
   });
 });

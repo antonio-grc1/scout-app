@@ -1,11 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import { env } from '../config/env.js';
 
 export interface DatosEmailBienvenida {
   destinatario: string;
   nombre: string;
   apellido: string;
   dni: string;
+  claveTemporal?: string;
   unidadNombre?: string;
   rolNombre?: string;
 }
@@ -20,26 +22,58 @@ function escapeHtml(text?: string | null): string {
     .replace(/'/g, '&#039;');
 }
 
+function sanitizarAsuntoTextoPlano(text?: string | null): string {
+  return String(text ?? '')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+}
+
+function validarHttpUrl(rawUrl?: string | null): string {
+  const candidate = rawUrl?.trim();
+  if (!candidate) return 'http://localhost:5173';
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return candidate;
+    }
+  } catch {
+    // Fallback a localhost por URL malformada
+  }
+  return 'http://localhost:5173';
+}
+
 @Injectable()
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
+  private cachedTransporter: nodemailer.Transporter | null = null;
+  private cachedConfigKey = '';
 
-  private crearTransporter() {
-    const host = process.env.SMTP_HOST?.trim();
-    const port = Number(process.env.SMTP_PORT || 587);
-    const user = process.env.SMTP_USER?.trim();
-    const pass = process.env.SMTP_PASS?.trim();
+  private obtenerTransporter(): nodemailer.Transporter | null {
+    const host = (env.SMTP_HOST ?? process.env.SMTP_HOST)?.trim();
+    const port = Number(env.SMTP_PORT || process.env.SMTP_PORT || 587);
+    const user = (env.SMTP_USER ?? process.env.SMTP_USER)?.trim();
+    const pass = env.SMTP_PASS ?? process.env.SMTP_PASS;
 
     if (!host || !user || !pass) {
       return null;
     }
 
-    return nodemailer.createTransport({
+    const configKey = `${host}:${port}:${user}`;
+    if (this.cachedTransporter && this.cachedConfigKey === configKey) {
+      return this.cachedTransporter;
+    }
+
+    this.cachedTransporter = nodemailer.createTransport({
       host,
       port,
       secure: port === 465,
       auth: { user, pass },
+      connectionTimeout: 5000,
+      greetingTimeout: 5000,
+      socketTimeout: 10000,
     });
+    this.cachedConfigKey = configKey;
+    return this.cachedTransporter;
   }
 
   async enviarBienvenidaAlta(datos: DatosEmailBienvenida): Promise<boolean> {
@@ -51,14 +85,15 @@ export class MailerService {
     const safeUnidad = escapeHtml(datos.unidadNombre);
     const safeRol = escapeHtml(datos.rolNombre);
     const safeDni = escapeHtml(datos.dni);
+    const safeClaveTemporal = datos.claveTemporal ? escapeHtml(datos.claveTemporal) : null;
 
-    const transporter = this.crearTransporter();
-    const appUrl = process.env.APP_URL?.trim() || 'http://localhost:5173';
+    const transporter = this.obtenerTransporter();
+    const appUrl = escapeHtml(validarHttpUrl(process.env.APP_URL ?? env.APP_URL));
     const remitente =
-      process.env.SMTP_FROM?.trim() ||
-      `"Grupo Scout Juan XXIII" <${process.env.SMTP_USER || 'no-reply@scoutjuanxxiii.org'}>`;
+      (env.SMTP_FROM ?? process.env.SMTP_FROM)?.trim() ||
+      `"Grupo Scout Juan XXIII" <${env.SMTP_USER ?? process.env.SMTP_USER ?? 'no-reply@scoutjuanxxiii.org'}>`;
 
-    const asunto = `¡Bienvenido/a al Grupo Scout Juan XXIII! - Alta de ${safeNombre} ${safeApellido}`;
+    const asunto = `¡Bienvenido/a al Grupo Scout Juan XXIII! - Alta de ${sanitizarAsuntoTextoPlano(datos.nombre)} ${sanitizarAsuntoTextoPlano(datos.apellido)}`;
 
     const html = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background-color: #ffffff; color: #0f172a;">
@@ -76,7 +111,11 @@ export class MailerService {
           <div style="background-color: #fefce8; border: 1px solid #fde047; border-radius: 12px; padding: 16px; margin: 20px 0;">
             <p style="margin: 0 0 8px; font-weight: 700; color: #854d0e; font-size: 13px; text-transform: uppercase;">Tus credenciales de ingreso:</p>
             <p style="margin: 4px 0; font-size: 14px;"><strong>Usuario (DNI):</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${safeDni}</code></p>
-            <p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña inicial:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${safeDni}</code> (tu número de DNI)</p>
+            ${
+              safeClaveTemporal
+                ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña temporal inicial:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${safeClaveTemporal}</code></p>`
+                : `<p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña temporal inicial:</strong> solicitá la clave generada al momento del alta a tu educador/a.</p>`
+            }
           </div>
 
           <p style="font-size: 13px; color: #475569;">Al ingresar por primera vez, el sistema te solicitará elegir una contraseña personal segura. Desde la aplicación podrás completar tu ficha médica anual y consultar el estado de tus cuotas.</p>

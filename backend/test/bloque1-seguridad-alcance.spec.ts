@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ForbiddenException, BadRequestException } from '@nestjs/common';
-import { AlcanceRol, TipoUnidad, EstadoEvento } from '@prisma/client';
+import { AlcanceRol, TipoUnidad } from '@prisma/client';
 import type { AlcanceAcceso, AuthUser } from '../src/common/types/auth.types.js';
 import { assertUnidadEnAlcance } from '../src/common/scope/alcance.util.js';
 import { MiembrosService } from '../src/miembros/miembros.service.js';

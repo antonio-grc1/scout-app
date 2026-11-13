@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { EstadoEntrega } from '@prisma/client';
 import type { AlcanceAcceso, AuthUser } from '../src/common/types/auth.types.js';
 import { LegajosService, CAMPOS_DATOS_FIJOS_PERMITIDOS, CAMPOS_FAMILIARES_PERMITIDOS_COMPARTIR } from '../src/legajos/legajos.service.js';
@@ -312,6 +312,75 @@ describe('BLOQUE 3 - Backend Legajos, Formularios de Salud y Auditoría Médica'
           data: expect.objectContaining({
             estado: EstadoEntrega.VALIDADO_FISICAMENTE,
             validadoPorUsuarioId: actorEducador.sub,
+          }),
+        }),
+      );
+    });
+
+    it('P1-5 & P1-8: validarFisico exige código exacto (no DNI) y detecta concurrencia si updateMany afecta 0 filas', async () => {
+      const findFirst = vi.fn().mockResolvedValueOnce({
+        id: 50,
+        estado: EstadoEntrega.PENDIENTE_FIRMA_FISICA,
+        hashVerificacion: 'abc123exact',
+        usuario: { id: 30, activo: true, asignaciones: [{ unidadId: 1 }] },
+      });
+      const mockPrisma: any = {
+        entregaFormulario: {
+          findFirst,
+          updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+          findUniqueOrThrow: vi.fn(),
+        },
+      };
+      const service = new LegajosService(mockPrisma);
+
+      await expect(service.validarFisico(actorEducador, alcanceGlobal, 'abc123exact')).rejects.toThrow(
+        ConflictException,
+      );
+
+      findFirst.mockResolvedValueOnce(null);
+      await expect(service.validarFisico(actorEducador, alcanceGlobal, '40111222')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(findFirst).toHaveBeenCalledTimes(2);
+    });
+
+    it('P1-15: editar un borrador sobre entrega PENDIENTE_FIRMA_FISICA invalida la impresión previa', async () => {
+      const update = vi.fn().mockResolvedValue({ id: 77, estado: EstadoEntrega.BORRADOR, versionImpresion: 2 });
+      const mockPrisma: any = {
+        usuario: {
+          findFirst: vi.fn().mockResolvedValue({ id: 10, activo: true, fechaNacimiento: new Date('2015-01-01') }),
+        },
+        plantillaFormulario: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, codigo: 'LEGAJO_MENORES_2026', activa: true }),
+        },
+        entregaFormulario: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 77,
+            estado: EstadoEntrega.PENDIENTE_FIRMA_FISICA,
+            versionImpresion: 1,
+            fechaGeneracionPdf: new Date(),
+          }),
+          update,
+        },
+        $transaction: vi.fn((cb) => cb(mockPrisma)),
+      };
+      const service = new LegajosService(mockPrisma);
+
+      await service.guardarEntrega(actorEducador, alcanceGlobal, {
+        usuarioId: 10,
+        plantillaId: 1,
+        cicloAnio: 2026,
+        respuestas: { alergias: 'No' },
+        finalizarParaFirma: false,
+        actualizarDatosFijos: false,
+      });
+
+      expect(update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            estado: EstadoEntrega.BORRADOR,
+            versionImpresion: 2,
+            fechaGeneracionPdf: null,
           }),
         }),
       );

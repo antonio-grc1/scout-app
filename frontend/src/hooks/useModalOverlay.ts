@@ -13,7 +13,17 @@ const modalStack: ModalStackEntry[] = [];
 let nextModalId = 1;
 let scrollLockCount = 0;
 let originalBodyOverflow = '';
-let ignoringPopstateCount = 0;
+
+export function shouldIgnorePopstateForTopModal(
+  eventStateModalId: unknown,
+  topModalId: number | string | undefined,
+): boolean {
+  return (
+    (typeof eventStateModalId === 'string' || typeof eventStateModalId === 'number') &&
+    topModalId !== undefined &&
+    eventStateModalId === topModalId
+  );
+}
 
 function lockScroll() {
   if (typeof document === 'undefined') return;
@@ -34,16 +44,20 @@ function unlockScroll() {
 
 // Global popstate listener for browser / mobile back button (closes topmost modal)
 if (typeof window !== 'undefined') {
-  window.addEventListener('popstate', () => {
-    if (ignoringPopstateCount > 0) {
-      ignoringPopstateCount--;
-      return;
-    }
-
+  window.addEventListener('popstate', (event: PopStateEvent) => {
     if (modalStack.length > 0) {
       for (let i = modalStack.length - 1; i >= 0; i--) {
         const top = modalStack[i];
         if (top.isClosing) continue;
+
+        const currentModalStateId =
+          event.state && typeof event.state === 'object'
+            ? (event.state as { __modalId?: unknown }).__modalId
+            : window.history.state?.__modalId;
+
+        if (shouldIgnorePopstateForTopModal(currentModalStateId, top.id)) {
+          return;
+        }
 
         if (top.isBlocked()) {
           // Si el modal está bloqueado, reinsertamos el estado para no desfasar el historial
@@ -164,14 +178,8 @@ export function useModalOverlay({
       // Si el modal se cerró programáticamente (no por popstate del botón atrás):
       // retiramos la entrada del historial para mantenerlo sincronizado
       if (manejarHistorial && historyPushed && !closedByPopState && typeof window !== 'undefined') {
-        if (window.history.state?.__modalId === modalId) {
-          ignoringPopstateCount++;
+        if (window.history.state?.__modalId === modalId && window.history.length > 1) {
           window.history.back();
-          setTimeout(() => {
-            if (ignoringPopstateCount > 0) {
-              ignoringPopstateCount--;
-            }
-          }, 300);
         }
       }
     };

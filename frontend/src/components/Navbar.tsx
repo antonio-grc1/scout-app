@@ -26,8 +26,7 @@ export const Navbar: React.FC = () => {
   };
 
   const esAutogestion = location.pathname.startsWith('/autogestion');
-  const esPadron = location.pathname.startsWith('/padron');
-  const esRama = location.pathname.startsWith('/rama') || location.pathname.startsWith('/unidad');
+  const esRama = location.pathname.startsWith('/rama');
   const esGlobal = location.pathname.startsWith('/global');
   const esPerfil = location.pathname.startsWith('/perfil');
 
@@ -67,9 +66,9 @@ export const Navbar: React.FC = () => {
                 {puedeVerPadron() && (
                   <Link
                     to="/rama"
-                    aria-current={esRama || esPadron ? 'page' : undefined}
+                    aria-current={esRama ? 'page' : undefined}
                     className={`flex items-center gap-1.5 px-3.5 min-h-[40px] rounded-xl text-xs font-bold transition-colors ${
-                      esRama || esPadron
+                      esRama
                         ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
                         : 'text-navbar-ink hover:bg-navbar-hover opacity-90 hover:opacity-100'
                     }`}
@@ -146,9 +145,9 @@ export const Navbar: React.FC = () => {
         {puedeVerPadron() && (
           <Link
             to="/rama"
-            aria-current={esRama || esPadron ? 'page' : undefined}
+            aria-current={esRama ? 'page' : undefined}
             className={`flex-1 flex flex-col items-center justify-center min-h-[48px] py-1 rounded-xl text-[11px] font-bold transition-colors ${
-              esRama || esPadron
+              esRama
                 ? 'bg-brand text-brand-contrast font-extrabold shadow-2xs'
                 : 'text-navbar-muted hover:text-navbar-ink'
             }`}

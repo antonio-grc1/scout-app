@@ -14,6 +14,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import {
+  formatearFecha,
   formatearMoneda,
   ESTADO_CARGO_CONFIG,
   NOMBRES_MESES_CORTOS,
@@ -43,6 +44,8 @@ export interface PestanaCuotasTesoreriaProps {
   saldoAFavor: number;
   puedeGestionarTesoreria: boolean;
   puedeCobrarCuotas: boolean;
+  puedeCrearCargoIndividual?: boolean;
+  puedeAjustarCuotas?: boolean;
   ajustandoSaldo: boolean;
   setAjustandoSaldo: (val: boolean) => void;
   tipoAjusteSaldo: 'CARGAR' | 'DESCONTAR' | 'FIJAR';
@@ -81,6 +84,8 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
   saldoAFavor,
   puedeGestionarTesoreria,
   puedeCobrarCuotas,
+  puedeCrearCargoIndividual,
+  puedeAjustarCuotas,
   ajustandoSaldo,
   setAjustandoSaldo,
   tipoAjusteSaldo,
@@ -114,6 +119,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
   const familiar = miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar;
   const integrantesFamilia = familiar?.miembros || [];
   const pctDesc = familiar ? Number(familiar.porcentajeDescuentoHermanos ?? 0) : 0;
+  const habilitarCargoIndividual =
+    puedeCrearCargoIndividual ?? (puedeGestionarTesoreria || puedeCobrarCuotas);
+  const habilitarAjustes = puedeAjustarCuotas ?? puedeGestionarTesoreria;
 
   return (
     <div className="space-y-4">
@@ -140,7 +148,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">
                 Saldo a Favor
               </span>
-              {puedeGestionarTesoreria && (
+              {habilitarAjustes && (
                 <button
                   type="button"
                   onClick={() => {
@@ -161,7 +169,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {(puedeGestionarTesoreria || puedeCobrarCuotas) && (
+          {habilitarCargoIndividual && (
             <button
               type="button"
               onClick={onAbrirModalGenerarDeuda}
@@ -419,7 +427,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                         </button>
                       )}
 
-                      {puedeCobrarCuotas && (
+                      {habilitarAjustes && (
                         <>
                           <button
                             type="button"
@@ -499,6 +507,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                           type="number"
                           step="0.01"
                           min="0"
+                          max={cargoEditando.montoOriginal || undefined}
                           value={cargoEditando.montoDescuento}
                           onChange={(e) =>
                             setCargoEditando({
@@ -571,7 +580,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                       ({formatearMoneda(ca.montoFinal)})
                     </span>
                   </div>
-                  {puedeCobrarCuotas && (
+                  {habilitarAjustes && (
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
@@ -643,14 +652,14 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                         </span>
                       </div>
                       <span className="text-[11px] text-ink-muted block mt-0.5">
-                        {new Date(p.fechaPago).toLocaleDateString('es-AR')}
+                        {formatearFecha(p.fechaPago)}
                         {p.referenciaComprobante &&
                           ` • Comprobante: ${p.referenciaComprobante}`}
                         {p.observaciones && ` • ${p.observaciones}`}
                       </span>
                     </div>
 
-                    {puedeCobrarCuotas && (
+                    {habilitarAjustes && (
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"

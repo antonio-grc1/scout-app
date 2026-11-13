@@ -1,7 +1,10 @@
 import { EstadoEntrega } from '@prisma/client';
 import { z } from 'zod';
+import { EsquemaCamposSchema } from '../common/utils/plantillas.util.js';
 
-const jsonRecord = z.record(z.string(), z.unknown());
+const jsonRecord = z
+  .record(z.string().max(120), z.unknown())
+  .refine((obj) => Object.keys(obj).length <= 500, 'Demasiadas claves en objeto JSON');
 
 // ---------------- Plantillas ----------------
 export const CrearPlantillaSchema = z.object({
@@ -9,7 +12,7 @@ export const CrearPlantillaSchema = z.object({
   titulo: z.string().trim().min(2).max(150),
   version: z.string().trim().min(1).max(20),
   cicloAnio: z.number().int().min(2000).max(2100),
-  esquemaCamposJson: jsonRecord,
+  esquemaCamposJson: EsquemaCamposSchema,
   mapeoPdfJson: jsonRecord,
   activa: z.boolean().default(true),
 });

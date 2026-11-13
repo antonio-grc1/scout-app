@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { X, Users, Percent, Check, AlertCircle, UserMinus, Trash2 } from 'lucide-react';
-import { traducirErrorAmigable } from '../lib/formatters';
+import { obtenerRolPrincipal, traducirErrorAmigable } from '../lib/formatters';
 
 interface Props {
   abierto: boolean;
@@ -235,7 +235,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
               </span>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
                 {miembrosLocal.map((m: any) => {
-                  const unidadNombre = m.asignaciones?.[0]?.unidad?.nombre || 'Sin sección';
+                  const unidadNombre = obtenerRolPrincipal(m)?.unidad?.nombre || 'Sin sección';
                   return (
                     <div
                       key={m.id}

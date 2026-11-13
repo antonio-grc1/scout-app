@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
-import { X, Receipt, PlusCircle, AlertCircle, Wallet, Pencil } from 'lucide-react';
+import { X, Receipt, PlusCircle, AlertCircle, Pencil } from 'lucide-react';
 import {
   formatearMoneda,
   traducirErrorAmigable,
@@ -62,7 +62,6 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
 
   const [rubros, setRubros] = useState<RubroItem[]>([]);
   const [cuentas, setCuentas] = useState<CuentaItem[]>([]);
-  const [cargandoDatos, setCargandoDatos] = useState(false);
   const [modalNuevoRubroAbierto, setModalNuevoRubroAbierto] = useState(false);
   const [rubroAEditar, setRubroAEditar] = useState<RubroAEditarItem | null>(null);
 
@@ -77,7 +76,6 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
 
   const cargarCuentasYRubros = async () => {
     try {
-      setCargandoDatos(true);
       const [resRubros, resCuentas] = await Promise.all([
         api.get('/tesoreria/rubros?tipo=EGRESO'),
         api.get('/tesoreria/cuentas'),
@@ -98,8 +96,6 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
       }
     } catch {
       // Ignorar error inicial
-    } finally {
-      setCargandoDatos(false);
     }
   };
 

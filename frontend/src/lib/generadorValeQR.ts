@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { formatearFechaLargaUTC } from './formatters';
 import type { TicketData } from '../components/ModalTicketQR';
 
 function roundRect(
@@ -58,18 +59,7 @@ function wrapText(
 
 function formatearFecha(f?: string): string {
   if (!f) return '';
-  try {
-    const d = new Date(f);
-    if (isNaN(d.getTime())) return f;
-    return d.toLocaleDateString('es-AR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return f;
-  }
+  return formatearFechaLargaUTC(f);
 }
 
 /**

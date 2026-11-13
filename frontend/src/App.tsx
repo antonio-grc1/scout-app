@@ -1,16 +1,28 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { setOnAuthError, setOnRequirePasswordChange } from './api/client';
 import { useAuthStore } from './store/authStore';
 import { Login } from './pages/Login';
 import { CambiarClave } from './pages/CambiarClave';
-import { AutogestionPage } from './pages/autogestion/AutogestionPage';
-import { UnidadPage } from './pages/unidad/UnidadPage';
-import { GlobalPage } from './pages/global/GlobalPage';
-import { PerfilPage } from './pages/perfil/PerfilPage';
 import { ToastGlobal } from './components/ui/ToastGlobal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { BannerOffline } from './components/BannerOffline';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { obtenerRutaInicialUsuario } from './lib/permisos';
+
+const AutogestionPage = lazy(() =>
+  import('./pages/autogestion/AutogestionPage').then((m) => ({ default: m.AutogestionPage })),
+);
+const UnidadPage = lazy(() =>
+  import('./pages/unidad/UnidadPage').then((m) => ({ default: m.UnidadPage })),
+);
+const GlobalPage = lazy(() =>
+  import('./pages/global/GlobalPage').then((m) => ({ default: m.GlobalPage })),
+);
+const PerfilPage = lazy(() =>
+  import('./pages/perfil/PerfilPage').then((m) => ({ default: m.PerfilPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,10 +56,31 @@ const RutaProtegida: React.FC<{
   }
 
   if (requiereAlcance === 'UNIDAD' && !puedeVerPadron()) {
-    return <Navigate to="/autogestion" replace />;
+    return <Navigate to={puedeAccederPanelGestion() ? '/global' : '/autogestion'} replace />;
   }
 
   return <>{children}</>;
+};
+
+const AuthNavigatorBridge: React.FC = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setOnAuthError(() => {
+      useAuthStore.getState().logout();
+      if (window.location.pathname !== '/login') {
+        navigate('/login', { replace: true });
+      }
+    });
+    setOnRequirePasswordChange(() => {
+      useAuthStore.getState().setRequiereCambioClave(true);
+      if (window.location.pathname !== '/cambiar-clave') {
+        navigate('/cambiar-clave', { replace: true });
+      }
+    });
+  }, [navigate]);
+
+  return null;
 };
 
 export function App() {
@@ -69,68 +102,90 @@ export function App() {
     return () => window.removeEventListener('focus', onFocus);
   }, [token, refrescarSesionDesdeServidor]);
 
-  const rutaDefault = () => {
-    if (!token) return '/login';
-    if (requiereCambioClave) return '/cambiar-clave';
-    if (puedeVerPadron()) return '/rama';
-    if (puedeAccederPanelGestion()) return '/global';
-    return '/autogestion';
-  };
+  useEffect(() => {
+    const onOnline = () => {
+      void queryClient.invalidateQueries();
+      if (token) {
+        void refrescarSesionDesdeServidor();
+      }
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [token, refrescarSesionDesdeServidor]);
+
+  const rutaDefault = () =>
+    obtenerRutaInicialUsuario({
+      token,
+      requiereCambioClave,
+      puedeVerPadron,
+      puedeAccederPanelGestion,
+    });
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <BannerOffline />
-        <ThemeCustomizerModal />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/cambiar-clave"
-            element={
-              <RutaProtegida permitirCambioClave={true}>
-                <CambiarClave />
-              </RutaProtegida>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthNavigatorBridge />
+          <BannerOffline />
+          <ThemeCustomizerModal />
+          <Suspense
+            fallback={
+              <div className="min-h-screen flex items-center justify-center bg-paper text-ink-muted text-sm font-semibold">
+                Cargando…
+              </div>
             }
-          />
-          <Route
-            path="/autogestion"
-            element={
-              <RutaProtegida>
-                <AutogestionPage />
-              </RutaProtegida>
-            }
-          />
-          <Route
-            path="/perfil"
-            element={
-              <RutaProtegida>
-                <PerfilPage />
-              </RutaProtegida>
-            }
-          />
-          <Route
-            path="/rama"
-            element={
-              <RutaProtegida requiereAlcance="UNIDAD">
-                <UnidadPage />
-              </RutaProtegida>
-            }
-          />
-          <Route path="/unidad" element={<Navigate to="/rama" replace />} />
-          <Route path="/padron" element={<Navigate to="/rama" replace />} />
-          <Route
-            path="/global"
-            element={
-              <RutaProtegida requiereAlcance="GLOBAL">
-                <GlobalPage />
-              </RutaProtegida>
-            }
-          />
-          <Route path="*" element={<Navigate to={rutaDefault()} replace />} />
-        </Routes>
-        <ToastGlobal />
-      </BrowserRouter>
-    </QueryClientProvider>
+          >
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/cambiar-clave"
+                element={
+                  <RutaProtegida permitirCambioClave={true}>
+                    <CambiarClave />
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/autogestion"
+                element={
+                  <RutaProtegida>
+                    <AutogestionPage />
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/perfil"
+                element={
+                  <RutaProtegida>
+                    <PerfilPage />
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/rama"
+                element={
+                  <RutaProtegida requiereAlcance="UNIDAD">
+                    <UnidadPage />
+                  </RutaProtegida>
+                }
+              />
+              <Route path="/unidad" element={<Navigate to="/rama" replace />} />
+              <Route path="/padron" element={<Navigate to="/rama" replace />} />
+              <Route
+                path="/global"
+                element={
+                  <RutaProtegida requiereAlcance="GLOBAL">
+                    <GlobalPage />
+                  </RutaProtegida>
+                }
+              />
+              <Route path="*" element={<Navigate to={rutaDefault()} replace />} />
+            </Routes>
+          </Suspense>
+          <ToastGlobal />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

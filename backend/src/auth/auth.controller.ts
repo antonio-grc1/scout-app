@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Res, UseGuards } from '@nestjs/common';
+import type { CookieOptions, Response } from 'express';
 import {
   Alcance,
   CurrentUser,
@@ -6,46 +7,109 @@ import {
   Public,
   RequirePermission,
 } from '../common/decorators/auth.decorators.js';
+import { AUTH_COOKIE_NAME } from '../common/guards/jwt-auth.guard.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { CambiarClaveSchema, LoginSchema, type CambiarClaveDto, type LoginDto } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
+import { LoginRateLimitGuard } from './login-rate-limit.guard.js';
+
+const AUTH_COOKIE_OPTIONS: CookieOptions = {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
+function setAuthCookie(res: Response | undefined, token: string): void {
+  if (token && typeof res?.cookie === 'function') {
+    res.cookie(AUTH_COOKIE_NAME, token, AUTH_COOKIE_OPTIONS);
+  }
+}
+
+function clearAuthCookie(res: Response | undefined): void {
+  if (typeof res?.clearCookie === 'function') {
+    res.clearCookie(AUTH_COOKIE_NAME, {
+      httpOnly: AUTH_COOKIE_OPTIONS.httpOnly,
+      sameSite: AUTH_COOKIE_OPTIONS.sameSite,
+      secure: AUTH_COOKIE_OPTIONS.secure,
+      path: AUTH_COOKIE_OPTIONS.path,
+    });
+  }
+}
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @UseGuards(LoginRateLimitGuard)
   @Post('login')
   @HttpCode(200)
-  login(@Body(new ZodValidationPipe(LoginSchema)) dto: LoginDto) {
-    return this.auth.login(dto);
+  async login(
+    @Body(new ZodValidationPipe(LoginSchema)) dto: LoginDto,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const sesion = await this.auth.login(dto);
+    setAuthCookie(res, sesion.accessToken);
+    return sesion;
+  }
+
+  @Public()
+  @Post('logout')
+  @HttpCode(200)
+  logout(@Res({ passthrough: true }) res?: Response) {
+    clearAuthCookie(res);
+    return { ok: true };
   }
 
   @PermitirClavePendiente()
   @Post('cambiar-clave')
   @HttpCode(200)
-  cambiarClave(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(CambiarClaveSchema)) dto: CambiarClaveDto) {
-    return this.auth.cambiarClave(user, dto);
+  async cambiarClave(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(CambiarClaveSchema)) dto: CambiarClaveDto,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const sesion = await this.auth.cambiarClave(user, dto);
+    setAuthCookie(res, sesion.accessToken);
+    return sesion;
   }
 
   @PermitirClavePendiente()
   @Post('cambiar-password')
   @HttpCode(200)
-  cambiarPassword(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(CambiarClaveSchema)) dto: CambiarClaveDto) {
-    return this.auth.cambiarClave(user, dto);
+  async cambiarPassword(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(CambiarClaveSchema)) dto: CambiarClaveDto,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const sesion = await this.auth.cambiarClave(user, dto);
+    setAuthCookie(res, sesion.accessToken);
+    return sesion;
   }
 
   @PermitirClavePendiente()
   @Get('me')
-  me(@CurrentUser() user: AuthUser) {
-    return this.auth.perfil(user);
+  async me(
+    @CurrentUser() user: AuthUser,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const sesion = await this.auth.perfil(user);
+    setAuthCookie(res, sesion.accessToken);
+    return sesion;
   }
 
   @PermitirClavePendiente()
   @Get('perfil')
-  perfil(@CurrentUser() user: AuthUser) {
-    return this.auth.perfil(user);
+  async perfil(
+    @CurrentUser() user: AuthUser,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const sesion = await this.auth.perfil(user);
+    setAuthCookie(res, sesion.accessToken);
+    return sesion;
   }
 
   @RequirePermission('auth.resetear_clave')

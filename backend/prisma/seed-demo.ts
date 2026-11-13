@@ -3,6 +3,11 @@ import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 export async function seedDemo(prisma: PrismaClient) {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_DEMO_SEED !== 'true') {
+    throw new Error(
+      'seed-demo está bloqueado en NODE_ENV=production. Use ALLOW_DEMO_SEED=true solo si corresponde.',
+    );
+  }
   const lobatos = await prisma.unidadOrganizativa.findFirstOrThrow({
     where: { nombre: { in: ['Rama Lobatos', 'Lobatos'] } },
   });

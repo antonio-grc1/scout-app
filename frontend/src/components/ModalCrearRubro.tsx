@@ -130,7 +130,8 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
     const rubroAEliminar = { ...rubroAEditar };
     setEliminando(true);
     try {
-      await api.delete(`/tesoreria/rubros/${rubroAEliminar.id}`);
+      const resDelete = await api.delete(`/tesoreria/rubros/${rubroAEliminar.id}`);
+      const eliminadoPermanente = resDelete.data?.eliminadoPermanente === true;
       setModalConfirmarEliminar(false);
       onCerrar();
       if (onRubroEliminado) onRubroEliminado(rubroAEliminar);
@@ -139,13 +140,21 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
         `Rubro "${rubroAEliminar.nombre}" eliminado.`,
         async () => {
           try {
-            await api.patch(`/tesoreria/rubros/${rubroAEliminar.id}`, {
-              activo: true,
-            });
-            if (onRubroEliminado) onRubroEliminado(rubroAEliminar);
+            if (!eliminadoPermanente) {
+              await api.post(`/tesoreria/rubros/${rubroAEliminar.id}/restaurar`);
+              if (onRubroEliminado) onRubroEliminado(rubroAEliminar);
+            } else {
+              const res = await api.post('/tesoreria/rubros', {
+                nombre: rubroAEliminar.nombre,
+                tipo: rubroAEliminar.tipo,
+                permiteDescuentoDefault: rubroAEliminar.permiteDescuentoDefault,
+              });
+              if (onRubroCreado && res.data?.id) onRubroCreado(res.data);
+              else if (onRubroEliminado) onRubroEliminado(rubroAEliminar);
+            }
             useToastStore.getState().mostrarToast(`Rubro "${rubroAEliminar.nombre}" restaurado.`);
-          } catch (err: any) {
-            const msg = traducirErrorAmigable(err, 'No se pudo restaurar el rubro.');
+          } catch (err2: any) {
+            const msg = traducirErrorAmigable(err2, 'No se pudo restaurar el rubro.');
             useToastStore.getState().mostrarToast(msg, 'error');
           }
         },

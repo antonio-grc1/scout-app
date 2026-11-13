@@ -327,7 +327,13 @@ async function seedAdmin(unidadIds: Map<string, number>, rolIds: Map<string, num
 
   let usuario = await prisma.usuario.findUnique({ where: { dni } });
   if (!usuario) {
-    const password = process.env.SEED_ADMIN_PASSWORD || 'scout2026';
+    const envPassword = process.env.SEED_ADMIN_PASSWORD?.trim();
+    if (process.env.NODE_ENV === 'production' && !envPassword) {
+      throw new Error(
+        'SEED_ADMIN_PASSWORD debe estar configurada para crear el usuario administrador inicial en producción',
+      );
+    }
+    const password = envPassword || 'scout2026';
     usuario = await prisma.usuario.create({
       data: {
         dni,

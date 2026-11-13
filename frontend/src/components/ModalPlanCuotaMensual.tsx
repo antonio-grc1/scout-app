@@ -5,12 +5,7 @@ import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import {
   X,
-  Calendar,
-  DollarSign,
-  Users,
   CheckCircle2,
-  Clock,
-  Sparkles,
   Layers,
   PlusCircle,
   Pencil,
@@ -72,7 +67,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   const [destinatarioTipo, setDestinatarioTipo] = useState<'TODOS' | 'PROTAGONISTAS' | 'EDUCADORES'>('PROTAGONISTAS');
   const [unidadId, setUnidadId] = useState<number | null>(null);
   const [rubroId, setRubroId] = useState<number | ''>('');
-  const [rubros, setRubros] = useState<Array<{ id: number; nombre: string }>>([]);
+  const [rubros, setRubros] = useState<Array<{ id: number; nombre: string; permiteDescuentoDefault?: boolean }>>([]);
   const [permiteDescuentoHermanos, setPermiteDescuentoHermanos] = useState(true);
   const [usarPorcentajePersonalizado, setUsarPorcentajePersonalizado] = useState(false);
   const [porcentajeDescuentoHermanos, setPorcentajeDescuentoHermanos] = useState<number | ''>('');
@@ -100,6 +95,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   };
 
   useEffect(() => {
+    if (!abierto) return;
     cargarRubros();
 
     if (planAEditar) {
@@ -300,6 +296,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                           id: r.id,
                           nombre: r.nombre,
                           tipo: 'INGRESO',
+                          permiteDescuentoDefault: r.permiteDescuentoDefault,
                         });
                       }
                     }}

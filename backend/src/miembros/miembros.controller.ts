@@ -3,10 +3,12 @@ import { Alcance, CurrentUser, RequireAnyPermission, RequirePermission } from '.
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import {
+  ActualizarMiPerfilSchema,
   CrearAsignacionSchema,
   CrearMiembroSchema,
   EditarMiembroSchema,
   ListarMiembrosSchema,
+  type ActualizarMiPerfilDto,
   type CrearAsignacionDto,
   type CrearMiembroDto,
   type EditarMiembroDto,
@@ -34,7 +36,7 @@ export class MiembrosController {
   @Patch('mi-perfil')
   actualizarMiPerfil(
     @CurrentUser() u: AuthUser,
-    @Body(new ZodValidationPipe(EditarMiembroSchema)) dto: EditarMiembroDto,
+    @Body(new ZodValidationPipe(ActualizarMiPerfilSchema)) dto: ActualizarMiPerfilDto,
   ) {
     return this.miembros.actualizarMiPerfil(u.sub, dto);
   }

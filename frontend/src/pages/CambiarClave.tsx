@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
+import { obtenerRutaInicialUsuario } from '../lib/permisos';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { Navbar } from '../components/Navbar';
@@ -25,12 +26,23 @@ export const CambiarClave: React.FC = () => {
     puedeAccederPanelGestion,
   } = useAuthStore();
   const navigate = useNavigate();
+  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const rutaDestino = () => {
-    if (puedeVerPadron()) return '/rama';
-    if (puedeAccederPanelGestion()) return '/global';
-    return '/autogestion';
-  };
+  useEffect(() => {
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const rutaDestino = () =>
+    obtenerRutaInicialUsuario({
+      token: useAuthStore.getState().token,
+      requiereCambioClave: false,
+      puedeVerPadron,
+      puedeAccederPanelGestion,
+    });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,15 +73,30 @@ export const CambiarClave: React.FC = () => {
         claveNueva: nueva,
       });
 
-      setSesion(res.data);
+      const payload = res.data;
+      if (
+        payload?.accessToken &&
+        payload?.usuario &&
+        Array.isArray(payload?.asignaciones)
+      ) {
+        setSesion({
+          accessToken: payload.accessToken,
+          usuario: payload.usuario,
+          requiereCambioClave: Boolean(payload.requiereCambioClave),
+          asignaciones: payload.asignaciones,
+        });
+      }
       setRequiereCambioClave(false);
       setExito('Contraseña actualizada correctamente.');
       setClaveActual('');
       setClaveNueva('');
       setClaveRepetir('');
 
-      setTimeout(() => {
-        navigate(rutaDestino());
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current);
+      }
+      redirectTimeoutRef.current = setTimeout(() => {
+        navigate(rutaDestino(), { replace: true });
       }, 1000);
     } catch (err: any) {
       setError(traducirErrorAmigable(err, 'Error al actualizar la contraseña.'));

@@ -45,7 +45,6 @@ interface AuthState {
   logout: () => void;
   // Helpers de alcance y capacidades
   tieneGlobal: () => boolean;
-  tieneRama: () => boolean;
   tieneUnidad: () => boolean;
   tienePropio: () => boolean;
   tienePermiso: (permiso: string) => boolean;
@@ -66,6 +65,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
     asignaciones: safeJsonParse<AsignacionUsuario[]>(savedAsignaciones, []),
 
     setSesion: ({ accessToken, usuario, requiereCambioClave, asignaciones }) => {
+      const prevUsuario = get().usuario;
+      if (prevUsuario && prevUsuario.id !== usuario.id) {
+        limpiarCacheApi();
+      }
       localStorage.setItem('scout_token', accessToken);
       localStorage.setItem('scout_user', JSON.stringify(usuario));
       localStorage.setItem('scout_asignaciones', JSON.stringify(asignaciones));
@@ -88,13 +91,20 @@ export const useAuthStore = create<AuthState>((set, get) => {
       if (!currentToken) return;
       try {
         const res = await api.get('/auth/me');
+        if (res.headers?.['x-from-cache'] === 'true') {
+          return;
+        }
         const data = res.data;
         if (data?.usuario && Array.isArray(data?.asignaciones)) {
           const nuevoToken = data.accessToken || currentToken;
+          const cambioClave =
+            data.requiereCambioClave === undefined
+              ? get().requiereCambioClave
+              : Boolean(data.requiereCambioClave);
           get().setSesion({
             accessToken: nuevoToken,
             usuario: data.usuario,
-            requiereCambioClave: Boolean(data.requiereCambioClave),
+            requiereCambioClave: cambioClave,
             asignaciones: data.asignaciones,
           });
         }
@@ -104,6 +114,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     logout: () => {
+      const hadToken = Boolean(get().token);
       limpiarCacheApi();
       localStorage.removeItem('scout_token');
       localStorage.removeItem('scout_user');
@@ -115,14 +126,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
         requiereCambioClave: false,
         asignaciones: [],
       });
+      if (hadToken) {
+        void api.post('/auth/logout').catch(() => {});
+      }
     },
 
     tieneGlobal: () => {
       return get().asignaciones.some((a) => a.alcance === 'GLOBAL');
-    },
-
-    tieneRama: () => {
-      return get().asignaciones.some((a) => a.alcance === 'UNIDAD');
     },
 
     tieneUnidad: () => {

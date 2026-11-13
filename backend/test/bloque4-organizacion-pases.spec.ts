@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { AlcanceRol, TipoUnidad } from '@prisma/client';
 import type { AlcanceAcceso } from '../src/common/types/auth.types.js';
 import { PasesService } from '../src/pases/pases.service.js';
@@ -7,7 +7,6 @@ import { OrganizacionService } from '../src/organizacion/organizacion.service.js
 
 describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pases', () => {
   const alcanceGlobal: AlcanceAcceso = { tipo: 'GLOBAL' };
-  const alcanceUnidad: AlcanceAcceso = { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 99 };
 
   describe('PasesService - Control de duplicados e integridad de cuotas', () => {
     it('bloquea pase si el miembro ya tiene una asignación activa en la unidad destino con el mismo rol', async () => {
@@ -216,6 +215,34 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
       await expect(service.eliminarRol(alcanceGlobal, 1)).rejects.toThrow(
         /no se puede quitar el permiso de administrar roles ni eliminar el último rol administrador/i,
       );
+    });
+
+    it('P1-2: impide desactivar la unidad si dejaría sin sección activa al último administrador global', async () => {
+      const mockPrisma: any = {
+        unidadOrganizativa: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 10,
+            nombre: 'Jefatura',
+            activa: true,
+            _count: { asignaciones: 1, conceptos: 0, planesCuota: 0 },
+          }),
+          update: vi.fn(),
+        },
+        asignacionMiembro: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 500,
+              unidadId: 10,
+              rol: { permisos: [{ permiso: { clave: 'organizacion.gestionar' } }] },
+            },
+          ]),
+        },
+      };
+
+      const service = new OrganizacionService(mockPrisma);
+
+      await expect(service.eliminarUnidad(alcanceGlobal, 10, false)).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.unidadOrganizativa.update).not.toHaveBeenCalled();
     });
   });
 });

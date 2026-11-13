@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 import { Button } from './ui/Button';
-import { Input } from './ui/Input';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
@@ -12,9 +11,6 @@ import {
   Trash2,
   X,
   Search,
-  CheckCircle2,
-  AlertTriangle,
-  RotateCcw,
 } from 'lucide-react';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
@@ -102,7 +98,8 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
     setEliminando(true);
 
     try {
-      await api.delete(`/tesoreria/rubros/${r.id}`);
+      const resDelete = await api.delete(`/tesoreria/rubros/${r.id}`);
+      const eliminadoPermanente = resDelete.data?.eliminadoPermanente === true;
       setModalConfirmarEliminar(false);
       setRubroAEliminar(null);
       await cargarRubros();
@@ -112,24 +109,21 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
         `Rubro "${r.nombre}" eliminado.`,
         async () => {
           try {
-            await api.patch(`/tesoreria/rubros/${r.id}`, { activo: true });
-            await cargarRubros();
-            if (onRubrosCambiados) onRubrosCambiados();
-            useToastStore.getState().mostrarToast(`Rubro "${r.nombre}" restaurado.`);
-          } catch {
-            try {
+            if (!eliminadoPermanente) {
+              await api.post(`/tesoreria/rubros/${r.id}/restaurar`);
+            } else {
               await api.post('/tesoreria/rubros', {
                 nombre: r.nombre,
                 tipo: r.tipo,
                 permiteDescuentoDefault: r.permiteDescuentoDefault,
               });
-              await cargarRubros();
-              if (onRubrosCambiados) onRubrosCambiados();
-              useToastStore.getState().mostrarToast(`Rubro "${r.nombre}" restaurado.`);
-            } catch (err2: any) {
-              const msg = traducirErrorAmigable(err2, 'No se pudo restaurar el rubro.');
-              useToastStore.getState().mostrarToast(msg, 'error');
             }
+            await cargarRubros();
+            if (onRubrosCambiados) onRubrosCambiados();
+            useToastStore.getState().mostrarToast(`Rubro "${r.nombre}" restaurado.`);
+          } catch (err2: any) {
+            const msg = traducirErrorAmigable(err2, 'No se pudo restaurar el rubro.');
+            useToastStore.getState().mostrarToast(msg, 'error');
           }
         },
       );

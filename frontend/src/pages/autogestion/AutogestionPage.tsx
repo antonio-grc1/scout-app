@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { lazy, Suspense, useEffect, useState, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
@@ -14,7 +14,10 @@ import {
   ESTADO_CARGO_CONFIG,
   ESTADO_FICHA_CONFIG,
   METODO_PAGO_LABELS,
+  esErrorOffline,
   formatearMoneda,
+  obtenerCicloAnioActual,
+  obtenerRolPrincipal,
   seleccionarPlantillaPorMiembro,
   traducirErrorAmigable,
 } from '../../lib/formatters';
@@ -33,12 +36,14 @@ import {
   PlusCircle,
   QrCode,
   Edit2,
-  CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { PdfViewerModal } from '../../components/PdfViewerModal';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR } from '../../components/ModalTicketQR';
+
+const PdfViewerModal = lazy(() =>
+  import('../../components/PdfViewerModal').then((m) => ({ default: m.PdfViewerModal })),
+);
 
 type VistaAutogestion = 'papeles' | 'cuotas' | 'eventos';
 const VISTAS_VALIDAS: VistaAutogestion[] = ['papeles', 'cuotas', 'eventos'];
@@ -115,7 +120,7 @@ export const AutogestionPage: React.FC = () => {
       (texto.toLowerCase().includes('sin conexión') ||
         texto.toLowerCase().includes('sin conexion') ||
         texto.toLowerCase().includes('offline') ||
-        texto.toLowerCase().includes('red') ||
+        texto.toLowerCase().includes('network error') ||
         (typeof navigator !== 'undefined' && !navigator.onLine))
     ) {
       return;
@@ -150,7 +155,7 @@ export const AutogestionPage: React.FC = () => {
         .catch(() => {});
 
       const [resPlantillas, resMiembro] = await Promise.all([
-        api.get('/legajos/plantillas?cicloAnio=2026').catch(() => ({ data: [] })),
+        api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({ data: [] })),
         api.get(`/miembros/${targetUserId}`).catch(() => ({ data: null })),
       ]);
       let listaPlantillas: any[] = Array.isArray(resPlantillas.data) ? resPlantillas.data : [];
@@ -178,7 +183,7 @@ export const AutogestionPage: React.FC = () => {
         listaPlantillas[0];
       setPlantillaSeleccionada(plantilla);
 
-      const ciclo = plantilla.cicloAnio || 2026;
+      const ciclo = plantilla.cicloAnio || obtenerCicloAnioActual();
       let datosPrecarga: any = null;
       try {
         const resPrecarga = await api.get(
@@ -196,13 +201,7 @@ export const AutogestionPage: React.FC = () => {
       }
       setPrecarga(datosPrecarga);
     } catch (err) {
-      const esOffline =
-        (typeof navigator !== 'undefined' && !navigator.onLine) ||
-        String(err).toLowerCase().includes('offline') ||
-        String(err).toLowerCase().includes('sin conexión') ||
-        String(err).toLowerCase().includes('sin conexion');
-
-      if (esOffline) {
+      if (esErrorOffline(err)) {
         if (usuarioActual) {
           setPrecarga((prev: any) => prev || {
             usuario: usuarioActual,
@@ -216,7 +215,7 @@ export const AutogestionPage: React.FC = () => {
       }
 
       const msg = traducirErrorAmigable(err, 'No se pudo cargar tu ficha.');
-      if (!esOffline) {
+      if (!esErrorOffline(err)) {
         setErrorCarga(msg);
         mostrarToast(msg, 'error');
       }
@@ -267,7 +266,7 @@ export const AutogestionPage: React.FC = () => {
     dni: precarga?.usuario?.dni || usuario?.dni || '',
     fechaNacimiento: precarga?.usuario?.fechaNacimiento,
     ramaNombre:
-      precarga?.usuario?.asignaciones?.[0]?.unidad?.nombre ||
+      obtenerRolPrincipal(precarga?.usuario)?.unidad?.nombre ||
       asignaciones?.[0]?.unidadNombre ||
       '',
     telefonoContacto: precarga?.usuario?.telefonoContacto,
@@ -298,6 +297,14 @@ export const AutogestionPage: React.FC = () => {
       entrega?.versionImpresion || 1,
     );
   };
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
 
   const cerrarVistaPreviaPdf = () => {
     if (pdfPreviewUrl) {
@@ -348,7 +355,7 @@ export const AutogestionPage: React.FC = () => {
       const res = await api.post('/legajos/entregas', {
         usuarioId: targetUserId,
         plantillaId: plantillaSeleccionada.id,
-        cicloAnio: plantillaSeleccionada.cicloAnio || 2026,
+        cicloAnio: plantillaSeleccionada.cicloAnio || obtenerCicloAnioActual(),
         respuestas: datos,
         finalizarParaFirma,
         actualizarDatosFijos: true,
@@ -394,13 +401,17 @@ export const AutogestionPage: React.FC = () => {
       <Navbar />
 
       {/* Modal Visor de PDF en pantalla sin descarga obligatoria (compatible con celulares Android/iOS) */}
-      <PdfViewerModal
-        url={pdfPreviewUrl}
-        titulo={`Vista Previa: ${apellidoVisible}, ${nombreVisible}`}
-        subtitulo={plantillaSeleccionada?.nombre || 'Planilla Oficial 2026'}
-        onCerrar={cerrarVistaPreviaPdf}
-        onDescargar={handleDescargarCopiaPdf}
-      />
+      {pdfPreviewUrl && (
+        <Suspense fallback={null}>
+          <PdfViewerModal
+            url={pdfPreviewUrl}
+            titulo={`Vista Previa: ${apellidoVisible}, ${nombreVisible}`}
+            subtitulo={plantillaSeleccionada?.nombre || `Planilla Oficial ${obtenerCicloAnioActual()}`}
+            onCerrar={cerrarVistaPreviaPdf}
+            onDescargar={handleDescargarCopiaPdf}
+          />
+        </Suspense>
+      )}
 
       {toast && (
         <div
@@ -444,9 +455,9 @@ export const AutogestionPage: React.FC = () => {
               </div>
               <p className="text-xs text-ink-muted mt-0.5">
                 DNI {dniVisible}
-                {precarga?.usuario?.asignaciones?.[0]?.unidad?.nombre && (
+                {obtenerRolPrincipal(precarga?.usuario)?.unidad?.nombre && (
                   <span className="ml-1.5 font-bold text-brand">
-                    • {precarga.usuario.asignaciones[0].unidad.nombre}
+                    • {obtenerRolPrincipal(precarga?.usuario)?.unidad?.nombre}
                   </span>
                 )}
               </p>

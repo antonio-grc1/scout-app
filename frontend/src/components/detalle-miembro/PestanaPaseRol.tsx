@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, ArrowRightLeft, PlusCircle, Trash2, ShieldCheck, UserCheck } from 'lucide-react';
+import { Sparkles, ArrowRightLeft, PlusCircle, Trash2, ShieldCheck } from 'lucide-react';
 import { RAMA_COLORS } from '../../lib/ramaColors';
+import { ModalConfirmacion } from '../ModalConfirmacion';
 
 export interface PestanaPaseRolProps {
   candidatoPase: any;
@@ -64,16 +65,22 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
 }) => {
   const [modoAccion, setModoAccion] = useState<'MUDAR' | 'AGREGAR'>('MUDAR');
   const [cerrandoId, setCerrandoId] = useState<number | null>(null);
+  const [asigACerrarId, setAsigACerrarId] = useState<number | null>(null);
 
-  const handleCerrar = async (asigId: number) => {
+  const handleCerrar = (asigId: number) => {
     if (!onCerrarAsignacion) return;
-    if (confirm('¿Estás seguro de que deseas finalizar este rol activo para este miembro?')) {
-      setCerrandoId(asigId);
-      try {
-        await onCerrarAsignacion(asigId);
-      } finally {
-        setCerrandoId(null);
-      }
+    setAsigACerrarId(asigId);
+  };
+
+  const confirmarCierreAsignacion = async () => {
+    if (!onCerrarAsignacion || asigACerrarId === null) return;
+    const targetId = asigACerrarId;
+    setAsigACerrarId(null);
+    setCerrandoId(targetId);
+    try {
+      await onCerrarAsignacion(targetId);
+    } finally {
+      setCerrandoId(null);
     }
   };
 
@@ -344,6 +351,17 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
               : 'Asignar Rol Adicional al Miembro'}
         </span>
       </button>
+
+      <ModalConfirmacion
+        abierto={asigACerrarId !== null}
+        titulo="Finalizar Rol Activo"
+        mensaje="¿Estás seguro de que deseas finalizar este rol activo para este miembro?"
+        tipo="peligro"
+        textoConfirmar="Sí, finalizar"
+        textoCancelar="Cancelar"
+        onCerrar={() => setAsigACerrarId(null)}
+        onConfirmar={confirmarCierreAsignacion}
+      />
     </div>
   );
 };

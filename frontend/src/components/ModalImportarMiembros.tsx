@@ -15,6 +15,7 @@ import { api } from '../api/client';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { useAuthStore } from '../store/authStore';
 import {
+  esFechaCalendarioValida,
   formatearFecha,
   rolRequiereRama,
   esRolDeProtagonista,
@@ -36,6 +37,28 @@ export interface FilaImportada {
   motivoError?: string;
   miembroExistenteId?: number;
   nombreExistente?: string;
+  datosFijosExistentes?: Record<string, any> | null;
+}
+
+export function construirPayloadActualizacionMiembro(
+  fila: Pick<FilaImportada, 'telefonoContacto' | 'emailContacto' | 'domicilio'>,
+  datosFijosExistentes?: Record<string, any> | null,
+) {
+  const tieneDatosFijosPrevios =
+    datosFijosExistentes &&
+    typeof datosFijosExistentes === 'object' &&
+    !Array.isArray(datosFijosExistentes);
+
+  return {
+    telefonoContacto: fila.telefonoContacto || undefined,
+    emailContacto: fila.emailContacto || undefined,
+    datosFijosJson: fila.domicilio
+      ? {
+          ...(tieneDatosFijosPrevios ? datosFijosExistentes : {}),
+          domicilio: fila.domicilio,
+        }
+      : undefined,
+  };
 }
 
 export interface ModalImportarMiembrosProps {
@@ -70,19 +93,21 @@ function normalizarFechaNacimiento(valor: unknown): string | null {
   // ISO YYYY-MM-DD
   const matchIso = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
   if (matchIso) {
-    const y = matchIso[1];
-    const m = matchIso[2].padStart(2, '0');
-    const d = matchIso[3].padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const y = Number(matchIso[1]);
+    const m = Number(matchIso[2]);
+    const d = Number(matchIso[3]);
+    if (!esFechaCalendarioValida(y, m, d)) return null;
+    return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
 
   // DD/MM/YYYY o DD-MM-YYYY
   const matchHisp = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
   if (matchHisp) {
-    const d = matchHisp[1].padStart(2, '0');
-    const m = matchHisp[2].padStart(2, '0');
-    const y = matchHisp[3];
-    return `${y}-${m}-${d}`;
+    const d = Number(matchHisp[1]);
+    const m = Number(matchHisp[2]);
+    const y = Number(matchHisp[3]);
+    if (!esFechaCalendarioValida(y, m, d)) return null;
+    return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
   }
 
   return null;
@@ -141,6 +166,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
     actualizados: number;
     omitidos: number;
     errores: { fila: FilaImportada; mensaje: string }[];
+    clavesGeneradas: { dni: string; nombre: string; apellido: string; claveTemporal: string }[];
   } | null>(null);
 
   const { backdropProps, contentProps } = useModalOverlay({
@@ -357,6 +383,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
             estado: 'VALIDO_EXISTENTE',
             miembroExistenteId: existente.id,
             nombreExistente: `${existente.apellido}, ${existente.nombre}`,
+            datosFijosExistentes: existente.datosFijosJson,
           });
         } else {
           resultado.push({
@@ -472,6 +499,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
       (f) => f.estado === 'VALIDO_EXISTENTE' && !actualizarExistentes,
     ).length;
     const errores: { fila: FilaImportada; mensaje: string }[] = [];
+    const clavesGeneradas: { dni: string; nombre: string; apellido: string; claveTemporal: string }[] = [];
 
     for (let i = 0; i < aProcesar.length; i++) {
       const f = aProcesar[i];
@@ -479,7 +507,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
 
       try {
         if (f.estado === 'VALIDO_NUEVO') {
-          await api.post('/miembros', {
+          const resAlta = await api.post('/miembros', {
             dni: f.dni,
             nombre: f.nombre,
             apellido: f.apellido,
@@ -491,12 +519,24 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
             datosFijosJson: f.domicilio ? { domicilio: f.domicilio } : undefined,
           });
           creados++;
+          if (resAlta.data?.claveTemporal) {
+            clavesGeneradas.push({
+              dni: f.dni,
+              nombre: f.nombre,
+              apellido: f.apellido,
+              claveTemporal: resAlta.data.claveTemporal,
+            });
+          }
         } else if (f.estado === 'VALIDO_EXISTENTE' && actualizarExistentes && f.miembroExistenteId) {
-          await api.patch(`/miembros/${f.miembroExistenteId}`, {
-            telefonoContacto: f.telefonoContacto || undefined,
-            emailContacto: f.emailContacto || undefined,
-            datosFijosJson: f.domicilio ? { domicilio: f.domicilio } : undefined,
-          });
+          let datosFijosBase = f.datosFijosExistentes;
+          if (f.domicilio && datosFijosBase === undefined) {
+            const resMiembro = await api.get(`/miembros/${f.miembroExistenteId}`);
+            datosFijosBase = resMiembro.data?.datosFijosJson ?? null;
+          }
+          await api.patch(
+            `/miembros/${f.miembroExistenteId}`,
+            construirPayloadActualizacionMiembro(f, datosFijosBase),
+          );
           actualizados++;
         }
       } catch (err: any) {
@@ -508,7 +548,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
     }
 
     setEjecutando(false);
-    setResumenFin({ creados, actualizados, omitidos, errores });
+    setResumenFin({ creados, actualizados, omitidos, errores, clavesGeneradas });
     onImportado();
   };
 
@@ -592,6 +632,58 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   </div>
                 </div>
               </div>
+
+              {resumenFin.clavesGeneradas.length > 0 && (
+                <div className="p-3.5 bg-paper-2 border border-rule rounded-2xl space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold text-ink">
+                      Claves temporales generadas ({resumenFin.clavesGeneradas.length}):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        exportarACSV({
+                          nombreArchivo: 'claves-temporales-alta',
+                          columnas: [
+                            { header: 'DNI', clave: 'dni' },
+                            { header: 'Apellido', clave: 'apellido' },
+                            { header: 'Nombre', clave: 'nombre' },
+                            { header: 'Clave Temporal', clave: 'claveTemporal' },
+                          ],
+                          filas: resumenFin.clavesGeneradas,
+                        })
+                      }
+                      className="min-h-[34px] px-3 rounded-lg border border-rule bg-surface hover:bg-paper-3 text-ink font-bold text-[11px] cursor-pointer"
+                    >
+                      Descargar CSV de claves
+                    </button>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto rounded-xl border border-rule bg-surface">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-paper-2 text-ink-muted border-b border-rule sticky top-0">
+                        <tr>
+                          <th className="py-1.5 px-2.5">DNI</th>
+                          <th className="py-1.5 px-2.5">Miembro</th>
+                          <th className="py-1.5 px-2.5">Clave Temporal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-rule">
+                        {resumenFin.clavesGeneradas.map((c) => (
+                          <tr key={c.dni}>
+                            <td className="py-1.5 px-2.5 font-semibold text-ink">{c.dni}</td>
+                            <td className="py-1.5 px-2.5 text-ink-2">
+                              {c.apellido}, {c.nombre}
+                            </td>
+                            <td className="py-1.5 px-2.5 font-mono font-bold text-ink select-all">
+                              {c.claveTemporal}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {resumenFin.errores.length > 0 && (
                 <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-2xl space-y-2">

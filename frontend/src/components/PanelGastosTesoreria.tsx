@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
-import { formatearMoneda, traducirErrorAmigable, formatearFechaHora, normalizarTextoBusqueda } from '../lib/formatters';
+import { esErrorOffline, formatearMoneda, traducirErrorAmigable, formatearFechaHora, normalizarTextoBusqueda } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { ModalRegistrarGasto } from './ModalRegistrarGasto';
 import { ModalRegistrarIngreso } from './ModalRegistrarIngreso';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { ModalGestionRubros } from './ModalGestionRubros';
 import {
-  Receipt,
   PlusCircle,
   Pencil,
-  Filter,
   Calendar,
   RotateCcw,
   Ban,
@@ -20,7 +18,6 @@ import {
   Wallet,
   Tag,
   AlertCircle,
-  FileSpreadsheet,
   Search,
   X,
 } from 'lucide-react';
@@ -58,6 +55,10 @@ export interface PanelGastosTesoreriaProps {
 }
 
 export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onToast }) => {
+  const onToastRef = useRef(onToast);
+  useEffect(() => {
+    onToastRef.current = onToast;
+  }, [onToast]);
   const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermiso('tesoreria.gestionar'));
   const [gastos, setGastos] = useState<GastoItem[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -103,26 +104,23 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       setRubros(Array.isArray(resRubros.data) ? resRubros.data : []);
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudieron cargar los gastos.');
-      const esOffline =
-        (typeof navigator !== 'undefined' && !navigator.onLine) ||
-        msg.toLowerCase().includes('offline') ||
-        msg.toLowerCase().includes('sin conexión') ||
-        msg.toLowerCase().includes('sin conexion');
-
-      if (esOffline) {
-        if (gastos.length === 0) {
-          setError('Estás sin conexión y los gastos aún no han sido sincronizados en este dispositivo.');
-        } else {
-          setError(null);
-        }
+      if (esErrorOffline(err, msg)) {
+        setGastos((prev) => {
+          if (prev.length === 0) {
+            setError('Estás sin conexión y los gastos aún no han sido sincronizados en este dispositivo.');
+          } else {
+            setError(null);
+          }
+          return prev;
+        });
       } else {
         setError(msg);
-        if (onToast) onToast(msg, 'error');
+        onToastRef.current?.(msg, 'error');
       }
     } finally {
       setCargando(false);
     }
-  }, [filtroCuentaId, filtroRubroId, incluirAnulados, onToast]);
+  }, [filtroCuentaId, filtroRubroId, incluirAnulados]);
 
   useEffect(() => {
     cargarDatos();

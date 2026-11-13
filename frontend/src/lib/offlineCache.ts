@@ -4,6 +4,144 @@ interface ItemCache<T = unknown> {
 }
 
 const PREFIJO_CACHE = 'scout_cache_v1:';
+const IDB_NAME = 'scout_offline_db';
+const IDB_VERSION = 1;
+const IDB_STORE = 'api_cache';
+export const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+
+// Espejo rápido en memoria respaldado por IndexedDB (soporta payloads mayores a 5 MB sin bloquear el hilo)
+const memoriaCache = new Map<string, ItemCache<unknown>>();
+let idbPromise: Promise<IDBDatabase | null> | null = null;
+
+function estaExpirado(item: Partial<ItemCache<unknown>> | null | undefined, ahora = Date.now()): boolean {
+  if (!item || typeof item.timestamp !== 'number' || !Number.isFinite(item.timestamp)) {
+    return true;
+  }
+  return ahora - item.timestamp > CACHE_TTL_MS;
+}
+
+function abrirIndexedDB(): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === 'undefined') return Promise.resolve(null);
+  if (idbPromise) return idbPromise;
+
+  idbPromise = new Promise<IDBDatabase | null>((resolve) => {
+    try {
+      const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+      req.onblocked = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+  return idbPromise;
+}
+
+async function putItemIndexedDB(clave: string, item: ItemCache<unknown>): Promise<void> {
+  const db = await abrirIndexedDB();
+  if (!db) return;
+  try {
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(item, clave);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch {
+    // Ignorar errores de cuota o entorno restringido
+  }
+}
+
+async function deleteItemIndexedDB(clave: string): Promise<void> {
+  const db = await abrirIndexedDB();
+  if (!db) return;
+  try {
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).delete(clave);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch {
+    // Ignorar
+  }
+}
+
+async function clearStoreIndexedDB(): Promise<void> {
+  const db = await abrirIndexedDB();
+  if (!db) return;
+  try {
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch {
+    // Ignorar
+  }
+}
+
+/**
+ * Hidrata el espejo en memoria desde IndexedDB en segundo plano sin pisar entradas más recientes.
+ */
+export async function hidratarCacheDesdeIndexedDB(): Promise<void> {
+  const db = await abrirIndexedDB();
+  if (!db) return;
+  try {
+    const ahora = Date.now();
+    await new Promise<void>((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.openCursor();
+      const clavesExpiradas: string[] = [];
+
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor) return;
+        const clave = String(cursor.key);
+        const val = cursor.value as ItemCache<unknown>;
+        if (estaExpirado(val, ahora)) {
+          clavesExpiradas.push(clave);
+        } else {
+          const actual = memoriaCache.get(clave);
+          if (!actual || val.timestamp > actual.timestamp) {
+            memoriaCache.set(clave, val);
+          }
+        }
+        cursor.continue();
+      };
+
+      tx.oncomplete = () => {
+        for (const k of clavesExpiradas) {
+          void deleteItemIndexedDB(k);
+        }
+        resolve();
+      };
+      tx.onerror = () => resolve();
+      tx.onabort = () => resolve();
+    });
+  } catch {
+    // Ignorar errores de lectura inicial en IndexedDB
+  }
+}
+
+if (typeof indexedDB !== 'undefined') {
+  void hidratarCacheDesdeIndexedDB();
+}
+
+export function obtenerTamanoMemoriaCache(): number {
+  return memoriaCache.size;
+}
 
 /**
  * Genera una clave determinista para la URL y sus parámetros.
@@ -28,10 +166,13 @@ export function generarClaveCache(url?: string, params?: Record<string, unknown>
 }
 
 /**
- * Guarda un elemento individual en localStorage de forma segura.
+ * Guarda un elemento en memoria + IndexedDB y mantiene copia best-effort en localStorage.
  */
 function guardarItemCrudo<T = unknown>(clave: string, data: T, timestamp: number): void {
   const item: ItemCache<T> = { data, timestamp };
+  memoriaCache.set(clave, item);
+  void putItemIndexedDB(clave, item);
+
   try {
     localStorage.setItem(clave, JSON.stringify(item));
   } catch {
@@ -39,7 +180,7 @@ function guardarItemCrudo<T = unknown>(clave: string, data: T, timestamp: number
       purgarCachesAntiguos();
       localStorage.setItem(clave, JSON.stringify(item));
     } catch {
-      // Ignorar si la cuota no permite guardar
+      // Si localStorage supera los 5 MB, la entrada queda igualmente persistida en memoria e IndexedDB
     }
   }
 }
@@ -54,25 +195,14 @@ export function guardarEnCache<T = unknown>(
   params?: Record<string, unknown> | null,
   data?: T,
 ): void {
-  if (!url || data === undefined || data === null) return;
+  // No persistir endpoints de autenticación para evitar duplicar tokens en la caché
+  if (!url || data === undefined || data === null || url.includes('/auth/')) return;
   const clave = generarClaveCache(url, params);
   const now = Date.now();
 
-  // Guardar la consulta principal
+  // Guardar la consulta principal (/miembros/:id se resuelve vía fallback desde la lista cacheada
+  // sin duplicar hasta 2000 claves individuales síncronas en localStorage)
   guardarItemCrudo(clave, data, now);
-
-  // 1. Si guardamos la lista de miembros (/miembros), pre-indexar cada miembro por su ID individual
-  if (url.includes('/miembros') && typeof data === 'object') {
-    const items = (data as any)?.items;
-    if (Array.isArray(items)) {
-      for (const m of items) {
-        if (m?.id) {
-          const claveIndividual = `${PREFIJO_CACHE}/miembros/${m.id}`;
-          guardarItemCrudo(claveIndividual, m, now);
-        }
-      }
-    }
-  }
 
   // 2. Si guardamos la lista de entregas (/legajos/entregas), pre-indexar por cada usuarioId
   if (url.includes('/legajos/entregas') && Array.isArray(data)) {
@@ -103,7 +233,7 @@ export function guardarEnCache<T = unknown>(
 }
 
 /**
- * Obtiene la respuesta guardada en localStorage.
+ * Obtiene la respuesta guardada en caché (memoria / IndexedDB / localStorage).
  * Si no encuentra la clave exacta, realiza una búsqueda inteligente de respaldo:
  * - Para /miembros/:id busca el miembro dentro de la lista de miembros guardada.
  * - Para /legajos/entregas?usuarioId=:id busca las entregas del usuario en la lista de entregas guardada.
@@ -117,14 +247,37 @@ export function obtenerDeCache<T = unknown>(
   if (!url) return null;
   const clave = generarClaveCache(url, params);
 
-  // 1. Intento directo por clave exacta
+  // 1. Intento directo por clave exacta (sincronizado entre localStorage y memoria)
   try {
-    const raw = localStorage.getItem(clave);
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(clave) : null;
     if (raw) {
-      return JSON.parse(raw) as ItemCache<T>;
+      const parsed = JSON.parse(raw) as ItemCache<T>;
+      if (!estaExpirado(parsed)) {
+        const memItem = memoriaCache.get(clave) as ItemCache<T> | undefined;
+        if (memItem && !estaExpirado(memItem) && memItem.timestamp >= parsed.timestamp) {
+          return memItem;
+        }
+        memoriaCache.set(clave, parsed);
+        return parsed;
+      }
+      localStorage.removeItem(clave);
+      memoriaCache.delete(clave);
+      void deleteItemIndexedDB(clave);
+    } else {
+      const memItem = memoriaCache.get(clave) as ItemCache<T> | undefined;
+      if (memItem) {
+        if (!estaExpirado(memItem)) {
+          return memItem;
+        }
+        memoriaCache.delete(clave);
+        void deleteItemIndexedDB(clave);
+      }
     }
   } catch {
-    // Continuar al fallback inteligente
+    const memItem = memoriaCache.get(clave) as ItemCache<T> | undefined;
+    if (memItem && !estaExpirado(memItem)) {
+      return memItem;
+    }
   }
 
   // 2. Búsqueda inteligente de respaldo (Fallback por entidad)
@@ -198,6 +351,7 @@ function resolverFallbackInteligente<T>(
             data: {
               usuario,
               asignaciones,
+              requiereCambioClave: localStorage.getItem('scout_cambio_clave') === 'true',
               accessToken: localStorage.getItem('scout_token') || '',
             } as T,
             timestamp: Date.now(),
@@ -264,18 +418,32 @@ function resolverFallbackInteligente<T>(
     if (matchCuenta) {
       const id = Number(matchCuenta[1]);
       const listaMiembros = buscarListaEnCache<{ items?: any[] }>('/miembros');
-      if (listaMiembros?.data?.items) {
-        const m = listaMiembros.data.items.find((item: any) => item.id === id);
-        if (m) {
-          const cuentaSintetica = {
-            usuarioId: id,
-            cargos: m.cargos || [],
-            saldoAFavor: m.saldoAFavor || 0,
-            movimientos: [],
-            totalDeuda: 0,
-          };
-          return { data: cuentaSintetica as T, timestamp: listaMiembros.timestamp };
-        }
+      const m = listaMiembros?.data?.items?.find((item: any) => item.id === id);
+      if (m && listaMiembros) {
+        const cargos = Array.isArray(m.cargos) ? m.cargos : [];
+        const saldoPendiente =
+          Math.round(
+            cargos.reduce(
+              (acc: number, c: any) =>
+                c?.estado === 'ANULADO'
+                  ? acc
+                  : acc + Math.max(0, Number(c?.montoFinal ?? 0) - Number(c?.montoPagado ?? 0)),
+              0,
+            ) * 100,
+          ) / 100;
+        const saldoAFavor = Number(m.saldoAFavor || 0);
+        const cuentaSintetica = {
+          usuarioId: id,
+          cargos,
+          saldoAFavor,
+          movimientos: [],
+          totalDeuda: saldoPendiente,
+          resumen: {
+            saldoPendiente,
+            saldoAFavor,
+          },
+        };
+        return { data: cuentaSintetica as T, timestamp: listaMiembros.timestamp };
       }
     }
 
@@ -392,23 +560,90 @@ function resolverFallbackInteligente<T>(
 }
 
 /**
- * Busca en localStorage la primera clave que contenga la subcadena y devuelve su ItemCache.
+ * Busca en localStorage la entrada cacheada correspondiente a una ruta base exacta
+ * (sin coincidir por subcadena con sub-rutas como `/miembros/:id` al buscar `/miembros`),
+ * descartando entradas expiradas y priorizando listados sin filtros o más completos.
  */
-function buscarListaEnCache<D>(subcadena: string): ItemCache<D> | null {
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(PREFIJO_CACHE) && k.includes(subcadena)) {
+function buscarListaEnCache<D>(rutaBase: string): ItemCache<D> | null {
+  const ahora = Date.now();
+  const clavesExpiradas: string[] = [];
+  const candidatos = new Map<string, ItemCache<D>>();
+
+  for (const [k, item] of memoriaCache.entries()) {
+    if (!k.startsWith(PREFIJO_CACHE)) continue;
+    const sinPrefijo = k.slice(PREFIJO_CACHE.length);
+    const rutaKey = sinPrefijo.split('?')[0];
+    if (rutaKey !== rutaBase) continue;
+
+    if (estaExpirado(item, ahora)) {
+      clavesExpiradas.push(k);
+      continue;
+    }
+    if (item?.data) {
+      candidatos.set(k, item as ItemCache<D>);
+    }
+  }
+
+  if (typeof localStorage !== 'undefined') {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !k.startsWith(PREFIJO_CACHE)) continue;
+
+      const sinPrefijo = k.slice(PREFIJO_CACHE.length);
+      const rutaKey = sinPrefijo.split('?')[0];
+      if (rutaKey !== rutaBase) continue;
+
       try {
-        const parsed = JSON.parse(localStorage.getItem(k) || '');
-        if (parsed?.data) {
-          return parsed as ItemCache<D>;
+        const parsed = JSON.parse(localStorage.getItem(k) || '') as ItemCache<D>;
+        if (estaExpirado(parsed, ahora)) {
+          clavesExpiradas.push(k);
+          candidatos.delete(k);
+          continue;
+        }
+        if (!parsed?.data) continue;
+        const existente = candidatos.get(k);
+        if (!existente || parsed.timestamp > existente.timestamp) {
+          candidatos.set(k, parsed);
+          memoriaCache.set(k, parsed);
         }
       } catch {
         continue;
       }
     }
   }
-  return null;
+
+  let mejorCandidato: { item: ItemCache<D>; sinQuery: boolean; peso: number } | null = null;
+  for (const [k, parsed] of candidatos.entries()) {
+    const sinPrefijo = k.slice(PREFIJO_CACHE.length);
+    const sinQuery = !sinPrefijo.includes('?');
+    const peso = Array.isArray(parsed.data)
+      ? parsed.data.length
+      : Array.isArray((parsed.data as any)?.items)
+        ? (parsed.data as any).items.length
+        : 0;
+
+    if (
+      !mejorCandidato ||
+      (sinQuery && !mejorCandidato.sinQuery) ||
+      (sinQuery === mejorCandidato.sinQuery &&
+        (peso > mejorCandidato.peso ||
+          (peso === mejorCandidato.peso && parsed.timestamp > mejorCandidato.item.timestamp)))
+    ) {
+      mejorCandidato = { item: parsed, sinQuery, peso };
+    }
+  }
+
+  for (const k of clavesExpiradas) {
+    memoriaCache.delete(k);
+    void deleteItemIndexedDB(k);
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      // Ignorar
+    }
+  }
+
+  return mejorCandidato?.item ?? null;
 }
 
 /**
@@ -442,6 +677,11 @@ export function contarMiembrosEnCache(): number {
  */
 export function obtenerUltimoTimestampCache(): number | null {
   let maxTimestamp: number | null = null;
+  for (const item of memoriaCache.values()) {
+    if (item?.timestamp && (maxTimestamp === null || item.timestamp > maxTimestamp)) {
+      maxTimestamp = item.timestamp;
+    }
+  }
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
@@ -463,9 +703,11 @@ export function obtenerUltimoTimestampCache(): number | null {
 }
 
 /**
- * Elimina todas las entradas de caché de la API (útil al cerrar sesión).
+ * Elimina todas las entradas de caché de la API en memoria, IndexedDB y localStorage.
  */
 export function limpiarCacheApi(): void {
+  memoriaCache.clear();
+  void clearStoreIndexedDB();
   try {
     const clavesAEliminar: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

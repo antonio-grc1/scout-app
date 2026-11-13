@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   ParseBoolPipe,
+  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -401,6 +402,16 @@ export class TesoreriaController {
     return this.tesoreria.eliminarCuentaFinanciera(u, a, id);
   }
 
+  @RequirePermission(TESORERIA_GESTIONAR)
+  @Post('cuentas/:id/restaurar')
+  restaurarCuenta(
+    @CurrentUser() u: AuthUser,
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.tesoreria.restaurarCuentaFinanciera(u, a, id);
+  }
+
   @RequireAnyPermission(TESORERIA_CAJA, TESORERIA_GESTIONAR)
   @Get('cuentas/:id/libro-diario')
   obtenerLibroDiario(
@@ -457,6 +468,15 @@ export class TesoreriaController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.tesoreria.eliminarRubroContable(a, id);
+  }
+
+  @RequirePermission(TESORERIA_GESTIONAR)
+  @Post('rubros/:id/restaurar')
+  restaurarRubro(
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.tesoreria.restaurarRubroContable(a, id);
   }
 
   // ---------------- Gastos y Egresos Operativos (Fase 2) ----------------
@@ -562,16 +582,16 @@ export class TesoreriaController {
   }
 
   // ---------------- Eventos Económicos y Entradas QR (Fase 4) ----------------
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_VER, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
   @Get('eventos')
   listarEventos(
     @Alcance() a: AlcanceAcceso,
-    @Query('tipo') tipo?: TipoEvento,
+    @Query('tipo', new ParseEnumPipe(TipoEvento, { optional: true })) tipo?: TipoEvento,
   ) {
     return this.tesoreria.listarEventos(a, tipo);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_VER, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
   @Get('eventos/:id')
   obtenerEventoPorId(
     @Alcance() a: AlcanceAcceso,
@@ -610,7 +630,7 @@ export class TesoreriaController {
     return this.tesoreria.eliminarEvento(a, id);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
   @Post('eventos/pedidos')
   crearPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -620,7 +640,7 @@ export class TesoreriaController {
     return this.tesoreria.crearPedidoEvento(u, a, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
   @Patch('eventos/pedidos/:id')
   actualizarPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -631,7 +651,7 @@ export class TesoreriaController {
     return this.tesoreria.actualizarPedidoEvento(u, a, id, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
   @Delete('eventos/pedidos/:id')
   eliminarPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -641,7 +661,7 @@ export class TesoreriaController {
     return this.tesoreria.eliminarPedidoEvento(u, a, id);
   }
 
-  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
   @Post('eventos/validar-qr')
   validarTicketQr(
     @CurrentUser() u: AuthUser,
@@ -661,13 +681,13 @@ export class TesoreriaController {
     return this.tesoreria.acreditarGananciasEvento(u, a, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, CUOTAS_VER)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR)
   @Get('mis-tickets')
   obtenerMisTickets(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisTickets(u);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, CUOTAS_VER)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR)
   @Get('mis-pedidos')
   obtenerMisPedidos(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisPedidos(u);

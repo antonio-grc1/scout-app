@@ -15,12 +15,14 @@ const PERMISOS_AUTOGESTION_PROPIA = new Set([
 ]);
 
 export function resolverAlcance(user: AuthUser, permiso: string | string[]): AlcanceAcceso | null {
-  const listaPermisos = Array.isArray(permiso) ? permiso : [permiso];
+  const esMultiple = Array.isArray(permiso);
+  const listaPermisos = esMultiple ? permiso : [permiso];
   const conPermiso = user.asignaciones.filter((a) =>
     a.permisos.some((p) => listaPermisos.includes(p)),
   );
   if (conPermiso.length === 0) {
-    if (listaPermisos.some((p) => PERMISOS_AUTOGESTION_PROPIA.has(p))) {
+    // Solo se habilita autogestión propia en permisos unitarios explícitos y si el usuario conserva asignaciones activas.
+    if (!esMultiple && user.asignaciones.length > 0 && PERMISOS_AUTOGESTION_PROPIA.has(permiso)) {
       return { tipo: 'PROPIO', usuarioId: user.sub };
     }
     return null;
@@ -80,6 +82,26 @@ export function assertUnidadEnAlcance(alcance: AlcanceAcceso, unidadId: number |
 /** Alcance efectivo de una asignación: override o el del rol. */
 export function alcanceEfectivo(a: { alcanceOverride: AlcanceRol | null; rol: { alcancePorDefecto: AlcanceRol } }): AlcanceRol {
   return a.alcanceOverride ?? a.rol.alcancePorDefecto;
+}
+
+/** Determina el tipo de miembro efectivo priorizando `rol.tipoMiembro` sobre `alcancePorDefecto`. */
+export function tipoMiembroEfectivo(
+  rol: { tipoMiembro?: string | null; alcancePorDefecto?: AlcanceRol | null },
+  alcanceOverride?: AlcanceRol | null,
+): 'PROTAGONISTA' | 'EDUCADOR' {
+  if (rol.tipoMiembro === 'PROTAGONISTA' || rol.tipoMiembro === 'EDUCADOR') {
+    return rol.tipoMiembro;
+  }
+  const alcance = alcanceOverride ?? rol.alcancePorDefecto;
+  return alcance === AlcanceRol.PROPIO ? 'PROTAGONISTA' : 'EDUCADOR';
+}
+
+/** Indica si una asignación corresponde a un rol de educador. */
+export function esRolEducadorEfectivo(
+  rol: { tipoMiembro?: string | null; alcancePorDefecto?: AlcanceRol | null },
+  alcanceOverride?: AlcanceRol | null,
+): boolean {
+  return tipoMiembroEfectivo(rol, alcanceOverride) === 'EDUCADOR';
 }
 
 /**

@@ -1,6 +1,101 @@
-import { buildOfficialPdf, generarMoldeEnBlancoPdf } from './officialPdfBuilder';
+import QRCode from 'qrcode';
+import {
+  buildOfficialPdf,
+  generarMoldeEnBlancoPdf,
+  type OfficialPdfBuilderOptions,
+} from './officialPdfBuilder';
+import type { PdfWorkerRequest, PdfWorkerResponse } from './pdfBuilder.worker';
 
 export { buildOfficialPdf, generarMoldeEnBlancoPdf };
+
+let pdfWorkerInstance: Worker | null = null;
+let workerJobSeq = 0;
+const pendingWorkerJobs = new Map<
+  number,
+  { resolve: (bytes: Uint8Array) => void; reject: (err: Error) => void }
+>();
+
+function dataUriToBytes(dataUri: string): Uint8Array {
+  const base64 = dataUri.split(',')[1] || '';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function obtenerPdfWorker(): Worker | null {
+  if (typeof window === 'undefined' || typeof Worker === 'undefined') {
+    return null;
+  }
+  if (pdfWorkerInstance) return pdfWorkerInstance;
+  try {
+    const worker = new Worker(new URL('./pdfBuilder.worker.ts', import.meta.url), {
+      type: 'module',
+    });
+    worker.onmessage = (event: MessageEvent<PdfWorkerResponse>) => {
+      const { id, ok, bytes, error } = event.data;
+      const pending = pendingWorkerJobs.get(id);
+      if (!pending) return;
+      pendingWorkerJobs.delete(id);
+      if (ok && bytes) {
+        pending.resolve(bytes);
+      } else {
+        pending.reject(new Error(error || 'Error generando PDF en Worker'));
+      }
+    };
+    worker.onerror = () => {
+      pdfWorkerInstance = null;
+      for (const [id, pending] of pendingWorkerJobs.entries()) {
+        pendingWorkerJobs.delete(id);
+        pending.reject(new Error('Fallo del Web Worker de PDF'));
+      }
+    };
+    pdfWorkerInstance = worker;
+    return worker;
+  } catch {
+    return null;
+  }
+}
+
+async function ejecutarBuildPdf(
+  rawRespuestas: Record<string, unknown>,
+  options: OfficialPdfBuilderOptions,
+): Promise<Uint8Array> {
+  const worker = obtenerPdfWorker();
+  if (!worker) {
+    return await buildOfficialPdf(rawRespuestas, options);
+  }
+
+  try {
+    const hash =
+      options.hashVerificacion ||
+      (rawRespuestas.hashVerificacion as string) ||
+      `LEGAJO-OFICIAL-${new Date().getFullYear()}-VERIFICADO`;
+    const qrDataUrl = await QRCode.toDataURL(hash, { margin: 1, width: 160 });
+    const qrPngBytes = dataUriToBytes(qrDataUrl);
+    const id = ++workerJobSeq;
+
+    return await new Promise<Uint8Array>((resolve, reject) => {
+      pendingWorkerJobs.set(id, { resolve, reject });
+      const payload: PdfWorkerRequest = {
+        id,
+        rawRespuestas,
+        options: {
+          ...options,
+          qrPngBytes,
+        },
+      };
+      const transfer: Transferable[] =
+        qrPngBytes.buffer instanceof ArrayBuffer ? [qrPngBytes.buffer] : [];
+      worker.postMessage(payload, transfer);
+    });
+  } catch {
+    // Respaldo automático en el hilo principal si el Worker falla o no está soportado
+    return await buildOfficialPdf(rawRespuestas, options);
+  }
+}
 
 export interface CoordenadaCampo {
   page?: number;
@@ -388,7 +483,7 @@ export async function generarFichaPdf(
 ): Promise<Uint8Array> {
   const respuestasFormateadas = prepararRespuestasParaImpresion(respuestas, usuario);
 
-  return await buildOfficialPdf(respuestasFormateadas, {
+  return await ejecutarBuildPdf(respuestasFormateadas, {
     hashVerificacion,
     usuario,
     versionImpresion,

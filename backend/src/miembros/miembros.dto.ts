@@ -1,9 +1,12 @@
 import { AlcanceRol } from '@prisma/client';
 import { z } from 'zod';
+import { queryBooleanOptionalSchema } from '../common/utils/plantillas.util.js';
 
 const dni = z.string().trim().regex(/^[0-9A-Za-z]{6,20}$/, 'DNI inválido');
 const fecha = z.iso.date('Fecha inválida (AAAA-MM-DD)');
-const datosJson = z.record(z.string(), z.unknown());
+const datosJson = z
+  .record(z.string().max(100), z.unknown())
+  .refine((obj) => Object.keys(obj).length <= 100, 'Demasiadas claves en datosFijosJson');
 const email = z.email('Email inválido').max(150);
 
 export const CrearMiembroSchema = z.object({
@@ -42,19 +45,37 @@ export const EditarMiembroSchema = z
   .strict();
 export type EditarMiembroDto = z.infer<typeof EditarMiembroSchema>;
 
+export const ActualizarMiPerfilSchema = EditarMiembroSchema.pick({
+  emailContacto: true,
+  telefonoContacto: true,
+  datosFijosJson: true,
+}).strict();
+export type ActualizarMiPerfilDto = z.infer<typeof ActualizarMiPerfilSchema>;
+
 export const ListarMiembrosSchema = z
   .object({
     unidadId: z.coerce.number().int().positive().optional(),
     rolId: z.coerce.number().int().positive().optional(),
     q: z.string().trim().max(100).optional(),
     busqueda: z.string().trim().max(100).optional(),
-    incluirInactivos: z
-      .enum(['true', 'false'])
-      .transform((v) => v === 'true')
-      .optional(),
+    ids: z
+      .union([z.string(), z.array(z.coerce.number().int().positive())])
+      .optional()
+      .transform((val) => {
+        if (!val) return undefined;
+        const arr = Array.isArray(val)
+          ? val
+          : val
+              .split(',')
+              .map((s) => Number(s.trim()))
+              .filter((n) => Number.isInteger(n) && n > 0);
+        const unicos = [...new Set(arr)].slice(0, 200);
+        return unicos.length > 0 ? unicos : undefined;
+      }),
+    incluirInactivos: queryBooleanOptionalSchema,
     pagina: z.coerce.number().int().min(1).default(1),
-    porPagina: z.coerce.number().int().min(1).max(2000).default(50),
-    limite: z.coerce.number().int().min(1).max(2000).optional(),
+    porPagina: z.coerce.number().int().min(1).max(200).default(50),
+    limite: z.coerce.number().int().min(1).max(200).optional(),
   })
   .transform((data) => ({
     ...data,

@@ -1,0 +1,189 @@
+# Components (`components`)
+
+## Overview
+Provides the feature-level UI components, modals, and management panels for the Scout Group management application—covering member directory cards, member onboarding/import, digital and physical medical/authorization forms (`legajos`), role and branch progression (`pases`), treasury accounts/ledgers, fee plans, fundraising events, QR ticket scanning, PDF viewing, offline status, PWA installation, and theme customization.
+
+## Interface
+- [Detalle de Miembro](./detalle-miembro/README.md) — Tabbed subcomponents and assignment timeline for the member detail modal (`PestanaCuotasTesoreria`, `PestanaDatosMiembro`, `PestanaLegajosFichas`, `PestanaPaseRol`, `PestanaSeguridad`, `TrayectoriaMiembro`).
+- [UI Primitives](./ui/README.md) — Reusable design-system primitives (`Button`, `BrandLogo`, `Badge`, `Input`, `Select`, `Textarea`, `BotonExportar`, `ToastGlobal`).
+- `[BannerOffline.tsx:BannerOffline]` — Exported `React.FC` rendering a sticky online/reconnected or offline/cached status banner using `useOfflineStore`.
+- `[BotonInstalarPwa.tsx:BotonInstalarPwa]` — Exported `React.FC<Props>` (`variante?: 'navbar' | 'card'`) rendering a PWA installation trigger and fallback installation guide modal via portal.
+- `[BotonLlamarMiembro.tsx:BotonLlamarMiembro]` — Exported `React.FC<Props>` (`miembro`, `entrega?`, `className?`) rendering a call button and portal modal listing extracted member, family, and emergency phone numbers.
+- `[DynamicFormRenderer.tsx:CampoSchema]` — Exported interface defining a dynamic form field (`key`, `label`, `type`, `required?`, `options?`).
+- `[DynamicFormRenderer.tsx:SeccionSchema]` — Exported interface defining a form step/section (`id`, `titulo`, `descripcion?`, `permiteCopiarHermano?`, `campos`).
+- `[DynamicFormRenderer.tsx:EsquemaCampos]` — Exported interface containing `secciones: SeccionSchema[]`.
+- `[DynamicFormRenderer.tsx:DynamicFormRenderer]` — Exported `React.FC<Props>` rendering a multi-step dynamic form with conditional fields, draft saving, and full validation on finalization.
+- `[MiembroCard.tsx:MiembroCardProps]` — Exported props interface for `MiembroCard` (`miembro`, `unidades`, `entrega`, `tienePaseSugerido`, `validandoDirecto`, `onAbrirDetalle`, `onValidarFichaDirecto`).
+- `[MiembroCard.tsx:MiembroCard]` — Exported `React.FC<MiembroCardProps>` displaying a member summary card, status badges, and quick actions.
+- `[ModalAltaMiembro.tsx:ModalAltaMiembro]` — Exported `React.FC<Props>` modal for creating a new member and optionally linking to an existing sibling family group.
+- `[ModalCargarPedidoEvento.tsx:PedidoAEditar]` — Exported interface for editing an event sales order (`id`, `compradorNombre`, `compradorContacto`, `vendedorUsuarioId`, `vendedorUsuario`, `metodoPago`, `cuentaId`, `observaciones`, `detalles`, `algunoRetirado`, `tickets`).
+- `[ModalCargarPedidoEvento.tsx:ModalCargarPedidoEventoProps]` — Exported props interface for `ModalCargarPedidoEvento`.
+- `[ModalCargarPedidoEvento.tsx:ModalCargarPedidoEvento]` — Exported `React.FC<ModalCargarPedidoEventoProps>` modal for creating, editing, charging, and deleting event sales orders.
+- `[ModalCobrarDeuda.tsx:ModalCobrarDeuda]` — Exported `React.FC<Props>` modal for collecting member debt, imputing partial/full payments to charges, and applying/crediting credit balance (`saldo a favor`).
+- `[ModalCobroCampamento.tsx:ModalCobroCampamento]` — Exported `React.FC<Props>` modal for creating and editing camp/special charge concepts.
+- `[ModalConcepto.tsx:ConceptoData]` — Exported interface representing a treasury charge concept (`id?`, `nombre`, `tipo`, `montoBase`, `cicloAnio`, `fechaVencimiento`, `alcance`, `rubroId`, `permiteDescuentoHermanos`, `porcentajeDescuentoHermanos`).
+- `[ModalConcepto.tsx:ModalConceptoProps]` — Exported props interface for `ModalConcepto`.
+- `[ModalConcepto.tsx:TIPOS_CONCEPTO]` — Exported constant array of charge concept types (`CUOTA_GRUPO`, `CAMPAMENTO`, `EVENTO`, `INSCRIPCION`, `OTRO`).
+- `[ModalConcepto.tsx:ModalConcepto]` — Exported `React.FC<ModalConceptoProps>` modal for creating and editing treasury concepts.
+- `[ModalConfirmacion.tsx:ModalConfirmacionProps]` — Exported props interface for `ModalConfirmacion`.
+- `[ModalConfirmacion.tsx:ModalConfirmacion]` — Exported `React.FC<ModalConfirmacionProps>` reusable confirmation and alert modal.
+- `[ModalCrearCuentaFinanciera.tsx:CuentaFinancieraItem]` — Exported interface for a financial account (`id`, `nombre`, `tipo: 'CAJA_EFECTIVO' | 'BANCO'`, `saldoInicial?`, `saldoActual?`, `activa?`).
+- `[ModalCrearCuentaFinanciera.tsx:ModalCrearCuentaFinancieraProps]` — Exported props interface for `ModalCrearCuentaFinanciera`.
+- `[ModalCrearCuentaFinanciera.tsx:ModalCrearCuentaFinanciera]` — Exported `React.FC<ModalCrearCuentaFinancieraProps>` modal for creating, editing, and deleting financial accounts.
+- `[ModalCrearEventoEconomico.tsx:EventoAEditar]` — Exported interface for an editable economic event (`id`, `titulo`, `descripcion`, `tipo: 'RECAUDACION_PEDIDOS' | 'FESTIVAL_ENTRADAS'`, `estado: 'BORRADOR' | 'PUBLICADO' | 'FINALIZADO' | 'CANCELADO'`, `fechaEvento`, `fechaFin`, `lugarEntrega`, `rubroId`, `cuentaId`, `items`).
+- `[ModalCrearEventoEconomico.tsx:ModalCrearEventoEconomicoProps]` — Exported props interface for `ModalCrearEventoEconomico`.
+- `[ModalCrearEventoEconomico.tsx:ModalCrearEventoEconomico]` — Exported `React.FC<ModalCrearEventoEconomicoProps>` modal for creating, editing, and deleting economic fundraising/ticket events and their product catalog.
+- `[ModalCrearRubro.tsx:RubroAEditarItem]` — Exported interface for an editable accounting category (`id`, `nombre`, `tipo: 'INGRESO' | 'EGRESO'`, `permiteDescuentoDefault`, `unidadId?`, `activo?`).
+- `[ModalCrearRubro.tsx:ModalCrearRubroProps]` — Exported props interface for `ModalCrearRubro`.
+- `[ModalCrearRubro.tsx:ModalCrearRubro]` — Exported `React.FC<ModalCrearRubroProps>` modal for creating, editing, and deleting accounting categories (`rubros`).
+- `[ModalDefinirPagoPedido.tsx:CuentaFinancieraItem]` — Exported interface for a financial account option (`id`, `nombre`, `tipo`, `activa?`).
+- `[ModalDefinirPagoPedido.tsx:ModalDefinirPagoPedidoProps]` — Exported props interface for `ModalDefinirPagoPedido`.
+- `[ModalDefinirPagoPedido.tsx:ModalDefinirPagoPedido]` — Exported `React.FC<ModalDefinirPagoPedidoProps>` modal for confirming or deferring payment (`PAGADO` vs `PENDIENTE`) of a scanned event order voucher.
+- `[ModalDetalleMiembro.tsx:ModalDetalleMiembro]` — Exported `React.FC<Props>` master modal orchestrating member profile data, role transfers, security password resets, medical/authorization forms, and treasury charges/payments.
+- `[ModalEditarFamilia.tsx:ModalEditarFamilia]` — Exported `React.FC<Props>` modal for editing family group name, sibling discount percentage, unlinking members, or dissolving the family group.
+- `[ModalEventosUnidad.tsx:ModalEventosUnidadProps]` — Exported props interface for `ModalEventosUnidad`.
+- `[ModalEventosUnidad.tsx:ModalEventosUnidad]` — Exported `React.FC<ModalEventosUnidadProps>` modal for unit educators to inspect active economic events, load unit orders, and scan QR vouchers.
+- `[ModalGenerarDeudaManual.tsx:ModalGenerarDeudaManual]` — Exported `React.FC<Props>` modal for generating an individual manual charge for a specific member.
+- `[ModalGestionRubros.tsx:RubroContableCompleto]` — Exported interface for an accounting category with usage counts (`_count`).
+- `[ModalGestionRubros.tsx:ModalGestionRubrosProps]` — Exported props interface for `ModalGestionRubros`.
+- `[ModalGestionRubros.tsx:ModalGestionRubros]` — Exported `React.FC<ModalGestionRubrosProps>` modal for listing, filtering, creating, editing, and deleting accounting categories.
+- `[ModalHistorialSeccion.tsx:ModalHistorialSeccionProps]` — Exported props interface for `ModalHistorialSeccion`.
+- `[ModalHistorialSeccion.tsx:ModalHistorialSeccion]` — Exported `React.FC<ModalHistorialSeccionProps>` modal displaying historical unit assignments grouped by academic cycle or role category.
+- `[ModalImportarMiembros.tsx:FilaImportada]` — Exported interface representing a parsed spreadsheet row (`idTemporal`, `dni`, `nombre`, `apellido`, `fechaNacimiento`, `telefonoContacto`, `emailContacto`, `domicilio`, `estado: 'VALIDO_NUEVO' | 'VALIDO_EXISTENTE' | 'ERROR'`).
+- `[ModalImportarMiembros.tsx:ModalImportarMiembrosProps]` — Exported props interface for `ModalImportarMiembros`.
+- `[ModalImportarMiembros.tsx:ModalImportarMiembros]` — Exported `React.FC<ModalImportarMiembrosProps>` modal for bulk importing or updating members from Excel (`.xlsx`, `.xls`) or CSV spreadsheets.
+- `[ModalPlanCuotaMensual.tsx:PlanCuotaMensualData]` — Exported interface defining a monthly fee plan configuration.
+- `[ModalPlanCuotaMensual.tsx:ModalPlanCuotaMensual]` — Exported `React.FC<Props>` modal for creating or editing a monthly fee plan (`cuadro de cuota mensual`).
+- `[ModalRegistrarGasto.tsx:GastoAEditarItem]` — Exported interface representing an expense item to edit.
+- `[ModalRegistrarGasto.tsx:ModalRegistrarGastoProps]` — Exported props interface for `ModalRegistrarGasto`.
+- `[ModalRegistrarGasto.tsx:RubroItem]` — Exported interface for a category option in `ModalRegistrarGasto`.
+- `[ModalRegistrarGasto.tsx:CuentaItem]` — Exported interface for an account option in `ModalRegistrarGasto`.
+- `[ModalRegistrarGasto.tsx:ModalRegistrarGasto]` — Exported `React.FC<ModalRegistrarGastoProps>` modal for creating or editing a treasury expense (`egreso`).
+- `[ModalRegistrarIngreso.tsx:IngresoAEditarItem]` — Exported interface representing an income item to edit.
+- `[ModalRegistrarIngreso.tsx:ModalRegistrarIngresoProps]` — Exported props interface for `ModalRegistrarIngreso`.
+- `[ModalRegistrarIngreso.tsx:RubroItem]` — Exported interface for a category option in `ModalRegistrarIngreso`.
+- `[ModalRegistrarIngreso.tsx:CuentaItem]` — Exported interface for an account option in `ModalRegistrarIngreso`.
+- `[ModalRegistrarIngreso.tsx:ModalRegistrarIngreso]` — Exported `React.FC<ModalRegistrarIngresoProps>` modal for creating or editing a treasury income record (`ingreso`).
+- `[ModalScannerQR.tsx:ModalScannerQRProps]` — Exported props interface for `ModalScannerQR`.
+- `[ModalScannerQR.tsx:ModalScannerQR]` — Exported `React.FC<ModalScannerQRProps>` camera and manual QR scanner modal for validating event order vouchers.
+- `[ModalTicketQR.tsx:TicketData]` — Exported interface defining an event QR voucher and its associated item, order, and event metadata.
+- `[ModalTicketQR.tsx:ModalTicketQRProps]` — Exported props interface for `ModalTicketQR`.
+- `[ModalTicketQR.tsx:ModalTicketQR]` — Exported `React.FC<ModalTicketQRProps>` modal for viewing, fullscreen displaying, copying, and downloading a generated QR ticket voucher.
+- `[ModalTraspasoCuentas.tsx:CuentaFinancieraItem]` — Exported interface for a financial account with `saldoActual`.
+- `[ModalTraspasoCuentas.tsx:ModalTraspasoCuentasProps]` — Exported props interface for `ModalTraspasoCuentas`.
+- `[ModalTraspasoCuentas.tsx:ModalTraspasoCuentas]` — Exported `React.FC<ModalTraspasoCuentasProps>` modal for transferring funds between active treasury accounts.
+- `[ModalVincularHermano.tsx:ModalVincularHermano]` — Exported `React.FC<Props>` modal for searching and linking a member to a sibling's family group.
+- `[Navbar.tsx:Navbar]` — Exported `React.FC` top navigation bar with permission-gated links, password-change alert banner, PWA install button, and theme toggle.
+- `[PanelAdminPlantillas.tsx:PanelAdminPlantillas]` — Exported `React.FC<Props>` administration panel for creating, editing, and toggling active status of form templates (`plantillas de legajos`).
+- `[PanelAdminRamas.tsx:PanelAdminRamas]` — Exported `React.FC<Props>` administration panel for managing branches (`ramas`) and organizational units (`unidades`), including soft deactivation, reactivation, and permanent deletion.
+- `[PanelCuadroResultados.tsx:PanelCuadroResultadosProps]` — Exported props interface for `PanelCuadroResultados`.
+- `[PanelCuadroResultados.tsx:PanelCuadroResultados]` — Exported `React.FC<PanelCuadroResultadosProps>` financial statement panel displaying annual/monthly income vs. expense breakdowns and net surplus/deficit.
+- `[PanelEventosEconomicos.tsx:PanelEventosEconomicosProps]` — Exported props interface for `PanelEventosEconomicos`.
+- `[PanelEventosEconomicos.tsx:PanelEventosEconomicos]` — Exported `React.FC<PanelEventosEconomicosProps>` panel for managing economic events, orders, QR ticket generation/scanning, and crediting seller earnings to family accounts.
+- `[PanelGastosTesoreria.tsx:GastoItem]` — Exported interface defining a treasury expense record.
+- `[PanelGastosTesoreria.tsx:PanelGastosTesoreriaProps]` — Exported props interface for `PanelGastosTesoreria`.
+- `[PanelGastosTesoreria.tsx:PanelGastosTesoreria]` — Exported `React.FC<PanelGastosTesoreriaProps>` panel for listing, filtering, creating, editing, voiding, and restoring treasury expenses.
+- `[PanelGestorRoles.tsx:PanelGestorRoles]` — Exported `React.FC<Props>` panel for viewing, creating, editing, and deleting organizational roles and permission sets.
+- `[PanelPasesPorCamada.tsx:PanelPasesPorCamada]` — Exported `React.FC<Props>` panel for executing batch or individual member branch progressions (`pases`) grouped by birth-year cohort (`camada`).
+- `[PanelTesoreriaCajaBanco.tsx:MovimientoFinancieroItem]` — Exported interface representing a daily ledger movement entry.
+- `[PanelTesoreriaCajaBanco.tsx:LibroDiarioRespuesta]` — Exported interface representing the daily ledger API response for a financial account.
+- `[PanelTesoreriaCajaBanco.tsx:PanelTesoreriaCajaBancoProps]` — Exported props interface for `PanelTesoreriaCajaBanco`.
+- `[PanelTesoreriaCajaBanco.tsx:PanelTesoreriaCajaBanco]` — Exported `React.FC<PanelTesoreriaCajaBancoProps>` panel providing multi-account treasury management, daily ledger (`libro diario`), date/period filtering, progressive pagination, and Excel/CSV export.
+- `[PdfViewerModal.tsx:PdfViewerModal]` — Exported `React.FC<PdfViewerModalProps>` modal rendering PDF documents onto HTML5 canvases via `pdfjs-dist` with zoom and download controls.
+- `[QrScannerModal.tsx:QrScannerModal]` — Exported `React.FC<Props>` camera and manual QR scanner modal for verifying and physically validating member medical/authorization forms (`legajos`).
+- `[SelectorDestinatarios.tsx:SelectorDestinatariosProps]` — Exported props interface for `SelectorDestinatarios`.
+- `[SelectorDestinatarios.tsx:SelectorDestinatarios]` — Exported `React.FC<SelectorDestinatariosProps>` component for selecting target recipient groups (`TODOS`, `PROTAGONISTAS`, `EDUCADORES`), unit filters, and individual member exclusions.
+- `[ThemeCustomizerModal.tsx:ThemeCustomizerModalProps]` — Exported props interface for `ThemeCustomizerModal`.
+- `[ThemeCustomizerModal.tsx:ThemeCustomizerModal]` — Exported `React.FC<ThemeCustomizerModalProps>` modal for selecting theme presets, custom color overrides, and font scaling.
+- `[ThemeToggle.tsx:ThemeToggle]` — Exported `React.FC<ThemeToggleProps>` control (`variant?: 'icon' | 'dropdown' | 'segmented'`) for switching theme mode (`light`, `dark`, `system`) or opening `ThemeCustomizerModal`.
+- `[VisorFichaMiembro.tsx:VisorFichaMiembro]` — Exported `React.FC<VisorFichaMiembroProps>` viewer displaying a member's medical, family, pickup/exit authorization, and support records alongside `PdfViewerModal`.
+
+## Invariants
+- `[BannerOffline.tsx:BannerOffline]` — Returns `null` when `conexionRestablecida` is falsy, `isOnline` is `true`, and `isUsingCache` is falsy; prioritizes `conexionRestablecida` over the offline/cache banner.
+- `[BotonInstalarPwa.tsx:BotonInstalarPwa]` — Returns `null` when `instalada` is `true` (via `window.matchMedia('(display-mode: standalone)').matches`, `navigator.standalone`, or `'appinstalled'`).
+- `[BotonLlamarMiembro.tsx:BotonLlamarMiembro]` — Returns `null` when `extraerTelefonosMiembro(miembro, entrega)` returns an empty array.
+- `[DynamicFormRenderer.tsx:esRequeridoCampo]` — `'madre_convive'` and `'padre_convive'` are never required; other fields are required if `campo.required` is truthy, key starts with `'madre_'` or `'padre_'`, or in `'seccion_necesidades_especiales'` when `formData.tiene_cud` is truthy and key is `'ne_diagnostico'` or `'ne_cud_vencimiento_prestacion'`.
+- `[DynamicFormRenderer.tsx:renderContenidoSeccion]` — In `'seccion_inscripcion'`, `'madre'`, `'padre'`, and `'tutor'` tab panels stay mounted in the DOM (toggled via `'hidden'` CSS class) so `react-hook-form` validates all family tabs; detail fields in `CAMPOS_DETALLE_OCULTOS` only render when their controlling boolean toggle is `true`.
+- `[MiembroCard.tsx:deudaTotal]` — Total debt is rounded to 2 decimals and excludes charges with `c.estado === 'ANULADO'`, summing `Math.max(0, Number(c.montoFinal) - Number(c.montoPagado))`.
+- `[ModalAltaMiembro.tsx:rolesFiltrados]` — Users without global scope (`!tieneGlobal()`) cannot select global-scope roles (`!esRolAlcanceGlobal(r)`); `setDni` strips non-digits via `replace(/\D/g, '')`; submission requires `rolId` and, if `rolRequiereRama(rolSeleccionado)` is `true`, `unidadId`.
+- `[ModalCargarPedidoEvento.tsx:valesRetirados]` — Order item quantities and deletion are locked (`valesRetirados = true`) when `pedidoAEditar.algunoRetirado` is truthy or any ticket has `estado === 'UTILIZADO'`; submission requires non-empty `compradorNombre.trim()`, `totalUnidades > 0`, and `cuentaId` whenever `metodoPago !== 'PENDIENTE'`.
+- `[ModalCobrarDeuda.tsx:handleSubmit]` — Excludes `'PAGADO'` and `'ANULADO'` charges; clamps each charge's imputed amount to `[0, maxPendiente]`; requires `itemsAImputar.length > 0` or `montoEfectivoFinal > 0`, and enforces `montoEfectivoFinal + 0.001 >= minimoEfectivoRequerido`.
+- `[ModalCobroCampamento.tsx:handleSubmit]` — Requires non-empty `nombre.trim()` and `Number(montoBase) > 0`; always sends `sincronizarCargos: true` and only sends numeric `porcentajeDescuentoHermanos` when `permiteDescuentoHermanos && usarPorcentajePersonalizado`.
+- `[ModalConcepto.tsx:handleSubmit]` — Requires non-empty `nombre.trim()`, `montoBase > 0`, `cicloAnio` in `2000..2100`, and `porcentajeFijo` in `0..100` when `permiteDescuentoHermanos && modoDescuento === 'FIJO'`.
+- `[ModalConfirmacion.tsx:esAlertaSimple]` — Hides the cancel button when `textoCancelar` is `null` or `undefined`; defaults to calling `onCerrar()` on confirm if `onConfirmar` is omitted.
+- `[ModalCrearCuentaFinanciera.tsx:handleSubmit]` — Requires `nombre.trim().length >= 2` and `tipo` in `'CAJA_EFECTIVO' | 'BANCO'`.
+- `[ModalCrearEventoEconomico.tsx:handleSubmit]` — Prevents removing the last item (`items.length <= 1`); requires non-empty `titulo.trim()` and every item to have non-empty `nombre.trim()` and `Number(precioVenta) > 0`; clamps `gananciaUnitaria` to `>= 0`.
+- `[ModalCrearRubro.tsx:handleSubmit]` — Requires non-empty `nombre.trim()` and forces `permiteDescuentoDefault` to `false` when `tipo !== 'INGRESO'`.
+- `[ModalDefinirPagoPedido.tsx:handleSubmit]` — When `estaAbonado` is `false`, skips API calls and invokes `onPagoConfirmado('PENDIENTE', 'PENDIENTE')`; when `estaAbonado` is `true` and `cuentas.length > 0`, requires truthy `cuentaId`.
+- `[ModalDetalleMiembro.tsx:ModalDetalleMiembro]` — Blocks overlay dismissal while any child modal is open (`hayModalHijoAbierto`); gates tabs by permissions (`canView('cuotas')`, `canView('ficha')`, `canEdit('miembro', 'pase')`, `canEdit('miembro', 'clave')`); restricts `handleGuardarDatos` payload fields according to `puedeEditarIdentidad`, `puedeDarBaja`, and `puedeEditarContacto`.
+- `[ModalEditarFamilia.tsx:handleSubmit]` — Requires non-empty `nombreFamilia.trim()` and clamps `porcentajeDescuento` to `[0, 100]`; closes automatically when `res.data?.grupoEliminado` is truthy or `restantes.length === 0`.
+- `[ModalEventosUnidad.tsx:eventoSeleccionado]` — Only events with `estado === 'PUBLICADO'` allow opening `ModalCargarPedidoEvento`; QR scanner button requires `tienePermiso('eventos.vender') || tienePermiso('eventos.gestionar')`.
+- `[ModalGenerarDeudaManual.tsx:montoFinal]` — Computes `montoFinal = Math.max(0, montoNum - descuentoNum)` and disables submission when `guardando || montoFinal <= 0` or `descuentoNum > montoNum`.
+- `[ModalHistorialSeccion.tsx:FilaMiembroHistorial]` — Marks an assignment as active (`'Actual'`) iff `asig.activo && !asig.fechaFin`; formats dates in `'es-AR'` locale with `'UTC'` `timeZone`.
+- `[ModalImportarMiembros.tsx:handleSeleccionarArchivo]` — Requires each row to have a numeric DNI of 6–10 digits, no duplicate DNI within the file, non-empty `nombre` and `apellido`, and valid normalized `fechaNacimiento` (`YYYY-MM-DD`).
+- `[ModalPlanCuotaMensual.tsx:handleGuardar]` — Defaults `mesesHabilitados` to `[3..12]` (Mar–Dec) kept sorted ascending; requires non-empty `nombre.trim()` and `montoMensual > 0`.
+- `[ModalRegistrarGasto.tsx:handleSubmit]` — Requires `montoNum > 0`, non-empty `descripcion.trim()`, `rubroId`, `cuentaId`, and `montoNum <= saldoDisponibleCuenta` (which adds back `gastoAEditar.monto` when editing on the same account).
+- `[ModalRegistrarIngreso.tsx:handleSubmit]` — Requires `monto > 0`, non-empty `descripcion.trim()`, `rubroId`, and `cuentaId`; disables submit when `rubros.length === 0`.
+- `[ModalScannerQR.tsx:iniciarScanner]` — Uses `scanInProgressRef` lock to prevent concurrent QR decodes and opens `ModalDefinirPagoPedido` when `data.ok` is `true` and `data.alertaPagoPendiente || data.ticket?.pedidoEstado === 'PENDIENTE'`.
+- `[ModalTicketQR.tsx:ModalTicketQR]` — Returns `null` unless both `abierto` and `ticket` are truthy.
+- `[ModalTraspasoCuentas.tsx:handleSubmit]` — Filters to active accounts (`c.activa === true`), requires distinct origin and destination (`origenId !== destinoId`), `concepto.trim().length >= 3`, and `0 < montoNum <= saldoOrigenDisponible`.
+- `[ModalVincularHermano.tsx:handleConfirmar]` — Requires search term length `>= 2` (debounced 220ms), excludes `usuarioId` from candidate groups, and requires `grupoSeleccionado?.representante?.dni`.
+- `[Navbar.tsx:Navbar]` — Returns `null` when `usuario` is null; gates `/rama` by `puedeVerPadron()`, `/global` by `puedeAccederPanelGestion()`, and the password-change banner by `requiereCambioClave`.
+- `[PanelAdminPlantillas.tsx:handleGuardar]` — Requires `tienePermiso('legajos.plantillas_gestionar')`, non-empty `form.titulo.trim()` and `form.codigo.trim()` (uppercased on creation and immutable when editing).
+- `[PanelAdminRamas.tsx:PanelAdminRamas]` — Requires `tienePermiso('organizacion.gestionar')`; enforces `Number(edadMinima) <= Number(edadMaxima)` for branches; only exposes permanent deletion (`?definitivo=true`) when `activa === false`.
+- `[PanelCuadroResultados.tsx:esSuperavit]` — Classifies net result as Superávit when `(datos?.resumen?.resultadoNeto ?? 0) >= 0` and filters out zero-total categories when `ocultarSinMovimiento` is `true`.
+- `[PanelEventosEconomicos.tsx:pedidosPendientesAcreditar]` — Orders eligible for family earnings liquidation must satisfy `!p.gananciaAcreditada`, `Number(p.totalGanancia) >= 0`, truthy `p.vendedorUsuario`, `p.tickets?.length > 0`, and all tickets in `'UTILIZADO'` state.
+- `[PanelGastosTesoreria.tsx:gastosActivos]` — Summary totals exclude voided expenses (`!g.anulado`) and require `tienePermiso('tesoreria.gestionar')` for mutations.
+- `[PanelGestorRoles.tsx:solicitarEliminarRol]` — Blocks deleting the last global admin role (`esUltimoAdmin`) or any role with active assignments (`Number(r.asignacionesActivas || 0) > 0`); `handleGuardar` auto-injects corresponding `.ver` permissions when write/manage permissions are selected.
+- `[PanelPasesPorCamada.tsx:gruposCamada]` — Groups candidates by `${unidadActual?.id || 0}-${camada}` and requires a resolved destination unit ID before executing individual or batch transfers.
+- `[PanelTesoreriaCajaBanco.tsx:PanelTesoreriaCajaBanco]` — Reverses ledger movements for display (`movimientosInvertidos`) while preserving chronological order for Excel/CSV exports (`movimientosAExportar`); restricts inline row edit/delete to `'INGRESO_OTRO'` and inline edit to `'EGRESO_GASTO'` with truthy `gastoId`.
+- `[PdfViewerModal.tsx:PdfViewerModal]` — Returns `null` when `!url`; clamps zoom to `[0.75, 2.5]` in `0.25` increments and device pixel ratio to `<= 2.5`.
+- `[QrScannerModal.tsx:QrScannerModal]` — Serializes camera transitions via `transicionRef` Promise chain and hides confirmation when `previaEntrega.estado` is `'VALIDADO_FISICAMENTE'` or `'DESACTUALIZADO_REQUIERE_REIMPRESION'`.
+- `[SelectorDestinatarios.tsx:SelectorDestinatarios]` — Requires normalized search term length `>= 2` (debounced 200ms) and prevents duplicate IDs in `excepcionesIds`.
+- `[ThemeCustomizerModal.tsx:handleColorChange]` — Switching a color manually sets `preset` to `'custom'` and computes `brandContrast`/`navContrast` via `getContrastTextColor`.
+- `[VisorFichaMiembro.tsx:datos]` — Merges `miembro?.datosFijosJson` with `entrega?.respuestasSnapshotJson` (snapshot keys take precedence) and evaluates truthiness via `esVerdadero` (`true | 'true' | 'SI' | 'Sí'`).
+
+## Side Effects
+- `[BannerOffline.tsx:BannerOffline]` — Reads cached timestamp from `localStorage` via `obtenerUltimoTimestampCache()`.
+- `[BotonInstalarPwa.tsx:globalDeferredPrompt]` — Captures window `'beforeinstallprompt'` events, dispatches `'pwa-prompt-ready'`, invokes `deferredPrompt.prompt()`, and mounts a modal portal into `document.body`.
+- `[DynamicFormRenderer.tsx:DynamicFormRenderer]` — Auto-populates authorizer and cohabiting parent/guardian address fields via `setValue`, scrolls `formTopRef` into view on step changes, and invokes `onSubmit(datos, finalizarParaFirma)`.
+- `[ModalAltaMiembro.tsx:handleSubmit]` — Queries `GET /miembros/hermanos/buscar` (debounced 220ms) and submits `POST /miembros`.
+- `[ModalCargarPedidoEvento.tsx:handleSubmit]` — Queries `GET /miembros` and `GET /tesoreria/cuentas`, submits `POST /tesoreria/eventos/pedidos` or `PATCH /tesoreria/eventos/pedidos/:id`, and deletes orders via `DELETE /tesoreria/eventos/pedidos/:id` with undo recreation (`mostrarToastConDeshacer`).
+- `[ModalCobrarDeuda.tsx:handleSubmit]` — Queries `GET /tesoreria/cuentas` and submits `POST /tesoreria/pagos`.
+- `[ModalCobroCampamento.tsx:handleSubmit]` — Queries `GET /tesoreria/rubros?tipo=INGRESO` and submits `POST /tesoreria/conceptos` or `PATCH /tesoreria/conceptos/:id`.
+- `[ModalConcepto.tsx:handleSubmit]` — Queries `GET /tesoreria/rubros?tipo=INGRESO` and submits `POST /tesoreria/conceptos` or `PATCH /tesoreria/conceptos/:id`.
+- `[ModalCrearCuentaFinanciera.tsx:handleSubmit]` — Submits `POST /tesoreria/cuentas`, `PATCH /tesoreria/cuentas/:id`, or `DELETE /tesoreria/cuentas/:id`.
+- `[ModalCrearEventoEconomico.tsx:handleSubmit]` — Queries `GET /tesoreria/rubros?tipo=INGRESO` and `GET /tesoreria/cuentas`, and submits `POST /tesoreria/eventos`, `PATCH /tesoreria/eventos/:id`, or `DELETE /tesoreria/eventos/:id` (with undo toast).
+- `[ModalCrearRubro.tsx:handleSubmit]` — Submits `POST /tesoreria/rubros`, `PATCH /tesoreria/rubros/:id`, or `DELETE /tesoreria/rubros/:id` (with undo toast via `mostrarToastConDeshacer`).
+- `[ModalDefinirPagoPedido.tsx:handleSubmit]` — Queries `GET /tesoreria/cuentas` and submits `PATCH /tesoreria/eventos/pedidos/:pedidoId`.
+- `[ModalDetalleMiembro.tsx:ModalDetalleMiembro]` — Executes parallel GETs (`/miembros/:id`, `/tesoreria/estado-cuenta/:id`, `/legajos/entregas`, `/organizacion/unidades`, `/organizacion/roles`, `/pases/candidatos`, `/organizacion/ramas`) and mutates member data, family links, role assignments, pases, password resets, treasury charges/payments/balance adjustments, and legajo PDFs/deliveries via `api` and `generarFichaPdf`.
+- `[ModalEditarFamilia.tsx:ModalEditarFamilia]` — Submits `PATCH /tesoreria/familias/:id`, `POST /tesoreria/familias/desvincular-hermano`, and `DELETE /tesoreria/familias/:id`.
+- `[ModalEventosUnidad.tsx:cargarEventos]` — Queries `GET /tesoreria/eventos`.
+- `[ModalGenerarDeudaManual.tsx:handleSubmit]` — Submits `POST /tesoreria/cargos/individual`.
+- `[ModalGestionRubros.tsx:ModalGestionRubros]` — Queries `GET /tesoreria/rubros` and deletes categories via `DELETE /tesoreria/rubros/:id` with undo restoration.
+- `[ModalHistorialSeccion.tsx:useEffect]` — Fetches unit assignment history via `obtenerHistorialUnidad(unidadId)`.
+- `[ModalImportarMiembros.tsx:ModalImportarMiembros]` — Dynamically imports `'xlsx'`, exports templates via `exportarAExcel`/`exportarACSV`, and executes batch `POST /miembros` and `PATCH /miembros/:id` requests.
+- `[ModalPlanCuotaMensual.tsx:handleGuardar]` — Queries `GET /tesoreria/rubros?tipo=INGRESO` and submits `POST /tesoreria/planes-mensuales` or `PATCH /tesoreria/planes-mensuales/:id`.
+- `[ModalRegistrarGasto.tsx:handleSubmit]` — Queries `GET /tesoreria/rubros?tipo=EGRESO` and `GET /tesoreria/cuentas`, and submits `POST /tesoreria/gastos` or `PATCH /tesoreria/gastos/:id`.
+- `[ModalRegistrarIngreso.tsx:handleSubmit]` — Queries `GET /tesoreria/rubros?tipo=INGRESO` and `GET /tesoreria/cuentas`, and submits `POST /tesoreria/ingresos` or `PATCH /tesoreria/ingresos/:id`.
+- `[ModalScannerQR.tsx:ModalScannerQR]` — Controls camera hardware via `Html5Qrcode`, synthesizes audio tones via Web Audio API (`AudioContext`), and submits `POST /tesoreria/eventos/validar-qr`.
+- `[ModalTicketQR.tsx:ModalTicketQR]` — Generates QR voucher images via `generarTarjetaValeQR`/`QRCode.toDataURL`, toggles fullscreen (`requestFullscreen`/`exitFullscreen`), writes to `navigator.clipboard`, and triggers PNG downloads.
+- `[ModalTraspasoCuentas.tsx:handleSubmit]` — Submits `POST /tesoreria/transferencias`.
+- `[ModalVincularHermano.tsx:handleConfirmar]` — Queries `GET /miembros/hermanos/buscar` and submits `POST /tesoreria/familias/vincular-hermano`.
+- `[Navbar.tsx:handleLogout]` — Invokes `useAuthStore().logout()` and navigates to `'/login'`.
+- `[PanelAdminPlantillas.tsx:PanelAdminPlantillas]` — Queries `GET /legajos/plantillas?incluirInactivas=true` and submits `POST /legajos/plantillas` and `PATCH /legajos/plantillas/:id`.
+- `[PanelAdminRamas.tsx:PanelAdminRamas]` — Submits `POST`, `PATCH`, and `DELETE` requests to `/organizacion/ramas` and `/organizacion/unidades`.
+- `[PanelCuadroResultados.tsx:PanelCuadroResultados]` — Queries `GET /tesoreria/cuadro-resultados` and invokes `window.print()`.
+- `[PanelEventosEconomicos.tsx:PanelEventosEconomicos]` — Queries `GET /tesoreria/eventos` and `GET /tesoreria/eventos/:id`, liquidates earnings via `POST /tesoreria/eventos/acreditar-ganancias`, and deletes events via `DELETE /tesoreria/eventos/:id` (with undo toast).
+- `[PanelGastosTesoreria.tsx:PanelGastosTesoreria]` — Queries `/tesoreria/gastos`, `/tesoreria/cuentas`, and `/tesoreria/rubros?tipo=EGRESO`, and voids/restores expenses via `POST /tesoreria/gastos/:id/anular` and `POST /tesoreria/gastos/:id/restaurar`.
+- `[PanelGestorRoles.tsx:PanelGestorRoles]` — Submits `POST /organizacion/roles`, `PATCH /organizacion/roles/:id`, and `DELETE /organizacion/roles/:id`.
+- `[PanelPasesPorCamada.tsx:PanelPasesPorCamada]` — Submits `POST /pases/lote` and `POST /pases`.
+- `[PanelTesoreriaCajaBanco.tsx:PanelTesoreriaCajaBanco]` — Queries `GET /tesoreria/cuentas` and `GET /tesoreria/cuentas/:id/libro-diario`, deletes incomes via `DELETE /tesoreria/ingresos/:id` (with undo toast), exports `.xlsx`/`.csv` files via `exportarAExcel`/`exportarACSV`, and observes scroll pagination via `IntersectionObserver`.
+- `[PdfViewerModal.tsx:PdfViewerModal]` — Assigns `window.pdfjsWorker`, fetches PDF binary via `fetch(url)`, and renders pages to `<canvas>` via `pdfjsLib.getDocument`.
+- `[QrScannerModal.tsx:QrScannerModal]` — Controls camera stream via `Html5Qrcode`, queries `GET /legajos/qr/verificar/:hash`, and submits `POST /legajos/qr/validar/:hashVerificacion`.
+- `[SelectorDestinatarios.tsx:SelectorDestinatarios]` — Queries `GET /miembros` to hydrate excluded members and search candidates.
+- `[ThemeCustomizerModal.tsx:ThemeCustomizerModal]` — Mutates `useThemeStore` (`setPreset`, `setCustomization`, `resetDefaults`, `closeCustomizer`).
+- `[ThemeToggle.tsx:ThemeToggle]` — Mutates `useThemeStore` (`setTheme`, `toggleTheme`, `openCustomizer`) and attaches document click/Escape listeners when open.
+
+## Verification
+- Run: `npm run build && npm run lint`
