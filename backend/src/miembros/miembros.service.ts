@@ -3,10 +3,11 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { AlcanceRol, EstadoCargo, TipoUnidad, type Prisma } from '@prisma/client';
+import { AlcanceRol, EstadoCargo, Prisma, TipoUnidad } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import {
   alcanceEfectivo,
@@ -17,12 +18,19 @@ import {
 } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
-import { clavesCopiablesEntreHermanos, filtrarClaves } from '../common/utils/plantillas.util.js';
+import { generarClaveTemporal } from '../common/utils/password.util.js';
+import {
+  CLAVES_FAMILIARES_ESTANDAR,
+  clavesCopiablesEntreHermanos,
+  filtrarClaves,
+  sanitizarJsonPlano,
+} from '../common/utils/plantillas.util.js';
 import { MailerService } from '../mailer/mailer.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TesoreriaService } from '../tesoreria/tesoreria.service.js';
 import {
   CAMPOS_EDITABLES_PROPIOS,
+  type ActualizarMiPerfilDto,
   type CrearAsignacionDto,
   type CrearMiembroDto,
   type EditarMiembroDto,
@@ -32,7 +40,13 @@ import {
 const BCRYPT_ROUNDS = 10;
 
 function normalizarSinTildes(valor: unknown): string {
-  return String(valor ?? '')
+  const texto =
+    typeof valor === 'string'
+      ? valor
+      : typeof valor === 'number' || typeof valor === 'bigint'
+        ? String(valor)
+        : '';
+  return texto
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -132,6 +146,8 @@ export const MIEMBRO_SELECT = {
 
 @Injectable()
 export class MiembrosService {
+  private readonly logger = new Logger(MiembrosService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly tesoreria?: TesoreriaService,
@@ -139,6 +155,117 @@ export class MiembrosService {
   ) {}
 
   // ---------------- Padrón ----------------
+  private tieneQueryRaw(): boolean {
+    return typeof (this.prisma as { $queryRaw?: unknown }).$queryRaw === 'function';
+  }
+
+  private async buscarIdsPorTextoSql(
+    alcance: AlcanceAcceso,
+    qTexto: string,
+    opciones: {
+      incluirInactivos?: boolean;
+      unidadId?: number;
+      rolId?: number;
+      ids?: number[];
+      take: number;
+      skip?: number;
+      conTotal: boolean;
+    },
+  ): Promise<{ total: number; ids: number[] }> {
+    if (opciones.ids && opciones.ids.length === 0) {
+      return { total: 0, ids: [] };
+    }
+
+    const qNorm = normalizarSinTildes(qTexto);
+    if (!qNorm) {
+      return { total: 0, ids: [] };
+    }
+
+    const condiciones: Prisma.Sql[] = [];
+
+    if (alcance.tipo === 'PROPIO') {
+      condiciones.push(Prisma.sql`u."id" = ${alcance.usuarioId}`);
+    } else if (alcance.tipo === 'UNIDAD') {
+      const tieneUnidades = alcance.unidadIds.length > 0;
+      const tienePropio = alcance.usuarioIdPropio !== undefined;
+      if (tieneUnidades && tienePropio) {
+        condiciones.push(
+          Prisma.sql`(EXISTS (SELECT 1 FROM "asignaciones_miembro" a WHERE a."usuario_id" = u."id" AND a."activo" = true AND a."unidad_id" IN (${Prisma.join(alcance.unidadIds)})) OR u."id" = ${alcance.usuarioIdPropio})`,
+        );
+      } else if (tieneUnidades) {
+        condiciones.push(
+          Prisma.sql`EXISTS (SELECT 1 FROM "asignaciones_miembro" a WHERE a."usuario_id" = u."id" AND a."activo" = true AND a."unidad_id" IN (${Prisma.join(alcance.unidadIds)}))`,
+        );
+      } else if (tienePropio) {
+        condiciones.push(Prisma.sql`u."id" = ${alcance.usuarioIdPropio}`);
+      } else {
+        condiciones.push(Prisma.sql`FALSE`);
+      }
+    }
+
+    if (!opciones.incluirInactivos) {
+      condiciones.push(Prisma.sql`u."activo" = true`);
+    }
+    if (opciones.unidadId) {
+      condiciones.push(
+        Prisma.sql`EXISTS (SELECT 1 FROM "asignaciones_miembro" a WHERE a."usuario_id" = u."id" AND a."activo" = true AND a."unidad_id" = ${opciones.unidadId})`,
+      );
+    }
+    if (opciones.rolId) {
+      condiciones.push(
+        Prisma.sql`EXISTS (SELECT 1 FROM "asignaciones_miembro" a WHERE a."usuario_id" = u."id" AND a."activo" = true AND a."rol_id" = ${opciones.rolId})`,
+      );
+    }
+    if (opciones.ids?.length) {
+      condiciones.push(Prisma.sql`u."id" IN (${Prisma.join(opciones.ids)})`);
+    }
+
+    const escaped = qNorm.replace(/[!%_]/g, (ch) => `!${ch}`);
+    const patron = `%${escaped}%`;
+    condiciones.push(
+      Prisma.sql`(
+        unaccent(u."nombre") ILIKE unaccent(${patron}) ESCAPE '!'
+        OR unaccent(u."apellido") ILIKE unaccent(${patron}) ESCAPE '!'
+        OR unaccent(u."nombre" || ' ' || u."apellido") ILIKE unaccent(${patron}) ESCAPE '!'
+        OR unaccent(u."apellido" || ' ' || u."nombre") ILIKE unaccent(${patron}) ESCAPE '!'
+        OR unaccent(u."dni") ILIKE unaccent(${patron}) ESCAPE '!'
+        OR unaccent(COALESCE(gf."nombre_familia", '')) ILIKE unaccent(${patron}) ESCAPE '!'
+      )`,
+    );
+
+    const whereSql = Prisma.join(condiciones, ' AND ');
+    const runIdsQuery = () =>
+      this.prisma.$queryRaw<Array<{ id: number }>>`
+        SELECT u."id"
+        FROM "usuarios" u
+        LEFT JOIN "grupos_familiares" gf ON gf."id" = u."grupo_familiar_id"
+        WHERE ${whereSql}
+        ORDER BY u."apellido" ASC, u."nombre" ASC
+        LIMIT ${opciones.take}
+        OFFSET ${opciones.skip ?? 0}
+      `;
+
+    if (!opciones.conTotal) {
+      const rows = await runIdsQuery();
+      return { total: rows.length, ids: rows.map((r) => Number(r.id)) };
+    }
+
+    const [countRows, idRows] = await Promise.all([
+      this.prisma.$queryRaw<Array<{ total: number }>>`
+        SELECT COUNT(*)::int AS total
+        FROM "usuarios" u
+        LEFT JOIN "grupos_familiares" gf ON gf."id" = u."grupo_familiar_id"
+        WHERE ${whereSql}
+      `,
+      runIdsQuery(),
+    ]);
+
+    return {
+      total: Number(countRows[0]?.total ?? 0),
+      ids: idRows.map((r) => Number(r.id)),
+    };
+  }
+
   async listar(alcance: AlcanceAcceso, q: ListarMiembrosDto) {
     const whereBase: Prisma.UsuarioWhereInput = {
       AND: [
@@ -146,27 +273,65 @@ export class MiembrosService {
         q.incluirInactivos ? {} : { activo: true },
         q.unidadId ? { asignaciones: { some: { activo: true, unidadId: q.unidadId } } } : {},
         q.rolId ? { asignaciones: { some: { activo: true, rolId: q.rolId } } } : {},
+        q.ids?.length ? { id: { in: q.ids } } : {},
       ],
     };
 
     if (q.q) {
-      const qNorm = normalizarSinTildes(q.q);
-      const todos = await this.prisma.usuario.findMany({
-        where: whereBase,
+      let total: number;
+      let paginaIds: number[];
+
+      if (this.tieneQueryRaw()) {
+        const resSql = await this.buscarIdsPorTextoSql(alcance, q.q, {
+          incluirInactivos: q.incluirInactivos,
+          unidadId: q.unidadId,
+          rolId: q.rolId,
+          ids: q.ids,
+          take: q.porPagina,
+          skip: (q.pagina - 1) * q.porPagina,
+          conTotal: true,
+        });
+        total = resSql.total;
+        paginaIds = resSql.ids;
+      } else {
+        const qNorm = normalizarSinTildes(q.q);
+        const candidatos = await this.prisma.usuario.findMany({
+          where: whereBase,
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            dni: true,
+            grupoFamiliar: { select: { nombreFamilia: true } },
+          },
+          orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
+        });
+        const filtradosIds = candidatos
+          .filter(
+            (m) =>
+              normalizarSinTildes(m.nombre).includes(qNorm) ||
+              normalizarSinTildes(m.apellido).includes(qNorm) ||
+              normalizarSinTildes(`${m.nombre} ${m.apellido}`).includes(qNorm) ||
+              normalizarSinTildes(`${m.apellido} ${m.nombre}`).includes(qNorm) ||
+              normalizarSinTildes(m.dni).includes(qNorm) ||
+              normalizarSinTildes(m.grupoFamiliar?.nombreFamilia).includes(qNorm),
+          )
+          .map((m) => m.id);
+        total = filtradosIds.length;
+        paginaIds = filtradosIds.slice((q.pagina - 1) * q.porPagina, q.pagina * q.porPagina);
+      }
+
+      if (paginaIds.length === 0) {
+        return { total, pagina: q.pagina, porPagina: q.porPagina, items: [] };
+      }
+      const itemsDesordenados = await this.prisma.usuario.findMany({
+        where: { id: { in: paginaIds } },
         select: MIEMBRO_SELECT,
-        orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
       });
-      const filtrados = todos.filter(
-        (m) =>
-          normalizarSinTildes(m.nombre).includes(qNorm) ||
-          normalizarSinTildes(m.apellido).includes(qNorm) ||
-          normalizarSinTildes(`${m.nombre} ${m.apellido}`).includes(qNorm) ||
-          normalizarSinTildes(`${m.apellido} ${m.nombre}`).includes(qNorm) ||
-          normalizarSinTildes(m.dni).includes(qNorm) ||
-          normalizarSinTildes(m.grupoFamiliar?.nombreFamilia).includes(qNorm),
-      );
-      const total = filtrados.length;
-      const items = filtrados.slice((q.pagina - 1) * q.porPagina, q.pagina * q.porPagina);
+      const itemsPorId = new Map(itemsDesordenados.map((item) => [item.id, item]));
+      const items = paginaIds
+        .map((id) => itemsPorId.get(id))
+        .filter((item): item is NonNullable<typeof item> => item !== undefined);
       return { total, pagina: q.pagina, porPagina: q.porPagina, items };
     }
 
@@ -201,30 +366,40 @@ export class MiembrosService {
     return miembro;
   }
 
-  async actualizarMiPerfil(userId: number, dto: EditarMiembroDto) {
-    const actual = await this.prisma.usuario.findUnique({
-      where: { id: userId },
-      select: { id: true, datosFijosJson: true },
-    });
-    if (!actual) throw new NotFoundException('Perfil no encontrado');
+  async actualizarMiPerfil(userId: number, dto: ActualizarMiPerfilDto) {
+    const ejecutar = async (tx: Prisma.TransactionClient) => {
+      if ('$queryRaw' in tx && typeof tx.$queryRaw === 'function') {
+        await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${userId} FOR UPDATE`;
+      }
+      const actual = await tx.usuario.findUnique({
+        where: { id: userId },
+        select: { id: true, datosFijosJson: true },
+      });
+      if (!actual) throw new NotFoundException('Perfil no encontrado');
 
-    let datosFijosJson: Prisma.InputJsonObject | undefined;
-    if (dto.datosFijosJson) {
-      const base = (actual.datosFijosJson ?? {}) as Record<string, unknown>;
-      const merged = { ...base, ...dto.datosFijosJson };
-      for (const [k, v] of Object.entries(dto.datosFijosJson)) if (v === null) delete merged[k];
-      datosFijosJson = merged as Prisma.InputJsonObject;
-    }
+      let datosFijosJson: Prisma.InputJsonObject | undefined;
+      if (dto.datosFijosJson) {
+        const base = sanitizarJsonPlano(actual.datosFijosJson);
+        const entrante = sanitizarJsonPlano(dto.datosFijosJson);
+        const merged = { ...base, ...entrante };
+        for (const [k, v] of Object.entries(entrante)) if (v === null) delete merged[k];
+        datosFijosJson = merged as Prisma.InputJsonObject;
+      }
 
-    return this.prisma.usuario.update({
-      where: { id: userId },
-      data: {
-        emailContacto: dto.emailContacto !== undefined ? dto.emailContacto : undefined,
-        telefonoContacto: dto.telefonoContacto !== undefined ? dto.telefonoContacto : undefined,
-        datosFijosJson,
-      },
-      select: MIEMBRO_SELECT,
-    });
+      return tx.usuario.update({
+        where: { id: userId },
+        data: {
+          emailContacto: dto.emailContacto !== undefined ? dto.emailContacto : undefined,
+          telefonoContacto: dto.telefonoContacto !== undefined ? dto.telefonoContacto : undefined,
+          datosFijosJson,
+        },
+        select: MIEMBRO_SELECT,
+      });
+    };
+
+    return this.prisma.$transaction
+      ? this.prisma.$transaction((tx) => ejecutar(tx))
+      : ejecutar(this.prisma as unknown as Prisma.TransactionClient);
   }
 
   // ---------------- Autocompletado por hermano ----------------
@@ -235,30 +410,7 @@ export class MiembrosService {
       select: { esquemaCamposJson: true },
     });
     const set = clavesCopiablesEntreHermanos(plantillas.map((p) => p.esquemaCamposJson));
-    const estandarFamilia = [
-      'domicilio',
-      'obra_social',
-      'madre_nombres',
-      'madre_dni',
-      'madre_domicilio',
-      'madre_email',
-      'madre_telefono',
-      'madre_profesion',
-      'padre_nombres',
-      'padre_dni',
-      'padre_domicilio',
-      'padre_email',
-      'padre_telefono',
-      'padre_profesion',
-      'tutor_nombres',
-      'tutor_dni',
-      'tutor_domicilio',
-      'tutor_email',
-      'tutor_telefono',
-      'tutor_profesion',
-      'telefono_urgencias',
-    ];
-    for (const k of estandarFamilia) set.add(k);
+    for (const k of CLAVES_FAMILIARES_ESTANDAR) set.add(k);
     return set;
   }
 
@@ -314,57 +466,87 @@ export class MiembrosService {
     const qNorm = normalizarSinTildes(criterioRaw);
     if (!qNorm) return [];
 
-    const todosActivos = await this.prisma.usuario.findMany({
-      where: { activo: true },
-      orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
-      select: {
-        id: true,
-        dni: true,
-        nombre: true,
-        apellido: true,
-        emailContacto: true,
-        telefonoContacto: true,
-        datosFijosJson: true,
-        grupoFamiliar: {
-          select: {
-            id: true,
-            nombreFamilia: true,
-            porcentajeDescuentoHermanos: true,
-            miembros: {
-              where: { activo: true },
-              select: {
-                id: true,
-                dni: true,
-                nombre: true,
-                apellido: true,
-                asignaciones: {
-                  where: { activo: true },
-                  select: { unidad: { select: { id: true, nombre: true } } },
+    let candidatoIds: number[];
+    if (this.tieneQueryRaw()) {
+      const resSql = await this.buscarIdsPorTextoSql(alcance, criterioRaw, {
+        take: 15,
+        conTotal: false,
+      });
+      candidatoIds = resSql.ids;
+    } else {
+      const indicesActivos = await this.prisma.usuario.findMany({
+        where: {
+          AND: [{ activo: true }, filtroUsuariosPorAlcance(alcance)],
+        },
+        orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
+        select: {
+          id: true,
+          dni: true,
+          nombre: true,
+          apellido: true,
+          grupoFamiliar: {
+            select: { nombreFamilia: true },
+          },
+        },
+      });
+
+      candidatoIds = indicesActivos
+        .filter(
+          (h) =>
+            normalizarSinTildes(h.dni).includes(qNorm) ||
+            normalizarSinTildes(h.apellido).includes(qNorm) ||
+            normalizarSinTildes(h.nombre).includes(qNorm) ||
+            normalizarSinTildes(`${h.nombre} ${h.apellido}`).includes(qNorm) ||
+            normalizarSinTildes(`${h.apellido} ${h.nombre}`).includes(qNorm) ||
+            normalizarSinTildes(h.grupoFamiliar?.nombreFamilia).includes(qNorm),
+        )
+        .slice(0, 15)
+        .map((h) => h.id);
+    }
+
+    if (candidatoIds.length === 0) return [];
+
+    const [candidatos, claves] = await Promise.all([
+      this.prisma.usuario.findMany({
+        where: { id: { in: candidatoIds } },
+        orderBy: [{ apellido: 'asc' }, { nombre: 'asc' }],
+        select: {
+          id: true,
+          dni: true,
+          nombre: true,
+          apellido: true,
+          emailContacto: true,
+          telefonoContacto: true,
+          datosFijosJson: true,
+          grupoFamiliar: {
+            select: {
+              id: true,
+              nombreFamilia: true,
+              porcentajeDescuentoHermanos: true,
+              miembros: {
+                where: { activo: true },
+                select: {
+                  id: true,
+                  dni: true,
+                  nombre: true,
+                  apellido: true,
+                  asignaciones: {
+                    where: { activo: true },
+                    select: { unidad: { select: { id: true, nombre: true } } },
+                  },
                 },
               },
             },
           },
+          asignaciones: {
+            where: { activo: true },
+            select: { unidad: { select: { id: true, nombre: true } } },
+          },
         },
-        asignaciones: {
-          where: { activo: true },
-          select: { unidad: { select: { id: true, nombre: true } } },
-        },
-      },
-    });
+      }),
+      this.clavesCopiables(),
+    ]);
 
-    const candidatos = todosActivos
-      .filter(
-        (h) =>
-          normalizarSinTildes(h.dni).includes(qNorm) ||
-          normalizarSinTildes(h.apellido).includes(qNorm) ||
-          normalizarSinTildes(h.nombre).includes(qNorm) ||
-          normalizarSinTildes(`${h.nombre} ${h.apellido}`).includes(qNorm) ||
-          normalizarSinTildes(`${h.apellido} ${h.nombre}`).includes(qNorm) ||
-          normalizarSinTildes(h.grupoFamiliar?.nombreFamilia).includes(qNorm),
-      )
-      .slice(0, 15);
-
-    const claves = await this.clavesCopiables();
     return candidatos.map((h) => ({
       id: h.id,
       dni: h.dni,
@@ -382,14 +564,15 @@ export class MiembrosService {
   async crear(alcance: AlcanceAcceso, dto: CrearMiembroDto) {
     const unidadIdResuelta = await this.resolverYValidarUnidadYRol(alcance, dto.unidadId, dto.rolId);
     assertUnidadEnAlcance(alcance, unidadIdResuelta);
-    // La clave inicial es el DNI; se fuerza el cambio en el primer login.
-    const passwordHash = await bcrypt.hash(dto.dni, BCRYPT_ROUNDS);
+    // Generamos clave temporal aleatoria; se fuerza el cambio en el primer login.
+    const claveTemporal = generarClaveTemporal();
+    const passwordHash = await bcrypt.hash(claveTemporal, BCRYPT_ROUNDS);
 
     const id = await this.prisma.$transaction(async (tx) => {
       let grupoFamiliarId: number | null = null;
       let email = dto.emailContacto ?? null;
       let telefono = dto.telefonoContacto ?? null;
-      let datosFijos: Record<string, unknown> = dto.datosFijosJson ?? {};
+      let datosFijos: Record<string, unknown> = sanitizarJsonPlano(dto.datosFijosJson);
 
       if (dto.hermanoDni) {
         if (dto.hermanoDni === dto.dni) throw new BadRequestException('El hermano no puede ser el mismo DNI');
@@ -440,17 +623,24 @@ export class MiembrosService {
 
     if (creado.emailContacto && this.mailer) {
       const asig = creado.asignaciones?.[0];
-      void this.mailer.enviarBienvenidaAlta({
-        destinatario: creado.emailContacto,
-        nombre: creado.nombre,
-        apellido: creado.apellido,
-        dni: creado.dni,
-        unidadNombre: asig?.unidad?.nombre,
-        rolNombre: asig?.rol?.nombre,
-      });
+      void this.mailer
+        .enviarBienvenidaAlta({
+          destinatario: creado.emailContacto,
+          nombre: creado.nombre,
+          apellido: creado.apellido,
+          dni: creado.dni,
+          claveTemporal,
+          unidadNombre: asig?.unidad?.nombre,
+          rolNombre: asig?.rol?.nombre,
+        })
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `Error inesperado enviando email de bienvenida a ${creado.emailContacto}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        });
     }
 
-    return creado;
+    return { ...creado, claveTemporal };
   }
 
   // ---------------- Edición ----------------
@@ -509,7 +699,12 @@ export class MiembrosService {
         if (alcanceCampo.tipo === 'GLOBAL') return false;
         if (alcanceCampo.tipo === 'UNIDAD') {
           const unidadesObjetivo = objetivo.asignaciones.map((a) => a.unidadId);
-          return !unidadesObjetivo.some((uId) => alcanceCampo.unidadIds.includes(uId));
+          // Campos sensibles (identidad / baja) requieren cobertura de TODAS las unidades activas del objetivo.
+          const requiereCoberturaCompleta = req === 'miembros.editar_identidad' || req === 'miembros.baja';
+          const cubierto = requiereCoberturaCompleta
+            ? unidadesObjetivo.length > 0 && unidadesObjetivo.every((uId) => alcanceCampo.unidadIds.includes(uId))
+            : unidadesObjetivo.some((uId) => alcanceCampo.unidadIds.includes(uId));
+          return !cubierto;
         }
         return true;
       });
@@ -518,54 +713,64 @@ export class MiembrosService {
       }
     }
 
-    let datosFijosJson: Prisma.InputJsonObject | undefined;
-    if (dto.datosFijosJson) {
-      const actual = (objetivo.datosFijosJson ?? {}) as Record<string, unknown>;
-      const merged = { ...actual, ...dto.datosFijosJson };
-      for (const [k, v] of Object.entries(dto.datosFijosJson)) if (v === null) delete merged[k];
-      datosFijosJson = merged as Prisma.InputJsonObject;
-    }
-
     const cambioEstadoActivo = dto.activo !== undefined && dto.activo !== objetivo.activo;
+    const verificaUltimoAdmin =
+      dto.activo === false &&
+      objetivo.activo &&
+      objetivo.asignaciones.some((a) => this.esAsignacionAdminGlobal(a));
 
-    if (dto.activo === false && objetivo.activo) {
-      const tieneAsignacionAdmin = objetivo.asignaciones.some((a) => this.esAsignacionAdminGlobal(a));
-      if (tieneAsignacionAdmin) {
-        await this.asegurarNoDesactivarUltimoAdmin(id);
+    const ejecutarEdicion = async (tx: Prisma.TransactionClient) => {
+      if ((dto.datosFijosJson || verificaUltimoAdmin) && '$queryRaw' in tx && typeof tx.$queryRaw === 'function') {
+        await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${id} FOR UPDATE`;
       }
-    }
+      if (verificaUltimoAdmin) {
+        await this.asegurarNoDesactivarUltimoAdmin(id, undefined, tx);
+      }
 
-    if (cambioEstadoActivo && this.tesoreria && this.prisma.$transaction) {
-      return this.prisma.$transaction(async (tx) => {
-        await tx.usuario.update({
-          where: { id },
-          data: {
-            ...dto,
-            fechaNacimiento: dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : undefined,
-            datosFijosJson,
-          },
-        });
+      let datosFijosJson: Prisma.InputJsonObject | undefined;
+      if (dto.datosFijosJson) {
+        const registroFresco = tx.usuario?.findUnique
+          ? await tx.usuario.findUnique({ where: { id }, select: { datosFijosJson: true } })
+          : null;
+        const actual = sanitizarJsonPlano(registroFresco?.datosFijosJson ?? objetivo.datosFijosJson);
+        const entrante = sanitizarJsonPlano(dto.datosFijosJson);
+        const merged = { ...actual, ...entrante };
+        for (const [k, v] of Object.entries(entrante)) if (v === null) delete merged[k];
+        datosFijosJson = merged as Prisma.InputJsonObject;
+      }
 
-        if (dto.activo === false) {
-          await this.tesoreria!.anularCargosImpagosDeMiembroEnTx(tx, id);
-        } else if (dto.activo === true) {
-          const mesActual = new Date().getMonth() + 1;
-          await this.tesoreria!.sincronizarCuotasMiembroActivoEnTx(tx, id, mesActual, anioActual());
-        }
-
-        return tx.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+      const actualizado = await tx.usuario.update({
+        where: { id },
+        data: {
+          ...dto,
+          fechaNacimiento: dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : undefined,
+          datosFijosJson,
+          ...(dto.activo === false && objetivo.activo ? { tokenVersion: { increment: 1 } } : {}),
+        },
+        select: MIEMBRO_SELECT,
       });
-    }
 
-    return this.prisma.usuario.update({
-      where: { id },
-      data: {
-        ...dto,
-        fechaNacimiento: dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : undefined,
-        datosFijosJson,
-      },
-      select: MIEMBRO_SELECT,
-    });
+      if (cambioEstadoActivo && this.tesoreria) {
+        if (dto.activo === false) {
+          await this.tesoreria.anularCargosImpagosDeMiembroEnTx(tx, id);
+        } else if (dto.activo === true) {
+          const hoy = hoyUtc();
+          await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(
+            tx,
+            id,
+            hoy.getUTCMonth() + 1,
+            anioActual(),
+          );
+        }
+        return tx.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+      }
+
+      return actualizado;
+    };
+
+    return this.prisma.$transaction
+      ? this.prisma.$transaction((tx) => ejecutarEdicion(tx))
+      : ejecutarEdicion(this.prisma as unknown as Prisma.TransactionClient);
   }
 
   // ---------------- Asignaciones adicionales ----------------
@@ -617,7 +822,7 @@ export class MiembrosService {
       });
 
       if (this.tesoreria) {
-        const mesActual = new Date().getMonth() + 1;
+        const mesActual = hoyUtc().getUTCMonth() + 1;
         await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, usuarioId, mesActual, ciclo);
       }
     });
@@ -628,19 +833,8 @@ export class MiembrosService {
   /** Cierra (nunca borra) una asignación activa: activo=false + fechaFin=hoy. */
   async cerrarAsignacion(actor: AuthUser, alcance: AlcanceAcceso, usuarioId: number, asignacionId: number) {
     if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede gestionar asignaciones');
-    const asig = await this.prisma.asignacionMiembro.findFirst({
-      where: { id: asignacionId, usuarioId, activo: true },
-      include: { rol: { include: { permisos: { include: { permiso: true } } } } },
-    });
-    if (!asig) throw new NotFoundException('Asignación activa no encontrada');
-    assertUnidadEnAlcance(alcance, asig.unidadId);
-    assertPuedeOtorgar(alcance, asig.rol, asig.alcanceOverride);
     if (usuarioId === actor.sub && alcance.tipo !== 'GLOBAL') {
       throw new ForbiddenException('No puede cerrar su propia asignación');
-    }
-
-    if (this.esAsignacionAdminGlobal(asig)) {
-      await this.asegurarNoDesactivarUltimoAdmin(usuarioId, asignacionId);
     }
 
     const trans = this.prisma.$transaction
@@ -648,14 +842,41 @@ export class MiembrosService {
       : async (cb: (tx: any) => Promise<any>) => cb(this.prisma);
 
     await trans(async (tx) => {
-      await tx.asignacionMiembro.update({
-        where: { id: asignacionId },
-        data: { activo: false, fechaFin: hoyUtc() },
+      const asig = await tx.asignacionMiembro.findFirst({
+        where: { id: asignacionId, usuarioId, activo: true },
+        include: { rol: { include: { permisos: { include: { permiso: true } } } } },
       });
+      if (!asig) throw new NotFoundException('Asignación activa no encontrada');
+      assertUnidadEnAlcance(alcance, asig.unidadId);
+      assertPuedeOtorgar(alcance, asig.rol, asig.alcanceOverride);
+
+      if (this.esAsignacionAdminGlobal(asig)) {
+        await this.asegurarNoDesactivarUltimoAdmin(usuarioId, asignacionId, tx);
+      }
+
+      if (tx.asignacionMiembro?.updateMany) {
+        const res = await tx.asignacionMiembro.updateMany({
+          where: { id: asignacionId, activo: true },
+          data: { activo: false, fechaFin: hoyUtc() },
+        });
+        if (res.count !== 1) {
+          throw new ConflictException('La asignación ya fue cerrada por otro proceso');
+        }
+      } else {
+        await tx.asignacionMiembro.update({
+          where: { id: asignacionId },
+          data: { activo: false, fechaFin: hoyUtc() },
+        });
+      }
 
       if (this.tesoreria) {
-        const mesActual = new Date().getMonth() + 1;
-        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, usuarioId, mesActual, anioActual());
+        const hoy = hoyUtc();
+        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(
+          tx,
+          usuarioId,
+          hoy.getUTCMonth() + 1,
+          anioActual(),
+        );
       }
     });
 
@@ -671,19 +892,24 @@ export class MiembrosService {
     const alcance = asig.alcanceOverride ?? asig.rol.alcancePorDefecto;
     if (alcance !== AlcanceRol.GLOBAL) return false;
     if (!asig.rol.permisos || asig.rol.permisos.length === 0) {
-      return true;
+      return false;
     }
     return asig.rol.permisos.some((p) => {
       const clave = typeof p === 'string' ? p : p.permiso?.clave;
-      return clave === 'organizacion.gestionar';
+      return clave === 'organizacion.gestionar' || clave === 'roles.gestionar';
     });
   }
 
-  private async asegurarNoDesactivarUltimoAdmin(usuarioId: number, asignacionIdACerrar?: number): Promise<void> {
-    if (!this.prisma.asignacionMiembro) return;
+  private async asegurarNoDesactivarUltimoAdmin(
+    usuarioId: number,
+    asignacionIdACerrar?: number,
+    tx: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<void> {
+    if (!tx.asignacionMiembro) return;
     const where: Prisma.AsignacionMiembroWhereInput = {
       activo: true,
       usuario: { activo: true },
+      unidad: { activa: true },
       OR: [
         { alcanceOverride: AlcanceRol.GLOBAL },
         { alcanceOverride: null, rol: { alcancePorDefecto: AlcanceRol.GLOBAL } },
@@ -693,13 +919,13 @@ export class MiembrosService {
     };
 
     let candidatos: any[] = [];
-    if (this.prisma.asignacionMiembro.findMany) {
-      candidatos = await this.prisma.asignacionMiembro.findMany({
+    if (tx.asignacionMiembro.findMany) {
+      candidatos = await tx.asignacionMiembro.findMany({
         where,
         include: { rol: { include: { permisos: { include: { permiso: true } } } } },
       });
-    } else if (this.prisma.asignacionMiembro.findFirst) {
-      const uno = await this.prisma.asignacionMiembro.findFirst({
+    } else if (tx.asignacionMiembro.findFirst) {
+      const uno = await tx.asignacionMiembro.findFirst({
         where,
         include: { rol: { include: { permisos: { include: { permiso: true } } } } },
       });
@@ -746,6 +972,21 @@ export class MiembrosService {
     if (!unidad || !unidad.activa) {
       throw new BadRequestException('Rama o sección inexistente o inactiva');
     }
+
+    if (rol.requiereRama !== undefined && rol.requiereRama !== null && unidad.tipo !== undefined) {
+      const esUnidadRama = unidad.tipo === TipoUnidad.SECCION_RAMA;
+      if (esUnidadRama && !rol.requiereRama) {
+        throw new BadRequestException(
+          'El rol seleccionado está configurado como rol sin rama asignada y no puede asignarse a una rama específica.',
+        );
+      }
+      if (!esUnidadRama && rol.requiereRama) {
+        throw new BadRequestException(
+          'El rol seleccionado requiere estar asignado a una rama específica.',
+        );
+      }
+    }
+
     return unidad.id;
   }
 

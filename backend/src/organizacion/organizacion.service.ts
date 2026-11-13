@@ -291,60 +291,111 @@ export class OrganizacionService {
     return this.prisma.unidadOrganizativa.create({ data: { ...dto, ramaId: dto.ramaId ?? null } });
   }
 
+  private runInTx<T>(fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction
+      ? this.prisma.$transaction(fn)
+      : fn(this.prisma as unknown as Prisma.TransactionClient);
+  }
+
+  /** Verifica que desactivar una unidad no deje sin unidades activas al último administrador global activo. */
+  private async asegurarNoDejarSinUnidadAlUltimoAdmin(
+    unidadIdADesactivar: number,
+    tx: Prisma.TransactionClient,
+  ): Promise<void> {
+    if (!tx.asignacionMiembro?.findMany) return;
+    const asignacionesGlobales = await tx.asignacionMiembro.findMany({
+      where: {
+        activo: true,
+        usuario: { activo: true },
+        unidad: { activa: true },
+        OR: [
+          { alcanceOverride: AlcanceRol.GLOBAL },
+          { alcanceOverride: null, rol: { alcancePorDefecto: AlcanceRol.GLOBAL } },
+        ],
+      },
+      include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+    });
+
+    const admins = asignacionesGlobales.filter((a) =>
+      a.rol.permisos?.some(
+        (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+      ),
+    );
+    if (admins.length === 0) return;
+
+    const adminsEnOtraUnidad = admins.filter((a) => a.unidadId !== unidadIdADesactivar);
+    if (adminsEnOtraUnidad.length === 0) {
+      throw new BadRequestException(
+        'No se puede desactivar esta sección porque dejaría sin sección activa al último administrador global del sistema.',
+      );
+    }
+  }
+
   async editarUnidad(alcance: AlcanceAcceso, id: number, dto: EditarUnidadDto) {
     this.assertGlobal(alcance);
-    const actual = await this.prisma.unidadOrganizativa.findUnique({ where: { id } });
-    if (!actual) throw new NotFoundException('Unidad no encontrada');
-    const tipo = dto.tipo ?? actual.tipo;
-    const ramaId = dto.ramaId !== undefined ? dto.ramaId : actual.ramaId;
-    await this.validarRamaDeUnidad(tipo, ramaId);
-    return this.prisma.unidadOrganizativa.update({ where: { id }, data: { ...dto, ramaId } });
+    return this.runInTx(async (tx) => {
+      const actual = await tx.unidadOrganizativa.findUnique({ where: { id } });
+      if (!actual) throw new NotFoundException('Unidad no encontrada');
+      if (dto.activa === false && actual.activa) {
+        await this.asegurarNoDejarSinUnidadAlUltimoAdmin(id, tx);
+      }
+      const tipo = dto.tipo ?? actual.tipo;
+      const ramaId = dto.ramaId !== undefined ? dto.ramaId : actual.ramaId;
+      await this.validarRamaDeUnidad(tipo, ramaId);
+      return tx.unidadOrganizativa.update({ where: { id }, data: { ...dto, ramaId } });
+    });
   }
 
   async eliminarUnidad(alcance: AlcanceAcceso, id: number, definitivo: boolean = false) {
     this.assertGlobal(alcance);
-    const unidad = await this.prisma.unidadOrganizativa.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            asignaciones: true,
-            conceptos: true,
-            planesCuota: true,
+    return this.runInTx(async (tx) => {
+      const unidad = await tx.unidadOrganizativa.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              asignaciones: true,
+              conceptos: true,
+              planesCuota: true,
+            },
           },
         },
-      },
-    });
-    if (!unidad) throw new NotFoundException('Sección no encontrada');
+      });
+      if (!unidad) throw new NotFoundException('Sección no encontrada');
 
-    if (definitivo) {
-      const totalAsignaciones = unidad._count?.asignaciones ?? 0;
-      const totalConceptos = unidad._count?.conceptos ?? 0;
-      const totalPlanes = unidad._count?.planesCuota ?? 0;
-      if (totalAsignaciones > 0 || totalConceptos > 0 || totalPlanes > 0) {
-        throw new ConflictException(
-          `No se puede eliminar definitivamente la sección "${unidad.nombre}": posee registros asociados (${totalAsignaciones} asignaciones, ${totalConceptos} conceptos, ${totalPlanes} planes). Desactivala en su lugar.`,
-        );
+      if (definitivo) {
+        const totalAsignaciones = unidad._count?.asignaciones ?? 0;
+        const totalConceptos = unidad._count?.conceptos ?? 0;
+        const totalPlanes = unidad._count?.planesCuota ?? 0;
+        if (totalAsignaciones > 0 || totalConceptos > 0 || totalPlanes > 0) {
+          throw new ConflictException(
+            `No se puede eliminar definitivamente la sección "${unidad.nombre}": posee registros asociados (${totalAsignaciones} asignaciones, ${totalConceptos} conceptos, ${totalPlanes} planes). Desactivala en su lugar.`,
+          );
+        }
+
+        await tx.unidadOrganizativa.delete({ where: { id } });
+        return {
+          eliminada: true,
+          desactivada: false,
+          mensaje: `Sección "${unidad.nombre}" eliminada definitivamente.`,
+        };
       }
 
-      await this.prisma.unidadOrganizativa.delete({ where: { id } });
+      if (unidad.activa) {
+        await this.asegurarNoDejarSinUnidadAlUltimoAdmin(id, tx);
+      }
+
+      await tx.unidadOrganizativa.update({
+        where: { id },
+        data: { activa: false },
+      });
+
       return {
-        eliminada: true,
-        desactivada: false,
-        mensaje: `Sección "${unidad.nombre}" eliminada definitivamente.`,
+        eliminada: false,
+        desactivada: true,
+        mensaje: `Sección "${unidad.nombre}" desactivada.`,
       };
-    }
-
-    await this.prisma.unidadOrganizativa.update({
-      where: { id },
-      data: { activa: false },
     });
-
-    return {
-      eliminada: false,
-      desactivada: true,
-      mensaje: `Sección "${unidad.nombre}" desactivada.`,
-    };
   }
 
   // ---------------- Roles ----------------
@@ -353,21 +404,27 @@ export class OrganizacionService {
     return roles.map((r) => this.mapRol(r));
   }
 
-  private async idsDePermisos(claves: string[]): Promise<number[]> {
+  private async idsDePermisos(
+    claves: string[],
+    tx: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<number[]> {
     const unicas = [...new Set(claves)];
-    const permisos = await this.prisma.permiso.findMany({ where: { clave: { in: unicas } } });
+    const permisos = await tx.permiso.findMany({ where: { clave: { in: unicas } } });
     const faltantes = unicas.filter((c) => !permisos.some((p) => p.clave === c));
     if (faltantes.length) throw new BadRequestException(`Permisos inexistentes: ${faltantes.join(', ')}`);
     return permisos.map((p) => p.id);
   }
 
   /**
-   * Verifica que el sistema nunca se quede sin al menos un rol administrador (con alcance GLOBAL
-   * y permiso `organizacion.gestionar`). Valida por capacidades dinámicas, nunca por nombre fijo.
+   * Verifica que el sistema nunca se quede sin al menos un rol administrador activo (con alcance GLOBAL,
+   * permisos de administración y asignado a usuario y sección activos).
    */
-  private async asegurarNoBloquearUltimoAdmin(rolId: number): Promise<void> {
-    if (!this.prisma.rol.findMany) return;
-    const todosRoles = await this.prisma.rol.findMany({ include: ROL_INCLUDE });
+  private async asegurarNoBloquearUltimoAdmin(
+    rolId: number,
+    tx: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<void> {
+    if (!tx.rol.findMany) return;
+    const todosRoles = await tx.rol.findMany({ include: ROL_INCLUDE });
     if (!Array.isArray(todosRoles) || todosRoles.length === 0) return;
 
     const esRolAdmin = (r: Prisma.RolGetPayload<{ include: typeof ROL_INCLUDE }>) =>
@@ -385,6 +442,26 @@ export class OrganizacionService {
       throw new BadRequestException(
         'No se puede quitar el permiso de administrar roles ni eliminar el último rol administrador del sistema, para evitar que el grupo quede bloqueado.',
       );
+    }
+
+    if (tx.asignacionMiembro?.findMany) {
+      const otroAdminIds = otrosAdmins.map((r) => r.id);
+      const [asignacionesActual, asignacionesOtros] = await Promise.all([
+        tx.asignacionMiembro.findMany({
+          where: { rolId, activo: true, usuario: { activo: true }, unidad: { activa: true } },
+          select: { id: true },
+        }),
+        tx.asignacionMiembro.findMany({
+          where: { rolId: { in: otroAdminIds }, activo: true, usuario: { activo: true }, unidad: { activa: true } },
+          select: { id: true },
+        }),
+      ]);
+      if (asignacionesActual.length > 0 && asignacionesOtros.length === 0) {
+        throw new BadRequestException(
+          'Este es el único rol administrador con personas activas asignadas. Asigná otro rol administrador a al menos una persona antes de quitarle estos permisos.',
+        );
+      }
+      return;
     }
 
     const actualTieneMiembros = (actual._count?.asignaciones ?? 0) > 0;
@@ -420,24 +497,23 @@ export class OrganizacionService {
 
   async editarRol(alcance: AlcanceAcceso, id: number, dto: EditarRolDto) {
     this.assertGlobal(alcance);
-    const actual = await this.prisma.rol.findUnique({ where: { id }, include: ROL_INCLUDE });
-    if (!actual) throw new NotFoundException('Rol no encontrado');
+    const rol = await this.runInTx(async (tx) => {
+      const actual = await tx.rol.findUnique({ where: { id }, include: ROL_INCLUDE });
+      if (!actual) throw new NotFoundException('Rol no encontrado');
 
-    const nuevoAlcance = dto.alcancePorDefecto ?? actual.alcancePorDefecto;
-    const nuevosPermisos = dto.permisos ?? actual.permisos?.map((rp) => rp.permiso.clave) ?? [];
-    const pierdeCapacidadAdmin =
-      nuevoAlcance !== AlcanceRol.GLOBAL ||
-      (!nuevosPermisos.includes('organizacion.gestionar') &&
-        !nuevosPermisos.includes('roles.gestionar')) ||
-      !nuevosPermisos.includes('organizacion.ver');
+      const nuevoAlcance = dto.alcancePorDefecto ?? actual.alcancePorDefecto;
+      const nuevosPermisos = dto.permisos ?? actual.permisos?.map((rp) => rp.permiso.clave) ?? [];
+      const pierdeCapacidadAdmin =
+        nuevoAlcance !== AlcanceRol.GLOBAL ||
+        (!nuevosPermisos.includes('organizacion.gestionar') &&
+          !nuevosPermisos.includes('roles.gestionar')) ||
+        !nuevosPermisos.includes('organizacion.ver');
 
-    if (pierdeCapacidadAdmin) {
-      await this.asegurarNoBloquearUltimoAdmin(id);
-    }
+      if (pierdeCapacidadAdmin) {
+        await this.asegurarNoBloquearUltimoAdmin(id, tx);
+      }
 
-    const permisoIds = dto.permisos ? await this.idsDePermisos(dto.permisos) : null;
-
-    const rol = await this.prisma.$transaction(async (tx) => {
+      const permisoIds = dto.permisos ? await this.idsDePermisos(dto.permisos, tx) : null;
       if (permisoIds) {
         await tx.rolPermiso.deleteMany({ where: { rolId: id } });
         await tx.rolPermiso.createMany({ data: permisoIds.map((permisoId) => ({ rolId: id, permisoId })) });
@@ -458,38 +534,38 @@ export class OrganizacionService {
 
   async eliminarRol(alcance: AlcanceAcceso, id: number) {
     this.assertGlobal(alcance);
-    const rol = await this.prisma.rol.findUnique({
-      where: { id },
-      include: {
-        ...ROL_INCLUDE,
-        asignaciones: {
-          where: { activo: true },
-          take: 5,
-          include: {
-            usuario: { select: { nombre: true, apellido: true } },
+    return this.runInTx(async (tx) => {
+      const rol = await tx.rol.findUnique({
+        where: { id },
+        include: {
+          ...ROL_INCLUDE,
+          asignaciones: {
+            where: { activo: true },
+            take: 5,
+            include: {
+              usuario: { select: { nombre: true, apellido: true } },
+            },
           },
         },
-      },
+      });
+      if (!rol) throw new NotFoundException('Rol no encontrado');
+
+      if (rol._count.asignaciones > 0) {
+        const nombres = (rol.asignaciones || [])
+          .map((a) => `${a.usuario?.nombre || ''} ${a.usuario?.apellido || ''}`.trim())
+          .filter(Boolean);
+        const detalleNombres = nombres.length > 0 ? ` (${nombres.join(', ')})` : '';
+        throw new ConflictException(
+          `No se puede eliminar el rol "${rol.nombre}" porque hay ${rol._count.asignaciones} persona(s) activa(s) usándolo actualmente${detalleNombres}. Cambiales el rol antes de eliminarlo.`,
+        );
+      }
+
+      await this.asegurarNoBloquearUltimoAdmin(id, tx);
+
+      await tx.asignacionMiembro.deleteMany({ where: { rolId: id, activo: false } });
+      await tx.rol.delete({ where: { id } });
+      return { mensaje: `Rol "${rol.nombre}" eliminado correctamente` };
     });
-    if (!rol) throw new NotFoundException('Rol no encontrado');
-
-    if (rol._count.asignaciones > 0) {
-      const nombres = (rol.asignaciones || [])
-        .map((a) => `${a.usuario?.nombre || ''} ${a.usuario?.apellido || ''}`.trim())
-        .filter(Boolean);
-      const detalleNombres = nombres.length > 0 ? ` (${nombres.join(', ')})` : '';
-      throw new ConflictException(
-        `No se puede eliminar el rol "${rol.nombre}" porque hay ${rol._count.asignaciones} persona(s) activa(s) usándolo actualmente${detalleNombres}. Cambiales el rol antes de eliminarlo.`,
-      );
-    }
-
-    await this.asegurarNoBloquearUltimoAdmin(id);
-
-    await this.prisma.$transaction([
-      this.prisma.asignacionMiembro.deleteMany({ where: { rolId: id, activo: false } }),
-      this.prisma.rol.delete({ where: { id } }),
-    ]);
-    return { mensaje: `Rol "${rol.nombre}" eliminado correctamente` };
   }
 
   private mapRol(r: Prisma.RolGetPayload<{ include: typeof ROL_INCLUDE }>) {

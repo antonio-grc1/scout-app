@@ -13,12 +13,12 @@ import {
 import {
   Alcance,
   CurrentUser,
-  Public,
   RequireAnyPermission,
   RequirePermission,
 } from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
+import { anioActual } from '../common/utils/fechas.util.js';
 import {
   CrearPlantillaSchema,
   EditarPlantillaSchema,
@@ -44,10 +44,11 @@ export class LegajosController {
   @RequirePermission(VER)
   @Get('plantillas')
   listarPlantillas(
+    @Alcance() alcance: AlcanceAcceso,
     @Query('incluirInactivas', new ParseBoolPipe({ optional: true })) inc?: boolean,
     @Query('cicloAnio', new ParseIntPipe({ optional: true })) cicloAnio?: number,
   ) {
-    return this.legajos.listarPlantillas(inc ?? false, cicloAnio);
+    return this.legajos.listarPlantillas(alcance, inc ?? false, cicloAnio);
   }
 
   @RequirePermission(VER)
@@ -112,7 +113,7 @@ export class LegajosController {
     @Alcance() a: AlcanceAcceso,
     @Query('cicloAnio', new ParseIntPipe({ optional: true })) cicloAnio?: number,
   ) {
-    return this.legajos.listarColaboradoresAdultos(a, cicloAnio ?? 2026);
+    return this.legajos.listarColaboradoresAdultos(a, cicloAnio ?? anioActual());
   }
 
   // ---------------- Verificación / Validación QR ----------------

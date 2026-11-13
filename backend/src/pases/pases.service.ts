@@ -128,12 +128,66 @@ export class PasesService {
   private async aplicarPases(tx: Prisma.TransactionClient, alcance: AlcanceAcceso, pases: PaseDto[]) {
     const resultados = [];
     const hoy = hoyUtc();
+    const ultimaRama = tx.rama?.findFirst
+      ? await tx.rama.findFirst({
+          where: { activa: true },
+          orderBy: { ordenProgresion: 'desc' },
+          select: { edadMaxima: true },
+        })
+      : null;
+    const edadEgreso = ultimaRama?.edadMaxima ?? 21;
+
+    // Precarga masiva para evitar consultas N+1 dentro del bucle (lotes de hasta 200 pases)
+    const origenIds = [...new Set(pases.map((p) => p.asignacionOrigenId))];
+    const origenesList = tx.asignacionMiembro?.findMany
+      ? await tx.asignacionMiembro.findMany({
+          where: { id: { in: origenIds } },
+          include: {
+            rol: { include: { permisos: { include: { permiso: true } } } },
+            unidad: { include: { rama: true } },
+            usuario: { select: { id: true, activo: true, fechaNacimiento: true } },
+          },
+        })
+      : [];
+    const origenesMap = new Map(origenesList.map((a) => [a.id, a]));
+
+    const rolDestinoIds = [...new Set(pases.map((p) => p.rolDestinoId).filter((id): id is number => id != null))];
+    const rolesMap = new Map<number, any>();
+    if (rolDestinoIds.length > 0 && tx.rol?.findMany) {
+      const roles = await tx.rol.findMany({
+        where: { id: { in: rolDestinoIds } },
+        include: { permisos: { include: { permiso: true } } },
+      });
+      for (const r of roles) rolesMap.set(r.id, r);
+    }
+
+    const unidadDestinoIds = [
+      ...new Set(pases.map((p) => p.unidadDestinoId).filter((id): id is number => id != null)),
+    ];
+    const unidadesMap = new Map<number, any>();
+    if (unidadDestinoIds.length > 0 && tx.unidadOrganizativa?.findMany) {
+      const unidades = await tx.unidadOrganizativa.findMany({
+        where: { id: { in: unidadDestinoIds } },
+      });
+      for (const u of unidades) unidadesMap.set(u.id, u);
+    }
+
+    const unidadesFallbackCache = new Map<string, any>();
+    const rolesFallbackCache = new Map<string, any>();
 
     for (const p of pases) {
-      const origen = await tx.asignacionMiembro.findUnique({
-        where: { id: p.asignacionOrigenId },
-        include: { rol: true, usuario: { select: { id: true, activo: true, fechaNacimiento: true } } },
-      });
+      const origen =
+        origenesMap.get(p.asignacionOrigenId) ??
+        (tx.asignacionMiembro?.findUnique
+          ? await tx.asignacionMiembro.findUnique({
+              where: { id: p.asignacionOrigenId },
+              include: {
+                rol: { include: { permisos: { include: { permiso: true } } } },
+                unidad: { include: { rama: true } },
+                usuario: { select: { id: true, activo: true, fechaNacimiento: true } },
+              },
+            })
+          : null);
       if (!origen) throw new NotFoundException(`Asignación ${p.asignacionOrigenId} no encontrada`);
       if (!origen.activo) throw new ConflictException(`La asignación ${origen.id} ya está cerrada`);
       if (!origen.usuario.activo) throw new BadRequestException(`El miembro ${origen.usuarioId} está inactivo`);
@@ -153,24 +207,39 @@ export class PasesService {
         throw new ForbiddenException('No puede auto-asignarse un pase institucional');
       }
 
-      let rolDestino = p.rolDestinoId ? await tx.rol.findUnique({ where: { id: p.rolDestinoId } }) : null;
+      let rolDestino: (typeof origen.rol | Prisma.RolGetPayload<{}>) | null = p.rolDestinoId
+        ? (rolesMap.get(p.rolDestinoId) ??
+          (await tx.rol.findUnique({
+            where: { id: p.rolDestinoId },
+            include: { permisos: { include: { permiso: true } } },
+          })))
+        : null;
 
       let unidadDestino = p.unidadDestinoId
-        ? await tx.unidadOrganizativa.findUnique({ where: { id: p.unidadDestinoId } })
+        ? (unidadesMap.get(p.unidadDestinoId) ??
+          (await tx.unidadOrganizativa.findUnique({ where: { id: p.unidadDestinoId } })))
         : null;
 
       if (!unidadDestino && rolDestino?.requiereRama === false && tx.unidadOrganizativa.findFirst) {
         const tipoPref =
           rolDestino.alcancePorDefecto === AlcanceRol.GLOBAL ? TipoUnidad.JEFATURA : TipoUnidad.SIN_RAMA_APOYO;
-        unidadDestino =
-          (await tx.unidadOrganizativa.findFirst({ where: { activa: true, tipo: tipoPref } })) ??
-          (await tx.unidadOrganizativa.findFirst({
-            where: { activa: true, tipo: { in: [TipoUnidad.SIN_RAMA_APOYO, TipoUnidad.JEFATURA] } },
-          }));
+        const cacheKey = `fallback:${tipoPref}`;
+        if (!unidadesFallbackCache.has(cacheKey)) {
+          const encontrada =
+            (await tx.unidadOrganizativa.findFirst({ where: { activa: true, tipo: tipoPref } })) ??
+            (await tx.unidadOrganizativa.findFirst({
+              where: { activa: true, tipo: { in: [TipoUnidad.SIN_RAMA_APOYO, TipoUnidad.JEFATURA] } },
+            }));
+          unidadesFallbackCache.set(cacheKey, encontrada ?? null);
+        }
+        unidadDestino = unidadesFallbackCache.get(cacheKey);
       }
 
       if (!unidadDestino && !p.unidadDestinoId) {
-        unidadDestino = await tx.unidadOrganizativa.findUnique({ where: { id: origen.unidadId } });
+        unidadDestino =
+          unidadesMap.get(origen.unidadId) ??
+          (await tx.unidadOrganizativa.findUnique({ where: { id: origen.unidadId } }));
+        if (unidadDestino) unidadesMap.set(origen.unidadId, unidadDestino);
       }
 
       if (!unidadDestino || !unidadDestino.activa) {
@@ -178,25 +247,58 @@ export class PasesService {
       }
 
       if (!rolDestino) {
-        if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && tx.rol.findFirst) {
-          rolDestino = await tx.rol.findFirst({
-            where: {
-              tipoMiembro: 'EDUCADOR',
-              requiereRama: false,
+        const exclusionRolesPrivilegiados = {
+          none: {
+            permiso: {
+              clave: {
+                in: [
+                  'roles.gestionar',
+                  'organizacion.gestionar',
+                  'tesoreria.gestionar',
+                  'eventos.gestionar',
+                  'cuotas.ajustar',
+                  'miembros.baja',
+                ],
+              },
             },
-          });
+          },
+        };
+
+        if (unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO && tx.rol.findFirst) {
+          if (!rolesFallbackCache.has('SIN_RAMA_APOYO')) {
+            rolesFallbackCache.set(
+              'SIN_RAMA_APOYO',
+              await tx.rol.findFirst({
+                where: {
+                  tipoMiembro: 'EDUCADOR',
+                  requiereRama: false,
+                  permisos: exclusionRolesPrivilegiados,
+                },
+                orderBy: { id: 'asc' },
+              }),
+            );
+          }
+          rolDestino = rolesFallbackCache.get('SIN_RAMA_APOYO');
         } else if (unidadDestino.tipo === TipoUnidad.JEFATURA) {
           throw new BadRequestException('Para pases a Jefatura debe especificar explícitamente el rol destino');
         } else if (unidadDestino.tipo === TipoUnidad.SECCION_RAMA && origen.rol.tipoMiembro === 'PROTAGONISTA') {
           const edad = calcularEdad(origen.usuario.fechaNacimiento, hoy);
-          // Si el protagonista tiene edad de pase a educador (>= 21 años, egreso de Rover)
-          if (edad >= 21 && tx.rol.findFirst) {
-            rolDestino = await tx.rol.findFirst({
-              where: {
-                tipoMiembro: 'EDUCADOR',
-                requiereRama: true,
-              },
-            });
+          // Si el protagonista alcanzó o superó la edad máxima de la última rama, pasa a educador
+          if (edad >= edadEgreso && tx.rol.findFirst) {
+            if (!rolesFallbackCache.has('EDUCADOR_RAMA')) {
+              rolesFallbackCache.set(
+                'EDUCADOR_RAMA',
+                await tx.rol.findFirst({
+                  where: {
+                    tipoMiembro: 'EDUCADOR',
+                    requiereRama: true,
+                    permisos: exclusionRolesPrivilegiados,
+                  },
+                  orderBy: { id: 'asc' },
+                }),
+              );
+            }
+            rolDestino = rolesFallbackCache.get('EDUCADOR_RAMA');
           } else {
             rolDestino = origen.rol;
           }
@@ -257,6 +359,45 @@ export class PasesService {
         );
       }
 
+      // Anti-lockout: impedir que el pase quite el último rol administrador global activo del sistema.
+      const esOrigenAdminGlobal =
+        (origen.alcanceOverride ?? origen.rol.alcancePorDefecto) === AlcanceRol.GLOBAL &&
+        (origen.rol as { permisos?: Array<{ permiso?: { clave: string } }> }).permisos?.some(
+          (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+        );
+      if (esOrigenAdminGlobal && tx.asignacionMiembro.findMany) {
+        const destinoMantieneAdmin =
+          alcanceDestino === AlcanceRol.GLOBAL &&
+          (rolDestino as { permisos?: Array<{ permiso?: { clave: string } }> }).permisos?.some(
+            (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+          );
+        if (!destinoMantieneAdmin) {
+          const otrasGlobales = await tx.asignacionMiembro.findMany({
+            where: {
+              id: { not: origen.id },
+              activo: true,
+              usuario: { activo: true },
+              unidad: { activa: true },
+              OR: [
+                { alcanceOverride: AlcanceRol.GLOBAL },
+                { alcanceOverride: null, rol: { alcancePorDefecto: AlcanceRol.GLOBAL } },
+              ],
+            },
+            include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+          });
+          const hayOtroAdmin = otrasGlobales.some((a) =>
+            a.rol.permisos?.some(
+              (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+            ),
+          );
+          if (!hayOtroAdmin) {
+            throw new BadRequestException(
+              'No se puede transferir al último administrador global activo sin conservar un rol administrador.',
+            );
+          }
+        }
+      }
+
       // Cierre condicional: evita que dos pases concurrentes cierren la misma asignación.
       const cierre = await tx.asignacionMiembro.updateMany({
         where: { id: origen.id, activo: true },
@@ -278,7 +419,7 @@ export class PasesService {
       });
 
       if (this.tesoreria) {
-        const mesActual = new Date().getMonth() + 1;
+        const mesActual = hoy.getUTCMonth() + 1;
         await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, origen.usuarioId, mesActual, cicloPase);
       }
 

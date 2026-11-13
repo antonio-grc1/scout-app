@@ -1,5 +1,5 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { AlcanceRol, TipoUnidad } from '@prisma/client';
+import { ForbiddenException } from '@nestjs/common';
+import { TipoUnidad } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { OrganizacionController } from '../src/organizacion/organizacion.controller.js';
 import { OrganizacionService } from '../src/organizacion/organizacion.service.js';
@@ -356,8 +356,9 @@ describe('Empirical Stress Harness: Organizacion Historial Unidad', () => {
   });
 
   it('E9: Controller endpoint integration: delegates to service with parsed id and scope', async () => {
+    const historialSpy = vi.fn().mockResolvedValue({ id: 1, nombre: 'Test' });
     const mockService = {
-      obtenerHistorialUnidad: vi.fn().mockResolvedValue({ id: 1, nombre: 'Test' }),
+      obtenerHistorialUnidad: historialSpy,
     } as unknown as OrganizacionService;
 
     const controller = new OrganizacionController(mockService);
@@ -365,7 +366,7 @@ describe('Empirical Stress Harness: Organizacion Historial Unidad', () => {
 
     const result = await controller.obtenerHistorialUnidad(alcance, 12);
 
-    expect(mockService.obtenerHistorialUnidad).toHaveBeenCalledWith(alcance, 12);
+    expect(historialSpy).toHaveBeenCalledWith(alcance, 12);
     expect(result).toEqual({ id: 1, nombre: 'Test' });
   });
 });

@@ -156,7 +156,17 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
         where: expect.objectContaining({
           tipoMiembro: 'EDUCADOR',
           requiereRama: false,
+          permisos: expect.objectContaining({
+            none: expect.objectContaining({
+              permiso: expect.objectContaining({
+                clave: expect.objectContaining({
+                  in: expect.arrayContaining(['roles.gestionar', 'organizacion.gestionar', 'tesoreria.gestionar']),
+                }),
+              }),
+            }),
+          }),
         }),
+        orderBy: { id: 'asc' },
       }),
     );
     expect(resultado.asignacionNueva.rolId).toBe(4);
@@ -246,5 +256,60 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
     expect(unidadesIds).toContain(7); // Equipo de Apoyo
     expect(unidadesIds).toContain(1); // Manada Roca de la Paz
     expect(unidadesIds).toContain(5); // Comunidad Rover
+  });
+
+  it('P2-5: ejecutarLote precarga asignaciones, roles y unidades en lote evitando N+1 findUnique', async () => {
+    const asigFindMany = vi.fn().mockResolvedValue([
+      {
+        id: 1,
+        activo: true,
+        usuarioId: 10,
+        unidadId: 1,
+        rolId: 1,
+        alcanceOverride: null,
+        usuario: { id: 10, activo: true, fechaNacimiento: new Date('2015-01-01') },
+        unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, activa: true, rama: null },
+        rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+      },
+      {
+        id: 2,
+        activo: true,
+        usuarioId: 11,
+        unidadId: 1,
+        rolId: 1,
+        alcanceOverride: null,
+        usuario: { id: 11, activo: true, fechaNacimiento: new Date('2015-02-01') },
+        unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, activa: true, rama: null },
+        rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+      },
+    ]);
+    const asigFindUnique = vi.fn();
+    const unidadFindMany = vi.fn().mockResolvedValue([
+      { id: 2, nombre: 'Unidad', tipo: TipoUnidad.SECCION_RAMA, activa: true },
+    ]);
+    const tx: any = {
+      rama: { findFirst: vi.fn().mockResolvedValue({ edadMaxima: 21 }) },
+      asignacionMiembro: {
+        findMany: asigFindMany,
+        findUnique: asigFindUnique,
+        findFirst: vi.fn().mockResolvedValue(null),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        create: vi.fn().mockResolvedValue({ id: 99, unidad: { id: 2, nombre: 'Unidad' }, rol: { id: 1, nombre: 'Protagonista' } }),
+      },
+      unidadOrganizativa: { findMany: unidadFindMany, findUnique: vi.fn() },
+    };
+    const prisma: any = { $transaction: vi.fn(async (cb: any) => cb(tx)) };
+    const pasesSvc = new PasesService(prisma);
+
+    const res = await pasesSvc.ejecutarLote({ tipo: 'GLOBAL' }, {
+      pases: [
+        { asignacionOrigenId: 1, unidadDestinoId: 2 },
+        { asignacionOrigenId: 2, unidadDestinoId: 2 },
+      ],
+    });
+    expect(res.total).toBe(2);
+    expect(asigFindMany).toHaveBeenCalledTimes(1);
+    expect(asigFindUnique).not.toHaveBeenCalled();
+    expect(unidadFindMany).toHaveBeenCalledTimes(1);
   });
 });

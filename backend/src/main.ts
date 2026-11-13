@@ -7,11 +7,15 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new PrismaExceptionFilter());
+  const corsOrigins =
+    env.CORS_ORIGIN && env.CORS_ORIGIN !== '*'
+      ? env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+      : process.env.NODE_ENV === 'production'
+        ? false
+        : true;
   app.enableCors({
-    origin:
-      !env.CORS_ORIGIN || env.CORS_ORIGIN === '*'
-        ? true
-        : env.CORS_ORIGIN.split(',').map((o) => o.trim()),
+    origin: corsOrigins,
+    credentials: true,
   });
   app.enableShutdownHooks();
   await app.listen(env.PORT);
