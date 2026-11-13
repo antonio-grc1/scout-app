@@ -14,6 +14,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { useModalOverlay } from '../hooks/useModalOverlay';
@@ -60,6 +61,7 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
   const [guardando, setGuardando] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const enviandoRef = useRef<boolean>(false);
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto,
@@ -124,8 +126,12 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
     setObservaciones('');
     setError(null);
     setErrorCuentas(null);
-    void cargarCuentas();
-  }, [abierto, pedidoId]);
+    if (esGlobal) {
+      void cargarCuentas();
+    } else {
+      setCuentas([]);
+    }
+  }, [abierto, pedidoId, esGlobal]);
 
   const handleChangeMetodo = (nuevoMetodo: 'EFECTIVO' | 'TRANSFERENCIA' | 'OTRO') => {
     setMetodoPago(nuevoMetodo);
@@ -144,12 +150,12 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
       return;
     }
 
-    if (errorCuentas) {
+    if (esGlobal && errorCuentas) {
       setError(errorCuentas);
       return;
     }
 
-    if (!cuentaId && cuentas.length > 0) {
+    if (esGlobal && !cuentaId && cuentas.length > 0) {
       setError('Por favor seleccione la cuenta financiera donde ingresa el dinero.');
       return;
     }
@@ -159,7 +165,7 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
     try {
       const payload: Record<string, unknown> = {
         metodoPago,
-        cuentaId: cuentaId ? Number(cuentaId) : undefined,
+        cuentaId: esGlobal && cuentaId ? Number(cuentaId) : undefined,
       };
 
       if (observaciones.trim()) {
@@ -356,36 +362,38 @@ export const ModalDefinirPagoPedido: React.FC<ModalDefinirPagoPedidoProps> = ({
                   </div>
                 </div>
 
-                {/* Cuenta de Destino */}
-                <div>
-                  <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-brand" />
-                    Cuenta donde ingresa el dinero:
-                  </label>
-                  {cargandoCuentas ? (
-                    <div className="py-2 text-xs text-ink-muted flex items-center gap-2">
-                      <RotateCcw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Cargando cuentas de tesorería...</span>
-                    </div>
-                  ) : cuentas.length > 0 ? (
-                    <select
-                      value={cuentaId}
-                      onChange={(e) => setCuentaId(e.target.value)}
-                      className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
-                      required
-                    >
-                      {cuentas.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre} {c.tipo ? `(${c.tipo.replace('_', ' ')})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs">
-                      No se encontraron cuentas financieras activas registradas. El cobro se asentará sin cuenta asociada.
-                    </div>
-                  )}
-                </div>
+                {/* Cuenta de Destino (solo alcance GLOBAL) */}
+                {esGlobal && (
+                  <div>
+                    <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
+                      <Landmark className="w-3.5 h-3.5 text-brand" />
+                      Cuenta donde ingresa el dinero:
+                    </label>
+                    {cargandoCuentas ? (
+                      <div className="py-2 text-xs text-ink-muted flex items-center gap-2">
+                        <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Cargando cuentas de tesorería...</span>
+                      </div>
+                    ) : cuentas.length > 0 ? (
+                      <select
+                        value={cuentaId}
+                        onChange={(e) => setCuentaId(e.target.value)}
+                        className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                        required
+                      >
+                        {cuentas.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.nombre} {c.tipo ? `(${c.tipo.replace('_', ' ')})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs">
+                        No se encontraron cuentas financieras activas registradas. El cobro se asentará sin cuenta asociada.
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Observaciones opcionales */}
                 <div>

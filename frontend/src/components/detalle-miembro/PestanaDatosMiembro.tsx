@@ -1,6 +1,7 @@
 import React from 'react';
 import { Users, Save, Trash2 } from 'lucide-react';
 import { TrayectoriaMiembro } from './TrayectoriaMiembro';
+import { puedeDesvincularIntegrantePorAlcance } from '../../lib/permisos';
 
 export interface FormDatosMiembro {
   nombre: string;
@@ -34,6 +35,10 @@ export interface PestanaDatosMiembroProps {
   puedeDarBaja: boolean;
   puedeEditarMiembro: boolean;
   puedeGestionarTesoreria?: boolean;
+  puedeVincularHermano?: boolean;
+  puedeEditarDescuentoFamilia?: boolean;
+  esGlobal?: boolean;
+  unidadesEnAlcanceIds?: readonly number[];
   puedeEliminarDefinitivo?: boolean;
   eliminandoDefinitivo?: boolean;
   onGuardarDatos: (e: React.FormEvent) => Promise<void>;
@@ -55,6 +60,10 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   puedeDarBaja: _puedeDarBaja,
   puedeEditarMiembro,
   puedeGestionarTesoreria,
+  puedeVincularHermano,
+  puedeEditarDescuentoFamilia,
+  esGlobal = true,
+  unidadesEnAlcanceIds = [],
   puedeEliminarDefinitivo = false,
   eliminandoDefinitivo = false,
   onGuardarDatos,
@@ -73,6 +82,17 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
     multiline?: boolean;
     required?: boolean;
   };
+
+  const habilitarVincularHermano = puedeVincularHermano ?? Boolean(puedeGestionarTesoreria);
+  const habilitarEditarDescuento =
+    puedeEditarDescuentoFamilia ?? Boolean(puedeGestionarTesoreria);
+  const puedeDesvincularIntegrante = (h: any) =>
+    habilitarVincularHermano &&
+    puedeDesvincularIntegrantePorAlcance(h, {
+      esGlobal,
+      unidadesEnAlcanceIds,
+      miembroActualId: miembro?.id,
+    });
 
   const campos: Campo[] = [
     { key: 'nombre', label: 'Nombre', editable: puedeEditarIdentidad, required: true },
@@ -165,9 +185,9 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             )}
           </div>
 
-          {puedeGestionarTesoreria && (
+          {(habilitarVincularHermano || habilitarEditarDescuento) && (
             <div className="flex items-center gap-2">
-              {familiar && (
+              {familiar && habilitarEditarDescuento && (
                 <button
                   type="button"
                   onClick={onAbrirEditarFamilia}
@@ -176,13 +196,15 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                   Descuento ({pctDesc}%)
                 </button>
               )}
-              <button
-                type="button"
-                onClick={onAbrirVincularHermano}
-                className="min-h-[38px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
-              >
-                + Hermano
-              </button>
+              {habilitarVincularHermano && (
+                <button
+                  type="button"
+                  onClick={onAbrirVincularHermano}
+                  className="min-h-[38px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
+                >
+                  + Hermano
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -200,15 +222,17 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                 <span>
                   {h.nombre} {h.apellido}
                 </span>
-                <button
-                  type="button"
-                  disabled={desvinculandoMiembroId === h.id}
-                  onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
-                  title={`Quitar a ${h.nombre} del grupo familiar`}
-                  className="px-1.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
-                >
-                  {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
-                </button>
+                {puedeDesvincularIntegrante(h) && (
+                  <button
+                    type="button"
+                    disabled={desvinculandoMiembroId === h.id}
+                    onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
+                    title={`Quitar a ${h.nombre} del grupo familiar`}
+                    className="px-1.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
+                  >
+                    {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
+                  </button>
+                )}
               </span>
             ))}
           </div>

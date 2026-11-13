@@ -28,3 +28,13 @@ export const PasesLoteSchema = z.object({
     }),
 });
 export type PasesLoteDto = z.infer<typeof PasesLoteSchema>;
+
+export const AprobarSolicitudPaseSchema = z.object({
+  unidadDestinoId: z.number().int().positive().optional(),
+});
+export type AprobarSolicitudPaseDto = z.infer<typeof AprobarSolicitudPaseSchema>;
+
+export const RechazarSolicitudPaseSchema = z.object({
+  motivo: z.string().trim().max(255).optional(),
+});
+export type RechazarSolicitudPaseDto = z.infer<typeof RechazarSolicitudPaseSchema>;

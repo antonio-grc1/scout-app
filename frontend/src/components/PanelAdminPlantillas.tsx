@@ -21,7 +21,10 @@ interface Props {
 }
 
 export const PanelAdminPlantillas: React.FC<Props> = ({ onToast }) => {
-  const puedeGestionar = useAuthStore((s) => s.tienePermiso('legajos.plantillas_gestionar'));
+  const puedeGestionar = useAuthStore(
+    (s) => s.tieneGlobal() && s.tienePermiso('legajos.plantillas_gestionar'),
+  );
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
   const [plantillas, setPlantillas] = useState<any[]>([]);
   const [cargando, setCargando] = useState(false);
   const [procesandoId, setProcesandoId] = useState<number | null>(null);
@@ -50,7 +53,9 @@ export const PanelAdminPlantillas: React.FC<Props> = ({ onToast }) => {
   const cargarPlantillas = async () => {
     setCargando(true);
     try {
-      const res = await api.get('/legajos/plantillas?incluirInactivas=true');
+      const res = await api.get(
+        `/legajos/plantillas${esGlobal ? '?incluirInactivas=true' : ''}`,
+      );
       setPlantillas(res.data || []);
     } catch (err) {
       onToast(traducirErrorAmigable(err, 'No se pudieron cargar los formularios.'), 'error');

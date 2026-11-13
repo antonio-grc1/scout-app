@@ -7,7 +7,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { BotonInstalarPwa } from '../components/BotonInstalarPwa';
 import { Button } from '../components/ui/Button';
 import { BrandLogo } from '../components/ui/BrandLogo';
-import { AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, Mail } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [dni, setDni] = useState('');
@@ -15,6 +15,9 @@ export const Login: React.FC = () => {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [modoRecuperar, setModoRecuperar] = useState(false);
+  const [enviandoRecupero, setEnviandoRecupero] = useState(false);
+  const [mensajeRecupero, setMensajeRecupero] = useState<string | null>(null);
   const token = useAuthStore((state) => state.token);
   const usuario = useAuthStore((state) => state.usuario);
   const puedeVerPadron = useAuthStore((state) => state.puedeVerPadron);
@@ -65,6 +68,26 @@ export const Login: React.FC = () => {
     }
   };
 
+  const handleRecuperarClave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setMensajeRecupero(null);
+    setEnviandoRecupero(true);
+    try {
+      const res = await api.post('/auth/recuperar-clave', {
+        dni: dni.trim(),
+      });
+      setMensajeRecupero(
+        res.data?.mensaje ||
+          'Si el DNI corresponde a una cuenta activa con correo electrónico registrado, recibirás una nueva contraseña temporal en tu casilla.',
+      );
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'No se pudo procesar la solicitud. Intentá en unos segundos.');
+    } finally {
+      setEnviandoRecupero(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-paper flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative transition-colors overflow-hidden">
       <div
@@ -107,6 +130,81 @@ export const Login: React.FC = () => {
           </div>
 
           <div className="mt-8 text-left bg-surface py-7 px-5 shadow-md border border-rule rounded-3xl sm:px-8 transition-colors">
+            {modoRecuperar ? (
+              <form className="space-y-5" onSubmit={handleRecuperarClave}>
+                <div className="space-y-1">
+                  <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-brand shrink-0" />
+                    <span>Recuperar contraseña</span>
+                  </h2>
+                  <p className="text-xs text-ink-muted">
+                    Ingresá tu DNI. Si tenés un correo electrónico registrado, te enviaremos una nueva contraseña temporal.
+                  </p>
+                </div>
+
+                {error && (
+                  <div
+                    role="alert"
+                    className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2"
+                  >
+                    <AlertCircle className="w-5 h-5 shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                {mensajeRecupero && (
+                  <div
+                    role="status"
+                    className="p-3.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 rounded-xl text-xs flex items-start gap-2"
+                  >
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{mensajeRecupero}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label htmlFor="dni-recuperar" className="block text-sm font-semibold text-ink">
+                    Número de DNI
+                  </label>
+                  <div className="mt-1.5">
+                    <input
+                      id="dni-recuperar"
+                      type="text"
+                      inputMode="numeric"
+                      required
+                      value={dni}
+                      onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+                      placeholder="Sin puntos ni espacios"
+                      className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink placeholder:text-ink-muted text-base focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25 outline-none transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <Button
+                    type="submit"
+                    disabled={enviandoRecupero || !dni.trim()}
+                    loading={enviandoRecupero}
+                    variant="primary"
+                    size="lg"
+                    className="w-full"
+                  >
+                    {enviandoRecupero ? 'Enviando…' : 'Enviar nueva contraseña por correo'}
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModoRecuperar(false);
+                      setError(null);
+                      setMensajeRecupero(null);
+                    }}
+                    className="w-full min-h-[40px] text-xs font-bold text-ink-muted hover:text-ink cursor-pointer transition-colors"
+                  >
+                    Volver al inicio de sesión
+                  </button>
+                </div>
+              </form>
+            ) : (
             <form className="space-y-6" onSubmit={handleSubmit}>
               {error && (
                 <div
@@ -138,9 +236,22 @@ export const Login: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="clave" className="block text-sm font-semibold text-ink">
-                Contraseña
-              </label>
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="clave" className="block text-sm font-semibold text-ink">
+                  Contraseña
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModoRecuperar(true);
+                    setError(null);
+                    setMensajeRecupero(null);
+                  }}
+                  className="text-xs font-bold text-brand hover:underline cursor-pointer"
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
               <div className="mt-1.5 relative">
                 <input
                   id="clave"
@@ -162,7 +273,7 @@ export const Login: React.FC = () => {
                 </button>
               </div>
               <p className="text-xs text-ink-muted mt-1.5">
-                Si ingresas por primera vez o te restablecieron el acceso, usá la clave temporal que recibiste al darte de alta.
+                Si ingresas por primera vez o te restablecieron el acceso, usá la clave temporal que recibiste al darte de alta o por correo.
               </p>
             </div>
 
@@ -179,6 +290,7 @@ export const Login: React.FC = () => {
               </Button>
             </div>
           </form>
+            )}
           </div>
         </div>
       </div>

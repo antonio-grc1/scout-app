@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { X, Users, Percent, Check, AlertCircle, UserMinus, Trash2 } from 'lucide-react';
 import { obtenerRolPrincipal, traducirErrorAmigable } from '../lib/formatters';
 
@@ -22,6 +23,8 @@ export const ModalEditarFamilia: React.FC<Props> = ({
   onCerrar,
   onGuardado,
 }) => {
+  const { tienePermiso } = useAuthStore();
+  const puedeDisolverGrupo = tienePermiso('tesoreria.gestionar');
   const [nombreFamilia, setNombreFamilia] = useState('');
   const [porcentajeDescuento, setPorcentajeDescuento] = useState<number>(0);
   const [miembrosLocal, setMiembrosLocal] = useState<any[]>([]);
@@ -268,15 +271,19 @@ export const ModalEditarFamilia: React.FC<Props> = ({
 
           {/* Botones de acción */}
           <div className="flex flex-wrap justify-between items-center gap-2 pt-4 border-t border-rule">
-            <button
-              type="button"
-              disabled={eliminandoGrupo}
-              onClick={handleDisolverGrupo}
-              className="px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{eliminandoGrupo ? 'Disolviendo...' : 'Disolver grupo'}</span>
-            </button>
+            {puedeDisolverGrupo ? (
+              <button
+                type="button"
+                disabled={eliminandoGrupo}
+                onClick={handleDisolverGrupo}
+                className="px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{eliminandoGrupo ? 'Disolviendo...' : 'Disolver grupo'}</span>
+              </button>
+            ) : (
+              <span />
+            )}
 
             <div className="flex items-center gap-2">
               <button

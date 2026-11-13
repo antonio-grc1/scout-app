@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
+import { filtrarUnidadesPorAlcance } from '../lib/permisos';
+import { useAuthStore } from '../store/authStore';
 import {
   X,
   Tent,
@@ -25,6 +27,12 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   onGenerado,
 }) => {
   const anioActual = new Date().getFullYear();
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
+  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const unidadesPermitidas = useMemo(
+    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
+    [unidades, esGlobal, asignaciones],
+  );
 
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState<'CAMPAMENTO' | 'EVENTO' | 'INSCRIPCION' | 'MATERIALES' | 'OTRO'>('CAMPAMENTO');
@@ -89,7 +97,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
         setCicloAnio(anioActual);
         setFechaVencimiento('');
         setDestinatarioTipo('PROTAGONISTAS');
-        setUnidadId(null);
+        setUnidadId(esGlobal ? null : (unidadesPermitidas[0]?.id ?? null));
         setRubroId(null);
         setPermiteDescuentoHermanos(true);
         setUsarPorcentajePersonalizado(false);

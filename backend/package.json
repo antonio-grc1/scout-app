@@ -29,9 +29,6 @@
     "prisma:studio": "prisma studio",
     "db:local": "tsx scripts/start-local-db.ts"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@nestjs/cli": "^12.0.0",
     "@nestjs/common": "^12.0.1",

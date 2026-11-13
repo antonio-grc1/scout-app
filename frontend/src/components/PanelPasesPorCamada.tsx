@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { calcularCamada, traducirErrorAmigable } from '../lib/formatters';
-import { ArrowRightLeft, Loader2, Sparkles, Users } from 'lucide-react';
+import { ArrowRightLeft, Clock, Loader2, ShieldAlert, Sparkles, Users } from 'lucide-react';
 import { ModalConfirmacion } from './ModalConfirmacion';
+import { PanelSolicitudesPase } from './PanelSolicitudesPase';
 
 interface Props {
   candidatos: any[];
@@ -19,11 +21,28 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   onToast,
   onAbrirMiembro,
 }) => {
+  const { tienePermiso, tieneGlobal } = useAuthStore();
+  const esGlobal = tieneGlobal();
+  const puedeEjecutarPases = tienePermiso('pases.ejecutar');
+  const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
   const [ejecutandoPaseId, setEjecutandoPaseId] = useState<number | null>(null);
   const [camadaAConfirmar, setCamadaAConfirmar] = useState<(typeof gruposCamada)[number] | null>(null);
+
+  const cargarSolicitudes = async () => {
+    try {
+      const res = await api.get('/pases/solicitudes');
+      setSolicitudes(res.data || []);
+    } catch {
+      setSolicitudes([]);
+    }
+  };
+
+  useEffect(() => {
+    void cargarSolicitudes();
+  }, [candidatos]);
 
   const unidadSinRamaFallback = useMemo(
     () =>
@@ -104,6 +123,11 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   }, [candidatos, unidadSinRamaFallback]);
 
   const solicitarPaseCamada = (grupo: (typeof gruposCamada)[number]) => {
+    const elegibles = grupo.miembros.filter((m) => !m.solicitudPendiente);
+    if (elegibles.length === 0) {
+      onToast('Todos los integrantes de esta camada ya tienen una solicitud pendiente.', 'error');
+      return;
+    }
     const destinoLoteId =
       destinoPorCamada[grupo.key] ?? grupo.unidadesDestino?.[0]?.id;
 
@@ -117,20 +141,21 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   const ejecutarPaseCamadaConfirmado = async () => {
     const grupo = camadaAConfirmar;
     if (!grupo) return;
+    const elegibles = grupo.miembros.filter((m) => !m.solicitudPendiente);
     const destinoLoteId =
       destinoPorCamada[grupo.key] ?? grupo.unidadesDestino?.[0]?.id;
 
-    if (!destinoLoteId) {
+    if (!destinoLoteId || elegibles.length === 0) {
       setCamadaAConfirmar(null);
-      onToast('No hay sección de destino disponible para este pase.', 'error');
+      onToast('No hay sección de destino disponible o integrantes elegibles para este pase.', 'error');
       return;
     }
 
     setCamadaAConfirmar(null);
     setEjecutandoCamadaKey(grupo.key);
     try {
-      await api.post('/pases/lote', {
-        pases: grupo.miembros.map((c) => ({
+      const res = await api.post('/pases/lote', {
+        pases: elegibles.map((c) => ({
           asignacionOrigenId: c.asignacionId,
           unidadDestinoId: Number(
             destinoIndividual[c.asignacionId] ?? destinoLoteId,
@@ -140,10 +165,22 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
       const destNombre =
         grupo.unidadesDestino.find((u) => u.id === Number(destinoLoteId))?.nombre ||
         grupo.ramaSugeridaNombre;
-      onToast(
-        `Camada ${grupo.camada} (${grupo.miembros.length} miembro${grupo.miembros.length === 1 ? '' : 's'}) pasó a ${destNombre}.`,
-      );
-      await onRecargar();
+      const pendientes = res.data?.pendientesAprobacion ?? 0;
+      const directos = res.data?.ejecutadosDirectos ?? elegibles.length;
+      if (pendientes > 0 && directos === 0) {
+        onToast(
+          `Se enviaron ${pendientes} solicitud(es) de pase hacia ${destNombre} para confirmación de la sección receptora.`,
+        );
+      } else if (pendientes > 0) {
+        onToast(
+          `Camada ${grupo.camada}: ${directos} pase(s) realizados y ${pendientes} solicitud(es) enviadas a ${destNombre}.`,
+        );
+      } else {
+        onToast(
+          `Camada ${grupo.camada} (${elegibles.length} miembro${elegibles.length === 1 ? '' : 's'}) pasó a ${destNombre}.`,
+        );
+      }
+      await Promise.all([onRecargar(), cargarSolicitudes()]);
     } catch (err) {
       onToast(traducirErrorAmigable(err, 'No se pudo ejecutar el pase de la camada.'), 'error');
     } finally {
@@ -164,15 +201,19 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
 
     setEjecutandoPaseId(c.asignacionId);
     try {
-      await api.post('/pases', {
+      const res = await api.post('/pases', {
         asignacionOrigenId: c.asignacionId,
         unidadDestinoId: Number(destinoId),
       });
       const destNombre =
         grupo.unidadesDestino.find((u) => u.id === Number(destinoId))?.nombre ||
         grupo.ramaSugeridaNombre;
-      onToast(`${c.usuario.nombre} ${c.usuario.apellido} pasó a ${destNombre}.`);
-      await onRecargar();
+      onToast(
+        res.data?.pendienteAprobacion
+          ? `Solicitud de pase de ${c.usuario.nombre} ${c.usuario.apellido} enviada a ${destNombre}.`
+          : `${c.usuario.nombre} ${c.usuario.apellido} pasó a ${destNombre}.`,
+      );
+      await Promise.all([onRecargar(), cargarSolicitudes()]);
     } catch (err) {
       onToast(traducirErrorAmigable(err, 'No se pudo realizar el pase.'), 'error');
     } finally {
@@ -182,6 +223,16 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
+      <PanelSolicitudesPase
+        solicitudes={solicitudes}
+        puedeEjecutar={puedeEjecutarPases}
+        onResuelto={async () => {
+          await Promise.all([onRecargar(), cargarSolicitudes()]);
+        }}
+        onToast={onToast}
+        onAbrirMiembro={onAbrirMiembro}
+      />
+
       <div className="bg-surface rounded-2xl border border-rule shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
@@ -241,42 +292,49 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                     </p>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
-                    {g.unidadesDestino.length > 1 && (
-                      <select
-                        value={destinoLote}
-                        onChange={(e) =>
-                          setDestinoPorCamada((prev) => ({
-                            ...prev,
-                            [g.key]: Number(e.target.value),
-                          }))
-                        }
-                        className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-xs font-bold text-ink outline-none"
-                      >
-                        {g.unidadesDestino.map((u) => (
-                          <option key={u.id} value={u.id}>
-                            Sección destino: {formatearNombreUnidadDestino(u, g.tipo)}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-
-                    <button
-                      type="button"
-                      disabled={ejecutandoLote}
-                      onClick={() => solicitarPaseCamada(g)}
-                      className="min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
-                    >
-                      {ejecutandoLote ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <ArrowRightLeft className="w-4 h-4" />
+                  {puedeEjecutarPases && (!esGlobal && g.tipo === 'EGRESO' ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold shrink-0">
+                      <ShieldAlert className="w-4 h-4" />
+                      Requiere Jefatura (Global)
+                    </span>
+                  ) : (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                      {g.unidadesDestino.length > 1 && (
+                        <select
+                          value={destinoLote}
+                          onChange={(e) =>
+                            setDestinoPorCamada((prev) => ({
+                              ...prev,
+                              [g.key]: Number(e.target.value),
+                            }))
+                          }
+                          className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-xs font-bold text-ink outline-none"
+                        >
+                          {g.unidadesDestino.map((u) => (
+                            <option key={u.id} value={u.id}>
+                              Sección destino: {formatearNombreUnidadDestino(u, g.tipo)}
+                            </option>
+                          ))}
+                        </select>
                       )}
-                      <span>
-                        Pasar toda la Camada {g.camada} ({g.miembros.length})
-                      </span>
-                    </button>
-                  </div>
+
+                      <button
+                        type="button"
+                        disabled={ejecutandoLote || g.miembros.every((m) => Boolean(m.solicitudPendiente))}
+                        onClick={() => solicitarPaseCamada(g)}
+                        className="min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                      >
+                        {ejecutandoLote ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ArrowRightLeft className="w-4 h-4" />
+                        )}
+                        <span>
+                          Pasar toda la Camada {g.camada} ({g.miembros.filter((m) => !m.solicitudPendiente).length})
+                        </span>
+                      </button>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Integrantes de la Camada */}
@@ -331,40 +389,51 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                          {g.unidadesDestino.length > 1 && (
-                            <select
-                              value={destIndiv}
-                              onChange={(e) =>
-                                setDestinoIndividual((prev) => ({
-                                  ...prev,
-                                  [c.asignacionId]: Number(e.target.value),
-                                }))
-                              }
-                              className="min-h-[36px] px-2.5 py-1 rounded-xl border border-rule bg-paper-2 text-xs font-semibold text-ink-2 outline-none"
-                            >
-                              {g.unidadesDestino.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {formatearNombreUnidadDestino(u, g.tipo)}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-
-                          <button
-                            type="button"
-                            disabled={enProceso || ejecutandoLote}
-                            onClick={() => handlePasarIndividual(c, g)}
-                            className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-paper-3 hover:bg-brand hover:text-brand-contrast text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
-                          >
-                            {enProceso ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <ArrowRightLeft className="w-3.5 h-3.5" />
+                        {puedeEjecutarPases && (c.solicitudPendiente ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold self-end sm:self-center shrink-0">
+                            <Clock className="w-3.5 h-3.5" />
+                            Pendiente ({c.solicitudPendiente.unidadDestinoNombre})
+                          </span>
+                        ) : !esGlobal && g.tipo === 'EGRESO' ? (
+                          <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 self-end sm:self-center shrink-0">
+                            Requiere Jefatura (Global)
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                            {g.unidadesDestino.length > 1 && (
+                              <select
+                                value={destIndiv}
+                                onChange={(e) =>
+                                  setDestinoIndividual((prev) => ({
+                                    ...prev,
+                                    [c.asignacionId]: Number(e.target.value),
+                                  }))
+                                }
+                                className="min-h-[36px] px-2.5 py-1 rounded-xl border border-rule bg-paper-2 text-xs font-semibold text-ink-2 outline-none"
+                              >
+                                {g.unidadesDestino.map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {formatearNombreUnidadDestino(u, g.tipo)}
+                                  </option>
+                                ))}
+                              </select>
                             )}
-                            <span>Pasar individual</span>
-                          </button>
-                        </div>
+
+                            <button
+                              type="button"
+                              disabled={enProceso || ejecutandoLote}
+                              onClick={() => handlePasarIndividual(c, g)}
+                              className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-paper-3 hover:bg-brand hover:text-brand-contrast text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {enProceso ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              )}
+                              <span>Pasar individual</span>
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     );
                   })}

@@ -13,6 +13,7 @@ import {
   alcanceEfectivo,
   assertPuedeOtorgar,
   assertUnidadEnAlcance,
+  esRolEducadorEfectivo,
   filtroUsuariosPorAlcance,
   resolverAlcance,
 } from '../common/scope/alcance.util.js';
@@ -562,6 +563,19 @@ export class MiembrosService {
 
   // ---------------- Alta ----------------
   async crear(alcance: AlcanceAcceso, dto: CrearMiembroDto) {
+    if (dto.soloEnviarPorCorreo) {
+      if (!dto.emailContacto?.trim()) {
+        throw new BadRequestException(
+          'Para enviar las credenciales solo por correo debes ingresar un email de contacto.',
+        );
+      }
+      if (!this.mailer || !(await this.mailer.estaDisponibleParaEnvio())) {
+        throw new BadRequestException(
+          'El envío de correos no está configurado o está deshabilitado. Configuralo en Panel de Gestión → Correo y Claves.',
+        );
+      }
+    }
+
     const unidadIdResuelta = await this.resolverYValidarUnidadYRol(alcance, dto.unidadId, dto.rolId);
     assertUnidadEnAlcance(alcance, unidadIdResuelta);
     // Generamos clave temporal aleatoria; se fuerza el cambio en el primer login.
@@ -620,6 +634,24 @@ export class MiembrosService {
     });
 
     const creado = await this.prisma.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+
+    if (dto.soloEnviarPorCorreo && creado.emailContacto && this.mailer) {
+      const asig = creado.asignaciones?.[0];
+      const emailEnviado = await this.mailer.enviarBienvenidaAlta({
+        destinatario: creado.emailContacto,
+        nombre: creado.nombre,
+        apellido: creado.apellido,
+        dni: creado.dni,
+        claveTemporal,
+        unidadNombre: asig?.unidad?.nombre,
+        rolNombre: asig?.rol?.nombre,
+      });
+      return {
+        ...creado,
+        emailEnviado,
+        emailDestino: creado.emailContacto,
+      };
+    }
 
     if (creado.emailContacto && this.mailer) {
       const asig = creado.asignaciones?.[0];
@@ -776,9 +808,16 @@ export class MiembrosService {
   // ---------------- Eliminación definitiva ----------------
   /**
    * Elimina físicamente un miembro dado de baja (activo=false) cuando no posee
-   * historial contable, de auditoría ni legajos impresos/validados. Solo alcance GLOBAL.
+   * historial contable, de auditoría ni legajos impresos/validados (salvo que
+   * un usuario con alcance GLOBAL indique `forzarFichas=true`, en cuyo caso se
+   * eliminan también sus fichas médicas propias si no hay otro historial bloqueante).
    */
-  async eliminarDefinitivo(actor: AuthUser, alcance: AlcanceAcceso, id: number) {
+  async eliminarDefinitivo(
+    actor: AuthUser,
+    alcance: AlcanceAcceso,
+    id: number,
+    forzarFichas = false,
+  ) {
     if (alcance.tipo !== 'GLOBAL') {
       throw new ForbiddenException('Solo un usuario con alcance global puede eliminar miembros definitivamente');
     }
@@ -815,7 +854,8 @@ export class MiembrosService {
         eventos,
         pedidos,
         tickets,
-        entregasBloqueantes,
+        entregasPropiasBloqueantes,
+        entregasValidadasAjenas,
       ] = await Promise.all([
         tx.cargoMiembro.count({
           where: {
@@ -834,12 +874,10 @@ export class MiembrosService {
         tx.pedidoEvento.count({ where: { OR: [{ registradoPorUsuarioId: id }, { vendedorUsuarioId: id }] } }),
         tx.ticketEvento.count({ where: { validadorUsuarioId: id } }),
         tx.entregaFormulario.count({
-          where: {
-            OR: [
-              { usuarioId: id, estado: { not: EstadoEntrega.BORRADOR } },
-              { validadoPorUsuarioId: id },
-            ],
-          },
+          where: { usuarioId: id, estado: { not: EstadoEntrega.BORRADOR } },
+        }),
+        tx.entregaFormulario.count({
+          where: { validadoPorUsuarioId: id, usuarioId: { not: id } },
         }),
       ]);
 
@@ -852,13 +890,39 @@ export class MiembrosService {
       if (eventos > 0 || pedidos > 0 || tickets > 0) {
         detalles.push(`${eventos + pedidos + tickets} registro(s) de eventos`);
       }
-      if (entregasBloqueantes > 0) detalles.push(`${entregasBloqueantes} ficha(s) médica(s) emitida(s) o validada(s)`);
+      if (!forzarFichas && entregasPropiasBloqueantes > 0) {
+        detalles.push(`${entregasPropiasBloqueantes} ficha(s) médica(s) emitida(s) o validada(s)`);
+      }
+      if (entregasValidadasAjenas > 0) {
+        detalles.push(`${entregasValidadasAjenas} ficha(s) médica(s) de otros miembros validada(s)`);
+      }
       if (saldoAFavor > 0) detalles.push('saldo a favor pendiente');
 
       if (detalles.length > 0) {
-        throw new ConflictException(
-          `No se puede eliminar definitivamente a ${objetivo.nombre} ${objetivo.apellido}: posee historial asociado (${detalles.join(', ')}). Debe permanecer dado de baja para preservar el legajo y la integridad contable.`,
-        );
+        const soloFichasPropias =
+          !forzarFichas &&
+          entregasPropiasBloqueantes > 0 &&
+          cargosBloqueantes === 0 &&
+          pagos === 0 &&
+          movimientos === 0 &&
+          gastos === 0 &&
+          eventos === 0 &&
+          pedidos === 0 &&
+          tickets === 0 &&
+          entregasValidadasAjenas === 0 &&
+          saldoAFavor <= 0;
+
+        throw new ConflictException({
+          statusCode: 409,
+          message: `No se puede eliminar definitivamente a ${objetivo.nombre} ${objetivo.apellido}: posee historial asociado (${detalles.join(', ')}). Debe permanecer dado de baja para preservar el legajo y la integridad contable.`,
+          ...(soloFichasPropias ? { puedeForzarFichas: true } : {}),
+        });
+      }
+
+      if (forzarFichas && tx.entregaFormulario?.deleteMany) {
+        await tx.entregaFormulario.deleteMany({
+          where: { usuarioId: id },
+        });
       }
 
       // Los cargos anulados sin imputaciones ni pagos (p. ej. generados al crear un miembro de prueba y anulados al darlo de baja) se limpian antes de borrar al usuario.
@@ -922,11 +986,18 @@ export class MiembrosService {
     if (!usuario || !usuario.activo) throw new NotFoundException('Miembro no encontrado en su alcance');
 
     if (alcance.tipo !== 'GLOBAL') {
-      const tieneAsignacionGlobal = usuario.asignaciones.some(
-        (a) => (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL,
+      const tieneAsignacionGlobalOEducador = usuario.asignaciones.some(
+        (a) =>
+          (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL ||
+          esRolEducadorEfectivo(a.rol, a.alcanceOverride),
       );
-      if (tieneAsignacionGlobal) {
-        throw new ForbiddenException('No puede modificar asignaciones de un usuario con alcance global');
+      if (tieneAsignacionGlobalOEducador) {
+        throw new ForbiddenException(
+          'Solo un usuario con alcance global puede gestionar asignaciones de educadores o usuarios con alcance global',
+        );
+      }
+      if (alcance.tipo === 'UNIDAD' && alcance.usuarioIdPropio && usuarioId === alcance.usuarioIdPropio) {
+        throw new ForbiddenException('No puede agregar asignaciones a su propio usuario');
       }
     }
 
@@ -979,6 +1050,9 @@ export class MiembrosService {
       if (!asig) throw new NotFoundException('Asignación activa no encontrada');
       assertUnidadEnAlcance(alcance, asig.unidadId);
       assertPuedeOtorgar(alcance, asig.rol, asig.alcanceOverride);
+      if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(asig.rol, asig.alcanceOverride)) {
+        throw new ForbiddenException('Solo un usuario con alcance global puede cerrar asignaciones de educadores');
+      }
 
       if (this.esAsignacionAdminGlobal(asig)) {
         await this.asegurarNoDesactivarUltimoAdmin(usuarioId, asignacionId, tx);
@@ -1082,6 +1156,9 @@ export class MiembrosService {
     const rol = await this.prisma.rol.findUnique({ where: { id: rolId } });
     if (!rol) throw new BadRequestException('Rol inexistente');
     assertPuedeOtorgar(alcance, rol, alcanceOverride);
+    if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(rol, alcanceOverride)) {
+      throw new ForbiddenException('Solo un usuario con alcance global puede otorgar roles de educador');
+    }
 
     let unidad = unidadId
       ? await this.prisma.unidadOrganizativa.findUnique({ where: { id: unidadId } })

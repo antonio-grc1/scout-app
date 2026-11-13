@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   X,
   Upload,
@@ -19,9 +19,17 @@ import {
   formatearFecha,
   rolRequiereRama,
   esRolDeProtagonista,
+  esRolJefe,
   esRolRama,
-  esRolAlcanceGlobal,
+  esRolSinRama,
 } from '../lib/formatters';
+import {
+  esUnidadJefatura,
+  esUnidadRama,
+  esUnidadSinRama,
+  filtrarRolesAsignablesPorAlcance,
+  filtrarUnidadesPorAlcance,
+} from '../lib/permisos';
 import { exportarAExcel, exportarACSV } from '../utils/exportadorPlanillas';
 
 export interface FilaImportada {
@@ -143,7 +151,8 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   rolesDisponibles,
   miembrosExistentes,
 }) => {
-  const { tieneGlobal } = useAuthStore();
+  const { tieneGlobal, asignaciones } = useAuthStore();
+  const esGlobal = tieneGlobal();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null);
@@ -194,36 +203,75 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Filtrado de roles y unidades disponibles
-  const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null;
+  const unidadesPermitidas = useMemo(
+    () => filtrarUnidadesPorAlcance(unidadesDisponibles, { esGlobal, asignaciones }),
+    [unidadesDisponibles, esGlobal, asignaciones],
+  );
+
+  const rolesPermitidos = useMemo(
+    () => filtrarRolesAsignablesPorAlcance(rolesDisponibles, unidadesPermitidas, esGlobal),
+    [rolesDisponibles, unidadesPermitidas, esGlobal],
+  );
 
   const rolesFiltrados = useMemo(() => {
-    let list = rolesDisponibles;
-    if (!tieneGlobal()) {
-      list = list.filter((r) => !esRolAlcanceGlobal(r));
+    const u = unidadesPermitidas.find((x) => x.id === Number(unidadId));
+    if (u) {
+      if (esUnidadRama(u)) {
+        const deRama = rolesPermitidos.filter(esRolRama);
+        return deRama.length > 0 ? deRama : rolesPermitidos;
+      }
+      if (esUnidadSinRama(u)) {
+        const sinRama = rolesPermitidos.filter((r) => !rolRequiereRama(r));
+        return sinRama.length > 0 ? sinRama : rolesPermitidos;
+      }
+      if (esUnidadJefatura(u)) {
+        const jefe = rolesPermitidos.filter(esRolJefe);
+        return jefe.length > 0 ? jefe : rolesPermitidos.filter((r) => !rolRequiereRama(r));
+      }
     }
-    const u = unidadesDisponibles.find((x) => x.id === Number(unidadId));
-    if (u && esUnidadRama(u)) {
-      const deRama = list.filter(esRolRama);
-      return deRama.length > 0 ? deRama : list;
-    }
-    return list;
-  }, [rolesDisponibles, unidadId, unidadesDisponibles, tieneGlobal]);
+    return rolesPermitidos;
+  }, [rolesPermitidos, unidadId, unidadesPermitidas]);
 
   const handleCambioUnidad = (nuevaUnidadId: number | '') => {
     setUnidadId(nuevaUnidadId);
     if (!nuevaUnidadId) return;
-    const u = unidadesDisponibles.find((x) => x.id === nuevaUnidadId);
-    if (u && esUnidadRama(u)) {
-      const rActual = rolesDisponibles.find((r) => r.id === Number(rolId));
+    const u = unidadesPermitidas.find((x) => x.id === nuevaUnidadId);
+    if (!u) return;
+
+    if (esUnidadRama(u)) {
+      const rActual = rolesPermitidos.find((r) => r.id === Number(rolId));
       if (!rActual || !rolRequiereRama(rActual)) {
         const prota =
-          rolesDisponibles.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-          rolesDisponibles.find(esRolRama);
+          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+          rolesPermitidos.find(esRolRama);
         if (prota) setRolId(prota.id);
       }
+    } else if (esUnidadSinRama(u)) {
+      const rSinRama =
+        rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
+      if (rSinRama) setRolId(rSinRama.id);
+    } else if (esUnidadJefatura(u)) {
+      const rJefe =
+        rolesPermitidos.find(esRolJefe) || rolesPermitidos.find((r) => !rolRequiereRama(r));
+      if (rJefe) setRolId(rJefe.id);
     }
   };
+
+  useEffect(() => {
+    if (!abierto) return;
+    if (!esGlobal && unidadesPermitidas.length === 1 && !unidadId) {
+      const unica = unidadesPermitidas[0];
+      setUnidadId(unica.id);
+      if (esUnidadRama(unica)) {
+        const prota =
+          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+          rolesPermitidos.find(esRolRama);
+        if (prota) setRolId(prota.id);
+      }
+    } else if (unidadId && !unidadesPermitidas.some((u) => u.id === Number(unidadId))) {
+      setUnidadId('');
+    }
+  }, [abierto, esGlobal, unidadesPermitidas, rolesPermitidos, unidadId]);
 
   // Procesamiento del archivo cargado
   const handleSeleccionarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -789,8 +837,10 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                       onChange={(e) => handleCambioUnidad(Number(e.target.value) || '')}
                       className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-ink text-xs font-semibold focus:border-brand outline-none cursor-pointer"
                     >
-                      <option value="">-- Seleccionar Rama / Sección --</option>
-                      {unidadesDisponibles.map((u) => (
+                      {(esGlobal || unidadesPermitidas.length !== 1) && (
+                        <option value="">-- Seleccionar Rama / Sección --</option>
+                      )}
+                      {unidadesPermitidas.map((u) => (
                         <option key={u.id} value={u.id}>
                           {u.nombre}
                         </option>

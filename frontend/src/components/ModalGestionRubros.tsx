@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../api/client';
 import { Button } from './ui/Button';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { obtenerUnidadesEnAlcanceIds, puedeModificarPorAlcanceUnidad } from '../lib/permisos';
+import { useAuthStore } from '../store/authStore';
 import {
   Tag,
   PlusCircle,
@@ -55,6 +57,13 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
   const [rubroAEliminar, setRubroAEliminar] = useState<RubroContableCompleto | null>(null);
   const [modalConfirmarEliminar, setModalConfirmarEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
+  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const unidadesEnAlcanceIds = useMemo(
+    () => obtenerUnidadesEnAlcanceIds(asignaciones),
+    [asignaciones],
+  );
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto,
@@ -210,20 +219,22 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                 </button>
               </div>
 
-              {/* Botón Crear */}
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setRubroAEditar(null);
-                  setModalCrearAbierto(true);
-                }}
-                leftIcon={<PlusCircle className="w-4 h-4 shrink-0" />}
-                className="w-full sm:w-auto justify-center"
-              >
-                Nuevo Rubro
-              </Button>
+              {/* Botón Crear (crear rubro general requiere alcance GLOBAL) */}
+              {esGlobal && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    setRubroAEditar(null);
+                    setModalCrearAbierto(true);
+                  }}
+                  leftIcon={<PlusCircle className="w-4 h-4 shrink-0" />}
+                  className="w-full sm:w-auto justify-center"
+                >
+                  Nuevo Rubro
+                </Button>
+              )}
             </div>
 
             {/* Buscador */}
@@ -288,39 +299,41 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRubroAEditar({
-                          id: r.id,
-                          nombre: r.nombre,
-                          tipo: r.tipo,
-                          permiteDescuentoDefault: r.permiteDescuentoDefault,
-                          activo: r.activo,
-                        });
-                        setModalCrearAbierto(true);
-                      }}
-                      className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
-                      title="Modificar rubro"
-                      aria-label="Modificar rubro"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                  {puedeModificarPorAlcanceUnidad(r.unidadId, { esGlobal, unidadesEnAlcanceIds }) && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRubroAEditar({
+                            id: r.id,
+                            nombre: r.nombre,
+                            tipo: r.tipo,
+                            permiteDescuentoDefault: r.permiteDescuentoDefault,
+                            activo: r.activo,
+                          });
+                          setModalCrearAbierto(true);
+                        }}
+                        className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                        title="Modificar rubro"
+                        aria-label="Modificar rubro"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRubroAEliminar(r);
-                        setModalConfirmarEliminar(true);
-                      }}
-                      className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
-                      title="Eliminar rubro"
-                      aria-label="Eliminar rubro"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRubroAEliminar(r);
+                          setModalConfirmarEliminar(true);
+                        }}
+                        className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                        title="Eliminar rubro"
+                        aria-label="Eliminar rubro"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))
             )}

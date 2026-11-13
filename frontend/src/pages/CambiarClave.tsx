@@ -53,6 +53,10 @@ export const CambiarClave: React.FC = () => {
     const nueva = claveNueva.trim();
     const repetir = claveRepetir.trim();
 
+    if (!requiereCambioClave && !actual) {
+      setError('Ingresa tu contraseña actual.');
+      return;
+    }
     if (nueva.length < 8) {
       setError('La nueva contraseña debe tener al menos 8 caracteres.');
       return;
@@ -61,7 +65,7 @@ export const CambiarClave: React.FC = () => {
       setError('Las contraseñas nuevas no coinciden.');
       return;
     }
-    if (nueva === actual) {
+    if (!requiereCambioClave && nueva === actual) {
       setError('La nueva contraseña debe ser distinta de la actual.');
       return;
     }
@@ -69,7 +73,7 @@ export const CambiarClave: React.FC = () => {
     setCargando(true);
     try {
       const res = await api.post('/auth/cambiar-clave', {
-        claveActual: actual,
+        ...(requiereCambioClave ? {} : { claveActual: actual }),
         claveNueva: nueva,
       });
 
@@ -140,7 +144,7 @@ export const CambiarClave: React.FC = () => {
 
             <p className="text-xs text-ink-muted mb-6">
               {requiereCambioClave
-                ? 'Por seguridad institucional, debes cambiar tu clave de acceso provisional por una clave personal secreta de al menos 8 caracteres.'
+                ? 'Por seguridad institucional, define tu nueva contraseña personal de al menos 8 caracteres para continuar.'
                 : 'Ingresa tu contraseña actual y define una nueva clave personal de al menos 8 caracteres.'}
             </p>
 
@@ -165,31 +169,33 @@ export const CambiarClave: React.FC = () => {
                 </div>
               )}
 
-              <div>
-                <label htmlFor="clave-actual" className="block text-xs font-semibold text-ink">
-                  Contraseña Actual {requiereCambioClave ? '(o DNI)' : ''}
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="clave-actual"
-                    type={mostrarActual ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    required
-                    value={claveActual}
-                    onChange={(e) => setClaveActual(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setMostrarActual((v) => !v)}
-                    aria-label={mostrarActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition cursor-pointer"
-                  >
-                    {mostrarActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
+              {!requiereCambioClave && (
+                <div>
+                  <label htmlFor="clave-actual" className="block text-xs font-semibold text-ink">
+                    Contraseña Actual
+                  </label>
+                  <div className="mt-1 relative">
+                    <input
+                      id="clave-actual"
+                      type={mostrarActual ? 'text' : 'password'}
+                      autoComplete="current-password"
+                      required
+                      value={claveActual}
+                      onChange={(e) => setClaveActual(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setMostrarActual((v) => !v)}
+                      aria-label={mostrarActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
+                      className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition cursor-pointer"
+                    >
+                      {mostrarActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label htmlFor="clave-nueva" className="block text-xs font-semibold text-ink">

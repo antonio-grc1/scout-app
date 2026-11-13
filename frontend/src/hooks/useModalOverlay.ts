@@ -13,6 +13,7 @@ const modalStack: ModalStackEntry[] = [];
 let nextModalId = 1;
 let scrollLockCount = 0;
 let originalBodyOverflow = '';
+let pendingProgrammaticBacks = 0;
 
 export function shouldIgnorePopstateForTopModal(
   eventStateModalId: unknown,
@@ -45,6 +46,11 @@ function unlockScroll() {
 // Global popstate listener for browser / mobile back button (closes topmost modal)
 if (typeof window !== 'undefined') {
   window.addEventListener('popstate', (event: PopStateEvent) => {
+    if (pendingProgrammaticBacks > 0) {
+      pendingProgrammaticBacks--;
+      return;
+    }
+
     if (modalStack.length > 0) {
       for (let i = modalStack.length - 1; i >= 0; i--) {
         const top = modalStack[i];
@@ -146,7 +152,19 @@ export function useModalOverlay({
     let historyPushed = false;
 
     if (manejarHistorial && typeof window !== 'undefined') {
-      window.history.pushState({ ...window.history.state, __modalId: modalId }, '');
+      const currentModalId = window.history.state?.__modalId;
+      const esEntradaHuerfana =
+        (typeof currentModalId === 'number' || typeof currentModalId === 'string') &&
+        !modalStack.some((item) => item.id === currentModalId);
+
+      // En React StrictMode (dev) o al reemplazar un modal por otro en el mismo commit,
+      // reutilizamos la entrada huérfana para no disparar un history.back() asíncrono
+      // que cerraría el modal recién montado.
+      if (esEntradaHuerfana) {
+        window.history.replaceState({ ...window.history.state, __modalId: modalId }, '');
+      } else {
+        window.history.pushState({ ...window.history.state, __modalId: modalId }, '');
+      }
       historyPushed = true;
     }
 
@@ -176,11 +194,19 @@ export function useModalOverlay({
       }
 
       // Si el modal se cerró programáticamente (no por popstate del botón atrás):
-      // retiramos la entrada del historial para mantenerlo sincronizado
+      // diferimos el retroceso al finalizar el commit para que un remount inmediato
+      // (StrictMode en dev o transición entre modales) pueda reutilizar la entrada.
       if (manejarHistorial && historyPushed && !closedByPopState && typeof window !== 'undefined') {
-        if (window.history.state?.__modalId === modalId && window.history.length > 1) {
-          window.history.back();
-        }
+        queueMicrotask(() => {
+          if (
+            window.history.state?.__modalId === modalId &&
+            !modalStack.some((item) => item.id === modalId) &&
+            window.history.length > 1
+          ) {
+            pendingProgrammaticBacks++;
+            window.history.back();
+          }
+        });
       }
     };
   }, [activo, tieneCallback, bloquearScroll, manejarHistorial, cerrarConEsc]);

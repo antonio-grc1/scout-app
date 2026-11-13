@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { TipoUnidad } from '@prisma/client';
+import { AlcanceRol, TipoUnidad } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { ActualizarMiPerfilSchema } from './miembros.dto.js';
@@ -672,13 +672,80 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
     });
     expect(res.claveTemporal).toBeDefined();
     expect(res.claveTemporal).not.toBe('44555666');
-    expect(res.claveTemporal.length).toBeGreaterThanOrEqual(8);
+    expect(res.claveTemporal?.length).toBeGreaterThanOrEqual(8);
     expect(mailerMock.enviarBienvenidaAlta).toHaveBeenCalledWith(
       expect.objectContaining({
         dni: '44555666',
         claveTemporal: res.claveTemporal,
       }),
     );
+  });
+
+  it('MiembrosService.crear con soloEnviarPorCorreo=true omite claveTemporal y exige email y SMTP activo', async () => {
+    const mailerMock = {
+      estaDisponibleParaEnvio: vi.fn().mockResolvedValue(true),
+      enviarBienvenidaAlta: vi.fn().mockResolvedValue(true),
+    };
+    const txUsuarioCreate = vi.fn().mockResolvedValue({ id: 92 });
+    const mockPrisma: any = {
+      rol: { findUnique: vi.fn().mockResolvedValue({ id: 2, requiereRama: true }) },
+      unidadOrganizativa: { findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }) },
+      $transaction: vi.fn((cb: any) =>
+        cb({
+          usuario: { create: txUsuarioCreate },
+        }),
+      ),
+      usuario: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: 92,
+          dni: '44555777',
+          nombre: 'Mateo',
+          apellido: 'Scout',
+          emailContacto: 'mateo@scout.test',
+          asignaciones: [{ unidad: { nombre: 'Manada' }, rol: { nombre: 'Protagonista' } }],
+        }),
+      },
+    };
+    const service = new MiembrosService(mockPrisma, undefined, mailerMock as any);
+
+    const res = await service.crear(
+      { tipo: 'GLOBAL' },
+      {
+        dni: '44555777',
+        nombre: 'Mateo',
+        apellido: 'Scout',
+        fechaNacimiento: '2014-05-10',
+        emailContacto: 'mateo@scout.test',
+        unidadId: 1,
+        rolId: 2,
+        soloEnviarPorCorreo: true,
+      },
+    );
+
+    expect(res.claveTemporal).toBeUndefined();
+    expect(res.emailEnviado).toBe(true);
+    expect(res.emailDestino).toBe('mateo@scout.test');
+    expect(mailerMock.enviarBienvenidaAlta).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destinatario: 'mateo@scout.test',
+        dni: '44555777',
+      }),
+    );
+
+    await expect(
+      service.crear(
+        { tipo: 'GLOBAL' },
+        {
+          dni: '44555888',
+          nombre: 'SinMail',
+          apellido: 'Scout',
+          fechaNacimiento: '2014-05-10',
+          unidadId: 1,
+          rolId: 2,
+          soloEnviarPorCorreo: true,
+        },
+      ),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('P1-20: listar y buscarHermanosPorCriterio usan SQL unaccent/ILIKE paginado cuando $queryRaw está disponible', async () => {
@@ -776,7 +843,10 @@ describe('MiembrosService - Eliminación definitiva de miembros dados de baja', 
       evento: { count: vi.fn().mockResolvedValue(0) },
       pedidoEvento: { count: vi.fn().mockResolvedValue(0) },
       ticketEvento: { count: vi.fn().mockResolvedValue(0) },
-      entregaFormulario: { count: vi.fn().mockResolvedValue(0) },
+      entregaFormulario: {
+        count: vi.fn().mockResolvedValue(0),
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
       grupoFamiliar: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $transaction: vi.fn(async (cb: any) => cb(mock)),
       ...overrides,
@@ -862,6 +932,146 @@ describe('MiembrosService - Eliminación definitiva de miembros dados de baja', 
     });
     expect(tesoreriaMock.recalcularCargosPendientesDeUsuariosEnTx).toHaveBeenCalledWith(prisma, [51]);
     expect(prisma.grupoFamiliar.deleteMany).toHaveBeenCalledWith({ where: { id: 9 } });
+  });
+
+  it('indica puedeForzarFichas cuando el único historial bloqueante son fichas médicas propias y permite eliminar con forzarFichas=true', async () => {
+    const entregaCount = vi.fn().mockImplementation(async ({ where }: any) => {
+      if (where?.usuarioId === 50 && where?.estado) return 1;
+      return 0;
+    });
+    const entregaDeleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    const prisma = crearPrismaMock({
+      entregaFormulario: { count: entregaCount, deleteMany: entregaDeleteMany },
+    });
+    const service = new MiembrosService(prisma);
+
+    let errorSinForzar: any;
+    try {
+      await service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50);
+    } catch (err) {
+      errorSinForzar = err;
+    }
+    expect(errorSinForzar).toBeInstanceOf(ConflictException);
+    expect(errorSinForzar.getResponse()).toMatchObject({
+      statusCode: 409,
+      puedeForzarFichas: true,
+    });
+    expect(prisma.usuario.delete).not.toHaveBeenCalled();
+
+    const res = await service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50, true);
+    expect(res.eliminado).toBe(true);
+    expect(entregaDeleteMany).toHaveBeenCalledWith({ where: { usuarioId: 50 } });
+    expect(prisma.usuario.delete).toHaveBeenCalledWith({ where: { id: 50 } });
+  });
+
+  it('mantiene el bloqueo con ConflictException aunque forzarFichas=true si posee pagos o validó fichas ajenas', async () => {
+    const prisma = crearPrismaMock({
+      pago: { count: vi.fn().mockResolvedValue(1) },
+      entregaFormulario: {
+        count: vi.fn().mockResolvedValue(1),
+        deleteMany: vi.fn(),
+      },
+    });
+    const service = new MiembrosService(prisma);
+
+    let errorConForzar: any;
+    try {
+      await service.eliminarDefinitivo(actorGlobal, { tipo: 'GLOBAL' }, 50, true);
+    } catch (err) {
+      errorConForzar = err;
+    }
+    expect(errorConForzar).toBeInstanceOf(ConflictException);
+    expect(errorConForzar.getResponse()?.puedeForzarFichas).toBeUndefined();
+    expect(prisma.usuario.delete).not.toHaveBeenCalled();
+  });
+});
+
+describe('MiembrosService - Reglas de Educadores en Asignaciones', () => {
+  it('impide que un usuario UNIDAD otorgue un rol EDUCADOR en agregarAsignacion', async () => {
+    const prisma: any = {
+      rol: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 2,
+          nombre: 'Educador de Rama',
+          tipoMiembro: 'EDUCADOR',
+          requiereRama: true,
+          alcancePorDefecto: AlcanceRol.UNIDAD,
+        }),
+      },
+      unidadOrganizativa: {
+        findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }),
+      },
+    };
+    const service = new MiembrosService(prisma);
+
+    await expect(
+      service.agregarAsignacion({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
+        unidadId: 1,
+        rolId: 2,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('impide que un usuario UNIDAD agregue o cierre asignaciones de un miembro EDUCADOR', async () => {
+    const prisma: any = {
+      rol: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 1,
+          nombre: 'Protagonista',
+          tipoMiembro: 'PROTAGONISTA',
+          requiereRama: true,
+          alcancePorDefecto: AlcanceRol.PROPIO,
+        }),
+      },
+      unidadOrganizativa: {
+        findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }),
+      },
+      usuario: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 50,
+          activo: true,
+          asignaciones: [
+            {
+              id: 20,
+              unidadId: 1,
+              activo: true,
+              alcanceOverride: null,
+              rol: { id: 2, tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD },
+            },
+          ],
+        }),
+      },
+      asignacionMiembro: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: 20,
+          usuarioId: 50,
+          unidadId: 1,
+          activo: true,
+          alcanceOverride: null,
+          rol: { id: 2, tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD, permisos: [] },
+        }),
+      },
+      $transaction: vi.fn(async (cb: any) => cb(prisma)),
+    };
+    const service = new MiembrosService(prisma);
+    const actor: AuthUser = {
+      sub: 999,
+      dni: '12345678',
+      nombre: 'Edu',
+      apellido: 'Test',
+      asignaciones: [],
+    };
+
+    await expect(
+      service.agregarAsignacion({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
+        unidadId: 1,
+        rolId: 1,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+
+    await expect(
+      service.cerrarAsignacion(actor, { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, 20),
+    ).rejects.toThrow(ForbiddenException);
   });
 });
 

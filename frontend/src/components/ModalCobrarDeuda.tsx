@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import {
   X,
   CreditCard,
@@ -140,25 +141,30 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
     }
   }, [abierto, cargoInicialId, cargosPendientes, saldoAFavorDisponible]);
 
-  // Cargar cuentas financieras activas
+  // Cargar cuentas financieras activas (solo alcance GLOBAL)
+  const esGlobal = useAuthStore((s) => s.tieneGlobal());
   useEffect(() => {
-    if (abierto) {
-      setErrorCuentas(null);
-      api
-        .get('/tesoreria/cuentas')
-        .then((res) => {
-          const activas: CuentaSimple[] = (res.data || []).filter((c: CuentaSimple) => c.activa);
-          setCuentas(activas);
-          setErrorCuentas(null);
-        })
-        .catch((err) => {
-          setCuentas([]);
-          setErrorCuentas(
-            traducirErrorAmigable(err, 'No se pudieron cargar las cuentas financieras activas.'),
-          );
-        });
+    if (!abierto) return;
+    setErrorCuentas(null);
+    if (!esGlobal) {
+      setCuentas([]);
+      setCuentaId('');
+      return;
     }
-  }, [abierto]);
+    api
+      .get('/tesoreria/cuentas')
+      .then((res) => {
+        const activas: CuentaSimple[] = (res.data || []).filter((c: CuentaSimple) => c.activa);
+        setCuentas(activas);
+        setErrorCuentas(null);
+      })
+      .catch((err) => {
+        setCuentas([]);
+        setErrorCuentas(
+          traducirErrorAmigable(err, 'No se pudieron cargar las cuentas financieras activas.'),
+        );
+      });
+  }, [abierto, esGlobal]);
 
   // Seleccionar automáticamente la cuenta financiera según el método de pago
   useEffect(() => {
@@ -292,15 +298,16 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       return;
     }
 
-    if (montoEfectivoFinal > 0 && errorCuentas) {
+    if (esGlobal && montoEfectivoFinal > 0 && errorCuentas) {
       setError(errorCuentas);
       return;
     }
 
     const tieneCuentasParaMetodo =
-      (metodoPago === 'TRANSFERENCIA' && cuentas.some((c) => c.tipo === 'BANCO')) ||
-      (metodoPago === 'EFECTIVO' && cuentas.some((c) => c.tipo === 'CAJA_EFECTIVO'));
-    if (montoEfectivoFinal > 0 && tieneCuentasParaMetodo && !cuentaId) {
+      esGlobal &&
+      ((metodoPago === 'TRANSFERENCIA' && cuentas.some((c) => c.tipo === 'BANCO')) ||
+        (metodoPago === 'EFECTIVO' && cuentas.some((c) => c.tipo === 'CAJA_EFECTIVO')));
+    if (esGlobal && montoEfectivoFinal > 0 && tieneCuentasParaMetodo && !cuentaId) {
       setError('Seleccioná la cuenta financiera donde ingresa el cobro.');
       return;
     }
@@ -312,7 +319,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
         usuarioId: miembro.id,
         montoTotal: montoEfectivoFinal,
         metodoPago,
-        cuentaId: cuentaId ? Number(cuentaId) : undefined,
+        cuentaId: esGlobal && cuentaId ? Number(cuentaId) : undefined,
         usarSaldoAFavor: saldoAFavorAUsar > 0,
         montoSaldoAFavor: saldoAFavorAUsar,
         referenciaComprobante: referenciaComprobante.trim() || undefined,
@@ -586,8 +593,8 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               </div>
             </div>
 
-            {/* Selector o indicador de Cuenta Financiera según método de pago */}
-            {montoEfectivoFinal > 0 && metodoPago === 'TRANSFERENCIA' && (
+            {/* Selector o indicador de Cuenta Financiera según método de pago (solo alcance GLOBAL) */}
+            {esGlobal && montoEfectivoFinal > 0 && metodoPago === 'TRANSFERENCIA' && (
               <div className="p-3 rounded-xl bg-paper-2 border border-rule space-y-1.5 animate-in fade-in">
                 <label className="block text-xs font-bold text-ink-2 flex items-center gap-1.5">
                   <Landmark className="w-3.5 h-3.5 text-brand" />
@@ -615,7 +622,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               </div>
             )}
 
-            {montoEfectivoFinal > 0 && metodoPago === 'EFECTIVO' && (
+            {esGlobal && montoEfectivoFinal > 0 && metodoPago === 'EFECTIVO' && (
               <div className="p-3 rounded-xl bg-paper-2 border border-rule space-y-1.5 animate-in fade-in">
                 <label className="block text-xs font-bold text-ink-2 flex items-center gap-1.5">
                   <Wallet className="w-3.5 h-3.5 text-brand" />

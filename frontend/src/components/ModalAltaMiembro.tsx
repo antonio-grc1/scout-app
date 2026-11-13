@@ -13,6 +13,13 @@ import {
   type OpcionGrupoHermanos,
 } from '../lib/formatters';
 import {
+  esUnidadJefatura,
+  esUnidadRama,
+  esUnidadSinRama,
+  filtrarRolesAsignablesPorAlcance,
+  filtrarUnidadesPorAlcance,
+} from '../lib/permisos';
+import {
   X,
   UserPlus,
   Search,
@@ -23,6 +30,7 @@ import {
   MapPin,
   Copy,
   Check,
+  Mail,
 } from 'lucide-react';
 
 interface Props {
@@ -40,7 +48,8 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   unidadesDisponibles,
   rolesDisponibles,
 }) => {
-  const { tieneGlobal } = useAuthStore();
+  const { tieneGlobal, asignaciones } = useAuthStore();
+  const esGlobal = tieneGlobal();
   const [dni, setDni] = useState('');
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -67,16 +76,20 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [soloEnviarPorCorreo, setSoloEnviarPorCorreo] = useState(false);
   const [altaResultado, setAltaResultado] = useState<{
     nombreCompleto: string;
     dni: string;
-    claveTemporal: string;
+    claveTemporal?: string;
+    emailDestino?: string;
+    emailEnviado?: boolean;
   } | null>(null);
   const [copiadaClave, setCopiadaClave] = useState(false);
 
   const cerrarModal = () => {
     setAltaResultado(null);
     setCopiadaClave(false);
+    setSoloEnviarPorCorreo(false);
     setError(null);
     onCerrar();
   };
@@ -87,25 +100,28 @@ export const ModalAltaMiembro: React.FC<Props> = ({
     bloqueado: cargando,
   });
 
-  const esUnidadRama = (u: any) => u?.tipo === 'SECCION_RAMA' || u?.ramaId != null;
-  const esUnidadJefatura = (u: any) => u?.tipo === 'JEFATURA';
-  const esUnidadSinRama = (u: any) => u?.tipo === 'SIN_RAMA_APOYO';
+  const unidadesPermitidas = useMemo(
+    () => filtrarUnidadesPorAlcance(unidadesDisponibles, { esGlobal, asignaciones }),
+    [unidadesDisponibles, esGlobal, asignaciones],
+  );
+
+  const rolesPermitidos = useMemo(
+    () => filtrarRolesAsignablesPorAlcance(rolesDisponibles, unidadesPermitidas, esGlobal),
+    [rolesDisponibles, unidadesPermitidas, esGlobal],
+  );
 
   const unidadSeleccionada = useMemo(
-    () => unidadesDisponibles.find((u) => u.id === Number(unidadId)),
-    [unidadesDisponibles, unidadId],
+    () => unidadesPermitidas.find((u) => u.id === Number(unidadId)),
+    [unidadesPermitidas, unidadId],
   );
 
   const rolSeleccionado = useMemo(
-    () => rolesDisponibles.find((r) => r.id === Number(rolId)),
-    [rolesDisponibles, rolId],
+    () => rolesPermitidos.find((r) => r.id === Number(rolId)),
+    [rolesPermitidos, rolId],
   );
 
   const rolesFiltrados = useMemo(() => {
-    let list = rolesDisponibles;
-    if (!tieneGlobal()) {
-      list = list.filter((r) => !esRolAlcanceGlobal(r));
-    }
+    const list = rolesPermitidos;
     if (unidadSeleccionada) {
       if (esUnidadRama(unidadSeleccionada)) {
         const deRama = list.filter(esRolRama);
@@ -121,80 +137,102 @@ export const ModalAltaMiembro: React.FC<Props> = ({
       }
     }
     return list;
-  }, [rolesDisponibles, unidadSeleccionada, tieneGlobal]);
+  }, [rolesPermitidos, unidadSeleccionada]);
 
   const unidadesFiltradas = useMemo(() => {
     if (rolSeleccionado) {
       if (!rolRequiereRama(rolSeleccionado)) {
         if (esRolAlcanceGlobal(rolSeleccionado)) {
-          const uJef = unidadesDisponibles.filter(esUnidadJefatura);
+          const uJef = unidadesPermitidas.filter(esUnidadJefatura);
           if (uJef.length > 0) return uJef;
         }
-        const uSin = unidadesDisponibles.filter((u) => !esUnidadRama(u));
+        const uSin = unidadesPermitidas.filter((u) => !esUnidadRama(u));
         if (uSin.length > 0) return uSin;
       } else {
-        const uRama = unidadesDisponibles.filter(esUnidadRama);
+        const uRama = unidadesPermitidas.filter(esUnidadRama);
         if (uRama.length > 0) return uRama;
       }
     }
-    return unidadesDisponibles;
-  }, [unidadesDisponibles, rolSeleccionado]);
+    return unidadesPermitidas;
+  }, [unidadesPermitidas, rolSeleccionado]);
 
   const handleCambioUnidad = (nuevaUnidadId: number) => {
     setUnidadId(nuevaUnidadId);
-    const u = unidadesDisponibles.find((x) => x.id === nuevaUnidadId);
+    const u = unidadesPermitidas.find((x) => x.id === nuevaUnidadId);
     if (!u) return;
 
     if (esUnidadRama(u)) {
-      const rActual = rolesDisponibles.find((r) => r.id === Number(rolId));
+      const rActual = rolesPermitidos.find((r) => r.id === Number(rolId));
       if (!rActual || !rolRequiereRama(rActual)) {
         const prota =
-          rolesDisponibles.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-          rolesDisponibles.find(esRolRama);
+          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+          rolesPermitidos.find(esRolRama);
         if (prota) setRolId(prota.id);
       }
     } else if (esUnidadSinRama(u)) {
-      const rSinRama = rolesDisponibles.find(esRolSinRama) || rolesDisponibles.find((r) => !rolRequiereRama(r));
+      const rSinRama =
+        rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
       if (rSinRama) setRolId(rSinRama.id);
     } else if (esUnidadJefatura(u)) {
-      const rJefe = rolesDisponibles.find(esRolJefe) || rolesDisponibles.find((r) => !rolRequiereRama(r));
+      const rJefe =
+        rolesPermitidos.find(esRolJefe) || rolesPermitidos.find((r) => !rolRequiereRama(r));
       if (rJefe) setRolId(rJefe.id);
     }
   };
 
   const handleCambioRol = (nuevoRolId: number) => {
     setRolId(nuevoRolId);
-    const r = rolesDisponibles.find((x) => x.id === nuevoRolId);
+    const r = rolesPermitidos.find((x) => x.id === nuevoRolId);
     if (!r) return;
 
     if (!rolRequiereRama(r)) {
       if (esRolAlcanceGlobal(r)) {
-        const uJefatura = unidadesDisponibles.find(esUnidadJefatura) || unidadesDisponibles.find((u) => !esUnidadRama(u));
+        const uJefatura =
+          unidadesPermitidas.find(esUnidadJefatura) ||
+          unidadesPermitidas.find((u) => !esUnidadRama(u));
         setUnidadId(uJefatura ? uJefatura.id : '');
       } else {
-        const uSinRama = unidadesDisponibles.find(esUnidadSinRama) || unidadesDisponibles.find((u) => !esUnidadRama(u));
+        const uSinRama =
+          unidadesPermitidas.find(esUnidadSinRama) ||
+          unidadesPermitidas.find((u) => !esUnidadRama(u));
         setUnidadId(uSinRama ? uSinRama.id : '');
       }
     } else {
-      const uActual = unidadesDisponibles.find((x) => x.id === Number(unidadId));
+      const uActual = unidadesPermitidas.find((x) => x.id === Number(unidadId));
       if (!uActual || !esUnidadRama(uActual)) {
-        const primerRama = unidadesDisponibles.find(esUnidadRama);
+        const primerRama = unidadesPermitidas.find(esUnidadRama);
         if (primerRama) setUnidadId(primerRama.id);
       }
     }
   };
 
   useEffect(() => {
-    if (unidadesDisponibles.length > 0 && !unidadId) {
-      setUnidadId(unidadesDisponibles[0].id);
+    if (unidadesPermitidas.length > 0 && (!unidadId || !unidadesPermitidas.some((u) => u.id === Number(unidadId)))) {
+      const unitIni = unidadesPermitidas[0];
+      setUnidadId(unitIni.id);
+      if (esUnidadRama(unitIni)) {
+        const prota =
+          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+          rolesPermitidos.find(esRolRama);
+        if (prota) {
+          setRolId(prota.id);
+          return;
+        }
+      } else if (esUnidadSinRama(unitIni)) {
+        const rSin = rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
+        if (rSin) {
+          setRolId(rSin.id);
+          return;
+        }
+      }
     }
-    if (rolesDisponibles.length > 0 && !rolId) {
+    if (rolesPermitidos.length > 0 && (!rolId || !rolesPermitidos.some((r) => r.id === Number(rolId)))) {
       const prota =
-        rolesDisponibles.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-        rolesDisponibles[0];
-      setRolId(prota ? prota.id : rolesDisponibles[0].id);
+        rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
+        rolesPermitidos[0];
+      setRolId(prota ? prota.id : rolesPermitidos[0].id);
     }
-  }, [unidadesDisponibles, rolesDisponibles]);
+  }, [unidadesPermitidas, rolesPermitidos, unidadId, rolId]);
 
   // Búsqueda automática en vivo al escribir DNI, Nombre o Apellido
   useEffect(() => {
@@ -275,6 +313,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         rolId: Number(rolId),
         hermanoDni: grupoConfirmado?.representante?.dni || undefined,
         copiarDatosHermano: Boolean(grupoConfirmado),
+        soloEnviarPorCorreo: Boolean(soloEnviarPorCorreo && emailContacto.trim()),
         datosFijosJson: {
           protagonista_domicilio: domicilio.trim() || undefined,
           domicilio: domicilio.trim() || undefined,
@@ -291,11 +330,15 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
       onCreado();
       const claveTemporal: string | undefined = res.data?.claveTemporal;
-      if (claveTemporal) {
+      const emailEnviado = Boolean(res.data?.emailEnviado);
+      const emailDestino: string | undefined = res.data?.emailDestino;
+      if (claveTemporal || emailEnviado) {
         setAltaResultado({
           nombreCompleto: `${nombre.trim()} ${apellido.trim()}`,
           dni: dni.trim(),
           claveTemporal,
+          emailDestino,
+          emailEnviado,
         });
       } else {
         cerrarModal();
@@ -337,38 +380,60 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 <span>Miembro registrado correctamente</span>
               </div>
               <p className="text-ink-2">
-                Entregá esta clave temporal a <strong>{altaResultado.nombreCompleto}</strong> (DNI{' '}
-                <strong>{altaResultado.dni}</strong>). Al ingresar por primera vez el sistema le
-                pedirá elegir una contraseña propia.
+                {altaResultado.claveTemporal ? (
+                  <>
+                    Entregá esta clave temporal a <strong>{altaResultado.nombreCompleto}</strong>{' '}
+                    (DNI <strong>{altaResultado.dni}</strong>). Al ingresar por primera vez el
+                    sistema le pedirá elegir una contraseña propia.
+                    {altaResultado.emailEnviado && altaResultado.emailDestino && (
+                      <>
+                        {' '}
+                        También se envió por correo a{' '}
+                        <strong>{altaResultado.emailDestino}</strong>.
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    Se generó una contraseña temporal para{' '}
+                    <strong>{altaResultado.nombreCompleto}</strong> (DNI{' '}
+                    <strong>{altaResultado.dni}</strong>) y se envió únicamente por correo a{' '}
+                    <strong>{altaResultado.emailDestino}</strong>. Al ingresar por primera vez el
+                    sistema le pedirá elegir una contraseña propia.
+                  </>
+                )}
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3">
-              <div>
-                <span className="block text-[11px] font-semibold text-ink-muted">
-                  Contraseña temporal generada (se muestra una única vez):
-                </span>
-                <code className="text-base font-mono font-extrabold text-ink select-all">
-                  {altaResultado.claveTemporal}
-                </code>
+            {altaResultado.claveTemporal && (
+              <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3">
+                <div>
+                  <span className="block text-[11px] font-semibold text-ink-muted">
+                    Contraseña temporal generada (se muestra una única vez):
+                  </span>
+                  <code className="text-base font-mono font-extrabold text-ink select-all">
+                    {altaResultado.claveTemporal}
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!altaResultado.claveTemporal) return;
+                    try {
+                      await navigator.clipboard.writeText(altaResultado.claveTemporal);
+                      setCopiadaClave(true);
+                      setTimeout(() => setCopiadaClave(false), 2000);
+                    } catch {
+                      // Clipboard no disponible
+                    }
+                  }}
+                  className="min-h-[40px] px-3.5 rounded-xl border border-rule bg-surface hover:bg-paper-3 text-ink font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  {copiadaClave ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiadaClave ? 'Copiada' : 'Copiar clave'}</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(altaResultado.claveTemporal);
-                    setCopiadaClave(true);
-                    setTimeout(() => setCopiadaClave(false), 2000);
-                  } catch {
-                    // Clipboard no disponible
-                  }
-                }}
-                className="min-h-[40px] px-3.5 rounded-xl border border-rule bg-surface hover:bg-paper-3 text-ink font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
-              >
-                {copiadaClave ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                <span>{copiadaClave ? 'Copiada' : 'Copiar clave'}</span>
-              </button>
-            </div>
+            )}
 
             <div className="flex justify-end pt-2">
               <button
@@ -620,10 +685,28 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               <input
                 type="email"
                 value={emailContacto}
-                onChange={(e) => setEmailContacto(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setEmailContacto(next);
+                  if (!next.trim()) setSoloEnviarPorCorreo(false);
+                }}
                 placeholder="correo@ejemplo.com"
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
+              {emailContacto.trim() && (
+                <label className="mt-2 flex items-start gap-2 text-[11px] text-ink-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={soloEnviarPorCorreo}
+                    onChange={(e) => setSoloEnviarPorCorreo(e.target.checked)}
+                    className="mt-0.5 rounded border-rule text-brand focus:ring-brand/30"
+                  />
+                  <span className="inline-flex items-center gap-1 leading-snug">
+                    <Mail className="w-3.5 h-3.5 text-brand shrink-0" />
+                    Enviar credenciales solo por correo (no mostrar contraseña en pantalla)
+                  </span>
+                </label>
+              )}
             </div>
 
             <div>

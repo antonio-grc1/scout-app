@@ -349,7 +349,10 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
   if (err?.response?.data?.errores && Array.isArray(err.response.data.errores) && err.response.data.errores.length > 0) {
     return err.response.data.errores.map((e: any) => e.mensaje).join('. ');
   }
-  const raw = err?.response?.data?.message || err?.message || '';
+  const statusRaw = err?.response?.status ?? err?.response?.data?.statusCode;
+  const status = typeof statusRaw === 'number' ? statusRaw : undefined;
+  const serverRaw = err?.response?.data?.message;
+  const raw = serverRaw || err?.message || '';
   const texto = Array.isArray(raw) ? raw.join('. ') : String(raw);
   const lower = texto.toLowerCase();
 
@@ -360,16 +363,34 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
   if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('timeout')) {
     return 'Sin conexión a internet. Verifica tu señal e intenta nuevamente.';
   }
-  if (lower.includes('unauthorized') || lower.includes('401') || lower.includes('credenciales')) {
+  if (
+    status === 401 ||
+    lower.includes('unauthorized') ||
+    lower.includes('credenciales') ||
+    (!serverRaw && /(?:status(?:\s+code)?|http)\s*401\b/i.test(texto))
+  ) {
     return 'El DNI o la contraseña ingresados no son correctos.';
   }
-  if (lower.includes('forbidden') || lower.includes('403') || lower.includes('permiso')) {
+  if (
+    lower.includes('forbidden') ||
+    lower.includes('permiso') ||
+    (status === 403 && !serverRaw) ||
+    (!serverRaw && /(?:status(?:\s+code)?|http)\s*403\b/i.test(texto))
+  ) {
     return 'No tienes permisos para realizar esta acción.';
   }
-  if (lower.includes('not found') || lower.includes('404')) {
+  if (
+    lower.includes('not found') ||
+    (status === 404 && (!serverRaw || lower.startsWith('cannot '))) ||
+    (!serverRaw && /(?:status(?:\s+code)?|http)\s*404\b/i.test(texto))
+  ) {
     return 'No encontramos la información solicitada.';
   }
-  if (lower.includes('500') || lower.includes('internal server')) {
+  if (
+    (status !== undefined && status >= 500) ||
+    lower.includes('internal server') ||
+    (!serverRaw && /(?:status(?:\s+code)?|http)\s*5\d\d\b/i.test(texto))
+  ) {
     return 'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.';
   }
 

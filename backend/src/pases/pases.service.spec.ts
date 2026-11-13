@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
-import { TipoUnidad, AlcanceRol } from '@prisma/client';
+import { TipoUnidad, AlcanceRol, EstadoSolicitudPase } from '@prisma/client';
 import { PasesService } from './pases.service.js';
 
 describe('PasesService - Validaciones de Rama y Rol', () => {
@@ -311,5 +311,312 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
     expect(asigFindMany).toHaveBeenCalledTimes(1);
     expect(asigFindUnique).not.toHaveBeenCalled();
     expect(unidadFindMany).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pasos', () => {
+  const ramasActivas = [
+    { id: 1, ordenProgresion: 1 }, // Manada
+    { id: 2, ordenProgresion: 2 }, // Unidad Scout
+    { id: 3, ordenProgresion: 3 }, // Caminantes
+    { id: 4, ordenProgresion: 4 }, // Rover
+  ];
+
+  const crearTxBase = () => ({
+    rama: {
+      findFirst: vi.fn().mockResolvedValue({ edadMaxima: 21 }),
+      findMany: vi.fn().mockResolvedValue(ramasActivas),
+    },
+    asignacionMiembro: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findUnique: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      create: vi.fn(),
+    },
+    unidadOrganizativa: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(1),
+    },
+    rol: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    solicitudPase: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+  });
+
+  it('bloquea a un usuario UNIDAD si intenta mover a un EDUCADOR o asignar rol EDUCADOR', async () => {
+    const tx = crearTxBase();
+    const prisma: any = { $transaction: vi.fn(async (cb: any) => cb(tx)) };
+    const service = new PasesService(prisma);
+
+    // Caso 1: origen EDUCADOR
+    tx.asignacionMiembro.findUnique.mockResolvedValueOnce({
+      id: 10,
+      usuarioId: 100,
+      unidadId: 1,
+      rolId: 2,
+      activo: true,
+      alcanceOverride: null,
+      rol: { id: 2, nombre: 'Educador', tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD, permisos: [] },
+      unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, ramaId: 1 },
+      usuario: { id: 100, activo: true, fechaNacimiento: new Date('1990-01-01') },
+    });
+    await expect(
+      service.ejecutar({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, { asignacionOrigenId: 10, unidadDestinoId: 1 }),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Caso 2: protagonista destino rol EDUCADOR (ej. Rover -> Educador)
+    tx.asignacionMiembro.findUnique.mockResolvedValueOnce({
+      id: 11,
+      usuarioId: 101,
+      unidadId: 4,
+      rolId: 1,
+      activo: true,
+      alcanceOverride: null,
+      rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+      unidad: { id: 4, tipo: TipoUnidad.SECCION_RAMA, ramaId: 4 },
+      usuario: { id: 101, activo: true, fechaNacimiento: new Date('2004-01-01') },
+    });
+    tx.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 1,
+      nombre: 'Manada A',
+      tipo: TipoUnidad.SECCION_RAMA,
+      ramaId: 1,
+      activa: true,
+    });
+    tx.rol.findUnique.mockResolvedValueOnce({
+      id: 2,
+      nombre: 'Educador de Rama',
+      tipoMiembro: 'EDUCADOR',
+      requiereRama: true,
+      alcancePorDefecto: AlcanceRol.UNIDAD,
+    });
+
+    await expect(
+      service.ejecutar(
+        { tipo: 'UNIDAD', unidadIds: [4], usuarioIdPropio: 999 },
+        { asignacionOrigenId: 11, unidadDestinoId: 1, rolDestinoId: 2 },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('bloquea a un usuario UNIDAD si salta más de una rama o retrocede a una rama anterior', async () => {
+    const tx = crearTxBase();
+    const prisma: any = { $transaction: vi.fn(async (cb: any) => cb(tx)) };
+    const service = new PasesService(prisma);
+
+    const origenManada = {
+      id: 20,
+      usuarioId: 102,
+      unidadId: 1,
+      rolId: 1,
+      activo: true,
+      alcanceOverride: null,
+      rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', requiereRama: true, alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+      unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, ramaId: 1 },
+      usuario: { id: 102, activo: true, fechaNacimiento: new Date('2015-01-01') },
+    };
+
+    // Salto Manada (1) -> Caminantes (3)
+    tx.asignacionMiembro.findUnique.mockResolvedValueOnce(origenManada);
+    tx.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 5,
+      nombre: 'Caminantes',
+      tipo: TipoUnidad.SECCION_RAMA,
+      ramaId: 3,
+      activa: true,
+    });
+    tx.rol.findUnique.mockResolvedValueOnce(origenManada.rol);
+
+    await expect(
+      service.ejecutar(
+        { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 },
+        { asignacionOrigenId: 20, unidadDestinoId: 5, rolDestinoId: 1 },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Retroceso Caminantes (3) -> Unidad Scout (2)
+    tx.asignacionMiembro.findUnique.mockResolvedValueOnce({
+      ...origenManada,
+      unidadId: 5,
+      unidad: { id: 5, tipo: TipoUnidad.SECCION_RAMA, ramaId: 3 },
+    });
+    tx.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 3,
+      nombre: 'Unidad Scout A',
+      tipo: TipoUnidad.SECCION_RAMA,
+      ramaId: 2,
+      activa: true,
+    });
+    tx.rol.findUnique.mockResolvedValueOnce(origenManada.rol);
+
+    await expect(
+      service.ejecutar(
+        { tipo: 'UNIDAD', unidadIds: [5], usuarioIdPropio: 999 },
+        { asignacionOrigenId: 20, unidadDestinoId: 3, rolDestinoId: 1 },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('crea SolicitudPase PENDIENTE cuando UNIDAD pasa a rama multi-sección fuera de alcance, y se aprueba en destino', async () => {
+    const tx = crearTxBase();
+    tx.unidadOrganizativa.count.mockResolvedValueOnce(2); // Rama destino tiene 2 secciones activas
+    tx.asignacionMiembro.findUnique.mockResolvedValueOnce({
+      id: 30,
+      usuarioId: 103,
+      unidadId: 1,
+      rolId: 1,
+      activo: true,
+      alcanceOverride: null,
+      rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', requiereRama: true, alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+      unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, ramaId: 1 },
+      usuario: { id: 103, activo: true, fechaNacimiento: new Date('2015-01-01') },
+    });
+    tx.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 3,
+      nombre: 'Unidad Scout A',
+      tipo: TipoUnidad.SECCION_RAMA,
+      ramaId: 2,
+      activa: true,
+    });
+    tx.rol.findUnique.mockResolvedValueOnce({
+      id: 1,
+      nombre: 'Protagonista',
+      tipoMiembro: 'PROTAGONISTA',
+      requiereRama: true,
+      alcancePorDefecto: AlcanceRol.PROPIO,
+    });
+    tx.solicitudPase.create.mockResolvedValueOnce({
+      id: 77,
+      estado: EstadoSolicitudPase.PENDIENTE,
+      unidadOrigenId: 1,
+      unidadDestinoId: 3,
+    });
+
+    const prisma: any = { $transaction: vi.fn(async (cb: any) => cb(tx)) };
+    const service = new PasesService(prisma);
+
+    const resultadoSolicitud: any = await service.ejecutar(
+      { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 },
+      { asignacionOrigenId: 30, unidadDestinoId: 3, rolDestinoId: 1 },
+      999,
+    );
+
+    expect(resultadoSolicitud.pendienteAprobacion).toBe(true);
+    expect(resultadoSolicitud.solicitud.id).toBe(77);
+    expect(tx.asignacionMiembro.updateMany).not.toHaveBeenCalled();
+
+    // Emisor no puede aprobar su propia solicitud saliente
+    tx.solicitudPase.findUnique.mockResolvedValueOnce({
+      id: 77,
+      asignacionOrigenId: 30,
+      usuarioId: 103,
+      unidadOrigenId: 1,
+      unidadDestinoId: 3,
+      rolDestinoId: 1,
+      alcanceOverride: null,
+      estado: EstadoSolicitudPase.PENDIENTE,
+      unidadDestino: { id: 3, ramaId: 2, tipo: TipoUnidad.SECCION_RAMA, activa: true },
+      rolDestino: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+      asignacionOrigen: {
+        id: 30,
+        activo: true,
+        alcanceOverride: null,
+        rol: { id: 1, tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+        unidad: { id: 1, ramaId: 1 },
+        usuario: { id: 103, activo: true, fechaNacimiento: new Date('2015-01-01') },
+      },
+    });
+    await expect(
+      service.aprobarSolicitud({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 77, {}, 999),
+    ).rejects.toThrow(ForbiddenException);
+
+    // Unidad destino aprueba (redirigiendo a Unidad Scout B = 4 dentro de misma ramaId=2)
+    tx.solicitudPase.findUnique.mockResolvedValueOnce({
+      id: 77,
+      asignacionOrigenId: 30,
+      usuarioId: 103,
+      unidadOrigenId: 1,
+      unidadDestinoId: 3,
+      rolDestinoId: 1,
+      alcanceOverride: null,
+      estado: EstadoSolicitudPase.PENDIENTE,
+      unidadDestino: { id: 3, ramaId: 2, tipo: TipoUnidad.SECCION_RAMA, activa: true },
+      rolDestino: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+      asignacionOrigen: {
+        id: 30,
+        activo: true,
+        alcanceOverride: null,
+        rol: { id: 1, tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
+        unidad: { id: 1, ramaId: 1 },
+        usuario: { id: 103, activo: true, fechaNacimiento: new Date('2015-01-01') },
+      },
+    });
+    tx.unidadOrganizativa.findUnique.mockResolvedValueOnce({
+      id: 4,
+      ramaId: 2,
+      tipo: TipoUnidad.SECCION_RAMA,
+      activa: true,
+    });
+    tx.asignacionMiembro.create.mockResolvedValueOnce({
+      id: 31,
+      usuarioId: 103,
+      unidadId: 4,
+      rolId: 1,
+      unidad: { id: 4, nombre: 'Unidad Scout B' },
+      rol: { id: 1, nombre: 'Protagonista' },
+    });
+
+    const aprobacion = await service.aprobarSolicitud(
+      { tipo: 'UNIDAD', unidadIds: [3, 4], usuarioIdPropio: 888 },
+      77,
+      { unidadDestinoId: 4 },
+      888,
+    );
+    expect(aprobacion.aprobada).toBe(true);
+    expect(aprobacion.asignacionNueva.unidadId).toBe(4);
+  });
+
+  it('permite rechazar a la unidad receptora (RECHAZADA) o cancelar a la emisora (CANCELADA)', async () => {
+    const tx = crearTxBase();
+    const prisma: any = { $transaction: vi.fn(async (cb: any) => cb(tx)) };
+    const service = new PasesService(prisma);
+
+    tx.solicitudPase.findUnique.mockResolvedValueOnce({
+      id: 88,
+      unidadOrigenId: 1,
+      unidadDestinoId: 3,
+      estado: EstadoSolicitudPase.PENDIENTE,
+    });
+    const resRechazo = await service.rechazarSolicitud(
+      { tipo: 'UNIDAD', unidadIds: [3], usuarioIdPropio: 888 },
+      88,
+      { motivo: 'Seccion llena' },
+      888,
+    );
+    expect(resRechazo.estado).toBe(EstadoSolicitudPase.RECHAZADA);
+
+    tx.solicitudPase.findUnique.mockResolvedValueOnce({
+      id: 89,
+      unidadOrigenId: 1,
+      unidadDestinoId: 3,
+      estado: EstadoSolicitudPase.PENDIENTE,
+    });
+    const resCancel = await service.rechazarSolicitud(
+      { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 },
+      89,
+      {},
+      999,
+    );
+    expect(resCancel.estado).toBe(EstadoSolicitudPase.CANCELADA);
   });
 });
