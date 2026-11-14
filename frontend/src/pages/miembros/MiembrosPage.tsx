@@ -62,7 +62,6 @@ import {
 import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
 import { MiembroCard } from '../../components/MiembroCard';
 import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
-import { ModalEventosUnidad } from '../../components/ModalEventosUnidad';
 import { ModalImportarMiembros } from '../../components/ModalImportarMiembros';
 import { PanelSolicitudesPase } from '../../components/PanelSolicitudesPase';
 import { BotonExportar, Drawer } from '../../components/ui';
@@ -152,7 +151,6 @@ export const MiembrosPage: React.FC = () => {
   const [validandoId, setValidandoId] = useState<number | null>(null);
 
   // Modales / Drawers
-  const [modalEventosAbierto, setModalEventosAbierto] = useState(false);
   const [modalAltaAbierto, setModalAltaAbierto] = useState(false);
   const [modalImportarAbierto, setModalImportarAbierto] = useState(false);
   const [miembroDrawerId, setMiembroDrawerId] = useState<number | null>(null);
@@ -996,7 +994,7 @@ export const MiembrosPage: React.FC = () => {
       texto: 'Eventos',
       titulo: 'Ver eventos económicos y ventas de recaudación de la rama',
       icono: <ShoppingBag className="w-4 h-4 text-brand shrink-0" />,
-      onClick: () => setModalEventosAbierto(true),
+      onClick: () => navigate('/eventos'),
     },
     (caps.canSellEventos || caps.canCobrar) && {
       key: 'qr-vales',
@@ -2318,13 +2316,6 @@ export const MiembrosPage: React.FC = () => {
           miembrosExistentes={miembros}
         />
       </Drawer>
-
-      {/* Eventos Económicos de Unidad (transitorio hasta Fase 3) */}
-      <ModalEventosUnidad
-        abierto={modalEventosAbierto}
-        onCerrar={() => setModalEventosAbierto(false)}
-        onToast={notificarToastChild}
-      />
 
       {/* Drawer Familias Voluntarias */}
       <Drawer

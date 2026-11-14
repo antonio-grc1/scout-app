@@ -21,6 +21,7 @@ import {
   Wallet,
   WifiOff,
   DownloadCloud,
+  UploadCloud,
   Loader2,
   ArrowLeft,
 } from 'lucide-react';
@@ -31,7 +32,9 @@ import { useToastStore } from '../../store/toastStore';
 import { useCapabilities, useActiveUnitStore } from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
 import {
+  listarBorradoresLegajoLocales,
   obtenerUltimoSyncCampamento,
+  sincronizarBorradoresLegajoLocales,
   sincronizarParaCampamento,
   type CampamentoSyncResumen,
 } from '../../core/offline/campamentoSync';
@@ -120,6 +123,8 @@ export const InicioPage: React.FC = () => {
   const [progresoSync, setProgresoSync] = useState<{ mensaje: string; porcentaje: number } | null>(
     null,
   );
+  const [borradoresPendientesCount, setBorradoresPendientesCount] = useState(0);
+  const [sincronizandoBorradores, setSincronizandoBorradores] = useState(false);
 
   // Drawer de Alertas Médicas y sub-vista de teléfonos (máximo 1 overlay)
   const [drawerAlertasAbierto, setDrawerAlertasAbierto] = useState(false);
@@ -130,6 +135,13 @@ export const InicioPage: React.FC = () => {
 
   useEffect(() => {
     setUltimoSync(obtenerUltimoSyncCampamento(usuario?.id));
+    if (usuario?.id) {
+      void listarBorradoresLegajoLocales(usuario.id).then((lista) =>
+        setBorradoresPendientesCount(lista.length),
+      );
+    } else {
+      setBorradoresPendientesCount(0);
+    }
   }, [usuario?.id]);
 
   const cargarDatosInicio = useCallback(
@@ -422,6 +434,36 @@ export const InicioPage: React.FC = () => {
     }
   };
 
+  const handleSincronizarBorradores = async () => {
+    if (!isOnline) {
+      mostrarToast('Necesitás conexión a internet para sincronizar tus borradores.', 'advertencia');
+      return;
+    }
+    if (sincronizandoBorradores) return;
+    setSincronizandoBorradores(true);
+    try {
+      const { sincronizados, fallidos } = await sincronizarBorradoresLegajoLocales(usuario?.id);
+      const restantes = await listarBorradoresLegajoLocales(usuario?.id);
+      setBorradoresPendientesCount(restantes.length);
+      if (sincronizados > 0 && fallidos === 0) {
+        mostrarToast(
+          `${sincronizados} borrador(es) de legajo sincronizado(s) con el servidor.`,
+          'exito',
+        );
+        void cargarDatosInicio(true);
+      } else if (fallidos > 0) {
+        mostrarToast(
+          `Se sincronizaron ${sincronizados} borrador(es), pero ${fallidos} quedaron pendientes.`,
+          'advertencia',
+        );
+      }
+    } catch (err) {
+      mostrarToast(traducirErrorAmigable(err, 'No se pudieron sincronizar los borradores.'), 'error');
+    } finally {
+      setSincronizandoBorradores(false);
+    }
+  };
+
   const accesosRapidos = [
     {
       to: '/mi-espacio',
@@ -616,6 +658,39 @@ export const InicioPage: React.FC = () => {
                 style={{ width: `${Math.min(100, Math.max(5, progresoSync.porcentaje))}%` }}
               />
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Borradores locales de legajo pendientes de sincronizar */}
+      {borradoresPendientesCount > 0 && (
+        <div className="s-badge-warn rounded-2xl px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <WifiOff className="w-4 h-4 shrink-0" />
+            <span className="truncate">
+              <strong>
+                {borradoresPendientesCount}{' '}
+                {borradoresPendientesCount === 1
+                  ? 'borrador de legajo guardado offline'
+                  : 'borradores de legajo guardados offline'}
+              </strong>{' '}
+              (pendiente de sincronizar).
+            </span>
+          </div>
+          {isOnline && (
+            <button
+              type="button"
+              onClick={handleSincronizarBorradores}
+              disabled={sincronizandoBorradores}
+              className="s-btn-brand min-h-[32px] px-3 py-1 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-60"
+            >
+              {sincronizandoBorradores ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <UploadCloud className="w-3.5 h-3.5" />
+              )}
+              <span>{sincronizandoBorradores ? 'Sincronizando…' : 'Sincronizar ahora'}</span>
+            </button>
           )}
         </div>
       )}

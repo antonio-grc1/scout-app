@@ -10,10 +10,20 @@ import {
   FileCheck2,
   Loader2,
   RefreshCw,
+  Trash2,
+  UploadCloud,
+  WifiOff,
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useCapabilities } from '../../core/capabilities';
+import {
+  eliminarBorradorLegajoLocal,
+  guardarBorradorLegajoLocal,
+  obtenerBorradorLegajoLocal,
+  type BorradorLegajoLocal,
+} from '../../core/offline/campamentoSync';
 import { useAuthStore } from '../../store/authStore';
+import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
 import {
   esErrorOffline,
@@ -47,6 +57,7 @@ export const CompletarLegajoPage: React.FC = () => {
   const caps = useCapabilities();
   const usuarioSesion = useAuthStore((s) => s.usuario);
   const asignacionesSesion = useAuthStore((s) => s.asignaciones);
+  const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
 
   const paramUsuarioId = searchParams.get('usuarioId');
@@ -66,6 +77,8 @@ export const CompletarLegajoPage: React.FC = () => {
 
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<any | null>(null);
   const [precarga, setPrecarga] = useState<any | null>(null);
+  const [borradorLocal, setBorradorLocal] = useState<BorradorLegajoLocal | null>(null);
+  const [sincronizandoBorrador, setSincronizandoBorrador] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [generandoPreview, setGenerandoPreview] = useState(false);
@@ -100,6 +113,7 @@ export const CompletarLegajoPage: React.FC = () => {
       const perfilMiembro = resMiembro.data || usuarioSesion;
       if (listaPlantillas.length === 0) {
         setPlantillaSeleccionada(null);
+        setBorradorLocal(null);
         setPrecarga({
           usuario: perfilMiembro,
           plantilla: null,
@@ -131,7 +145,16 @@ export const CompletarLegajoPage: React.FC = () => {
           datosFamiliaresSugeridos: {},
         };
       }
+
+      const borradorGuardado = await obtenerBorradorLegajoLocal({
+        ownerUserId: usuarioSesion?.id,
+        usuarioId: targetUserId,
+        plantillaId: plantilla.id,
+        cicloAnio: cicloPlantilla,
+      });
+
       setPrecarga(datosPrecarga);
+      setBorradorLocal(borradorGuardado);
       setDatosHermanoAplicados(null);
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudo cargar la ficha de inscripción.');
@@ -192,10 +215,11 @@ export const CompletarLegajoPage: React.FC = () => {
       ...sugeridosHermano,
       ...(precarga?.usuario?.datosFijosJson || {}),
       ...(precarga?.ultimaEntrega?.respuestasSnapshotJson || {}),
+      ...(borradorLocal?.respuestas || {}),
       ...(datosHermanoAplicados || {}),
     };
     return base;
-  }, [precarga, sugeridosHermano, datosHermanoAplicados]);
+  }, [precarga, sugeridosHermano, borradorLocal, datosHermanoAplicados]);
 
   const handleCopiarHermano = () => {
     if (!tieneSugeridosHermano) return;
@@ -210,7 +234,10 @@ export const CompletarLegajoPage: React.FC = () => {
     const mapeo: MapeoPdf = plantillaSeleccionada.mapeoPdfJson;
     const usuarioParaPdf = obtenerDatosUsuarioPdf();
     const respuestas =
-      respuestasCustom || entrega?.respuestasSnapshotJson || valoresFormularioIniciales;
+      respuestasCustom ||
+      borradorLocal?.respuestas ||
+      entrega?.respuestasSnapshotJson ||
+      valoresFormularioIniciales;
 
     return await generarFichaPdf(
       mapeo,
@@ -249,21 +276,109 @@ export const CompletarLegajoPage: React.FC = () => {
     }
   };
 
+  const handleSincronizarBorradorLocal = async () => {
+    if (!borradorLocal || !plantillaSeleccionada) return;
+    if (!isOnline) {
+      mostrarToast(
+        'Seguís sin conexión a internet. Apenas recuperes señal vas a poder sincronizar el borrador.',
+        'advertencia',
+      );
+      return;
+    }
+    setSincronizandoBorrador(true);
+    try {
+      await api.post('/legajos/entregas', {
+        usuarioId: borradorLocal.usuarioId,
+        plantillaId: borradorLocal.plantillaId,
+        cicloAnio: borradorLocal.cicloAnio,
+        respuestas: borradorLocal.respuestas,
+        finalizarParaFirma: false,
+        actualizarDatosFijos: true,
+      });
+      await eliminarBorradorLegajoLocal({
+        ownerUserId: usuarioSesion?.id,
+        usuarioId: borradorLocal.usuarioId,
+        plantillaId: borradorLocal.plantillaId,
+        cicloAnio: borradorLocal.cicloAnio,
+      });
+      setBorradorLocal(null);
+      mostrarToast('Borrador local sincronizado con el servidor.', 'exito');
+      await cargarDatos();
+    } catch (err) {
+      mostrarToast(traducirErrorAmigable(err, 'No se pudo sincronizar el borrador local.'), 'error');
+    } finally {
+      setSincronizandoBorrador(false);
+    }
+  };
+
+  const handleDescartarBorradorLocal = async () => {
+    if (!borradorLocal) return;
+    await eliminarBorradorLegajoLocal({
+      ownerUserId: usuarioSesion?.id,
+      usuarioId: borradorLocal.usuarioId,
+      plantillaId: borradorLocal.plantillaId,
+      cicloAnio: borradorLocal.cicloAnio,
+    });
+    setBorradorLocal(null);
+    setAplicandoHermanoKey((k) => k + 1);
+    mostrarToast('Borrador local descartado.', 'info');
+  };
+
   const handleSubmitFormulario = async (
     datos: Record<string, unknown>,
     finalizarParaFirma: boolean,
   ) => {
     if (!targetUserId || !plantillaSeleccionada) return;
+    const cicloPlantilla = plantillaSeleccionada.cicloAnio || obtenerCicloAnioActual();
+
+    if (!isOnline || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      setGuardando(true);
+      try {
+        const guardado = await guardarBorradorLegajoLocal({
+          ownerUserId: usuarioSesion?.id,
+          usuarioId: targetUserId,
+          plantillaId: plantillaSeleccionada.id,
+          cicloAnio: cicloPlantilla,
+          respuestas: datos,
+        });
+        setBorradorLocal(guardado);
+        if (finalizarParaFirma) {
+          mostrarToast(
+            'Avance guardado en este dispositivo (pendiente de sincronizar). Necesitás señal para emitir el PDF oficial con QR.',
+            'advertencia',
+            6000,
+          );
+        } else {
+          mostrarToast(
+            'Sin conexión: borrador guardado localmente (pendiente de sincronizar).',
+            'info',
+            5000,
+          );
+        }
+      } finally {
+        setGuardando(false);
+      }
+      return;
+    }
+
     setGuardando(true);
     try {
       const res = await api.post('/legajos/entregas', {
         usuarioId: targetUserId,
         plantillaId: plantillaSeleccionada.id,
-        cicloAnio: plantillaSeleccionada.cicloAnio || obtenerCicloAnioActual(),
+        cicloAnio: cicloPlantilla,
         respuestas: datos,
         finalizarParaFirma,
         actualizarDatosFijos: true,
       });
+
+      await eliminarBorradorLegajoLocal({
+        ownerUserId: usuarioSesion?.id,
+        usuarioId: targetUserId,
+        plantillaId: plantillaSeleccionada.id,
+        cicloAnio: cicloPlantilla,
+      });
+      setBorradorLocal(null);
 
       const entrega = res.data;
       if (finalizarParaFirma && entrega.hashVerificacion) {
@@ -284,7 +399,23 @@ export const CompletarLegajoPage: React.FC = () => {
 
       await cargarDatos();
     } catch (err) {
-      mostrarToast(traducirErrorAmigable(err, 'No se pudo guardar el formulario.'), 'error');
+      if (esErrorOffline(err)) {
+        const guardado = await guardarBorradorLegajoLocal({
+          ownerUserId: usuarioSesion?.id,
+          usuarioId: targetUserId,
+          plantillaId: plantillaSeleccionada.id,
+          cicloAnio: cicloPlantilla,
+          respuestas: datos,
+        });
+        setBorradorLocal(guardado);
+        mostrarToast(
+          'Sin señal: tu avance quedó guardado localmente (pendiente de sincronizar).',
+          'advertencia',
+          5000,
+        );
+      } else {
+        mostrarToast(traducirErrorAmigable(err, 'No se pudo guardar el formulario.'), 'error');
+      }
     } finally {
       setGuardando(false);
     }
@@ -371,6 +502,12 @@ export const CompletarLegajoPage: React.FC = () => {
               <span className={`${badge.cls} px-2.5 py-0.5 rounded-full text-[11px] font-bold`}>
                 {badge.label}
               </span>
+              {borradorLocal && (
+                <span className="s-badge-warn px-2.5 py-0.5 rounded-full text-[11px] font-bold inline-flex items-center gap-1">
+                  <WifiOff className="w-3 h-3 shrink-0" />
+                  <span>Pendiente de sincronizar</span>
+                </span>
+              )}
             </div>
             <p className="text-xs text-ink-muted mt-0.5 s-tabular">
               DNI {dniVisible}
@@ -385,6 +522,47 @@ export const CompletarLegajoPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Borrador local offline pendiente de sincronizar */}
+      {borradorLocal && (
+        <div className="s-badge-warn rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5 text-xs leading-relaxed">
+            <WifiOff className="w-4 h-4 shrink-0 mt-0.5" />
+            <div>
+              <strong className="block">Borrador local pendiente de sincronizar</strong>
+              <span>
+                {isOnline
+                  ? 'Tenés cambios guardados en este dispositivo sin conexión. Sincronizalos para subirlos al servidor.'
+                  : 'Guardado en este dispositivo sin señal. Apenas recuperes conexión vas a poder sincronizarlo.'}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {isOnline && (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                loading={sincronizandoBorrador}
+                onClick={() => void handleSincronizarBorradorLocal()}
+                leftIcon={<UploadCloud className="w-3.5 h-3.5" />}
+              >
+                Sincronizar ahora
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={sincronizandoBorrador}
+              onClick={() => void handleDescartarBorradorLocal()}
+              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+            >
+              Descartar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Auto-copia de hermano */}
       {tieneSugeridosHermano && (
