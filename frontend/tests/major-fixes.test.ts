@@ -100,11 +100,12 @@ describe('A2: esErrorOffline y toastStore no silencian errores por contener "red
   });
 });
 
-describe('A4: obtenerRutaInicialUsuario respeta permisos globales/unidad y autogestión', () => {
-  it('dirige a /global si tiene permisos de gestión aunque no tenga miembros.ver', async () => {
+describe('A4: obtenerRutaInicialUsuario unifica inicio autenticado en /inicio y respeta cambio de clave/login', () => {
+  it('dirige a /inicio si está autenticado sin clave pendiente, a /cambiar-clave si la requiere, o /login sin sesión', async () => {
     localStorage.clear();
     const { obtenerRutaInicialUsuario } = await vite.ssrLoadModule('/src/lib/permisos.ts');
     const { useAuthStore } = await vite.ssrLoadModule('/src/store/authStore.ts');
+    const { computeCapabilities } = await vite.ssrLoadModule('/src/core/capabilities.ts');
 
     useAuthStore.getState().setSesion({
       accessToken: 'tok-unidad-tesorero',
@@ -129,35 +130,34 @@ describe('A4: obtenerRutaInicialUsuario respeta permisos globales/unidad y autog
         puedeVerPadron: auth.puedeVerPadron,
         puedeAccederPanelGestion: auth.puedeAccederPanelGestion,
       }),
-      '/global',
+      '/inicio',
     );
+
+    const capsTesorero = computeCapabilities(auth.asignaciones);
+    assert.equal(capsTesorero.canViewMiembros, false);
+    assert.equal(capsTesorero.canSeeTesoreriaGestion, true);
+    assert.equal(capsTesorero.canSeeCajaContabilidad, false);
 
     assert.equal(
       obtenerRutaInicialUsuario({
-        token: 'tok-padron',
-        requiereCambioClave: false,
-        puedeVerPadron: () => true,
-        puedeAccederPanelGestion: () => true,
+        token: 'tok-cambio-pendiente',
+        requiereCambioClave: true,
       }),
-      '/rama',
+      '/cambiar-clave',
     );
 
     assert.equal(
       obtenerRutaInicialUsuario({
         token: 'tok-propio',
         requiereCambioClave: false,
-        puedeVerPadron: () => false,
-        puedeAccederPanelGestion: () => false,
       }),
-      '/autogestion',
+      '/inicio',
     );
 
     assert.equal(
       obtenerRutaInicialUsuario({
         token: null,
         requiereCambioClave: false,
-        puedeVerPadron: () => true,
-        puedeAccederPanelGestion: () => true,
       }),
       '/login',
     );

@@ -61,7 +61,10 @@ import {
 type TabGestion = 'tesoreria' | 'colaboradores' | 'organizacion' | 'roles' | 'pases' | 'plantillas' | 'correo';
 type SubTabTesoreria = 'caja-banco' | 'gastos' | 'balance' | 'eventos-qr' | 'planes' | 'campamentos' | 'familias';
 
-export const GlobalPage: React.FC = () => {
+export const GlobalPage: React.FC<{
+  defaultTab?: TabGestion;
+  defaultSubTab?: SubTabTesoreria;
+}> = ({ defaultTab, defaultSubTab }) => {
   const { tienePermiso, tieneGlobal, asignaciones, refrescarSesionDesdeServidor } = useAuthStore();
   const esGlobal = tieneGlobal();
   const unidadesEnAlcanceIds = useMemo(
@@ -118,7 +121,9 @@ export const GlobalPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const tabInicial = (): TabGestion => {
     const desdeUrl = searchParams.get('tab') as TabGestion | null;
-    return desdeUrl && permisoPorTab[desdeUrl] ? desdeUrl : tabPorDefecto();
+    if (desdeUrl && permisoPorTab[desdeUrl]) return desdeUrl;
+    if (defaultTab && permisoPorTab[defaultTab]) return defaultTab;
+    return tabPorDefecto();
   };
 
   const subTabPorDefecto = (): SubTabTesoreria => {
@@ -142,7 +147,9 @@ export const GlobalPage: React.FC = () => {
   };
   const subTabInicial = (): SubTabTesoreria => {
     const desdeUrl = searchParams.get('sub') as SubTabTesoreria | null;
-    return desdeUrl && permisoPorSubTab[desdeUrl] ? desdeUrl : subTabPorDefecto();
+    if (desdeUrl && permisoPorSubTab[desdeUrl]) return desdeUrl;
+    if (defaultSubTab && permisoPorSubTab[defaultSubTab]) return defaultSubTab;
+    return subTabPorDefecto();
   };
 
   const [tab, setTab] = useState<TabGestion>(tabInicial);
@@ -179,17 +186,27 @@ export const GlobalPage: React.FC = () => {
   // Sincronizar pestaña activa y subpestaña con searchParams (al presionar Atrás/Adelante en el navegador/móvil)
   useEffect(() => {
     const tabUrl = searchParams.get('tab') as TabGestion | null;
-    const tabValida = tabUrl && permisoPorTab[tabUrl] ? tabUrl : tabPorDefecto();
+    const tabValida =
+      tabUrl && permisoPorTab[tabUrl]
+        ? tabUrl
+        : defaultTab && permisoPorTab[defaultTab]
+          ? defaultTab
+          : tabPorDefecto();
     if (tabValida !== tab) {
       setTab(tabValida);
     }
 
     const subUrl = searchParams.get('sub') as SubTabTesoreria | null;
-    const subValida = subUrl && permisoPorSubTab[subUrl] ? subUrl : subTabPorDefecto();
+    const subValida =
+      subUrl && permisoPorSubTab[subUrl]
+        ? subUrl
+        : defaultSubTab && permisoPorSubTab[defaultSubTab]
+          ? defaultSubTab
+          : subTabPorDefecto();
     if (subValida !== subTabTesoreria) {
       setSubTabTesoreria(subValida);
     }
-  }, [searchParams]);
+  }, [searchParams, defaultTab, defaultSubTab]);
   const [ramas, setRamas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [mostrarInactivasOrg, setMostrarInactivasOrg] = useState(false);

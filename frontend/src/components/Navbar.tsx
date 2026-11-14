@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { useInsideAppShell } from './layout/AppShell';
 import { ThemeToggle } from './ThemeToggle';
 import { BotonInstalarPwa } from './BotonInstalarPwa';
 import { BrandLogo } from './ui/BrandLogo';
 import { Compass, Users, Shield, LogOut, KeyRound, Contact, UserCircle2 } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
+  const insideAppShell = useInsideAppShell();
   const {
     usuario,
     logout,
@@ -18,7 +20,7 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (!usuario) return null;
+  if (insideAppShell || !usuario) return null;
 
   const handleLogout = () => {
     logout();

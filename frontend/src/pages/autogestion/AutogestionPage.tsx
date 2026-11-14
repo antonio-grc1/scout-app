@@ -48,22 +48,24 @@ const PdfViewerModal = lazy(() =>
 type VistaAutogestion = 'papeles' | 'cuotas' | 'eventos';
 const VISTAS_VALIDAS: VistaAutogestion[] = ['papeles', 'cuotas', 'eventos'];
 
-export const AutogestionPage: React.FC = () => {
+export const AutogestionPage: React.FC<{ defaultVista?: VistaAutogestion }> = ({
+  defaultVista = 'papeles',
+}) => {
   const { usuario, asignaciones } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [vistaActiva, setVistaActiva] = useState<VistaAutogestion>(() => {
     const desdeUrl = searchParams.get('vista') as VistaAutogestion | null;
-    return desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : 'papeles';
+    return desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : defaultVista;
   });
 
   // Sincronizar vista activa con searchParams (al presionar Atrás/Adelante en el navegador/móvil)
   useEffect(() => {
     const desdeUrl = searchParams.get('vista') as VistaAutogestion | null;
-    const vistaValida = desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : 'papeles';
+    const vistaValida = desdeUrl && VISTAS_VALIDAS.includes(desdeUrl) ? desdeUrl : defaultVista;
     if (vistaValida !== vistaActiva) {
       setVistaActiva(vistaValida);
     }
-  }, [searchParams]);
+  }, [searchParams, defaultVista]);
 
   const cambiarVista = (nuevaVista: VistaAutogestion) => {
     if (nuevaVista === vistaActiva) return;

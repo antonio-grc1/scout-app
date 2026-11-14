@@ -1,15 +1,25 @@
 import React, { useEffect, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { setOnAuthError, setOnRequirePasswordChange } from './api/client';
 import { useAuthStore } from './store/authStore';
+import { useCapabilities, type Capabilities } from './core/capabilities';
+import { obtenerRutaInicialUsuario } from './lib/permisos';
 import { Login } from './pages/Login';
 import { CambiarClave } from './pages/CambiarClave';
+import { InicioPage } from './pages/inicio/InicioPage';
+import { AppShell } from './components/layout/AppShell';
 import { ToastGlobal } from './components/ui/ToastGlobal';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { BannerOffline } from './components/BannerOffline';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { obtenerRutaInicialUsuario } from './lib/permisos';
 
 const AutogestionPage = lazy(() =>
   import('./pages/autogestion/AutogestionPage').then((m) => ({ default: m.AutogestionPage })),
@@ -27,39 +37,78 @@ const PerfilPage = lazy(() =>
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 3, // 3 minutos de caché en memoria
-      refetchOnWindowFocus: false, // Evita re-disparar queries en cada cambio de pestaña
+      staleTime: 1000 * 60 * 3,
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
 });
 
-// Guard de ruta protegida
 const RutaProtegida: React.FC<{
   children: React.ReactNode;
-  requiereAlcance?: 'UNIDAD' | 'GLOBAL';
+  allow?: (caps: Capabilities) => boolean;
   permitirCambioClave?: boolean;
-}> = ({ children, requiereAlcance, permitirCambioClave }) => {
-  const { token, puedeVerPadron, puedeAccederPanelGestion, requiereCambioClave } = useAuthStore();
+}> = ({ children, allow, permitirCambioClave }) => {
+  const token = useAuthStore((s) => s.token);
+  const requiereCambioClave = useAuthStore((s) => s.requiereCambioClave);
+  const caps = useCapabilities();
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si el usuario requiere cambio obligatorio de clave y navega a otra sección
   if (requiereCambioClave && !permitirCambioClave) {
     return <Navigate to="/cambiar-clave" replace />;
   }
 
-  if (requiereAlcance === 'GLOBAL' && !puedeAccederPanelGestion()) {
-    return <Navigate to={puedeVerPadron() ? '/rama' : '/autogestion'} replace />;
-  }
-
-  if (requiereAlcance === 'UNIDAD' && !puedeVerPadron()) {
-    return <Navigate to={puedeAccederPanelGestion() ? '/global' : '/autogestion'} replace />;
+  if (allow && !allow(caps)) {
+    return <Navigate to="/inicio" replace />;
   }
 
   return <>{children}</>;
+};
+
+const MiEspacioPhase1Bridge: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  if (searchParams.get('tab') === 'perfil') {
+    return <PerfilPage />;
+  }
+  const vistaParam = searchParams.get('vista');
+  const defaultVista =
+    vistaParam === 'cuotas' || vistaParam === 'eventos' ? vistaParam : 'papeles';
+  return <AutogestionPage defaultVista={defaultVista} />;
+};
+
+const EventosPhase1Bridge: React.FC = () => {
+  const caps = useCapabilities();
+  if (!caps.esPropio && caps.canSeeTesoreriaGestion) {
+    return <GlobalPage defaultTab="tesoreria" defaultSubTab="eventos-qr" />;
+  }
+  return <AutogestionPage defaultVista="eventos" />;
+};
+
+const GlobalLegacyRedirect: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const caps = useCapabilities();
+  const tab = searchParams.get('tab');
+  const sub = searchParams.get('sub');
+
+  if (tab === 'pases' && caps.canViewPases) {
+    return <Navigate to="/pases" replace />;
+  }
+  if ((tab === 'plantillas' || tab === 'colaboradores') && caps.canViewLegajosModule) {
+    return <Navigate to={`/legajos?tab=${tab}`} replace />;
+  }
+  if ((tab === 'organizacion' || tab === 'roles' || tab === 'correo') && caps.canViewOrganizacion) {
+    return <Navigate to={`/organizacion?tab=${tab}`} replace />;
+  }
+  if (sub === 'eventos-qr' && caps.canViewEventos) {
+    return <Navigate to="/eventos" replace />;
+  }
+  if (caps.canSeeTesoreriaGestion) {
+    return <Navigate to={sub ? `/tesoreria?sub=${sub}` : '/tesoreria'} replace />;
+  }
+  return <Navigate to="/inicio" replace />;
 };
 
 const AuthNavigatorBridge: React.FC = () => {
@@ -86,8 +135,6 @@ const AuthNavigatorBridge: React.FC = () => {
 export function App() {
   const {
     token,
-    puedeVerPadron,
-    puedeAccederPanelGestion,
     requiereCambioClave,
     refrescarSesionDesdeServidor,
   } = useAuthStore();
@@ -117,8 +164,6 @@ export function App() {
     obtenerRutaInicialUsuario({
       token,
       requiereCambioClave,
-      puedeVerPadron,
-      puedeAccederPanelGestion,
     });
 
   return (
@@ -145,40 +190,134 @@ export function App() {
                   </RutaProtegida>
                 }
               />
+
+              {/* Rutas unificadas por dominio dentro de AppShell */}
               <Route
-                path="/autogestion"
+                path="/inicio"
                 element={
                   <RutaProtegida>
-                    <AutogestionPage />
+                    <AppShell title="Inicio">
+                      <InicioPage />
+                    </AppShell>
                   </RutaProtegida>
                 }
               />
               <Route
-                path="/perfil"
+                path="/mi-espacio"
                 element={
                   <RutaProtegida>
-                    <PerfilPage />
+                    <AppShell title="Mi Espacio">
+                      <MiEspacioPhase1Bridge />
+                    </AppShell>
                   </RutaProtegida>
                 }
               />
               <Route
-                path="/rama"
+                path="/miembros"
                 element={
-                  <RutaProtegida requiereAlcance="UNIDAD">
-                    <UnidadPage />
+                  <RutaProtegida allow={(c) => c.canViewMiembros}>
+                    <AppShell title="Miembros">
+                      <UnidadPage />
+                    </AppShell>
                   </RutaProtegida>
                 }
               />
-              <Route path="/unidad" element={<Navigate to="/rama" replace />} />
-              <Route path="/padron" element={<Navigate to="/rama" replace />} />
+              <Route
+                path="/miembros/:id"
+                element={
+                  <RutaProtegida allow={(c) => c.canViewMiembros}>
+                    <AppShell title="Miembro 360°">
+                      <UnidadPage />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/legajos"
+                element={
+                  <RutaProtegida allow={(c) => c.canViewLegajosModule}>
+                    <AppShell title="Legajos">
+                      <GlobalPage defaultTab="plantillas" />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/legajos/completar"
+                element={
+                  <RutaProtegida>
+                    <AppShell title="Completar Legajo">
+                      <AutogestionPage defaultVista="papeles" />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/pases"
+                element={
+                  <RutaProtegida allow={(c) => c.canViewPases}>
+                    <AppShell title="Pases">
+                      <GlobalPage defaultTab="pases" />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/tesoreria"
+                element={
+                  <RutaProtegida allow={(c) => c.canSeeTesoreriaGestion}>
+                    <AppShell title="Tesorería">
+                      <GlobalPage defaultTab="tesoreria" />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/eventos"
+                element={
+                  <RutaProtegida allow={(c) => c.canViewEventos}>
+                    <AppShell title="Eventos">
+                      <EventosPhase1Bridge />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/eventos/:id"
+                element={
+                  <RutaProtegida allow={(c) => c.canViewEventos}>
+                    <AppShell title="Evento">
+                      <EventosPhase1Bridge />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+              <Route
+                path="/organizacion"
+                element={
+                  <RutaProtegida allow={(c) => c.canViewOrganizacion}>
+                    <AppShell title="Organización">
+                      <GlobalPage defaultTab="organizacion" />
+                    </AppShell>
+                  </RutaProtegida>
+                }
+              />
+
+              {/* Redirecciones temporales desde rutas legacy */}
+              <Route path="/autogestion" element={<Navigate to="/mi-espacio" replace />} />
+              <Route path="/perfil" element={<Navigate to="/mi-espacio?tab=perfil" replace />} />
+              <Route path="/rama" element={<Navigate to="/miembros" replace />} />
+              <Route path="/unidad" element={<Navigate to="/miembros" replace />} />
+              <Route path="/padron" element={<Navigate to="/miembros" replace />} />
               <Route
                 path="/global"
                 element={
-                  <RutaProtegida requiereAlcance="GLOBAL">
-                    <GlobalPage />
+                  <RutaProtegida>
+                    <GlobalLegacyRedirect />
                   </RutaProtegida>
                 }
               />
+
               <Route path="*" element={<Navigate to={rutaDefault()} replace />} />
             </Routes>
           </Suspense>

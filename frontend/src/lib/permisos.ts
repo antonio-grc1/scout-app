@@ -92,14 +92,12 @@ export const usePermisosUI = () => {
 export function obtenerRutaInicialUsuario(opts: {
   token: string | null;
   requiereCambioClave: boolean;
-  puedeVerPadron: () => boolean;
-  puedeAccederPanelGestion: () => boolean;
+  puedeVerPadron?: () => boolean;
+  puedeAccederPanelGestion?: () => boolean;
 }): string {
   if (!opts.token) return '/login';
   if (opts.requiereCambioClave) return '/cambiar-clave';
-  if (opts.puedeVerPadron()) return '/rama';
-  if (opts.puedeAccederPanelGestion()) return '/global';
-  return '/autogestion';
+  return '/inicio';
 }
 
 export interface AsignacionScopeLike {

@@ -32,22 +32,22 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const isDisabled = disabled || loading;
 
-    // Base ergonomic styling
+    // Base ergonomic styling (flat crisp controls, zero glow/halo)
     const baseClasses =
-      'inline-flex items-center justify-center font-bold transition-colors cursor-pointer select-none outline-none disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center font-bold transition-[transform,background-color,border-color,color,opacity] duration-150 cursor-pointer select-none outline-none disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed';
 
     // Variant mapping using dynamic CSS tokens
     const variantClasses = {
       primary:
-        'bg-brand text-brand-contrast hover:opacity-95 active:scale-[0.98] shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] border border-transparent font-extrabold',
+        'bg-brand text-brand-contrast hover:bg-[var(--color-brand-hover)] active:scale-[0.975] shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] border border-transparent font-extrabold',
       secondary:
-        'bg-surface text-ink border border-rule hover:bg-paper-2 active:bg-paper-3 shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]',
+        'bg-surface text-ink border border-rule hover:bg-paper-2 active:bg-paper-3 active:scale-[0.985] shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)]',
       danger:
-        'bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 border border-transparent font-extrabold',
+        'bg-[var(--s-err-bg)] text-[var(--s-err-ink)] border border-[var(--s-err-border)] hover:brightness-95 dark:hover:brightness-110 active:scale-[0.975] shadow-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 font-bold',
       ghost:
-        'text-ink-muted hover:text-ink hover:bg-surface/70 active:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] font-semibold',
+        'text-ink-muted hover:text-ink hover:bg-paper-2 active:bg-paper-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] font-semibold shadow-none',
       pill:
-        'rounded-full border border-rule bg-surface text-ink hover:bg-paper-2 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] shadow-2xs',
+        'rounded-full border border-rule bg-surface text-ink hover:bg-paper-2 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] shadow-none',
     };
 
     // Size mapping with guaranteed WCAG touch targets

@@ -1,64 +1,89 @@
 :root {
-  /* Layout, Spacing, and Elevation Tokens (Preserved) */
+  /* Layout, Spacing, and Elevation Tokens */
   --space-3xs: 2px; --space-2xs: 4px; --space-xs: 8px; --space-sm: 12px; --space-md: 16px; --space-lg: 24px; --space-xl: 40px; --space-2xl: 64px; --space-3xl: 96px; --space-4xl: 144px;
   --text-xs: 0.75rem; --text-sm: 0.875rem; --text-md: 1rem; --text-lg: 1.2rem; --text-xl: 1.44rem; --text-2xl: 1.728rem; --text-3xl: 2.074rem;
   --text-display-s: 1.44rem; --text-display: 1.728rem; --text-section: 1.2rem; --text-title: 1rem; --text-lead: 1rem;
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --dur-micro: 120ms; --dur-short: 220ms; --dur-long: 420ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1); --ease-in: cubic-bezier(0.7, 0, 0.84, 0); --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 140ms; --dur-short: 220ms; --dur-long: 420ms;
   --color-error: oklch(52% 0.19 27); --color-success: oklch(50% 0.12 150);
-  --container: 1440px; --gutter: 32px; --gap-columns: 24px; --section-gap-s: 32px; --section-gap: 48px; --section-gap-l: 64px;
+  --container: 1440px; --gutter: 24px; --gap-columns: 24px; --section-gap-s: 32px; --section-gap: 48px; --section-gap-l: 64px;
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
 
   /* Typography & Geometry */
-  --font-display: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-body: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-outlier: var(--font-body);
-  --radius-card: 12px;
+  --radius-card: 14px;
   --radius-pill: 9999px;
   --rule-hair: 1px;
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+  --s-border-width: 1px;
+  --shadow-card: 0 1px 2px rgba(24, 24, 27, 0.04), 0 6px 18px -6px rgba(24, 24, 27, 0.06);
+  --s-shadow-elev: 0 14px 32px -8px rgba(24, 24, 27, 0.13), 0 4px 10px -2px rgba(24, 24, 27, 0.05);
   --tracking-display: -0.015em;
 
   /* ==========================================================================
-     Scout Juan XXIII Semantic Tokens (Light Mode Default)
+     Scout Juan XXIII Semantic Tokens (Light Mode Default — WCAG AA/AAA)
      ========================================================================== */
   --color-brand: #f59e0b;                     /* Official Scout Amber 500 */
+  --color-brand-hover: #d97706;
   --color-brand-contrast: #090a0f;            /* High-contrast dark charcoal on amber */
-  --color-paper: #fbfbf9;                     /* Base application canvas */
-  --color-paper-2: #f4f4f0;                   /* Secondary container background */
-  --color-paper-3: #eaeae5;                   /* Tertiary subtle background */
-  --color-surface: #fffdfa;                   /* Cards, modals, elevated surfaces */
-  --color-navbar: var(--color-paper);         /* Navigation bar background */
-  --color-navbar-ink: var(--color-ink);       /* Navigation text & icon color */
-  --color-navbar-muted: var(--color-ink-muted);/* Muted navigation text */
-  --color-navbar-rule: var(--color-rule);     /* Navigation border/divider */
-  --color-navbar-hover: var(--color-paper-2); /* Navigation item hover state */
+  --color-brand-soft: #fef3c7;
+  --color-brand-soft-ink: #78350f;
+  --color-paper: #f6f6f2;                     /* Base application canvas */
+  --color-paper-2: #eeede7;                   /* Secondary container background */
+  --color-paper-3: #e4e2da;                   /* Tertiary subtle background */
+  --color-surface: #ffffff;                   /* Cards, modals, elevated surfaces */
+  --color-glass: rgba(255, 255, 255, 0.88);   /* Glass bar surface */
+  --color-navbar: var(--color-surface);
+  --color-navbar-ink: var(--color-ink);
+  --color-navbar-muted: var(--color-ink-muted);
+  --color-navbar-rule: var(--color-rule);
+  --color-navbar-hover: var(--color-paper-2);
   --color-ink: #18181b;                       /* Primary reading text (zinc-900) */
   --color-ink-2: #3f3f46;                     /* Secondary text (zinc-700) */
-  --color-ink-muted: #71717a;                 /* Muted text & placeholders (zinc-500) */
-  --color-muted: var(--color-ink-muted);       /* Hallmark alias */
-  --color-rule: #e4e4e7;                      /* Borders & dividers (zinc-200) */
-  --color-accent: var(--color-brand);         /* Primary accent alias */
-  --color-accent-ink: var(--color-brand-contrast); /* Contrast on accent */
-  --color-focus: var(--color-brand);          /* Accessible dynamic focus ring */
+  --color-ink-muted: #52525b;                 /* Muted text >= 7:1 contrast on light canvas */
+  --color-muted: var(--color-ink-muted);
+  --color-rule: rgba(24, 24, 27, 0.11);       /* Crisp subtle hairline divider */
+  --color-accent: var(--color-brand);
+  --color-accent-ink: var(--color-brand-contrast);
+  --color-focus: var(--color-brand);
+  --s-shell-glow: radial-gradient(620px circle at 15% -5%, rgba(245, 158, 11, 0.06), transparent 60%);
+
+  /* Semantic Status Badges */
+  --s-ok-bg: #dcfce7;
+  --s-ok-ink: #14532d;
+  --s-ok-border: #86efac;
+  --s-warn-bg: #fef3c7;
+  --s-warn-ink: #78350f;
+  --s-warn-border: #fcd34d;
+  --s-err-bg: #fee2e2;
+  --s-err-ink: #7f1d1d;
+  --s-err-border: #fca5a5;
+  --s-info-bg: #e0f2fe;
+  --s-info-ink: #0c4a6e;
+  --s-info-border: #7dd3fc;
 
   /* Theme Dynamic Customization Scales */
-  --brand-logo-scale: 1;                      /* Scale factor 0.8 to 1.4 */
-  --brand-logo-url: "/brand/Logo%20Juancho%20Icono.png"; /* Institutional emblem */
-  --font-scale: 100%;                         /* Root rem scale: 100%, 110%, 125% */
+  --brand-logo-scale: 1;
+  --brand-logo-url: "/brand/Logo%20Juancho%20Icono.png";
+  --font-scale: 100%;
 }
 
 .dark {
   /* ==========================================================================
-     Scout Juan XXIII Semantic Tokens (Dark Mode Default)
+     Scout Juan XXIII Semantic Tokens (Dark Mode — Refined Slate/Zinc Surface)
      ========================================================================== */
-  --color-brand: #fbbf24;                     /* Amber 400 for dark mode readability */
-  --color-brand-contrast: #09090b;            /* High contrast dark ink on amber */
-  --color-paper: #111215;                     /* Deep dark canvas */
-  --color-paper-2: #18191e;                   /* Secondary dark container */
-  --color-paper-3: #22242b;                   /* Tertiary dark container */
-  --color-surface: #18191e;                   /* Elevated dark card surface */
-  --color-navbar: var(--color-paper);
+  --color-brand: #fbbf24;                     /* Amber 400 */
+  --color-brand-hover: #f59e0b;
+  --color-brand-contrast: #09090b;
+  --color-brand-soft: rgba(251, 191, 36, 0.16);
+  --color-brand-soft-ink: #fde68a;
+  --color-paper: #0c0e13;                     /* Deep charcoal canvas */
+  --color-paper-2: #13161e;                   /* Secondary dark container */
+  --color-paper-3: #1b1f2b;                   /* Tertiary dark container */
+  --color-surface: #171a24;                   /* Elevated dark card surface */
+  --color-glass: rgba(23, 26, 36, 0.86);      /* Glass dark top/bottom bars */
+  --color-navbar: var(--color-surface);
   --color-navbar-ink: var(--color-ink);
   --color-navbar-muted: var(--color-ink-muted);
   --color-navbar-rule: var(--color-rule);
@@ -66,10 +91,85 @@
   --color-ink: #f4f4f5;                       /* Zinc 100 primary reading text */
   --color-ink-2: #d4d4d8;                     /* Zinc 300 secondary text */
   --color-ink-muted: #a1a1aa;                 /* Zinc 400 muted text */
-  --color-muted: var(--color-ink-muted);       /* Hallmark alias */
-  --color-rule: #27272a;                      /* Zinc 800 dark border/divider */
-  --color-accent: var(--color-brand);         /* Primary accent alias */
+  --color-muted: var(--color-ink-muted);
+  --color-rule: rgba(255, 255, 255, 0.10);
+  --color-accent: var(--color-brand);
   --color-accent-ink: var(--color-brand-contrast);
   --color-focus: var(--color-brand);
-  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.2);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.24), 0 10px 26px -10px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --s-shadow-elev: 0 18px 42px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --s-shell-glow: radial-gradient(680px circle at 18% -8%, rgba(251, 191, 36, 0.075), transparent 60%), radial-gradient(520px circle at 90% 90%, rgba(56, 189, 248, 0.045), transparent 55%);
+
+  --s-ok-bg: rgba(34, 197, 94, 0.16);
+  --s-ok-ink: #86efac;
+  --s-ok-border: rgba(34, 197, 94, 0.40);
+  --s-warn-bg: rgba(245, 158, 11, 0.18);
+  --s-warn-ink: #fde68a;
+  --s-warn-border: rgba(245, 158, 11, 0.45);
+  --s-err-bg: rgba(239, 68, 68, 0.18);
+  --s-err-ink: #fca5a5;
+  --s-err-border: rgba(239, 68, 68, 0.45);
+  --s-info-bg: rgba(56, 189, 248, 0.16);
+  --s-info-ink: #bae6fd;
+  --s-info-border: rgba(56, 189, 248, 0.40);
+}
+
+/* ==========================================================================
+   WCAG AAA High Contrast Preset (Pure Canvas, Zero Shadow/Blur, 2px Borders)
+   ========================================================================== */
+[data-contrast="aaa"] {
+  --color-brand: #92400e;
+  --color-brand-hover: #78350f;
+  --color-brand-contrast: #ffffff;
+  --color-brand-soft: #fef3c7;
+  --color-brand-soft-ink: #451a03;
+  --color-paper: #ffffff;
+  --color-paper-2: #f4f4f5;
+  --color-paper-3: #e4e4e7;
+  --color-surface: #ffffff;
+  --color-glass: #ffffff;
+  --color-ink: #000000;
+  --color-ink-2: #111827;
+  --color-ink-muted: #1f2937;
+  --color-muted: #1f2937;
+  --color-rule: #000000;
+  --s-border-width: 2px;
+  --shadow-card: none;
+  --s-shadow-elev: none;
+  --s-shell-glow: none;
+}
+
+.dark[data-contrast="aaa"] {
+  --color-brand: #ffd60a;
+  --color-brand-hover: #ffea75;
+  --color-brand-contrast: #000000;
+  --color-brand-soft: #292000;
+  --color-brand-soft-ink: #ffd60a;
+  --color-paper: #000000;
+  --color-paper-2: #0a0a0c;
+  --color-paper-3: #141418;
+  --color-surface: #000000;
+  --color-glass: #000000;
+  --color-ink: #ffffff;
+  --color-ink-2: #f4f4f5;
+  --color-ink-muted: #f4f4f5;
+  --color-muted: #f4f4f5;
+  --color-rule: #fbbf24;
+  --s-border-width: 2px;
+  --shadow-card: none;
+  --s-shadow-elev: none;
+  --s-shell-glow: none;
+
+  --s-ok-bg: #052e16;
+  --s-ok-ink: #bbf7d0;
+  --s-ok-border: #4ade80;
+  --s-warn-bg: #3b2600;
+  --s-warn-ink: #fef08a;
+  --s-warn-border: #ffd60a;
+  --s-err-bg: #450a0a;
+  --s-err-ink: #fecaca;
+  --s-err-border: #f87171;
+  --s-info-bg: #082f49;
+  --s-info-ink: #e0f2fe;
+  --s-info-border: #38bdf8;
 }
