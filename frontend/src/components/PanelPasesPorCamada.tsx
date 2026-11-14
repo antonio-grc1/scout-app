@@ -322,7 +322,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                         type="button"
                         disabled={ejecutandoLote || g.miembros.every((m) => Boolean(m.solicitudPendiente))}
                         onClick={() => solicitarPaseCamada(g)}
-                        className="min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                        className="min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {ejecutandoLote ? (
                           <Loader2 className="w-4 h-4 animate-spin" />

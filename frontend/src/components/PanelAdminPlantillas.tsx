@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
-import { traducirErrorAmigable } from '../lib/formatters';
+import { traducirErrorAmigable, obtenerCicloAnioActual } from '../lib/formatters';
 import {
   FileText,
   CheckCircle2,
@@ -380,7 +380,7 @@ export const PanelAdminPlantillas: React.FC<Props> = ({ onToast }) => {
                   required
                   value={form.titulo}
                   onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                  placeholder="Ej: Ficha Médica e Inscripción 2026"
+                  placeholder={`Ej: Ficha Médica e Inscripción ${obtenerCicloAnioActual()}`}
                   className="w-full min-h-[42px] px-3.5 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors font-medium"
                 />
               </div>
@@ -395,7 +395,7 @@ export const PanelAdminPlantillas: React.FC<Props> = ({ onToast }) => {
                     required
                     value={form.codigo}
                     onChange={(e) => setForm({ ...form, codigo: e.target.value })}
-                    placeholder="Ej: OFICIAL_2026"
+                    placeholder={`Ej: OFICIAL_${obtenerCicloAnioActual()}`}
                     className="w-full min-h-[42px] px-3.5 py-2 rounded-xl border border-rule bg-surface text-ink outline-none focus:border-brand font-mono"
                   />
                 </div>

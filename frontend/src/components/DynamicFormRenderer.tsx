@@ -19,7 +19,9 @@ import {
   Loader2,
   Tent,
   Hammer,
+  Eye,
 } from 'lucide-react';
+import { obtenerCicloAnioActual } from '../lib/formatters';
 
 export interface CampoSchema {
   key: string;
@@ -45,6 +47,7 @@ interface Props {
   esquema: EsquemaCampos;
   valoresIniciales?: Record<string, unknown>;
   onSubmit: (datos: Record<string, unknown>, finalizarParaFirma: boolean) => Promise<void>;
+  onPreviewPdf?: (datosActuales: Record<string, unknown>) => void;
   cargando?: boolean;
 }
 
@@ -137,6 +140,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
   esquema,
   valoresIniciales = {},
   onSubmit,
+  onPreviewPdf,
   cargando = false,
 }) => {
   const [pasoActivo, setPasoActivo] = useState(0);
@@ -363,7 +367,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                   onClick={() => setValue(campo.key, opt.value, { shouldValidate: true })}
                   className={`flex-1 min-w-[76px] min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                     activo
-                      ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                      ? 'bg-brand text-brand-contrast border-brand font-bold'
                       : 'bg-paper-2 text-ink-2 border-rule hover:bg-paper-2'
                   }`}
                 >
@@ -444,7 +448,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 onClick={() => setCatMateriales('campamento')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   catMateriales === 'campamento'
-                    ? 'bg-surface text-brand shadow-2xs'
+                    ? 'bg-surface text-brand'
                     : 'text-ink-muted'
                 }`}
               >
@@ -456,7 +460,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 onClick={() => setCatMateriales('construccion')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   catMateriales === 'construccion'
-                    ? 'bg-surface text-brand shadow-2xs'
+                    ? 'bg-surface text-brand'
                     : 'text-ink-muted'
                 }`}
               >
@@ -491,7 +495,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                       onClick={() => setValue(preKey, !isPre)}
                       className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
                         isPre
-                          ? 'bg-brand text-brand-contrast border-brand shadow-xs'
+                          ? 'bg-brand text-brand-contrast border-brand'
                           : 'bg-paper-2 text-ink-muted border-rule'
                       }`}
                     >
@@ -502,7 +506,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                       onClick={() => setValue(donKey, !isDon)}
                       className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
                         isDon
-                          ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                          ? 'bg-brand text-brand-contrast border-brand font-bold'
                           : 'bg-paper-2 text-ink-muted border-rule'
                       }`}
                     >
@@ -603,7 +607,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                       onClick={() => setFamiliarTab(t.id)}
                       className={`flex-1 sm:flex-initial min-h-[40px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                         familiarTab === t.id
-                          ? 'bg-surface text-brand shadow-2xs'
+                          ? 'bg-surface text-brand'
                           : tieneErrores
                             ? 'text-rose-600 dark:text-rose-400'
                             : 'text-ink-muted'
@@ -712,7 +716,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
         {seccionActual.id === 'seccion_autorizacion_salidas' && (
           <div className="p-3.5 rounded-xl bg-paper-2 border border-rule text-xs text-ink-2 space-y-1">
             <p className="font-bold text-ink">
-              Salidas por el día sin pernocte (Ciclo 2026)
+              Salidas por el día sin pernocte (Ciclo {obtenerCicloAnioActual()})
             </p>
             <p>
               Habilita paseos barriales, visitas a parques, actividades comunitarias y traslados del
@@ -736,11 +740,11 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
   return (
     <div ref={formTopRef} className="space-y-4 scroll-mt-20">
-      {/* Navegador de Pasos Compacto (1 fila deslizable con el pulgar) */}
-      <div className="bg-surface rounded-2xl p-3 sm:p-4 border border-rule shadow-2xs space-y-3">
-        <div className="flex items-center justify-between gap-2">
+      {/* Navegador de Pasos Compacto Sticky */}
+      <div className="sticky top-14 lg:top-16 z-10 bg-surface rounded-2xl p-3 sm:p-4 border border-rule space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-bold text-xs shrink-0">
+            <span className="px-2 py-0.5 rounded-md bg-paper-2 text-ink-2 font-bold text-xs shrink-0 border border-rule">
               Paso {pasoActivo + 1} de {secciones.length}
             </span>
             <h2 className="text-sm sm:text-base font-extrabold text-ink truncate">
@@ -748,21 +752,34 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={handleGuardarBorrador}
-            disabled={cargando}
-            className="min-h-[36px] px-3 rounded-xl bg-paper-3 hover:bg-paper-3 text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-          >
-            <Save className="w-3.5 h-3.5 text-brand" />
-            <span>Guardar avance</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onPreviewPdf && (
+              <button
+                type="button"
+                onClick={() => onPreviewPdf(getValues())}
+                disabled={cargando}
+                className="min-h-[36px] px-3 rounded-xl bg-paper-2 hover:bg-paper-3 border border-rule text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <Eye className="w-3.5 h-3.5 text-brand" />
+                <span>Vista Previa PDF</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleGuardarBorrador}
+              disabled={cargando}
+              className="min-h-[36px] px-3 rounded-xl bg-paper-3 hover:bg-paper-2 border border-rule text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              <Save className="w-3.5 h-3.5 text-brand" />
+              <span>Guardar avance</span>
+            </button>
+          </div>
         </div>
 
         {/* Barra de Progreso Dinámica de Carga y Avance */}
         <div className="w-full bg-paper-3 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-brand h-full rounded-full transition-all duration-300 ease-out shadow-xs"
+            className="bg-brand h-full rounded-full transition-all duration-300 ease-out"
             style={{ width: `${((pasoActivo + 1) / Math.max(secciones.length, 1)) * 100}%` }}
           />
         </div>
@@ -781,7 +798,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 onClick={() => irAPaso(idx)}
                 className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer shrink-0 border ${
                   esActivo
-                    ? 'bg-brand text-brand-contrast shadow-xs font-bold border-brand'
+                    ? 'bg-brand text-brand-contrast font-bold border-brand'
                     : esPasado
                       ? 'bg-brand/10 text-brand border-brand/30'
                       : 'bg-paper-2 text-ink-muted border-rule'
@@ -810,12 +827,12 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       )}
 
       {/* Cuerpo de Campos del Paso Actual */}
-      <div className="bg-surface rounded-2xl p-4 sm:p-6 border border-rule shadow-2xs">
+      <div className="bg-surface rounded-2xl p-4 sm:p-6 border border-rule">
         {renderContenidoSeccion()}
       </div>
 
       {/* Barra de Acción Inferior Optimizada para el Pulgar */}
-      <div className="bg-surface rounded-2xl p-3.5 sm:p-5 border border-rule shadow-2xs space-y-3">
+      <div className="bg-surface rounded-2xl p-3.5 sm:p-5 border border-rule space-y-3">
         {pasoActivo < secciones.length - 1 ? (
           <div className="space-y-3">
             {/* Fila Principal: Botón Siguiente Destacado y Botón Anterior */}
@@ -834,7 +851,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleSiguientePaso}
-                className="flex-1 min-h-[52px] sm:min-h-[56px] px-5 sm:px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-sm sm:text-base shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="flex-1 min-h-[52px] sm:min-h-[56px] px-5 sm:px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-sm sm:text-base flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <span>
                   Siguiente:{' '}
@@ -845,20 +862,33 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* Acción Secundaria: Finalizar y Descargar PDF (discreto para no confundir al usuario) */}
-            <div className="flex items-center justify-between pt-1 border-t border-rule text-xs">
+            {/* Acción Secundaria: Vista Previa y Finalizar */}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-1 border-t border-rule text-xs">
               <span className="text-[11px] font-semibold text-ink-muted">
                 Paso {pasoActivo + 1} de {secciones.length}
               </span>
-              <button
-                type="button"
-                onClick={handleFinalizarFirma}
-                disabled={cargando}
-                className="text-ink-muted hover:text-ink font-bold text-xs flex items-center gap-1.5 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-paper-2 cursor-pointer disabled:opacity-50 whitespace-nowrap"
-              >
-                <Download className="w-3.5 h-3.5 text-ink-muted shrink-0" />
-                <span className="whitespace-nowrap">Finalizar y descargar PDF</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {onPreviewPdf && (
+                  <button
+                    type="button"
+                    onClick={() => onPreviewPdf(getValues())}
+                    disabled={cargando}
+                    className="text-brand hover:bg-brand/10 font-bold text-xs flex items-center gap-1.5 transition-colors py-1.5 px-2.5 rounded-lg cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                  >
+                    <Eye className="w-3.5 h-3.5 shrink-0" />
+                    <span>Vista Previa PDF</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleFinalizarFirma}
+                  disabled={cargando}
+                  className="text-ink-muted hover:text-ink font-bold text-xs flex items-center gap-1.5 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-paper-2 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                >
+                  <Download className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                  <span className="whitespace-nowrap">Finalizar y descargar PDF</span>
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -873,11 +903,23 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               <span>Paso anterior</span>
             </button>
 
+            {onPreviewPdf && (
+              <button
+                type="button"
+                onClick={() => onPreviewPdf(getValues())}
+                disabled={cargando}
+                className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule bg-paper-2 hover:bg-paper-3 text-ink font-bold text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                <Eye className="w-4 h-4 text-brand shrink-0" />
+                <span>Vista Previa PDF</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleFinalizarFirma}
               disabled={cargando}
-              className="flex-1 min-h-[54px] sm:min-h-[58px] px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-black text-sm sm:text-base shadow-lg shadow-sm flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              className="flex-1 min-h-[54px] sm:min-h-[58px] px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-black text-sm sm:text-base flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
             >
               {cargando ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

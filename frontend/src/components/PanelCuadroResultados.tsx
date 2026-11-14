@@ -16,6 +16,8 @@ import {
 import { api } from '../api/client';
 import { formatearMoneda, obtenerCicloAnioActual, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
+import { BotonExportar } from './ui/BotonExportar';
+import { exportarACSV, exportarAExcel, type ColumnaExportacion } from '../utils/exportadorPlanillas';
 
 export interface PanelCuadroResultadosProps {
   onToast?: (texto: string, tipo?: 'exito' | 'error') => void;
@@ -128,6 +130,79 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
     window.print();
   };
 
+  const construirFilasExportacion = () => {
+    const periodoLabel = mesFiltro ? NOMBRES_MESES_COMPLETO[mesFiltro - 1] : 'Consolidado Anual';
+    const filas: Array<{
+      ejercicio: number;
+      periodo: string;
+      categoria: string;
+      rubro: string;
+      monto: number;
+      porcentaje: string;
+    }> = [];
+
+    for (const r of ingresosVisibles) {
+      filas.push({
+        ejercicio: anio,
+        periodo: periodoLabel,
+        categoria: 'INGRESO',
+        rubro: r.rubroNombre,
+        monto: Number(r.total || 0),
+        porcentaje: `${r.porcentaje}%`,
+      });
+    }
+    for (const r of egresosVisibles) {
+      filas.push({
+        ejercicio: anio,
+        periodo: periodoLabel,
+        categoria: 'EGRESO',
+        rubro: r.rubroNombre,
+        monto: -Number(r.total || 0),
+        porcentaje: `${r.porcentaje}%`,
+      });
+    }
+    filas.push({
+      ejercicio: anio,
+      periodo: periodoLabel,
+      categoria: 'RESUMEN NETO',
+      rubro: (datos?.resumen?.resultadoNeto ?? 0) >= 0 ? 'SUPERÁVIT' : 'DÉFICIT',
+      monto: Number(datos?.resumen?.resultadoNeto ?? 0),
+      porcentaje: `${datos?.resumen?.margenOperativoPorcentaje ?? 0}%`,
+    });
+
+    const columnas: ColumnaExportacion<(typeof filas)[number]>[] = [
+      { header: 'Ejercicio', formatear: (f) => f.ejercicio, ancho: 12 },
+      { header: 'Período', formatear: (f) => f.periodo, ancho: 20 },
+      { header: 'Categoría', formatear: (f) => f.categoria, ancho: 16 },
+      { header: 'Rubro / Concepto', formatear: (f) => f.rubro, ancho: 32 },
+      { header: 'Monto', formatear: (f) => f.monto, ancho: 16 },
+      { header: '% Composición / Margen', formatear: (f) => f.porcentaje, ancho: 22 },
+    ];
+
+    return { filas, columnas };
+  };
+
+  const handleExportarExcel = () => {
+    const { filas, columnas } = construirFilasExportacion();
+    const sufijo = mesFiltro ? `mes-${mesFiltro}` : 'anual';
+    void exportarAExcel({
+      filas,
+      columnas,
+      nombreArchivo: `cuadro-resultados-${anio}-${sufijo}`,
+      nombreHoja: 'Resultados',
+    });
+  };
+
+  const handleExportarCSV = () => {
+    const { filas, columnas } = construirFilasExportacion();
+    const sufijo = mesFiltro ? `mes-${mesFiltro}` : 'anual';
+    exportarACSV({
+      filas,
+      columnas,
+      nombreArchivo: `cuadro-resultados-${anio}-${sufijo}`,
+    });
+  };
+
   const esSuperavit = (datos?.resumen?.resultadoNeto ?? 0) >= 0;
   const mostrarSkeleton = cargando;
 
@@ -195,7 +270,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-2 self-end md:self-auto">
+        <div className="flex items-center gap-2 self-end md:self-auto flex-wrap">
           <Button
             variant="secondary"
             size="sm"
@@ -207,6 +282,14 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
             <RefreshCw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />
             <span>Actualizar</span>
           </Button>
+
+          <BotonExportar
+            disabled={cargando || !datos}
+            onExportarExcel={handleExportarExcel}
+            onExportarCSV={handleExportarCSV}
+            texto="Exportar"
+            size="sm"
+          />
 
           <Button
             variant="secondary"

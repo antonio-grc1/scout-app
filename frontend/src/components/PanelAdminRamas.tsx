@@ -785,7 +785,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 <button
                   type="submit"
                   disabled={guardandoRama}
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs transition-colors"
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {guardandoRama ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -925,7 +925,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 <button
                   type="submit"
                   disabled={guardandoUnidad}
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-xs transition-colors"
+                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {guardandoUnidad ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

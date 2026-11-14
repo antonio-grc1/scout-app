@@ -21,9 +21,6 @@ import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { BannerOffline } from './components/BannerOffline';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-const AutogestionPage = lazy(() =>
-  import('./pages/autogestion/AutogestionPage').then((m) => ({ default: m.AutogestionPage })),
-);
 const MiEspacioPage = lazy(() =>
   import('./pages/mi-espacio/MiEspacioPage').then((m) => ({ default: m.MiEspacioPage })),
 );
@@ -33,8 +30,26 @@ const MiembrosPage = lazy(() =>
 const MiembroDetallePage = lazy(() =>
   import('./pages/miembros/MiembroDetallePage').then((m) => ({ default: m.MiembroDetallePage })),
 );
-const GlobalPage = lazy(() =>
-  import('./pages/global/GlobalPage').then((m) => ({ default: m.GlobalPage })),
+const EventosCatalogoPage = lazy(() =>
+  import('./pages/eventos/EventosCatalogoPage').then((m) => ({ default: m.EventosCatalogoPage })),
+);
+const EventoWorkspacePage = lazy(() =>
+  import('./pages/eventos/EventoWorkspacePage').then((m) => ({ default: m.EventoWorkspacePage })),
+);
+const LegajosPage = lazy(() =>
+  import('./pages/legajos/LegajosPage').then((m) => ({ default: m.LegajosPage })),
+);
+const CompletarLegajoPage = lazy(() =>
+  import('./pages/legajos/CompletarLegajoPage').then((m) => ({ default: m.CompletarLegajoPage })),
+);
+const PasesPage = lazy(() =>
+  import('./pages/pases/PasesPage').then((m) => ({ default: m.PasesPage })),
+);
+const TesoreriaPage = lazy(() =>
+  import('./pages/tesoreria/TesoreriaPage').then((m) => ({ default: m.TesoreriaPage })),
+);
+const OrganizacionPage = lazy(() =>
+  import('./pages/organizacion/OrganizacionPage').then((m) => ({ default: m.OrganizacionPage })),
 );
 
 const queryClient = new QueryClient({
@@ -71,14 +86,6 @@ const RutaProtegida: React.FC<{
   return <>{children}</>;
 };
 
-const EventosPhase1Bridge: React.FC = () => {
-  const caps = useCapabilities();
-  if (!caps.esPropio && caps.canSeeTesoreriaGestion) {
-    return <GlobalPage defaultTab="tesoreria" defaultSubTab="eventos-qr" />;
-  }
-  return <AutogestionPage defaultVista="eventos" />;
-};
-
 const GlobalLegacyRedirect: React.FC = () => {
   const [searchParams] = useSearchParams();
   const caps = useCapabilities();
@@ -91,7 +98,10 @@ const GlobalLegacyRedirect: React.FC = () => {
   if ((tab === 'plantillas' || tab === 'colaboradores') && caps.canViewLegajosModule) {
     return <Navigate to={`/legajos?tab=${tab}`} replace />;
   }
-  if ((tab === 'organizacion' || tab === 'roles' || tab === 'correo') && caps.canViewOrganizacion) {
+  if (
+    (tab === 'organizacion' || tab === 'roles' || tab === 'correo') &&
+    (caps.canViewOrganizacion || caps.canViewRoles || caps.canEditCorreo)
+  ) {
     return <Navigate to={`/organizacion?tab=${tab}`} replace />;
   }
   if (sub === 'eventos-qr' && caps.canViewEventos) {
@@ -229,7 +239,7 @@ export function App() {
                 element={
                   <RutaProtegida allow={(c) => c.canViewLegajosModule}>
                     <AppShell title="Legajos">
-                      <GlobalPage defaultTab="plantillas" />
+                      <LegajosPage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -239,7 +249,7 @@ export function App() {
                 element={
                   <RutaProtegida>
                     <AppShell title="Completar Legajo">
-                      <AutogestionPage defaultVista="papeles" />
+                      <CompletarLegajoPage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -249,7 +259,7 @@ export function App() {
                 element={
                   <RutaProtegida allow={(c) => c.canViewPases}>
                     <AppShell title="Pases">
-                      <GlobalPage defaultTab="pases" />
+                      <PasesPage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -259,7 +269,7 @@ export function App() {
                 element={
                   <RutaProtegida allow={(c) => c.canSeeTesoreriaGestion}>
                     <AppShell title="Tesorería">
-                      <GlobalPage defaultTab="tesoreria" />
+                      <TesoreriaPage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -269,7 +279,7 @@ export function App() {
                 element={
                   <RutaProtegida allow={(c) => c.canViewEventos}>
                     <AppShell title="Eventos">
-                      <EventosPhase1Bridge />
+                      <EventosCatalogoPage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -279,7 +289,7 @@ export function App() {
                 element={
                   <RutaProtegida allow={(c) => c.canViewEventos}>
                     <AppShell title="Evento">
-                      <EventosPhase1Bridge />
+                      <EventoWorkspacePage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -287,9 +297,13 @@ export function App() {
               <Route
                 path="/organizacion"
                 element={
-                  <RutaProtegida allow={(c) => c.canViewOrganizacion}>
+                  <RutaProtegida
+                    allow={(c) =>
+                      c.canViewOrganizacion || c.canViewRoles || c.canEditCorreo
+                    }
+                  >
                     <AppShell title="Organización">
-                      <GlobalPage defaultTab="organizacion" />
+                      <OrganizacionPage />
                     </AppShell>
                   </RutaProtegida>
                 }

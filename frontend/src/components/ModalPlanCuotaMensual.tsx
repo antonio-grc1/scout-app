@@ -272,7 +272,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej. Cuota Social 2026, Cuota Rovers 2026..."
+                placeholder={`Ej. Cuota Social ${anioActual}, Cuota Rovers ${anioActual}...`}
                 className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>

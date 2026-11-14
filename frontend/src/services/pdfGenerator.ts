@@ -5,6 +5,7 @@ import {
   type OfficialPdfBuilderOptions,
 } from './officialPdfBuilder';
 import type { PdfWorkerRequest, PdfWorkerResponse } from './pdfBuilder.worker';
+import { obtenerCicloAnioActual } from '../lib/formatters';
 
 export { buildOfficialPdf, generarMoldeEnBlancoPdf };
 
@@ -187,7 +188,7 @@ export function prepararRespuestasParaImpresion(
   resp.salidas_localidad = 'Córdoba';
   resp.salidas_departamento = 'Capital';
   resp.salidas_provincia = 'Córdoba';
-  resp.salidas_ciclo_anio = '2026';
+  resp.salidas_ciclo_anio = String(obtenerCicloAnioActual());
   resp.ret_provincia_ciudad = 'Córdoba, Capital';
 
   // Fecha actual para autorizaciones

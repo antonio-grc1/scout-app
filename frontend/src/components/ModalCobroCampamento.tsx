@@ -213,7 +213,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej. Campamento de Verano 2026, Acantonamiento, Pañuelo..."
+                placeholder={`Ej. Campamento de Verano ${anioActual}, Acantonamiento, Pañuelo...`}
                 className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>

@@ -202,7 +202,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
 
     const anioNum = parseInt(String(cicloAnio), 10);
     if (isNaN(anioNum) || anioNum < 2000 || anioNum > 2100) {
-      setError('El ciclo lectivo debe ser un año válido (ej. 2026).');
+      setError(`El ciclo lectivo debe ser un año válido (ej. ${new Date().getFullYear()}).`);
       return;
     }
 
@@ -444,7 +444,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
             <input
               type="text"
               required
-              placeholder="ej. Campamento Anual 2026, Cuota Mensual Mayo..."
+              placeholder={`ej. Campamento Anual ${new Date().getFullYear()}, Cuota Mensual Mayo...`}
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"

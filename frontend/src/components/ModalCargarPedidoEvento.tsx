@@ -55,7 +55,7 @@ export interface ModalCargarPedidoEventoProps {
     gananciaUnitaria: string | number;
     stockDisponible: number | null;
   }>;
-  pedidoAEditar?: PedidoAEditar | null;
+  pedidoAEditar?: (PedidoAEditar & { estado?: string; preferirCobro?: boolean }) | null;
   bloquearVendedor?: boolean;
   vendedorFijoNombre?: string;
   vendedorFijoId?: number;
@@ -123,9 +123,10 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         setObservaciones(pedidoAEditar.observaciones || '');
         if (pedidoAEditar.metodoPago === 'EFECTIVO' || pedidoAEditar.metodoPago === 'TRANSFERENCIA') {
           setMetodoPago(pedidoAEditar.metodoPago);
-        } else {
-          // Pre-seleccionar EFECTIVO para agilizar el cobro directo de pedidos pendientes
+        } else if (pedidoAEditar.preferirCobro) {
           setMetodoPago('EFECTIVO');
+        } else {
+          setMetodoPago('PENDIENTE');
         }
         if (pedidoAEditar.cuentaId) {
           setCuentaId(String(pedidoAEditar.cuentaId));
