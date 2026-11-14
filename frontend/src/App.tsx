@@ -24,14 +24,17 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 const AutogestionPage = lazy(() =>
   import('./pages/autogestion/AutogestionPage').then((m) => ({ default: m.AutogestionPage })),
 );
-const UnidadPage = lazy(() =>
-  import('./pages/unidad/UnidadPage').then((m) => ({ default: m.UnidadPage })),
+const MiEspacioPage = lazy(() =>
+  import('./pages/mi-espacio/MiEspacioPage').then((m) => ({ default: m.MiEspacioPage })),
+);
+const MiembrosPage = lazy(() =>
+  import('./pages/miembros/MiembrosPage').then((m) => ({ default: m.MiembrosPage })),
+);
+const MiembroDetallePage = lazy(() =>
+  import('./pages/miembros/MiembroDetallePage').then((m) => ({ default: m.MiembroDetallePage })),
 );
 const GlobalPage = lazy(() =>
   import('./pages/global/GlobalPage').then((m) => ({ default: m.GlobalPage })),
-);
-const PerfilPage = lazy(() =>
-  import('./pages/perfil/PerfilPage').then((m) => ({ default: m.PerfilPage })),
 );
 
 const queryClient = new QueryClient({
@@ -66,17 +69,6 @@ const RutaProtegida: React.FC<{
   }
 
   return <>{children}</>;
-};
-
-const MiEspacioPhase1Bridge: React.FC = () => {
-  const [searchParams] = useSearchParams();
-  if (searchParams.get('tab') === 'perfil') {
-    return <PerfilPage />;
-  }
-  const vistaParam = searchParams.get('vista');
-  const defaultVista =
-    vistaParam === 'cuotas' || vistaParam === 'eventos' ? vistaParam : 'papeles';
-  return <AutogestionPage defaultVista={defaultVista} />;
 };
 
 const EventosPhase1Bridge: React.FC = () => {
@@ -207,7 +199,7 @@ export function App() {
                 element={
                   <RutaProtegida>
                     <AppShell title="Mi Espacio">
-                      <MiEspacioPhase1Bridge />
+                      <MiEspacioPage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -217,7 +209,7 @@ export function App() {
                 element={
                   <RutaProtegida allow={(c) => c.canViewMiembros}>
                     <AppShell title="Miembros">
-                      <UnidadPage />
+                      <MiembrosPage />
                     </AppShell>
                   </RutaProtegida>
                 }
@@ -227,7 +219,7 @@ export function App() {
                 element={
                   <RutaProtegida allow={(c) => c.canViewMiembros}>
                     <AppShell title="Miembro 360°">
-                      <UnidadPage />
+                      <MiembroDetallePage />
                     </AppShell>
                   </RutaProtegida>
                 }

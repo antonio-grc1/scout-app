@@ -1,0 +1,64 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ExternalLink } from 'lucide-react';
+import { Drawer } from '../../components/ui';
+import { ExpedienteMiembro360, type TabExpediente360 } from './ExpedienteMiembro360';
+
+export interface DrawerMiembro360Props {
+  usuarioId: number | null;
+  tabInicial?: TabExpediente360;
+  onCerrar: () => void;
+  onActualizado?: () => void;
+  onEliminado?: (mensaje: string) => void;
+  onClaveReseteada?: (mensaje: string) => void;
+}
+
+export const DrawerMiembro360: React.FC<DrawerMiembro360Props> = ({
+  usuarioId,
+  tabInicial = 'datos',
+  onCerrar,
+  onActualizado,
+  onEliminado,
+  onClaveReseteada,
+}) => {
+  const [tabActual, setTabActual] = useState<TabExpediente360>(tabInicial);
+
+  useEffect(() => {
+    setTabActual(tabInicial);
+  }, [tabInicial, usuarioId]);
+
+  if (usuarioId === null) return null;
+
+  return (
+    <Drawer
+      abierto={true}
+      onCerrar={onCerrar}
+      titulo="Expediente 360°"
+      subtitulo={`Miembro #${usuarioId}`}
+      mode="drawer"
+      allowFullscreen={true}
+      maxWidthClass="sm:max-w-2xl"
+      headerExtra={
+        <Link
+          to={`/miembros/${usuarioId}?tab=${tabActual}`}
+          onClick={onCerrar}
+          title="Abrir ficha completa en página dedicada"
+          className="s-btn-sec min-h-[34px] px-2.5 py-1 rounded-xl text-[11px] font-bold inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+        >
+          <ExternalLink className="w-3.5 h-3.5 text-brand" />
+          <span className="hidden sm:inline">Abrir completo</span>
+        </Link>
+      }
+    >
+      <ExpedienteMiembro360
+        usuarioId={usuarioId}
+        tabInicial={tabInicial}
+        onTabChange={setTabActual}
+        onCerrar={onCerrar}
+        onActualizado={onActualizado}
+        onEliminado={onEliminado}
+        onClaveReseteada={onClaveReseteada}
+      />
+    </Drawer>
+  );
+};

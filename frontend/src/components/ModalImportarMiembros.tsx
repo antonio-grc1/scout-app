@@ -71,6 +71,7 @@ export function construirPayloadActualizacionMiembro(
 
 export interface ModalImportarMiembrosProps {
   abierto: boolean;
+  embedded?: boolean;
   onCerrar: () => void;
   onImportado: () => void;
   unidadesDisponibles: any[];
@@ -145,6 +146,7 @@ function encontrarValorPorColumna(fila: Record<string, any>, clavesPosibles: str
 
 export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   abierto,
+  embedded = false,
   onCerrar,
   onImportado,
   unidadesDisponibles,
@@ -179,7 +181,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   } | null>(null);
 
   const { backdropProps, contentProps } = useModalOverlay({
-    abierto,
+    abierto: !embedded && abierto,
     onCerrar: () => {
       if (!ejecutando) {
         limpiarEstado();
@@ -602,46 +604,59 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
 
   if (!abierto) return null;
 
-  return (
-    <div
-      {...backdropProps}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none overflow-y-auto"
-    >
-      <div
-        {...contentProps}
-        className="relative w-full max-w-3xl bg-surface border border-rule rounded-2xl shadow-xl flex flex-col max-h-[92vh] overflow-hidden my-auto"
-      >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-rule flex items-center justify-between gap-3 bg-paper-2 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
-              <Upload className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-ink leading-tight">
-                Importar Miembros desde Hoja de Cálculo
-              </h2>
-              <p className="text-xs text-ink-muted">
-                Carga un archivo Excel (.xlsx) o CSV con el listado de personas
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            disabled={ejecutando}
-            onClick={() => {
-              limpiarEstado();
-              onCerrar();
-            }}
-            aria-label="Cerrar modal"
-            className="p-1.5 text-ink-muted hover:text-ink hover:bg-paper-3 rounded-xl transition cursor-pointer disabled:opacity-50"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const renderWrapper = (children: React.ReactNode) => {
+    if (embedded) {
+      return <div className="space-y-4 text-xs">{children}</div>;
+    }
 
-        {/* Cuerpo con scroll */}
-        <div className="p-5 space-y-5 overflow-y-auto flex-1 text-xs">
+    return (
+      <div
+        {...backdropProps}
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none overflow-y-auto"
+      >
+        <div
+          {...contentProps}
+          className="relative w-full max-w-3xl bg-surface border border-rule rounded-2xl shadow-xl flex flex-col max-h-[92vh] overflow-hidden my-auto"
+        >
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-rule flex items-center justify-between gap-3 bg-paper-2 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-extrabold text-ink leading-tight">
+                  Importar Miembros desde Hoja de Cálculo
+                </h2>
+                <p className="text-xs text-ink-muted">
+                  Carga un archivo Excel (.xlsx) o CSV con el listado de personas
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={ejecutando}
+              onClick={() => {
+                limpiarEstado();
+                onCerrar();
+              }}
+              aria-label="Cerrar modal"
+              className="p-1.5 text-ink-muted hover:text-ink hover:bg-paper-3 rounded-xl transition cursor-pointer disabled:opacity-50"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+  return renderWrapper(
+    <>
+      {/* Cuerpo con scroll */}
+      <div className={embedded ? 'space-y-5 text-xs' : 'p-5 space-y-5 overflow-y-auto flex-1 text-xs'}>
           {errorGlobal && (
             <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -922,7 +937,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   )}
 
                   {/* Tabla de previsualización */}
-                  <div className="max-h-60 overflow-y-auto rounded-xl border border-rule bg-surface shadow-2xs">
+                  <div className="max-h-60 overflow-y-auto rounded-xl border border-rule bg-surface">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-paper-2 text-ink-muted border-b border-rule sticky top-0 font-bold">
                         <tr>
@@ -1021,7 +1036,13 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-rule flex items-center justify-end gap-2.5 bg-paper-2 shrink-0">
+        <div
+          className={
+            embedded
+              ? 'pt-4 border-t border-rule flex items-center justify-end gap-2.5'
+              : 'p-4 border-t border-rule flex items-center justify-end gap-2.5 bg-paper-2 shrink-0'
+          }
+        >
           {resumenFin ? (
             <button
               type="button"
@@ -1055,7 +1076,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   (totalValidosNuevos === 0 && (!actualizarExistentes || totalExistentes === 0))
                 }
                 onClick={handleConfirmarImportacion}
-                className="min-h-[40px] px-5 py-2 rounded-xl bg-brand text-brand-contrast font-bold text-xs hover:opacity-95 transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none shadow-2xs flex items-center gap-2"
+                className="min-h-[40px] px-5 py-2 rounded-xl bg-brand text-brand-contrast font-bold text-xs hover:opacity-95 transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none flex items-center gap-2"
               >
                 {ejecutando ? (
                   <>
@@ -1076,7 +1097,6 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
             </>
           )}
         </div>
-      </div>
-    </div>
+    </>,
   );
 };

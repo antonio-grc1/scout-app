@@ -294,7 +294,7 @@ export const AutogestionPage: React.FC<{ defaultVista?: VistaAutogestion }> = ({
     return await generarFichaPdf(
       mapeo,
       respuestas,
-      entrega?.hashVerificacion || `FICHA-${usuarioParaPdf.dni}-2026`,
+      entrega?.hashVerificacion || `FICHA-${usuarioParaPdf.dni}-${obtenerCicloAnioActual()}`,
       usuarioParaPdf,
       entrega?.versionImpresion || 1,
     );

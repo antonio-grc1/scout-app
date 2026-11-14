@@ -1,0 +1,2416 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowRightLeft,
+  ArrowUp,
+  ArrowUpDown,
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  CloudOff,
+  CreditCard,
+  Ellipsis,
+  FileCheck2,
+  Filter,
+  GitBranch,
+  HeartHandshake,
+  HeartPulse,
+  Loader2,
+  Phone,
+  QrCode,
+  RotateCcw,
+  Search,
+  Shield,
+  ShoppingBag,
+  Sparkles,
+  Ticket,
+  Truck,
+  Upload,
+  UserPlus,
+  UserX,
+  Users,
+  Utensils,
+  X,
+} from 'lucide-react';
+import { api } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
+import { useOfflineStore } from '../../store/offlineStore';
+import { useToastStore } from '../../store/toastStore';
+import { useActiveUnitStore, useCapabilities } from '../../core/capabilities';
+import { useQrModalStore } from '../../core/qrModalStore';
+import { extraerInfoMedicaMiembro } from '../../lib/alertasMedicas';
+import { obtenerConfigRama, obtenerOrdenRama } from '../../lib/ramaColors';
+import { filtrarUnidadesPorAlcance } from '../../lib/permisos';
+import {
+  ESTADO_FICHA_CONFIG,
+  calcularCamada,
+  calcularEdad,
+  esErrorOffline,
+  esRolAlcanceGlobal,
+  esRolDeEducador,
+  formatearFecha,
+  formatearNombreFamilia,
+  normalizarTextoBusqueda,
+  obtenerCicloAnioActual,
+  obtenerHoyLocalISO,
+  obtenerRolPrincipal,
+  traducirErrorAmigable,
+} from '../../lib/formatters';
+import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
+import { MiembroCard } from '../../components/MiembroCard';
+import { ModalAltaMiembro } from '../../components/ModalAltaMiembro';
+import { ModalEventosUnidad } from '../../components/ModalEventosUnidad';
+import { ModalImportarMiembros } from '../../components/ModalImportarMiembros';
+import { PanelSolicitudesPase } from '../../components/PanelSolicitudesPase';
+import { BotonExportar, Drawer } from '../../components/ui';
+import { exportarACSV, exportarAExcel, type ColumnaExportacion } from '../../utils/exportadorPlanillas';
+import { DrawerMiembro360 } from './DrawerMiembro360';
+import type { TabExpediente360 } from './ExpedienteMiembro360';
+
+type CampoOrden = 'miembro' | 'edad' | 'seccion' | 'ficha';
+type DireccionOrden = 'asc' | 'desc';
+export type ChipFiltroMiembros =
+  | 'TODOS'
+  | 'FALTA_FICHA'
+  | 'CON_DEUDA'
+  | 'PASE_SUGERIDO'
+  | 'ALERTA_MEDICA'
+  | 'BAJAS';
+
+const FILTROS_VALIDOS: readonly ChipFiltroMiembros[] = [
+  'TODOS',
+  'FALTA_FICHA',
+  'CON_DEUDA',
+  'PASE_SUGERIDO',
+  'ALERTA_MEDICA',
+  'BAJAS',
+];
+
+const parseFiltroParam = (valor: string | null): ChipFiltroMiembros => {
+  if (valor && (FILTROS_VALIDOS as readonly string[]).includes(valor)) {
+    return valor as ChipFiltroMiembros;
+  }
+  return 'TODOS';
+};
+
+const calcularDeudaMiembro = (m: any): number =>
+  Math.round(
+    (m?.cargos || []).reduce(
+      (acc: number, c: any) =>
+        c.estado === 'ANULADO'
+          ? acc
+          : acc + Math.max(0, Number(c.montoFinal || 0) - Number(c.montoPagado || 0)),
+      0,
+    ) * 100,
+  ) / 100;
+
+const obtenerTextoDireccion = (campo: CampoOrden, dir: DireccionOrden): string => {
+  switch (campo) {
+    case 'seccion':
+      return dir === 'asc' ? 'Menor a mayor edad' : 'Mayor a menor edad';
+    case 'miembro':
+      return dir === 'asc' ? 'A → Z (Apellido)' : 'Z → A (Apellido)';
+    case 'edad':
+      return dir === 'asc' ? 'Menor a mayor edad' : 'Mayor a menor edad';
+    case 'ficha':
+      return dir === 'asc' ? 'Pendientes primero' : 'Validadas primero';
+  }
+};
+
+export const MiembrosPage: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { asignaciones } = useAuthStore();
+  const caps = useCapabilities();
+  const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
+  const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
+  const abrirQr = useQrModalStore((s) => s.abrirQr);
+  const isOnline = useOfflineStore((s) => s.isOnline);
+  const mostrarToast = useToastStore((s) => s.mostrarToast);
+
+  const esGlobal = caps.esGlobal;
+  const puedeVerPases = caps.canViewPases;
+  const puedeEjecutarPases = caps.canExecutePases;
+  const puedeVerCuotas = caps.canViewCuotas || caps.canSeeTesoreriaGestion;
+  const puedeVerFichas = caps.hasPermiso('legajos.ver');
+  const puedeValidarFisico = caps.canValidateQr;
+
+  const cicloAnio = useMemo(() => obtenerCicloAnioActual(), []);
+
+  const [miembros, setMiembros] = useState<any[]>([]);
+  const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
+  const [solicitudesPase, setSolicitudesPase] = useState<any[]>([]);
+  const [entregas, setEntregas] = useState<any[]>([]);
+  const [unidadesRaw, setUnidadesRaw] = useState<any[]>([]);
+  const [rolesRaw, setRolesRaw] = useState<any[]>([]);
+  const [ramas, setRamas] = useState<any[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const [validandoId, setValidandoId] = useState<number | null>(null);
+
+  // Modales / Drawers
+  const [modalEventosAbierto, setModalEventosAbierto] = useState(false);
+  const [modalAltaAbierto, setModalAltaAbierto] = useState(false);
+  const [modalImportarAbierto, setModalImportarAbierto] = useState(false);
+  const [miembroDrawerId, setMiembroDrawerId] = useState<number | null>(null);
+  const [tabInicialDrawer, setTabInicialDrawer] = useState<TabExpediente360>('datos');
+  const [drawerFamiliasAbierto, setDrawerFamiliasAbierto] = useState(false);
+  const [familiasVoluntarias, setFamiliasVoluntarias] = useState<any[]>([]);
+  const [cargandoVoluntarias, setCargandoVoluntarias] = useState(false);
+
+  // Filtros y estado de URL
+  const [busqueda, setBusqueda] = useState('');
+  const [seccionesFiltro, setSeccionesFiltro] = useState<number[]>(() =>
+    typeof activeUnitId === 'number' ? [activeUnitId] : [],
+  );
+  const [rolesFiltro, setRolesFiltro] = useState<number[]>([]);
+  const [camadasFiltro, setCamadasFiltro] = useState<number[]>([]);
+  const [menuSeccionesAbierto, setMenuSeccionesAbierto] = useState(false);
+  const [menuRolesAbierto, setMenuRolesAbierto] = useState(false);
+  const [menuCamadasAbierto, setMenuCamadasAbierto] = useState(false);
+  const [menuAccionesAbierto, setMenuAccionesAbierto] = useState(false);
+  const [chipActivo, setChipActivo] = useState<ChipFiltroMiembros>(() =>
+    parseFiltroParam(searchParams.get('filtro')),
+  );
+  const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
+  const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
+  const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
+
+  // Ordenamiento
+  const [campoOrden, setCampoOrden] = useState<CampoOrden>('seccion');
+  const [direccionOrden, setDireccionOrden] = useState<DireccionOrden>('asc');
+
+  const totalFiltrosAvanzados =
+    seccionesFiltro.length + rolesFiltro.length + camadasFiltro.length;
+
+  const notificarToastChild = useCallback(
+    (texto: string, tipo: 'exito' | 'error' = 'exito') => {
+      mostrarToast(texto, tipo);
+    },
+    [mostrarToast],
+  );
+
+  // Sincronización con activeUnitId del TopBar
+  useEffect(() => {
+    if (activeUnitId === 'ALL') {
+      setSeccionesFiltro([]);
+    } else if (typeof activeUnitId === 'number') {
+      setSeccionesFiltro([activeUnitId]);
+    }
+  }, [activeUnitId]);
+
+  // Sincronización desde URL ?filtro= (Back/Forward)
+  const filtroParam = searchParams.get('filtro');
+  useEffect(() => {
+    setChipActivo(parseFiltroParam(filtroParam));
+  }, [filtroParam]);
+
+  const seleccionarChip = useCallback(
+    (nuevoChip: ChipFiltroMiembros) => {
+      setChipActivo(nuevoChip);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (nuevoChip === 'TODOS') {
+            next.delete('filtro');
+          } else {
+            next.set('filtro', nuevoChip);
+          }
+          return next;
+        },
+        { replace: false },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const hayMenuDesplegableAbierto =
+    menuSeccionesAbierto || menuRolesAbierto || menuCamadasAbierto || menuAccionesAbierto;
+
+  useEffect(() => {
+    if (!hayMenuDesplegableAbierto) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenuSeccionesAbierto(false);
+        setMenuRolesAbierto(false);
+        setMenuCamadasAbierto(false);
+        setMenuAccionesAbierto(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hayMenuDesplegableAbierto]);
+
+  const cargarTodosLosMiembrosPaginados = useCallback(async (): Promise<any[]> => {
+    const porPagina = 200;
+    const primera = await api.get(`/miembros?pagina=1&porPagina=${porPagina}&incluirInactivos=true`);
+    const primerosItems: any[] = primera.data?.items || [];
+    const total: number = Number(primera.data?.total ?? primerosItems.length);
+    const totalPaginas = Math.ceil(total / porPagina);
+    if (totalPaginas <= 1) return primerosItems;
+
+    const resto = await Promise.all(
+      Array.from({ length: totalPaginas - 1 }, (_, i) =>
+        api.get(`/miembros?pagina=${i + 2}&porPagina=${porPagina}&incluirInactivos=true`),
+      ),
+    );
+    const acumulados = [...primerosItems];
+    for (const r of resto) {
+      if (Array.isArray(r.data?.items)) acumulados.push(...r.data.items);
+    }
+    return acumulados;
+  }, []);
+
+  const cargarDatos = useCallback(
+    async (silencioso = false) => {
+      if (!silencioso) setCargando(true);
+      try {
+        const [
+          miembrosLista,
+          resCandidatos,
+          resSolicitudes,
+          resEntregas,
+          resUnidades,
+          resRoles,
+          resRamas,
+        ] = await Promise.all([
+          cargarTodosLosMiembrosPaginados(),
+          puedeVerPases
+            ? api.get('/pases/candidatos').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          puedeVerPases
+            ? api.get('/pases/solicitudes').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          puedeVerFichas
+            ? api.get(`/legajos/entregas?cicloAnio=${cicloAnio}`).catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          api.get('/organizacion/unidades').catch(() => ({ data: [] })),
+          api.get('/organizacion/roles').catch(() => ({ data: [] })),
+          api.get('/organizacion/ramas').catch(() => ({ data: [] })),
+        ]);
+
+        setMiembros(miembrosLista);
+        setCandidatosPase(resCandidatos.data || []);
+        setSolicitudesPase(resSolicitudes.data || []);
+        setEntregas(resEntregas.data || []);
+        setUnidadesRaw(resUnidades.data || []);
+        setRolesRaw(resRoles.data || []);
+        setRamas(resRamas.data || []);
+        setErrorCarga(null);
+      } catch (err) {
+        const mensaje = traducirErrorAmigable(err, 'No se pudo cargar el padrón.');
+        const offline =
+          (typeof navigator !== 'undefined' && !navigator.onLine) || esErrorOffline(err);
+
+        if (offline) {
+          setMiembros((prev) => {
+            if (prev.length === 0) {
+              setErrorCarga('Estás sin conexión y aún no hay datos sincronizados en este dispositivo.');
+            } else {
+              setErrorCarga(null);
+            }
+            return prev;
+          });
+        } else {
+          setErrorCarga(mensaje);
+          if (!silencioso) mostrarToast(mensaje, 'error');
+        }
+      } finally {
+        if (!silencioso) setCargando(false);
+      }
+    },
+    [cargarTodosLosMiembrosPaginados, puedeVerPases, puedeVerFichas, cicloAnio, mostrarToast],
+  );
+
+  useEffect(() => {
+    void cargarDatos(false);
+  }, [cargarDatos]);
+
+  // Refresco automático tras validar QR desde el modal universal
+  useEffect(() => {
+    if (lastValidationAt > 0) {
+      void cargarDatos(true);
+    }
+  }, [lastValidationAt, cargarDatos]);
+
+  // Catálogos sintéticos cuando un rol de unidad recibe [] desde /organizacion/*
+  const unidades = useMemo(() => {
+    if (unidadesRaw.length > 0) return unidadesRaw;
+    const mapa = new Map<number, any>();
+    for (const a of asignaciones) {
+      if (typeof a.unidadId === 'number' && !mapa.has(a.unidadId)) {
+        mapa.set(a.unidadId, {
+          id: a.unidadId,
+          nombre: a.unidadNombre || `Sección #${a.unidadId}`,
+        });
+      }
+    }
+    for (const m of miembros) {
+      for (const a of m.asignaciones || []) {
+        const u = a.unidad;
+        const uId = u?.id ?? a.unidadId;
+        if (typeof uId === 'number' && !mapa.has(uId)) {
+          mapa.set(uId, u || { id: uId, nombre: `Sección #${uId}` });
+        }
+      }
+    }
+    return Array.from(mapa.values());
+  }, [unidadesRaw, asignaciones, miembros]);
+
+  const roles = useMemo(() => {
+    if (rolesRaw.length > 0) return rolesRaw;
+    const mapa = new Map<number, any>();
+    for (const m of miembros) {
+      for (const a of m.asignaciones || []) {
+        const r = a.rol;
+        const rId = r?.id ?? a.rolId;
+        if (typeof rId === 'number' && r && typeof r === 'object' && !mapa.has(rId)) {
+          mapa.set(rId, r);
+        }
+      }
+    }
+    return Array.from(mapa.values());
+  }, [rolesRaw, miembros]);
+
+  // Diccionario rápido de entregas por usuarioId
+  const entregasPorUsuario = useMemo(() => {
+    const mapa = new Map<number, any>();
+    for (const ent of entregas) {
+      if (!mapa.has(ent.usuarioId) || ent.estado === 'VALIDADO_FISICAMENTE') {
+        mapa.set(ent.usuarioId, ent);
+      }
+    }
+    return mapa;
+  }, [entregas]);
+
+  // Alertas médicas precalculadas por usuario
+  const alertasPorUsuario = useMemo(() => {
+    const mapa = new Map<number, ReturnType<typeof extraerInfoMedicaMiembro>>();
+    for (const m of miembros) {
+      mapa.set(m.id, extraerInfoMedicaMiembro(m, entregasPorUsuario.get(m.id)));
+    }
+    return mapa;
+  }, [miembros, entregasPorUsuario]);
+
+  const candidatosIds = useMemo(() => {
+    return new Set(
+      candidatosPase
+        .filter((c) => esGlobal || (!c.requiereAlcanceGlobal && c.tipo !== 'EGRESO'))
+        .map((c) => c.usuario?.id),
+    );
+  }, [candidatosPase, esGlobal]);
+
+  const handleAbrirFamiliasVoluntarias = async () => {
+    if (!isOnline) {
+      mostrarToast('Sin conexión. Conectate para ver familias voluntarias.', 'advertencia');
+      return;
+    }
+    setDrawerFamiliasAbierto(true);
+    setCargandoVoluntarias(true);
+    try {
+      const res = await api.get(`/legajos/colaboradores-adultos?cicloAnio=${cicloAnio}`);
+      setFamiliasVoluntarias(res.data || []);
+    } catch (err) {
+      if (esErrorOffline(err)) return;
+      mostrarToast(
+        traducirErrorAmigable(err, 'No se pudieron cargar las familias voluntarias.'),
+        'error',
+      );
+    } finally {
+      setCargandoVoluntarias(false);
+    }
+  };
+
+  // Acción rápida 1-Tap: Recibir y validar ficha física
+  const handleValidarFichaDirecto = async (entrega: any) => {
+    if (!isOnline) {
+      mostrarToast('Sin conexión. Conectate para validar la ficha física.', 'advertencia');
+      return;
+    }
+    if (!entrega?.hashVerificacion || validandoId) return;
+    setValidandoId(entrega.id);
+    try {
+      await api.post(`/legajos/qr/validar/${entrega.hashVerificacion}`);
+      mostrarToast('Ficha validada como entregada en papel.', 'exito');
+      await cargarDatos(true);
+    } catch (err) {
+      mostrarToast(traducirErrorAmigable(err, 'No se pudo validar la ficha.'), 'error');
+    } finally {
+      setValidandoId(null);
+    }
+  };
+
+  const handleOrdenar = (campo: CampoOrden) => {
+    if (campoOrden === campo) {
+      setDireccionOrden(direccionOrden === 'asc' ? 'desc' : 'asc');
+    } else {
+      setCampoOrden(campo);
+      setDireccionOrden('asc');
+    }
+  };
+
+  const renderIconoOrden = (campo: CampoOrden) => {
+    if (campoOrden !== campo) {
+      return <ArrowUpDown className="w-3.5 h-3.5 text-ink-muted opacity-40 ml-1 shrink-0" />;
+    }
+    return direccionOrden === 'asc' ? (
+      <ArrowUp className="w-3.5 h-3.5 text-brand ml-1 shrink-0" />
+    ) : (
+      <ArrowDown className="w-3.5 h-3.5 text-brand ml-1 shrink-0" />
+    );
+  };
+
+  const conteoPorUnidad = useMemo(() => {
+    const mapa = new Map<number, number>();
+    for (const m of miembros) {
+      if (!m.activo) continue;
+      for (const a of m.asignaciones || []) {
+        if (a.activo !== false) {
+          const uId = a.unidadId || a.unidad?.id;
+          if (uId) mapa.set(uId, (mapa.get(uId) || 0) + 1);
+        }
+      }
+    }
+    return mapa;
+  }, [miembros]);
+
+  const conteoPorRol = useMemo(() => {
+    const mapa = new Map<number, number>();
+    for (const m of miembros) {
+      if (!m.activo) continue;
+      for (const a of m.asignaciones || []) {
+        if (a.activo !== false) {
+          const rId = a.rolId || a.rol?.id;
+          if (rId) mapa.set(rId, (mapa.get(rId) || 0) + 1);
+        }
+      }
+    }
+    return mapa;
+  }, [miembros]);
+
+  const unidadesVisibles = useMemo(
+    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
+    [unidades, esGlobal, asignaciones],
+  );
+
+  const rolesVisibles = useMemo(
+    () =>
+      esGlobal
+        ? roles
+        : roles.filter((r) => !esRolAlcanceGlobal(r) || (conteoPorRol.get(r.id) || 0) > 0),
+    [roles, esGlobal, conteoPorRol],
+  );
+
+  const toggleSeccion = (id: number) => {
+    setSeccionesFiltro((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleRol = (id: number) => {
+    setRolesFiltro((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleCamada = (anio: number) => {
+    setCamadasFiltro((prev) =>
+      prev.includes(anio) ? prev.filter((x) => x !== anio) : [...prev, anio],
+    );
+  };
+
+  const textoBotonSecciones = useMemo(() => {
+    if (seccionesFiltro.length === 0) return 'Todas las secciones';
+    if (seccionesFiltro.length === 1) {
+      const u = unidades.find((item) => item.id === seccionesFiltro[0]);
+      return u?.nombre || '1 sección';
+    }
+    return `${seccionesFiltro.length} secciones seleccionadas`;
+  }, [seccionesFiltro, unidades]);
+
+  const textoBotonRoles = useMemo(() => {
+    if (rolesFiltro.length === 0) return 'Todos los roles';
+    if (rolesFiltro.length === 1) {
+      const r = roles.find((item) => item.id === rolesFiltro[0]);
+      return r?.nombre || '1 rol';
+    }
+    return `${rolesFiltro.length} roles seleccionados`;
+  }, [rolesFiltro, roles]);
+
+  const textoBotonCamadas = useMemo(() => {
+    if (camadasFiltro.length === 0) return 'Todas las camadas';
+    if (camadasFiltro.length === 1) {
+      return `Camada ${camadasFiltro[0]}`;
+    }
+    return `${camadasFiltro.length} camadas seleccionadas`;
+  }, [camadasFiltro]);
+
+  // Filtrado y ordenamiento reactivo (sin .s-stagger para no re-animar al tipear)
+  const miembrosFiltrados = useMemo(() => {
+    const q = normalizarTextoBusqueda(busqueda);
+
+    const filtrados = miembros.filter((m) => {
+      if (chipActivo === 'BAJAS') {
+        if (m.activo) return false;
+      } else {
+        if (!m.activo) return false;
+      }
+
+      const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
+      const esEdu = esRolDeEducador(asig?.rol);
+      const entrega = entregasPorUsuario.get(m.id);
+
+      if (seccionesFiltro.length > 0) {
+        const enSeccion = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (seccionesFiltro.includes(a.unidadId) || seccionesFiltro.includes(a.unidad?.id)),
+        );
+        if (!enSeccion) return false;
+      }
+
+      if (rolesFiltro.length > 0) {
+        const conRol = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (rolesFiltro.includes(a.rolId) || rolesFiltro.includes(a.rol?.id)),
+        );
+        if (!conRol) return false;
+      }
+
+      if (chipActivo === 'FALTA_FICHA' && entrega?.estado === 'VALIDADO_FISICAMENTE') {
+        return false;
+      }
+      if (chipActivo === 'CON_DEUDA' && calcularDeudaMiembro(m) <= 0) {
+        return false;
+      }
+      if (chipActivo === 'PASE_SUGERIDO' && !candidatosIds.has(m.id)) {
+        return false;
+      }
+      if (chipActivo === 'ALERTA_MEDICA' && !alertasPorUsuario.get(m.id)?.tieneAlertas) {
+        return false;
+      }
+
+      const camadaMiembro = calcularCamada(m.fechaNacimiento);
+      if (
+        camadasFiltro.length > 0 &&
+        (esEdu || camadaMiembro === null || !camadasFiltro.includes(camadaMiembro))
+      ) {
+        return false;
+      }
+
+      if (q) {
+        const cfg = obtenerConfigRama(m, unidades);
+        const coincide =
+          normalizarTextoBusqueda(m.nombre).includes(q) ||
+          normalizarTextoBusqueda(m.apellido).includes(q) ||
+          normalizarTextoBusqueda(`${m.nombre} ${m.apellido}`).includes(q) ||
+          normalizarTextoBusqueda(`${m.apellido} ${m.nombre}`).includes(q) ||
+          normalizarTextoBusqueda(m.dni).includes(q) ||
+          normalizarTextoBusqueda(m.telefonoContacto).includes(q) ||
+          normalizarTextoBusqueda(m.grupoFamiliar?.nombreFamilia).includes(q) ||
+          normalizarTextoBusqueda(cfg.nombre).includes(q) ||
+          m.asignaciones?.some(
+            (a: any) =>
+              normalizarTextoBusqueda(a.unidad?.nombre).includes(q) ||
+              normalizarTextoBusqueda(a.rol?.nombre || (typeof a.rol === 'string' ? a.rol : '')).includes(q),
+          ) ||
+          (camadaMiembro !== null && normalizarTextoBusqueda(`camada ${camadaMiembro}`).includes(q));
+        if (!coincide) return false;
+      }
+
+      return true;
+    });
+
+    return filtrados.sort((a, b) => {
+      let comp = 0;
+      switch (campoOrden) {
+        case 'miembro': {
+          comp = `${a.apellido} ${a.nombre}`
+            .toLowerCase()
+            .localeCompare(`${b.apellido} ${b.nombre}`.toLowerCase(), 'es');
+          break;
+        }
+        case 'seccion': {
+          const ordenRamaA = obtenerOrdenRama(a, unidades, ramas);
+          const ordenRamaB = obtenerOrdenRama(b, unidades, ramas);
+          if (ordenRamaA !== ordenRamaB) {
+            comp = ordenRamaA - ordenRamaB;
+            break;
+          }
+
+          const asigA = obtenerRolPrincipal(a) ?? a.asignaciones?.[0];
+          const asigB = obtenerRolPrincipal(b) ?? b.asignaciones?.[0];
+          const seccionA = asigA?.unidad?.nombre || '';
+          const seccionB = asigB?.unidad?.nombre || '';
+          const compSeccion = seccionA.localeCompare(seccionB, 'es');
+          if (compSeccion !== 0) {
+            comp = compSeccion;
+            break;
+          }
+
+          const esEduA = esRolDeEducador(asigA?.rol) ? 1 : 0;
+          const esEduB = esRolDeEducador(asigB?.rol) ? 1 : 0;
+          if (esEduA !== esEduB) {
+            comp = esEduA - esEduB;
+            break;
+          }
+
+          const timeA = a.fechaNacimiento ? new Date(a.fechaNacimiento).getTime() : 0;
+          const timeB = b.fechaNacimiento ? new Date(b.fechaNacimiento).getTime() : 0;
+          if (timeA && timeB && timeA !== timeB) {
+            comp = timeB - timeA;
+            break;
+          }
+          if (timeA && !timeB) {
+            comp = -1;
+            break;
+          }
+          if (!timeA && timeB) {
+            comp = 1;
+            break;
+          }
+
+          comp = `${a.apellido} ${a.nombre}`
+            .toLowerCase()
+            .localeCompare(`${b.apellido} ${b.nombre}`.toLowerCase(), 'es');
+          break;
+        }
+        case 'edad': {
+          const tsA = a.fechaNacimiento ? new Date(a.fechaNacimiento).getTime() : NaN;
+          const tsB = b.fechaNacimiento ? new Date(b.fechaNacimiento).getTime() : NaN;
+          const validA = Number.isFinite(tsA);
+          const validB = Number.isFinite(tsB);
+          if (validA && validB) {
+            comp = tsB - tsA;
+          } else if (validA) {
+            comp = -1;
+          } else if (validB) {
+            comp = 1;
+          } else {
+            comp = 0;
+          }
+          break;
+        }
+        case 'ficha': {
+          const peso = (ent: any) => {
+            if (!ent) return 3;
+            if (ent.estado === 'PENDIENTE_FIRMA_FISICA') return 1;
+            if (ent.estado === 'VALIDADO_FISICAMENTE') return 2;
+            return 3;
+          };
+          comp = peso(entregasPorUsuario.get(a.id)) - peso(entregasPorUsuario.get(b.id));
+          break;
+        }
+      }
+      return direccionOrden === 'asc' ? comp : -comp;
+    });
+  }, [
+    miembros,
+    seccionesFiltro,
+    rolesFiltro,
+    chipActivo,
+    camadasFiltro,
+    busqueda,
+    entregasPorUsuario,
+    alertasPorUsuario,
+    candidatosIds,
+    campoOrden,
+    direccionOrden,
+    unidades,
+    ramas,
+  ]);
+
+  const camadasDisponibles = useMemo(() => {
+    const mapa = new Map<number, number>();
+    for (const m of miembros) {
+      if (!m.activo) continue;
+      const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
+      const esEdu = esRolDeEducador(asig?.rol);
+      if (esEdu) continue;
+      if (seccionesFiltro.length > 0) {
+        const enSeccion = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (seccionesFiltro.includes(a.unidadId) || seccionesFiltro.includes(a.unidad?.id)),
+        );
+        if (!enSeccion) continue;
+      }
+      if (rolesFiltro.length > 0) {
+        const conRol = m.asignaciones?.some(
+          (a: any) =>
+            a.activo !== false &&
+            (rolesFiltro.includes(a.rolId) || rolesFiltro.includes(a.rol?.id)),
+        );
+        if (!conRol) continue;
+      }
+      if (chipActivo === 'PASE_SUGERIDO' && !candidatosIds.has(m.id)) continue;
+      const cam = calcularCamada(m.fechaNacimiento);
+      if (cam !== null) {
+        mapa.set(cam, (mapa.get(cam) || 0) + 1);
+      }
+    }
+    return Array.from(mapa.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([anio, total]) => ({ anio, total }));
+  }, [miembros, seccionesFiltro, rolesFiltro, chipActivo, candidatosIds]);
+
+  const gruposCamadaPase = useMemo(() => {
+    const grupos = new Map<
+      string,
+      {
+        key: string;
+        camada: number;
+        edadAlCorte: number;
+        unidadActual: string;
+        ramaSugeridaNombre: string;
+        tipo: string;
+        requiereAlcanceGlobal: boolean;
+        unidadesDestino: Array<{ id: number; nombre: string }>;
+        miembros: any[];
+      }
+    >();
+
+    for (const c of candidatosPase) {
+      const cam = c.camada ?? calcularCamada(c.usuario?.fechaNacimiento) ?? 0;
+      const key = `${c.unidadActual?.id || 0}-${cam}`;
+      if (!grupos.has(key)) {
+        grupos.set(key, {
+          key,
+          camada: cam,
+          edadAlCorte: c.edad,
+          unidadActual: c.unidadActual?.nombre || 'Rama',
+          ramaSugeridaNombre:
+            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Educador / Apoyo',
+          tipo: c.tipo,
+          requiereAlcanceGlobal: Boolean(c.requiereAlcanceGlobal),
+          unidadesDestino: c.unidadesDestino || [],
+          miembros: [],
+        });
+      }
+      grupos.get(key)!.miembros.push(c);
+    }
+
+    return Array.from(grupos.values()).sort((a, b) => a.camada - b.camada);
+  }, [candidatosPase]);
+
+  const handleEjecutarPaseCamada = async (grupo: {
+    key: string;
+    camada: number;
+    ramaSugeridaNombre: string;
+    tipo: string;
+    requiereAlcanceGlobal: boolean;
+    unidadesDestino: Array<{ id: number; nombre: string }>;
+    miembros: any[];
+  }) => {
+    if (!isOnline) {
+      mostrarToast('Sin conexión. Conectate para ejecutar el pase por camada.', 'advertencia');
+      return;
+    }
+    if (ejecutandoCamadaKey) return;
+    if (!esGlobal && (grupo.tipo === 'EGRESO' || grupo.requiereAlcanceGlobal)) {
+      mostrarToast('El pase a Educador requiere alcance global (Jefatura).', 'error');
+      return;
+    }
+    const elegibles = grupo.miembros.filter((m) => !m.solicitudPendiente);
+    if (elegibles.length === 0) {
+      mostrarToast(
+        'Todos los integrantes de esta camada ya tienen una solicitud pendiente.',
+        'error',
+      );
+      return;
+    }
+    const destinoId =
+      destinoPorCamada[grupo.key] ||
+      grupo.unidadesDestino?.[0]?.id ||
+      (esGlobal
+        ? unidades.find(
+            (u) =>
+              u.tipo === 'SIN_RAMA_APOYO' ||
+              u.nombre?.toLowerCase().includes('sin rama') ||
+              u.nombre?.toLowerCase().includes('apoyo'),
+          )?.id
+        : undefined);
+
+    if (!destinoId) {
+      mostrarToast('Seleccioná una sección de destino para ejecutar el pase.', 'error');
+      return;
+    }
+
+    setEjecutandoCamadaKey(grupo.key);
+    try {
+      const res = await api.post('/pases/lote', {
+        pases: elegibles.map((c) => ({
+          asignacionOrigenId: c.asignacionId,
+          unidadDestinoId: Number(destinoId),
+        })),
+      });
+      const destNombre =
+        grupo.unidadesDestino.find((u) => u.id === Number(destinoId))?.nombre ||
+        grupo.ramaSugeridaNombre;
+      const pendientes = res.data?.pendientesAprobacion ?? 0;
+      const directos = res.data?.ejecutadosDirectos ?? elegibles.length;
+      if (pendientes > 0 && directos === 0) {
+        mostrarToast(
+          `Se enviaron ${pendientes} solicitud(es) de pase hacia ${destNombre} para confirmación de la sección receptora.`,
+        );
+      } else {
+        mostrarToast(
+          `Camada ${grupo.camada} (${elegibles.length} miembro${elegibles.length === 1 ? '' : 's'}) pasó a ${destNombre}.`,
+        );
+      }
+      await cargarDatos(true);
+    } catch (err) {
+      mostrarToast(traducirErrorAmigable(err, 'No se pudo ejecutar el pase de la camada.'), 'error');
+    } finally {
+      setEjecutandoCamadaKey(null);
+    }
+  };
+
+  const conteos = useMemo(() => {
+    const activos = miembros.filter((m) => m.activo);
+    return {
+      todos: activos.length,
+      faltaFicha: activos.filter(
+        (m) => entregasPorUsuario.get(m.id)?.estado !== 'VALIDADO_FISICAMENTE',
+      ).length,
+      conDeuda: activos.filter((m) => calcularDeudaMiembro(m) > 0).length,
+      conAlertaMedica: activos.filter((m) => alertasPorUsuario.get(m.id)?.tieneAlertas).length,
+      bajas: miembros.filter((m) => !m.activo).length,
+    };
+  }, [miembros, entregasPorUsuario, alertasPorUsuario]);
+
+  // En escritorio (md+) abre Drawer 360°; en móvil (< md) navega a /miembros/:id
+  const abrirMiembro = useCallback(
+    (id: number, tab: TabExpediente360 = 'datos') => {
+      const esEscritorio =
+        typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches;
+      if (esEscritorio) {
+        setMiembroDrawerId(id);
+        setTabInicialDrawer(tab);
+      } else {
+        navigate(`/miembros/${id}?tab=${tab}`);
+      }
+    },
+    [navigate],
+  );
+
+  const prepararColumnasPadron = (): ColumnaExportacion<any>[] => [
+    { header: 'Apellido', formatear: (m) => m.apellido || '' },
+    { header: 'Nombre', formatear: (m) => m.nombre || '' },
+    { header: 'DNI', formatear: (m) => m.dni || '' },
+    {
+      header: 'Fecha Nacimiento',
+      formatear: (m) => (m.fechaNacimiento ? formatearFecha(m.fechaNacimiento) : ''),
+    },
+    { header: 'Edad', formatear: (m) => calcularEdad(m.fechaNacimiento) ?? '' },
+    { header: 'Camada', formatear: (m) => calcularCamada(m.fechaNacimiento) ?? '' },
+    {
+      header: 'Rama / Sección',
+      formatear: (m) => obtenerConfigRama(m, unidades).nombre || '',
+    },
+    {
+      header: 'Rol / Función',
+      formatear: (m) => {
+        const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
+        return asig?.rol?.nombre || (typeof asig?.rol === 'string' ? asig.rol : '') || '';
+      },
+    },
+    { header: 'Estado', formatear: (m) => (m.activo ? 'Activo' : 'Baja') },
+    {
+      header: 'Teléfono',
+      formatear: (m) => m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
+    },
+    { header: 'Email', formatear: (m) => m.emailContacto || '' },
+    { header: 'Domicilio', formatear: (m) => m.datosFijosJson?.domicilio || '' },
+    {
+      header: 'Familia',
+      formatear: (m) => formatearNombreFamilia(m.grupoFamiliar?.nombreFamilia) || '',
+    },
+    {
+      header: 'Ficha Médica',
+      formatear: (m) => {
+        const entrega = entregasPorUsuario.get(m.id);
+        if (entrega?.estado === 'VALIDADO_FISICAMENTE') return 'Validada Físicamente';
+        if (entrega) return 'Completada / Pendiente';
+        return 'Sin Entregar';
+      },
+    },
+    {
+      header: 'Alertas Médicas',
+      formatear: (m) => alertasPorUsuario.get(m.id)?.resumenAlertas || '',
+    },
+    { header: 'Saldo a Favor ($)', formatear: (m) => Number(m.saldoAFavor || 0) },
+    { header: 'Deuda Cuotas ($)', formatear: (m) => calcularDeudaMiembro(m) },
+  ];
+
+  const handleExportarPadronExcel = async () => {
+    if (miembrosFiltrados.length === 0) {
+      mostrarToast('No hay miembros para exportar con los filtros seleccionados.', 'error');
+      return;
+    }
+    const fechaHoy = obtenerHoyLocalISO();
+    await exportarAExcel({
+      nombreArchivo: `Padron_Grupo_Juan_XXIII_${fechaHoy}`,
+      nombreHoja: 'Padrón',
+      columnas: prepararColumnasPadron(),
+      filas: miembrosFiltrados,
+      resumenSuperior: [
+        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
+        { etiqueta: 'Reporte', valor: 'Padrón de Miembros' },
+        { etiqueta: 'Ciclo', valor: String(cicloAnio) },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Total de Registros', valor: miembrosFiltrados.length },
+      ],
+    });
+    mostrarToast('Padrón exportado exitosamente a Excel.');
+  };
+
+  const handleExportarPadronCSV = () => {
+    if (miembrosFiltrados.length === 0) {
+      mostrarToast('No hay miembros para exportar con los filtros seleccionados.', 'error');
+      return;
+    }
+    const fechaHoy = obtenerHoyLocalISO();
+    exportarACSV({
+      nombreArchivo: `Padron_Grupo_Juan_XXIII_${fechaHoy}`,
+      columnas: prepararColumnasPadron(),
+      filas: miembrosFiltrados,
+      resumenSuperior: [
+        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
+        { etiqueta: 'Reporte', valor: 'Padrón de Miembros' },
+        { etiqueta: 'Ciclo', valor: String(cicloAnio) },
+        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Total de Registros', valor: miembrosFiltrados.length },
+      ],
+    });
+    mostrarToast('Padrón exportado exitosamente a CSV.');
+  };
+
+  const accionesSecundarias = [
+    (caps.canViewEventos || caps.canSellEventos || caps.canCobrar) && {
+      key: 'eventos',
+      texto: 'Eventos',
+      titulo: 'Ver eventos económicos y ventas de recaudación de la rama',
+      icono: <ShoppingBag className="w-4 h-4 text-brand shrink-0" />,
+      onClick: () => setModalEventosAbierto(true),
+    },
+    (caps.canSellEventos || caps.canCobrar) && {
+      key: 'qr-vales',
+      texto: 'QR Vales',
+      titulo: 'Escanear y validar vales o entradas QR de eventos económicos',
+      icono: <Ticket className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />,
+      onClick: () => abrirQr('evento'),
+    },
+    puedeVerFichas && {
+      key: 'familias',
+      texto: 'Familias',
+      titulo: 'Ver familias voluntarias y oficios',
+      icono: <HeartHandshake className="w-4 h-4 text-rose-500 shrink-0" />,
+      onClick: () => void handleAbrirFamiliasVoluntarias(),
+    },
+    puedeValidarFisico && {
+      key: 'qr-ficha',
+      texto: 'QR Ficha',
+      titulo: 'Validar entrega física de Ficha Médica escaneando el QR',
+      icono: <QrCode className="w-4 h-4 text-ink-2 shrink-0" />,
+      onClick: () => abrirQr('legajo'),
+    },
+  ].filter(Boolean) as {
+    key: string;
+    texto: string;
+    titulo: string;
+    icono: React.ReactNode;
+    onClick: () => void;
+  }[];
+
+  const agruparAccionesEnMovil = accionesSecundarias.length > 1;
+
+  return (
+    <div className="s-anim-view max-w-7xl mx-auto space-y-4">
+      {/* Cabecera Compacta */}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight whitespace-nowrap">
+            Padrón del Grupo
+          </h1>
+          <span className="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-brand/10 text-brand border border-brand/30 shrink-0">
+            {miembrosFiltrados.length}
+          </span>
+        </div>
+
+        {/* Acciones principales */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          {accionesSecundarias.map((accion) => (
+            <button
+              key={accion.key}
+              type="button"
+              onClick={accion.onClick}
+              title={accion.titulo}
+              className={`${
+                agruparAccionesEnMovil ? 'hidden sm:inline-flex' : 'inline-flex'
+              } s-btn-sec min-h-[42px] px-3 rounded-xl text-xs items-center justify-center gap-1.5 whitespace-nowrap`}
+            >
+              {accion.icono}
+              <span>{accion.texto}</span>
+            </button>
+          ))}
+
+          {agruparAccionesEnMovil && (
+            <div className="relative flex-1 sm:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuAccionesAbierto(!menuAccionesAbierto);
+                  setMenuSeccionesAbierto(false);
+                  setMenuRolesAbierto(false);
+                  setMenuCamadasAbierto(false);
+                }}
+                aria-expanded={menuAccionesAbierto}
+                aria-haspopup="menu"
+                className="s-btn-sec w-full min-h-[44px] px-3.5 rounded-xl text-xs flex items-center justify-center gap-2"
+              >
+                <Ellipsis className="w-4 h-4 shrink-0" />
+                <span>Más acciones</span>
+                <ChevronDown
+                  className={`w-4 h-4 text-ink-muted transition-transform ${
+                    menuAccionesAbierto ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {menuAccionesAbierto && (
+                <>
+                  <div className="fixed inset-0 z-20" onClick={() => setMenuAccionesAbierto(false)} />
+                  <div
+                    role="menu"
+                    className="absolute left-0 top-full mt-1.5 z-30 w-64 max-w-[calc(100vw-2rem)] bg-surface border border-rule rounded-2xl shadow-md p-1.5 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+                  >
+                    {accionesSecundarias.map((accion) => (
+                      <button
+                        key={accion.key}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setMenuAccionesAbierto(false);
+                          accion.onClick();
+                        }}
+                        className="w-full min-h-[44px] px-3 rounded-xl flex items-center gap-2.5 text-sm font-semibold text-ink hover:bg-paper-2 text-left cursor-pointer"
+                      >
+                        {accion.icono}
+                        <span>{accion.texto}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          <BotonExportar
+            size="md"
+            disabled={miembrosFiltrados.length === 0}
+            onExportarExcel={handleExportarPadronExcel}
+            onExportarCSV={handleExportarPadronCSV}
+            tituloTooltip="Exportar padrón filtrado como hoja de cálculo"
+          />
+
+          {caps.canCreateMiembros && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!isOnline) {
+                  mostrarToast('Sin conexión. Conectate para importar miembros.', 'advertencia');
+                  return;
+                }
+                setModalImportarAbierto(true);
+              }}
+              className="s-btn-sec flex-1 sm:flex-initial min-h-[42px] px-3 rounded-xl text-xs inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
+              title="Importar miembros desde hoja de cálculo Excel o CSV"
+            >
+              <Upload className="w-4 h-4 text-brand shrink-0" />
+              <span>Importar</span>
+            </button>
+          )}
+
+          {caps.canCreateMiembros && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!isOnline) {
+                  mostrarToast('Sin conexión. Conectate para registrar un miembro.', 'advertencia');
+                  return;
+                }
+                setModalAltaAbierto(true);
+              }}
+              className="s-btn-brand flex-1 sm:flex-initial min-h-[42px] px-3.5 rounded-xl text-xs inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
+            >
+              <UserPlus className="w-4 h-4 shrink-0" />
+              <span>Nuevo Miembro</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Buscador Único en Vivo y Botón de Filtros Móvil */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            inputMode="search"
+            placeholder="Buscar por nombre, apellido, DNI, familia, sección o rol..."
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            className="s-input w-full min-h-[44px] pl-10 pr-10 py-2 rounded-2xl text-sm [&::-webkit-search-cancel-button]:hidden"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              aria-label="Limpiar búsqueda"
+              className="min-w-[40px] min-h-[40px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (mostrarFiltrosMovil) {
+              setMenuSeccionesAbierto(false);
+              setMenuRolesAbierto(false);
+              setMenuCamadasAbierto(false);
+            }
+            setMostrarFiltrosMovil(!mostrarFiltrosMovil);
+          }}
+          aria-expanded={mostrarFiltrosMovil}
+          aria-controls="panel-filtros-avanzados"
+          aria-label={mostrarFiltrosMovil ? 'Ocultar filtros' : 'Desplegar filtros'}
+          className={`sm:hidden min-h-[44px] px-3.5 rounded-2xl border flex items-center gap-1.5 text-xs font-bold transition cursor-pointer shrink-0 ${
+            totalFiltrosAvanzados > 0 || mostrarFiltrosMovil
+              ? 'border-brand bg-brand/10 text-brand'
+              : 'border-rule bg-surface text-ink hover:bg-paper-2'
+          }`}
+        >
+          <Filter className="w-4 h-4 shrink-0" />
+          <span>Filtros</span>
+          {totalFiltrosAvanzados > 0 && (
+            <span className="min-w-[18px] h-4.5 px-1 rounded-full bg-brand text-brand-contrast text-[10px] font-extrabold flex items-center justify-center">
+              {totalFiltrosAvanzados}
+            </span>
+          )}
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform ${
+              mostrarFiltrosMovil ? 'rotate-180 text-brand' : 'text-ink-muted'
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Filtros Primarios: Sección, Rol y Camada */}
+      <div
+        id="panel-filtros-avanzados"
+        className={`${
+          mostrarFiltrosMovil ? 'block' : 'hidden'
+        } sm:block bg-surface sm:bg-transparent p-3 sm:p-0 rounded-2xl border border-rule sm:border-0 space-y-2.5`}
+      >
+        <div className="flex sm:hidden items-center justify-between pb-1.5 border-b border-rule">
+          <div className="flex items-center gap-1.5">
+            <Filter className="w-3.5 h-3.5 text-brand" />
+            <span className="text-xs font-extrabold text-ink">Filtros y orden</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {totalFiltrosAvanzados > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSeccionesFiltro([]);
+                  setRolesFiltro([]);
+                  setCamadasFiltro([]);
+                }}
+                className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+              >
+                Limpiar
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setMenuSeccionesAbierto(false);
+                setMenuRolesAbierto(false);
+                setMenuCamadasAbierto(false);
+                setMostrarFiltrosMovil(false);
+              }}
+              className="text-xs font-bold text-brand hover:underline cursor-pointer"
+            >
+              Listo
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {/* Selector de Sección */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuSeccionesAbierto(!menuSeccionesAbierto);
+                setMenuRolesAbierto(false);
+                setMenuCamadasAbierto(false);
+                setMenuAccionesAbierto(false);
+              }}
+              aria-expanded={menuSeccionesAbierto}
+              aria-label="Filtrar por secciones operativas"
+              className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                seccionesFiltro.length > 0
+                  ? 'border-brand/50 bg-brand/10 text-brand'
+                  : 'border-rule bg-surface text-ink hover:border-brand'
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <GitBranch className="w-4 h-4 text-brand shrink-0" />
+                <span className="truncate">{textoBotonSecciones}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {seccionesFiltro.length > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-brand-contrast text-[10px] font-extrabold flex items-center justify-center">
+                    {seccionesFiltro.length}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`w-4 h-4 text-ink-muted transition-transform ${
+                    menuSeccionesAbierto ? 'rotate-180 text-brand' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {menuSeccionesAbierto && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setMenuSeccionesAbierto(false)} />
+                <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+                  <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
+                    <span className="font-bold text-xs text-ink">
+                      Secciones ({unidadesVisibles.length})
+                    </span>
+                    <div className="flex items-center gap-2 text-[11px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setSeccionesFiltro(unidadesVisibles.map((u) => u.id))}
+                        className="text-brand hover:underline cursor-pointer"
+                      >
+                        Marcar todas
+                      </button>
+                      <span className="text-ink-muted opacity-40">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setSeccionesFiltro([])}
+                        className="text-ink-muted hover:underline cursor-pointer"
+                      >
+                        Desmarcar
+                      </button>
+                    </div>
+                  </div>
+
+                  <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-paper-2 cursor-pointer select-none transition">
+                    <input
+                      type="checkbox"
+                      checked={seccionesFiltro.length === 0}
+                      onChange={() => setSeccionesFiltro([])}
+                      className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs font-bold text-ink">Todas las secciones</span>
+                  </label>
+
+                  <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
+                    {unidadesVisibles.map((u) => {
+                      const estaMarcada = seccionesFiltro.includes(u.id);
+                      const cant = conteoPorUnidad.get(u.id) || 0;
+                      return (
+                        <label
+                          key={u.id}
+                          className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-paper-2 cursor-pointer select-none transition"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={estaMarcada}
+                              onChange={() => toggleSeccion(u.id)}
+                              className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
+                            />
+                            <span className="text-xs font-medium text-ink truncate">
+                              {u.nombre}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-bold text-ink-muted shrink-0">
+                            {cant}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMenuSeccionesAbierto(false)}
+                    className="s-btn-brand w-full min-h-[36px] py-1.5 rounded-xl text-xs"
+                  >
+                    Listo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Selector de Rol */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuRolesAbierto(!menuRolesAbierto);
+                setMenuSeccionesAbierto(false);
+                setMenuCamadasAbierto(false);
+                setMenuAccionesAbierto(false);
+              }}
+              aria-expanded={menuRolesAbierto}
+              aria-label="Filtrar por roles"
+              className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                rolesFiltro.length > 0
+                  ? 'border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200'
+                  : 'border-rule bg-surface text-ink hover:border-brand'
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span className="truncate">{textoBotonRoles}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {rolesFiltro.length > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold flex items-center justify-center">
+                    {rolesFiltro.length}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`w-4 h-4 text-ink-muted transition-transform ${
+                    menuRolesAbierto ? 'rotate-180 text-indigo-600' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {menuRolesAbierto && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setMenuRolesAbierto(false)} />
+                <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+                  <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
+                    <span className="font-bold text-xs text-ink">
+                      Roles ({rolesVisibles.length})
+                    </span>
+                    <div className="flex items-center gap-2 text-[11px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setRolesFiltro(rolesVisibles.map((r) => r.id))}
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                      >
+                        Marcar todos
+                      </button>
+                      <span className="text-ink-muted opacity-40">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setRolesFiltro([])}
+                        className="text-ink-muted hover:underline cursor-pointer"
+                      >
+                        Desmarcar
+                      </button>
+                    </div>
+                  </div>
+
+                  <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-paper-2 cursor-pointer select-none transition">
+                    <input
+                      type="checkbox"
+                      checked={rolesFiltro.length === 0}
+                      onChange={() => setRolesFiltro([])}
+                      className="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs font-bold text-ink">Todos los roles</span>
+                  </label>
+
+                  <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
+                    {rolesVisibles.map((r) => {
+                      const estaMarcado = rolesFiltro.includes(r.id);
+                      const cant = conteoPorRol.get(r.id) || 0;
+                      return (
+                        <label
+                          key={r.id}
+                          className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-paper-2 cursor-pointer select-none transition"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={estaMarcado}
+                              onChange={() => toggleRol(r.id)}
+                              className="w-4 h-4 rounded accent-indigo-600 cursor-pointer shrink-0"
+                            />
+                            <span className="text-xs font-medium text-ink truncate">
+                              {r.nombre}
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-bold text-ink-muted shrink-0">
+                            {cant}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMenuRolesAbierto(false)}
+                    className="w-full min-h-[36px] py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer"
+                  >
+                    Listo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Selector de Camada */}
+          <div className="relative sm:col-span-2 lg:col-span-1">
+            <button
+              type="button"
+              onClick={() => {
+                setMenuCamadasAbierto(!menuCamadasAbierto);
+                setMenuSeccionesAbierto(false);
+                setMenuRolesAbierto(false);
+                setMenuAccionesAbierto(false);
+              }}
+              aria-expanded={menuCamadasAbierto}
+              aria-label="Filtrar por camadas"
+              className={`w-full min-h-[44px] px-3.5 py-2 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition cursor-pointer ${
+                camadasFiltro.length > 0
+                  ? 'border-brand/50 bg-brand/10 text-brand'
+                  : 'border-rule bg-surface text-ink hover:border-brand'
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate">
+                <Calendar className="w-4 h-4 text-brand shrink-0" />
+                <span className="truncate">{textoBotonCamadas}</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {camadasFiltro.length > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-brand text-brand-contrast text-[10px] font-bold flex items-center justify-center">
+                    {camadasFiltro.length}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`w-4 h-4 text-ink-muted transition-transform ${
+                    menuCamadasAbierto ? 'rotate-180 text-brand' : ''
+                  }`}
+                />
+              </div>
+            </button>
+
+            {menuCamadasAbierto && (
+              <>
+                <div className="fixed inset-0 z-20" onClick={() => setMenuCamadasAbierto(false)} />
+                <div className="absolute left-0 right-0 sm:right-auto sm:w-80 top-full mt-1.5 z-30 bg-surface border border-rule rounded-2xl shadow-md p-3 space-y-2 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none">
+                  <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-rule">
+                    <span className="font-bold text-xs text-ink">
+                      Camadas ({camadasDisponibles.length})
+                    </span>
+                    <div className="flex items-center gap-2 text-[11px] font-bold">
+                      <button
+                        type="button"
+                        onClick={() => setCamadasFiltro(camadasDisponibles.map((c) => c.anio))}
+                        className="text-brand hover:underline cursor-pointer"
+                      >
+                        Marcar todas
+                      </button>
+                      <span className="text-ink-muted opacity-40">•</span>
+                      <button
+                        type="button"
+                        onClick={() => setCamadasFiltro([])}
+                        className="text-ink-muted hover:underline cursor-pointer"
+                      >
+                        Desmarcar
+                      </button>
+                    </div>
+                  </div>
+
+                  <label className="min-h-[40px] px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 hover:bg-paper-2 cursor-pointer select-none transition">
+                    <input
+                      type="checkbox"
+                      checked={camadasFiltro.length === 0}
+                      onChange={() => setCamadasFiltro([])}
+                      className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
+                    />
+                    <span className="text-xs font-bold text-ink">Todas las camadas</span>
+                  </label>
+
+                  <div className="max-h-56 overflow-y-auto space-y-0.5 divide-y divide-rule pr-1">
+                    {camadasDisponibles.length === 0 ? (
+                      <p className="text-xs text-ink-muted py-3 text-center">
+                        No hay camadas para los filtros seleccionados
+                      </p>
+                    ) : (
+                      camadasDisponibles.map((c) => {
+                        const estaMarcada = camadasFiltro.includes(c.anio);
+                        return (
+                          <label
+                            key={c.anio}
+                            className="min-h-[40px] px-2.5 py-2 rounded-xl flex items-center justify-between gap-2 hover:bg-paper-2 cursor-pointer select-none transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={estaMarcada}
+                                onChange={() => toggleCamada(c.anio)}
+                                className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer shrink-0"
+                              />
+                              <span className="text-xs font-medium text-ink truncate">
+                                Camada {c.anio}
+                              </span>
+                            </div>
+                            <span className="text-[11px] font-bold text-ink-muted shrink-0">
+                              {c.total}
+                            </span>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setMenuCamadasAbierto(false)}
+                    className="s-btn-brand w-full min-h-[36px] py-1.5 rounded-xl text-xs"
+                  >
+                    Listo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Ordenamiento móvil */}
+        <div className="pt-2.5 border-t border-rule space-y-2 md:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-ink">
+              <ArrowUpDown className="w-3.5 h-3.5 text-brand shrink-0" />
+              <span>Ordenar miembros por</span>
+            </div>
+            <span className="text-[11px] font-semibold text-ink-muted truncate">
+              {obtenerTextoDireccion(campoOrden, direccionOrden)}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <select
+                value={campoOrden}
+                onChange={(e) => {
+                  setCampoOrden(e.target.value as CampoOrden);
+                  setDireccionOrden('asc');
+                }}
+                aria-label="Criterio de ordenamiento"
+                className="s-input w-full min-h-[44px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold cursor-pointer"
+              >
+                <option value="seccion">Sección y Rol (orden de edades)</option>
+                <option value="miembro">Nombre y Apellido</option>
+                <option value="edad">Edad / Fecha de nacimiento</option>
+                <option value="ficha">Estado de Ficha Médica</option>
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setDireccionOrden(direccionOrden === 'asc' ? 'desc' : 'asc')}
+              title={
+                direccionOrden === 'asc'
+                  ? 'Cambiar a orden descendente'
+                  : 'Cambiar a orden ascendente'
+              }
+              aria-label={`Sentido actual: ${obtenerTextoDireccion(campoOrden, direccionOrden)}. Tocar para alternar.`}
+              className="s-btn-sec min-h-[44px] px-3.5 rounded-xl text-xs flex items-center gap-1.5 shrink-0"
+            >
+              {direccionOrden === 'asc' ? (
+                <ArrowUp className="w-4 h-4 text-brand shrink-0" />
+              ) : (
+                <ArrowDown className="w-4 h-4 text-brand shrink-0" />
+              )}
+              <span>{direccionOrden === 'asc' ? 'Asc' : 'Desc'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Pills de Filtros Activos */}
+      {(seccionesFiltro.length > 0 || rolesFiltro.length > 0 || camadasFiltro.length > 0) && (
+        <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+          <span className="text-xs font-semibold text-ink-muted mr-1">Filtros activos:</span>
+          {seccionesFiltro.map((id) => {
+            const u = unidades.find((item) => item.id === id);
+            if (!u) return null;
+            return (
+              <span
+                key={`sec-tag-${id}`}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand/10 text-brand border border-brand/30"
+              >
+                <GitBranch className="w-3 h-3 text-brand shrink-0" />
+                <span>{u.nombre}</span>
+                <button
+                  type="button"
+                  onClick={() => setSeccionesFiltro((prev) => prev.filter((x) => x !== id))}
+                  className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
+                  aria-label={`Quitar filtro ${u.nombre}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            );
+          })}
+          {rolesFiltro.map((id) => {
+            const r = roles.find((item) => item.id === id);
+            if (!r) return null;
+            return (
+              <span
+                key={`rol-tag-${id}`}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800"
+              >
+                <Shield className="w-3 h-3 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>{r.nombre}</span>
+                <button
+                  type="button"
+                  onClick={() => setRolesFiltro((prev) => prev.filter((x) => x !== id))}
+                  className="hover:bg-indigo-200 dark:hover:bg-indigo-900 p-0.5 rounded cursor-pointer"
+                  aria-label={`Quitar filtro ${r.nombre}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            );
+          })}
+          {camadasFiltro.map((anio) => (
+            <span
+              key={`camada-tag-${anio}`}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-brand/10 text-brand border border-brand/30"
+            >
+              <Calendar className="w-3 h-3 text-brand shrink-0" />
+              <span>Camada {anio}</span>
+              <button
+                type="button"
+                onClick={() => setCamadasFiltro((prev) => prev.filter((x) => x !== anio))}
+                className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
+                aria-label={`Quitar filtro Camada ${anio}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setSeccionesFiltro([]);
+              setRolesFiltro([]);
+              setCamadasFiltro([]);
+            }}
+            className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline px-1.5 py-0.5 cursor-pointer ml-0.5"
+          >
+            Limpiar
+          </button>
+        </div>
+      )}
+
+      {/* Barra de Chips Táctiles de Estado Operativo */}
+      <div
+        role="group"
+        aria-label="Filtros rápidos del padrón"
+        className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap"
+      >
+        <button
+          type="button"
+          onClick={() => seleccionarChip('TODOS')}
+          aria-pressed={chipActivo === 'TODOS'}
+          className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition cursor-pointer border ${
+            chipActivo === 'TODOS'
+              ? 'bg-brand text-brand-contrast border-brand font-extrabold'
+              : 'bg-surface text-ink-2 border-rule hover:bg-paper-2'
+          }`}
+        >
+          Todos ({conteos.todos})
+        </button>
+
+        {puedeVerFichas && (
+          <button
+            type="button"
+            onClick={() => seleccionarChip(chipActivo === 'FALTA_FICHA' ? 'TODOS' : 'FALTA_FICHA')}
+            aria-pressed={chipActivo === 'FALTA_FICHA'}
+            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
+              chipActivo === 'FALTA_FICHA'
+                ? 'bg-rose-600 text-white border-rose-600'
+                : 'bg-surface text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-paper-2'
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Falta Ficha ({conteos.faltaFicha})</span>
+          </button>
+        )}
+
+        {puedeVerCuotas && conteos.conDeuda > 0 && (
+          <button
+            type="button"
+            onClick={() => seleccionarChip(chipActivo === 'CON_DEUDA' ? 'TODOS' : 'CON_DEUDA')}
+            aria-pressed={chipActivo === 'CON_DEUDA'}
+            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
+              chipActivo === 'CON_DEUDA'
+                ? 'bg-rose-600 text-white border-rose-600'
+                : 'bg-surface text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-paper-2'
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>Con Deuda ({conteos.conDeuda})</span>
+          </button>
+        )}
+
+        {(conteos.conAlertaMedica > 0 || chipActivo === 'ALERTA_MEDICA') && (
+          <button
+            type="button"
+            onClick={() =>
+              seleccionarChip(chipActivo === 'ALERTA_MEDICA' ? 'TODOS' : 'ALERTA_MEDICA')
+            }
+            aria-pressed={chipActivo === 'ALERTA_MEDICA'}
+            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
+              chipActivo === 'ALERTA_MEDICA'
+                ? 'bg-rose-600 text-white border-rose-600'
+                : 'bg-surface text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-paper-2'
+            }`}
+          >
+            <HeartPulse className="w-3.5 h-3.5" />
+            <span>Alerta Médica ({conteos.conAlertaMedica})</span>
+          </button>
+        )}
+
+        {puedeVerPases && (candidatosPase.length > 0 || chipActivo === 'PASE_SUGERIDO') && (
+          <button
+            type="button"
+            onClick={() =>
+              seleccionarChip(chipActivo === 'PASE_SUGERIDO' ? 'TODOS' : 'PASE_SUGERIDO')
+            }
+            aria-pressed={chipActivo === 'PASE_SUGERIDO'}
+            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
+              chipActivo === 'PASE_SUGERIDO'
+                ? 'bg-brand text-brand-contrast border-brand font-extrabold'
+                : 'bg-brand/10 text-brand border-brand/30 hover:bg-brand/15'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Pases por Camada ({candidatosPase.length})</span>
+          </button>
+        )}
+
+        {(conteos.bajas > 0 || chipActivo === 'BAJAS') && (
+          <button
+            type="button"
+            onClick={() => seleccionarChip(chipActivo === 'BAJAS' ? 'TODOS' : 'BAJAS')}
+            aria-pressed={chipActivo === 'BAJAS'}
+            className={`min-h-[40px] px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap inline-flex items-center gap-1.5 transition cursor-pointer border ${
+              chipActivo === 'BAJAS'
+                ? 'bg-ink text-surface border-ink'
+                : 'bg-surface text-ink-muted border-rule hover:bg-paper-2'
+            }`}
+          >
+            <UserX className="w-3.5 h-3.5" />
+            <span>Bajas ({conteos.bajas})</span>
+          </button>
+        )}
+      </div>
+
+      {/* Solicitudes de pase pendientes entre secciones */}
+      {puedeVerPases &&
+        solicitudesPase.length > 0 &&
+        (chipActivo === 'PASE_SUGERIDO' || solicitudesPase.some((s) => s.puedeAprobar)) && (
+          <PanelSolicitudesPase
+            solicitudes={solicitudesPase}
+            puedeEjecutar={puedeEjecutarPases}
+            onResuelto={() => cargarDatos(true)}
+            onToast={notificarToastChild}
+            onAbrirMiembro={(id) => abrirMiembro(id, 'datos')}
+          />
+        )}
+
+      {/* Panel de Pase en Lote por Camada */}
+      {puedeVerPases && chipActivo === 'PASE_SUGERIDO' && gruposCamadaPase.length > 0 && (
+        <div className="bg-brand/10 border border-brand/30 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div>
+              <h2 className="text-sm font-extrabold text-brand flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-brand" />
+                <span>Sugerencias de Pase por Camada</span>
+              </h2>
+              <p className="text-xs text-ink-muted">
+                Podés pasar a toda una camada junta eligiendo la sección de destino, o revisar
+                miembro por miembro abajo.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {gruposCamadaPase.map((g) => {
+              const destinoActual =
+                destinoPorCamada[g.key] ?? g.unidadesDestino?.[0]?.id ?? '';
+              const ejecutando = ejecutandoCamadaKey === g.key;
+              return (
+                <div
+                  key={g.key}
+                  className="s-card rounded-xl p-3.5 flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-brand/15 text-brand font-black text-xs">
+                          Camada {g.camada}
+                        </span>
+                        <span className="text-xs font-bold text-ink">
+                          {g.unidadActual} → {g.ramaSugeridaNombre}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-ink-muted mt-1">
+                        {g.miembros.length}{' '}
+                        {g.miembros.length === 1 ? 'integrante' : 'integrantes'} • Cumplen{' '}
+                        {g.edadAlCorte} años
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    {g.unidadesDestino.length > 1 && (
+                      <select
+                        value={destinoActual}
+                        onChange={(e) =>
+                          setDestinoPorCamada((prev) => ({
+                            ...prev,
+                            [g.key]: Number(e.target.value),
+                          }))
+                        }
+                        className="s-input min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold flex-1"
+                      >
+                        {g.unidadesDestino.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            Destino: {u.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {puedeEjecutarPases ? (
+                      !esGlobal && (g.tipo === 'EGRESO' || g.requiereAlcanceGlobal) ? (
+                        <span className="text-xs font-bold text-amber-700 dark:text-amber-300 px-2">
+                          Requiere Jefatura (Global)
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={
+                            Boolean(ejecutandoCamadaKey) ||
+                            g.miembros.every((m) => Boolean(m.solicitudPendiente))
+                          }
+                          onClick={() => void handleEjecutarPaseCamada(g)}
+                          className="s-btn-brand min-h-[38px] px-4 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+                        >
+                          {ejecutando ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                          )}
+                          <span>
+                            {g.miembros.every((m) => Boolean(m.solicitudPendiente))
+                              ? `Camada ${g.camada} con solicitud pendiente`
+                              : `Pasar Camada ${g.camada} (${
+                                  g.miembros.filter((m) => !m.solicitudPendiente).length
+                                })`}
+                          </span>
+                        </button>
+                      )
+                    ) : (
+                      <span className="text-xs text-brand font-semibold px-2">
+                        Sugerencia de pase por edad
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Listado Principal */}
+      {cargando ? (
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="h-24 rounded-2xl bg-surface border border-rule animate-pulse p-4 flex items-center gap-3"
+            >
+              <div className="w-11 h-11 rounded-2xl bg-paper-3 shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-40 bg-paper-3 rounded" />
+                <div className="h-3 w-28 bg-paper-2 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : errorCarga && miembros.length === 0 ? (
+        <div
+          role="alert"
+          className="s-card rounded-2xl border-rose-200 dark:border-rose-900/60 p-10 text-center space-y-3"
+        >
+          <CloudOff className="w-10 h-10 text-rose-500 opacity-70 mx-auto" />
+          <p className="text-sm font-bold text-ink">{errorCarga}</p>
+          <p className="text-xs text-ink-muted">Revisá tu conexión e intentá de nuevo.</p>
+          <button
+            type="button"
+            onClick={() => void cargarDatos(false)}
+            className="s-btn-brand min-h-[40px] px-4 py-2 rounded-xl text-xs inline-flex items-center gap-2"
+          >
+            <RotateCcw className="w-4 h-4" />
+            <span>Reintentar</span>
+          </button>
+        </div>
+      ) : miembrosFiltrados.length === 0 ? (
+        <div className="s-card rounded-2xl p-10 text-center space-y-3">
+          <Users className="w-10 h-10 text-ink-muted opacity-40 mx-auto" />
+          <p className="text-sm font-bold text-ink">No encontramos personas con este filtro</p>
+          {(busqueda ||
+            chipActivo !== 'TODOS' ||
+            seccionesFiltro.length > 0 ||
+            rolesFiltro.length > 0 ||
+            camadasFiltro.length > 0) && (
+            <button
+              type="button"
+              onClick={() => {
+                setBusqueda('');
+                seleccionarChip('TODOS');
+                setSeccionesFiltro([]);
+                setRolesFiltro([]);
+                setCamadasFiltro([]);
+              }}
+              className="s-btn-sec min-h-[40px] px-4 py-2 rounded-xl text-xs"
+            >
+              Mostrar todos
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Vista Móvil (< md): Tarjetas que abren página dedicada /miembros/:id */}
+          <div className="grid grid-cols-1 gap-3 md:hidden">
+            {miembrosFiltrados.map((m) => (
+              <MiembroCard
+                key={m.id}
+                miembro={m}
+                unidades={unidades}
+                entrega={entregasPorUsuario.get(m.id)}
+                tienePaseSugerido={puedeVerPases && candidatosIds.has(m.id)}
+                validandoDirecto={validandoId === entregasPorUsuario.get(m.id)?.id}
+                onAbrirDetalle={(tab) => navigate(`/miembros/${m.id}?tab=${tab}`)}
+                onValidarFichaDirecto={handleValidarFichaDirecto}
+              />
+            ))}
+          </div>
+
+          {/* Vista Escritorio (md+): Tabla limpia que abre DrawerMiembro360 */}
+          <div className="hidden md:block s-card rounded-2xl overflow-hidden">
+            <table className="w-full text-left text-xs text-ink-2">
+              <thead className="bg-paper-2 border-b border-rule text-ink font-semibold text-xs">
+                <tr>
+                  <th
+                    onClick={() => handleOrdenar('miembro')}
+                    className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
+                  >
+                    <div className="flex items-center">
+                      <span>Nombre y Familia</span>
+                      {renderIconoOrden('miembro')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleOrdenar('seccion')}
+                    className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
+                  >
+                    <div className="flex items-center">
+                      <span>Sección y Rol</span>
+                      {renderIconoOrden('seccion')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleOrdenar('edad')}
+                    className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
+                  >
+                    <div className="flex items-center">
+                      <span>Edad / Camada</span>
+                      {renderIconoOrden('edad')}
+                    </div>
+                  </th>
+                  <th
+                    onClick={() => handleOrdenar('ficha')}
+                    className="py-3.5 px-4 cursor-pointer hover:bg-surface transition select-none"
+                  >
+                    <div className="flex items-center">
+                      <span>Ficha {cicloAnio}</span>
+                      {renderIconoOrden('ficha')}
+                    </div>
+                  </th>
+                  <th className="py-3.5 px-4 text-right">Acciones Rápidas</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-rule">
+                {miembrosFiltrados.map((m) => {
+                  const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
+                  const entrega = entregasPorUsuario.get(m.id);
+                  const infoMed = alertasPorUsuario.get(m.id);
+                  const tienePase = candidatosIds.has(m.id);
+                  const cfg = obtenerConfigRama(m, unidades);
+                  const edad = calcularEdad(m.fechaNacimiento);
+                  const estadoKey = entrega?.estado || 'SIN_FICHA';
+                  const cfgFicha = ESTADO_FICHA_CONFIG[estadoKey] || ESTADO_FICHA_CONFIG.SIN_FICHA;
+                  const esPendienteFirma = entrega?.estado === 'PENDIENTE_FIRMA_FISICA';
+                  const deudaMiembro = calcularDeudaMiembro(m);
+
+                  return (
+                    <tr
+                      key={m.id}
+                      onClick={() => abrirMiembro(m.id, 'datos')}
+                      className={`hover:bg-paper-2 transition border-l-4 cursor-pointer ${
+                        !m.activo ? 'border-l-rule opacity-60' : cfg.borderClases
+                      }`}
+                    >
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs shrink-0 ${
+                              !m.activo ? 'bg-paper-3 text-ink-muted' : cfg.avatarClases
+                            }`}
+                          >
+                            {m.nombre?.[0]}
+                            {m.apellido?.[0]}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-ink text-sm">
+                                {m.apellido}, {m.nombre}
+                              </span>
+                              {!m.activo && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-paper-2 text-ink-muted border border-rule">
+                                  Baja
+                                </span>
+                              )}
+                              {infoMed?.tieneAlertas && (
+                                <span
+                                  title={infoMed.resumenAlertas || 'Posee alertas médicas'}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60"
+                                >
+                                  <HeartPulse className="w-3 h-3" />
+                                  <span>{infoMed.alertas.length}</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-ink-muted flex items-center gap-2 flex-wrap">
+                              <span className="whitespace-nowrap">DNI {m.dni}</span>
+                              {m.grupoFamiliar && (
+                                <span className="whitespace-nowrap">• {formatearNombreFamilia(m.grupoFamiliar.nombreFamilia)}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10px] border whitespace-nowrap ${cfg.badgeClases}`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dotColor}`} />
+                            {asig?.unidad?.nombre || cfg.nombre}
+                          </span>
+                          {asig?.rol?.nombre && (
+                            <span className="text-[10px] font-semibold text-ink-2 bg-paper-2 px-2 py-0.5 rounded-full border border-rule whitespace-nowrap">
+                              {asig.rol.nombre}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-col gap-0.5 whitespace-nowrap">
+                          <span className="font-semibold text-ink">
+                            {edad !== null ? `${edad} años` : '—'}
+                          </span>
+                          {cfg.key !== 'adultos' && calcularCamada(m.fechaNacimiento) !== null && (
+                            <span className="text-[10px] font-bold text-ink-muted">
+                              Camada {calcularCamada(m.fechaNacimiento)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td
+                        className="py-3.5 px-4"
+                        onClick={(e) => {
+                          if (!puedeVerFichas) return;
+                          e.stopPropagation();
+                          abrirMiembro(m.id, 'ficha');
+                        }}
+                      >
+                        <button
+                          type="button"
+                          disabled={!puedeVerFichas}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border whitespace-nowrap shrink-0 ${
+                            puedeVerFichas ? 'cursor-pointer' : 'cursor-default'
+                          } ${cfgFicha.badgeClass}`}
+                        >
+                          {entrega?.estado === 'VALIDADO_FISICAMENTE' ? (
+                            <CheckCircle2 className="w-3 h-3 shrink-0" />
+                          ) : esPendienteFirma ? (
+                            <Clock className="w-3 h-3 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3 shrink-0" />
+                          )}
+                          <span>{cfgFicha.shortLabel}</span>
+                        </button>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center justify-end gap-1.5">
+                          {esPendienteFirma && puedeValidarFisico && (
+                            <button
+                              type="button"
+                              disabled={Boolean(validandoId)}
+                              onClick={() => void handleValidarFichaDirecto(entrega)}
+                              className="s-btn-brand min-h-[36px] px-3 rounded-xl text-xs inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 disabled:opacity-50"
+                              title="Confirmar que entregó la ficha en papel firmada"
+                            >
+                              {validandoId === entrega.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                              ) : (
+                                <FileCheck2 className="w-3.5 h-3.5 shrink-0" />
+                              )}
+                              <span>Recibir Ficha</span>
+                            </button>
+                          )}
+
+                          {tienePase && puedeEjecutarPases && (
+                            <button
+                              type="button"
+                              onClick={() => abrirMiembro(m.id, 'pase')}
+                              className="s-btn-brand min-h-[36px] px-3 rounded-xl text-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+                            >
+                              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                              <span>Pasar de Rama</span>
+                            </button>
+                          )}
+
+                          {puedeVerCuotas && (
+                            <button
+                              type="button"
+                              onClick={() => abrirMiembro(m.id, 'cuotas')}
+                              className={`min-h-[36px] px-3 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 transition cursor-pointer whitespace-nowrap shrink-0 ${
+                                deudaMiembro > 0
+                                  ? 'bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60'
+                                  : 'bg-paper-2 hover:bg-surface text-ink border border-rule'
+                              }`}
+                            >
+                              <CreditCard
+                                className={`w-3.5 h-3.5 shrink-0 ${
+                                  deudaMiembro > 0
+                                    ? 'text-rose-600 dark:text-rose-400'
+                                    : 'text-brand'
+                                }`}
+                              />
+                              <span>
+                                {deudaMiembro > 0
+                                  ? `Debe $${deudaMiembro.toLocaleString('es-AR')}`
+                                  : 'Cuotas al día'}
+                              </span>
+                            </button>
+                          )}
+
+                          <BotonLlamarMiembro
+                            miembro={m}
+                            entrega={entrega}
+                            className="min-h-[36px] min-w-[36px] px-2 rounded-xl bg-paper-2 hover:bg-brand/10 text-ink-muted hover:text-brand inline-flex items-center justify-center gap-1 transition-colors cursor-pointer border border-rule"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* Drawer 360° en escritorio */}
+      <DrawerMiembro360
+        usuarioId={miembroDrawerId}
+        tabInicial={tabInicialDrawer}
+        onCerrar={() => setMiembroDrawerId(null)}
+        onActualizado={() => {
+          void cargarDatos(true);
+          mostrarToast('Cambios guardados.', 'exito');
+        }}
+        onEliminado={(msg) => {
+          void cargarDatos(true);
+          mostrarToast(msg, 'exito');
+        }}
+        onClaveReseteada={(msg) => mostrarToast(msg, 'exito')}
+      />
+
+      {/* Alta de Miembro */}
+      <Drawer
+        abierto={modalAltaAbierto}
+        onCerrar={() => setModalAltaAbierto(false)}
+        titulo="Registrar Nuevo Miembro"
+        subtitulo="Alta rápida e integración a grupo de hermanos"
+        mode="sheet"
+        maxWidthClass="sm:max-w-2xl"
+      >
+        <ModalAltaMiembro
+          abierto={modalAltaAbierto}
+          embedded={true}
+          onCerrar={() => setModalAltaAbierto(false)}
+          onCreado={() => {
+            void cargarDatos(true);
+            mostrarToast('Nueva persona registrada en el padrón.', 'exito');
+          }}
+          unidadesDisponibles={unidades}
+          rolesDisponibles={roles}
+        />
+      </Drawer>
+
+      {/* Importar Miembros desde Hoja de Cálculo */}
+      <Drawer
+        abierto={modalImportarAbierto}
+        onCerrar={() => setModalImportarAbierto(false)}
+        titulo="Importar Padrón desde Hoja de Cálculo"
+        subtitulo="Soporta Excel (.xlsx) y CSV con vista previa"
+        mode="sheet"
+        maxWidthClass="sm:max-w-3xl"
+      >
+        <ModalImportarMiembros
+          abierto={modalImportarAbierto}
+          embedded={true}
+          onCerrar={() => setModalImportarAbierto(false)}
+          onImportado={() => {
+            void cargarDatos(true);
+            mostrarToast('Padrón actualizado tras la importación.', 'exito');
+          }}
+          unidadesDisponibles={unidades}
+          rolesDisponibles={roles}
+          miembrosExistentes={miembros}
+        />
+      </Drawer>
+
+      {/* Eventos Económicos de Unidad (transitorio hasta Fase 3) */}
+      <ModalEventosUnidad
+        abierto={modalEventosAbierto}
+        onCerrar={() => setModalEventosAbierto(false)}
+        onToast={notificarToastChild}
+      />
+
+      {/* Drawer Familias Voluntarias */}
+      <Drawer
+        abierto={drawerFamiliasAbierto}
+        onCerrar={() => setDrawerFamiliasAbierto(false)}
+        titulo="Familias Voluntarias y Oficios"
+        subtitulo={`Ofrecimientos declarados en fichas médicas del ciclo ${cicloAnio}`}
+        mode="sheet"
+        maxWidthClass="sm:max-w-2xl"
+      >
+        {cargandoVoluntarias ? (
+          <div className="py-12 flex flex-col items-center justify-center gap-2 text-ink-muted">
+            <Loader2 className="w-6 h-6 animate-spin text-brand" />
+            <span className="text-xs font-semibold">Cargando familias voluntarias...</span>
+          </div>
+        ) : familiasVoluntarias.length === 0 ? (
+          <div className="py-12 text-center text-ink-muted space-y-2">
+            <HeartHandshake className="w-10 h-10 mx-auto opacity-40 text-rose-500" />
+            <p className="text-sm font-semibold text-ink-2">
+              Aún no hay familias voluntarias registradas este ciclo.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {familiasVoluntarias.map((col, idx) => (
+              <div
+                key={col.entregaId || idx}
+                className="bg-paper-2 rounded-2xl p-4 border border-rule space-y-2.5"
+              >
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-sm text-ink truncate">{col.adulto?.nombre}</h4>
+                    <p className="text-xs text-ink-muted">
+                      {col.adulto?.profesion || 'Familiar'} • Familia de{' '}
+                      <strong className="text-brand">
+                        {col.protagonista?.nombre} {col.protagonista?.apellido}
+                      </strong>{' '}
+                      ({col.protagonista?.unidad})
+                    </p>
+                  </div>
+                  {col.adulto?.telefono && col.adulto.telefono !== '-' && (
+                    <a
+                      href={`tel:${col.adulto.telefono}`}
+                      className="min-h-[38px] px-3 py-1.5 rounded-xl bg-brand/10 text-brand border border-brand/30 font-bold text-xs flex items-center gap-1.5 shrink-0 hover:bg-brand/20 transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>Llamar</span>
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {col.areas?.cocinaCampamento && (
+                    <span className="text-[11px] bg-brand/10 text-brand border border-brand/30 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                      <Utensils className="w-3 h-3" /> Cocina
+                    </span>
+                  )}
+                  {col.areas?.campamento && (
+                    <span className="text-[11px] bg-paper text-ink border border-rule px-2 py-0.5 rounded-md font-medium">
+                      Apoyo en Campamento
+                    </span>
+                  )}
+                  {(col.areas?.transporte ||
+                    col.areas?.camion ||
+                    col.areas?.camioneta ||
+                    col.areas?.colectivo) && (
+                    <span className="text-[11px] bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium">
+                      <Truck className="w-3 h-3" /> Transporte
+                    </span>
+                  )}
+                  {col.areas?.manoObra && (
+                    <span className="text-[11px] bg-paper text-ink border border-rule px-2 py-0.5 rounded-md font-medium">
+                      Mano de obra
+                    </span>
+                  )}
+                  {col.areas?.donaciones && (
+                    <span className="text-[11px] bg-paper text-ink border border-rule px-2 py-0.5 rounded-md font-medium">
+                      Donaciones / Materiales
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Drawer>
+    </div>
+  );
+};

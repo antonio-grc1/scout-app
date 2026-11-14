@@ -25,6 +25,7 @@ interface PdfViewerModalProps {
   url?: string | null;
   titulo: string;
   subtitulo?: string;
+  embedded?: boolean;
   onCerrar?: () => void;
   onDescargar?: () => void;
 }
@@ -138,6 +139,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   url,
   titulo,
   subtitulo = `Planilla Oficial ${obtenerCicloAnioActual()}`,
+  embedded = false,
   onCerrar,
   onDescargar,
 }) => {
@@ -150,7 +152,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const [containerWidth, setContainerWidth] = useState(360);
 
   const { backdropProps, contentProps } = useModalOverlay({
-    abierto: Boolean(url),
+    abierto: !embedded && Boolean(url),
     onCerrar,
   });
 
@@ -158,14 +160,24 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     if (!url) return;
 
     const updateWidth = () => {
-      if (containerRef.current) {
+      if (containerRef.current && containerRef.current.clientWidth > 0) {
         setContainerWidth(containerRef.current.clientWidth);
       }
     };
 
     updateWidth();
     window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+      observer = new ResizeObserver(updateWidth);
+      observer.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateWidth);
+      observer?.disconnect();
+    };
   }, [url]);
 
   useEffect(() => {
@@ -231,137 +243,147 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
   if (!url) return null;
 
+  const visorInterno = (
+    <div
+      className={
+        embedded
+          ? 'bg-surface rounded-2xl w-full flex flex-col overflow-hidden border border-rule text-ink max-h-[75dvh]'
+          : 'bg-surface rounded-2xl w-full max-w-4xl mx-auto flex flex-col flex-1 overflow-hidden border border-rule shadow-2xl text-ink'
+      }
+      {...(embedded ? {} : contentProps)}
+    >
+      {/* Cabecera y Controles */}
+      <div className="p-2.5 sm:p-4 border-b border-rule flex flex-wrap items-center justify-between gap-2 bg-paper-2">
+        <div className="min-w-0 flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
+            <FileText className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <h4 className="text-xs sm:text-sm font-extrabold text-ink truncate">
+              {titulo}
+            </h4>
+            <p className="text-[11px] text-ink-muted">
+              {subtitulo} {numPages > 0 ? `• ${numPages} hojas` : ''}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {/* Controles de Zoom para celular y desktop */}
+          <div className="flex items-center bg-paper-3 border border-rule rounded-xl p-0.5">
+            <button
+              type="button"
+              onClick={() => setZoom((z) => Math.max(0.75, Number((z - 0.25).toFixed(2))))}
+              disabled={zoom <= 0.75}
+              title="Alejar"
+              className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoom(1)}
+              className="px-2 text-[11px] font-bold text-ink cursor-pointer"
+              title="Restablecer zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
+              disabled={zoom >= 2.5}
+              title="Acercar"
+              className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:flex min-h-[38px] px-3 rounded-xl bg-paper-2 hover:bg-surface text-ink font-bold text-xs items-center gap-1.5 transition border border-rule"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            <span>Abrir pestaña</span>
+          </a>
+
+          {onDescargar && (
+            <button
+              type="button"
+              onClick={onDescargar}
+              className="min-h-[38px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Descargar</span>
+            </button>
+          )}
+
+          {!embedded && onCerrar && (
+            <button
+              type="button"
+              onClick={onCerrar}
+              className="min-h-[38px] min-w-[38px] rounded-xl bg-paper-2 hover:bg-surface text-ink-muted hover:text-ink flex items-center justify-center transition cursor-pointer border border-rule"
+              aria-label="Cerrar vista previa"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Área de Visualización Nativa en Canvas (compatible con celulares Android/iOS sin apps externas) */}
+      <div
+        ref={containerRef}
+        className="flex-1 bg-paper-3 overflow-y-auto overflow-x-auto p-2 sm:p-4 touch-manipulation overscroll-contain"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {cargando ? (
+          <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-2 text-ink-muted">
+            <Loader2 className="w-7 h-7 animate-spin text-brand" />
+            <p className="text-xs font-bold">Preparando páginas del documento…</p>
+          </div>
+        ) : error ? (
+          <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <AlertTriangle className="w-8 h-8 text-brand" />
+            <p className="text-xs font-bold text-ink">{error}</p>
+            {onDescargar && (
+              <button
+                type="button"
+                onClick={onDescargar}
+                className="px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-extrabold cursor-pointer transition-colors"
+              >
+                Descargar PDF
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="w-fit min-w-full mx-auto flex flex-col items-center">
+            {pdfDoc &&
+              Array.from({ length: numPages }, (_, idx) => (
+                <PdfPageCanvas
+                  key={idx + 1}
+                  pdfDoc={pdfDoc}
+                  pageNumber={idx + 1}
+                  zoom={zoom}
+                  containerWidth={containerWidth}
+                />
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  if (embedded) return visorInterno;
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/85 flex flex-col p-1.5 sm:p-5 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
       {...backdropProps}
     >
-      <div
-        className="bg-surface rounded-2xl w-full max-w-4xl mx-auto flex flex-col flex-1 overflow-hidden border border-rule shadow-2xl text-ink"
-        {...contentProps}
-      >
-        {/* Cabecera y Controles */}
-        <div className="p-2.5 sm:p-4 border-b border-rule flex flex-wrap items-center justify-between gap-2 bg-paper-2">
-          <div className="min-w-0 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <h4 className="text-xs sm:text-sm font-extrabold text-ink truncate">
-                {titulo}
-              </h4>
-              <p className="text-[11px] text-ink-muted">
-                {subtitulo} {numPages > 0 ? `• ${numPages} hojas` : ''}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-            {/* Controles de Zoom para celular y desktop */}
-            <div className="flex items-center bg-paper-3 border border-rule rounded-xl p-0.5">
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.max(0.75, Number((z - 0.25).toFixed(2))))}
-                disabled={zoom <= 0.75}
-                title="Alejar"
-                className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setZoom(1)}
-                className="px-2 text-[11px] font-bold text-ink cursor-pointer"
-                title="Restablecer zoom"
-              >
-                {Math.round(zoom * 100)}%
-              </button>
-              <button
-                type="button"
-                onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
-                disabled={zoom >= 2.5}
-                title="Acercar"
-                className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex min-h-[38px] px-3 rounded-xl bg-paper-2 hover:bg-surface text-ink font-bold text-xs items-center gap-1.5 transition border border-rule"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Abrir pestaña</span>
-            </a>
-
-            {onDescargar && (
-              <button
-                type="button"
-                onClick={onDescargar}
-                className="min-h-[38px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Descargar</span>
-              </button>
-            )}
-
-            {onCerrar && (
-              <button
-                type="button"
-                onClick={onCerrar}
-                className="min-h-[38px] min-w-[38px] rounded-xl bg-paper-2 hover:bg-surface text-ink-muted hover:text-ink flex items-center justify-center transition cursor-pointer border border-rule"
-                aria-label="Cerrar vista previa"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Área de Visualización Nativa en Canvas (compatible con celulares Android/iOS sin apps externas) */}
-        <div
-          ref={containerRef}
-          className="flex-1 bg-paper-3 overflow-y-auto overflow-x-auto p-2 sm:p-4 touch-manipulation overscroll-contain"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          {cargando ? (
-            <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-2 text-ink-muted">
-              <Loader2 className="w-7 h-7 animate-spin text-brand" />
-              <p className="text-xs font-bold">Preparando páginas del documento…</p>
-            </div>
-          ) : error ? (
-            <div className="h-full min-h-[280px] flex flex-col items-center justify-center gap-3 p-6 text-center">
-              <AlertTriangle className="w-8 h-8 text-brand" />
-              <p className="text-xs font-bold text-ink">{error}</p>
-              {onDescargar && (
-                <button
-                  type="button"
-                  onClick={onDescargar}
-                  className="px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-extrabold cursor-pointer transition-colors shadow-2xs"
-                >
-                  Descargar PDF
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="w-fit min-w-full mx-auto flex flex-col items-center">
-              {pdfDoc &&
-                Array.from({ length: numPages }, (_, idx) => (
-                  <PdfPageCanvas
-                    key={idx + 1}
-                    pdfDoc={pdfDoc}
-                    pageNumber={idx + 1}
-                    zoom={zoom}
-                    containerWidth={containerWidth}
-                  />
-                ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {visorInterno}
     </div>
   );
 };

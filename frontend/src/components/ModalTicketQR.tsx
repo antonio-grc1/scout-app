@@ -78,13 +78,8 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
   };
 
   const modalBase = useModalOverlay({
-    abierto: abierto && !pantallaCompleta,
-    onCerrar,
-  });
-
-  useModalOverlay({
-    abierto: abierto && pantallaCompleta,
-    onCerrar: salirPantallaCompleta,
+    abierto,
+    onCerrar: pantallaCompleta ? salirPantallaCompleta : onCerrar,
   });
 
   useEffect(() => {
@@ -108,7 +103,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
 
   const handleCerrar = () => {
     if (pantallaCompleta) {
-      salirPantallaCompleta();
+      void salirPantallaCompleta();
     }
     onCerrar();
   };
@@ -161,6 +156,88 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
       handleDescargarQR();
     }
   };
+
+  if (pantallaCompleta) {
+    return (
+      <div
+        className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col justify-between items-center p-3 sm:p-5 select-none animate-in fade-in duration-150"
+        {...modalBase.backdropProps}
+      >
+        <div
+          className="w-full h-full flex flex-col justify-between items-center"
+          {...modalBase.contentProps}
+        >
+          {/* Barra superior */}
+          <div className="w-full max-w-3xl flex items-center justify-between text-white py-1">
+            <div className="flex items-center gap-2 truncate pr-2">
+              <QrCode className="w-5 h-5 text-emerald-400 shrink-0" />
+              <div className="truncate">
+                <h4 className="text-xs sm:text-sm font-black truncate text-white">
+                  {ticket.pedido.evento.titulo}
+                </h4>
+                <span className="text-[10px] sm:text-xs text-white/70 block truncate">
+                  Pedido #{ticket.pedido.id} • Vale #{ticket.id} • {ticket.pedido.compradorNombre}
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={salirPantallaCompleta}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 text-white text-xs font-bold transition cursor-pointer backdrop-blur-md border border-white/20 shrink-0"
+              title="Salir de pantalla completa (Esc)"
+            >
+              <Minimize2 className="w-4 h-4" />
+              <span>Salir</span>
+            </button>
+          </div>
+
+          {/* Tarjeta del Vale centrada y maximizada */}
+          <div className="flex-1 flex flex-col items-center justify-center p-2 max-h-[78dvh] w-full">
+            {qrUrl ? (
+              <img
+                src={qrUrl}
+                alt={`Entrada en pantalla completa - ${ticket.pedido.evento.titulo}`}
+                className="max-h-[72dvh] sm:max-h-[76dvh] w-auto max-w-[95vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
+              />
+            ) : (
+              <div className="text-white text-xs">Cargando entrada...</div>
+            )}
+          </div>
+
+          {/* Barra inferior */}
+          <div className="w-full max-w-md flex flex-col items-center gap-2 pb-1">
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-amber-300 bg-amber-950/70 border border-amber-600/50 px-3.5 py-1 rounded-full text-center">
+              <Sun className="w-3.5 h-3.5 shrink-0" />
+              <span>Subí el brillo de tu pantalla para facilitar el escaneo</span>
+            </div>
+
+            <div className="flex items-center gap-2 w-full justify-center">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleDescargarQR}
+                className="gap-1.5 text-xs flex-1 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Descargar</span>
+              </Button>
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={salirPantallaCompleta}
+                className="gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 flex-1 cursor-pointer"
+              >
+                <Minimize2 className="w-3.5 h-3.5" />
+                <span>Cerrar</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -291,83 +368,6 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
           </div>
         </div>
       </div>
-
-      {/* VISTA EN PANTALLA COMPLETA */}
-      {pantallaCompleta && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col justify-between items-center p-3 sm:p-5 select-none animate-in fade-in duration-150"
-        >
-          {/* Barra superior */}
-          <div className="w-full max-w-3xl flex items-center justify-between text-white py-1">
-            <div className="flex items-center gap-2 truncate pr-2">
-              <QrCode className="w-5 h-5 text-emerald-400 shrink-0" />
-              <div className="truncate">
-                <h4 className="text-xs sm:text-sm font-black truncate text-white">
-                  {ticket.pedido.evento.titulo}
-                </h4>
-                <span className="text-[10px] sm:text-xs text-white/70 block truncate">
-                  Pedido #{ticket.pedido.id} • Vale #{ticket.id} • {ticket.pedido.compradorNombre}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={salirPantallaCompleta}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 text-white text-xs font-bold transition cursor-pointer backdrop-blur-md border border-white/20 shrink-0"
-              title="Salir de pantalla completa (Esc)"
-            >
-              <Minimize2 className="w-4 h-4" />
-              <span>Salir</span>
-            </button>
-          </div>
-
-          {/* Tarjeta del Vale centrada y maximizada */}
-          <div className="flex-1 flex flex-col items-center justify-center p-2 max-h-[78dvh] w-full">
-            {qrUrl ? (
-              <img
-                src={qrUrl}
-                alt={`Entrada en pantalla completa - ${ticket.pedido.evento.titulo}`}
-                className="max-h-[72dvh] sm:max-h-[76dvh] w-auto max-w-[95vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
-              />
-            ) : (
-              <div className="text-white text-xs">Cargando entrada...</div>
-            )}
-          </div>
-
-          {/* Barra inferior */}
-          <div className="w-full max-w-md flex flex-col items-center gap-2 pb-1">
-            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-amber-300 bg-amber-950/70 border border-amber-600/50 px-3.5 py-1 rounded-full shadow-sm text-center">
-              <Sun className="w-3.5 h-3.5 shrink-0" />
-              <span>Subí el brillo de tu pantalla para facilitar el escaneo</span>
-            </div>
-
-            <div className="flex items-center gap-2 w-full justify-center">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleDescargarQR}
-                className="gap-1.5 text-xs flex-1 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Descargar</span>
-              </Button>
-
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={salirPantallaCompleta}
-                className="gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 flex-1 cursor-pointer"
-              >
-                <Minimize2 className="w-3.5 h-3.5" />
-                <span>Cerrar</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

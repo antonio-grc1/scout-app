@@ -19,7 +19,6 @@ import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
-import { ModalConfirmacion } from './ModalConfirmacion';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface PedidoAEditar {
@@ -159,6 +158,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
       }
       setBusquedaMiembro('');
       setMostrarDropdownMiembros(false);
+      setModalConfirmarEliminar(false);
       setError(null);
     }
   }, [abierto, pedidoAEditar, itemsEvento, bloquearVendedor, vendedorFijoId]);
@@ -761,73 +761,79 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             </div>
           )}
 
-          <div className="pt-3 flex items-center justify-between gap-2 border-t border-rule shrink-0">
+          <div className="pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-rule shrink-0">
             {esModoEdicion ? (
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => setModalConfirmarEliminar(true)}
-                disabled={guardando || eliminando || valesRetirados}
-                className="gap-1.5 text-xs"
-                title={valesRetirados ? 'No se puede eliminar un pedido con vales ya retirados' : undefined}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Eliminar Pedido</span>
-              </Button>
+              modalConfirmarEliminar ? (
+                <div className="w-full p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-rose-800 dark:text-rose-200">
+                    ¿Eliminar el pedido #{pedidoAEditar?.id}? Se anularán los vales QR y se restituirá el stock.
+                  </span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setModalConfirmarEliminar(false)}
+                      disabled={eliminando}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      onClick={handleEliminarPedido}
+                      disabled={eliminando}
+                    >
+                      {eliminando ? 'Eliminando...' : 'Sí, Eliminar Pedido'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setModalConfirmarEliminar(true)}
+                  disabled={guardando || eliminando || valesRetirados}
+                  className="gap-1.5 text-xs"
+                  title={valesRetirados ? 'No se puede eliminar un pedido con vales ya retirados' : undefined}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar Pedido</span>
+                </Button>
+              )
             ) : (
               <div />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando || eliminando}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={guardando || eliminando || totalUnidades <= 0}
-                className="gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>
-                  {guardando
-                    ? 'Guardando...'
-                    : esModoEdicion
-                    ? metodoPago !== 'PENDIENTE' && (!pedidoAEditar?.metodoPago || pedidoAEditar.metodoPago === 'PENDIENTE')
-                      ? 'Confirmar Cobro'
-                      : 'Guardar Modificaciones'
-                    : 'Confirmar Pedido y Generar Vales QR'}
-                </span>
-              </Button>
-            </div>
+            {!modalConfirmarEliminar && (
+              <div className="flex items-center gap-2 ml-auto">
+                <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando || eliminando}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={guardando || eliminando || totalUnidades <= 0}
+                  className="gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {guardando
+                      ? 'Guardando...'
+                      : esModoEdicion
+                      ? metodoPago !== 'PENDIENTE' && (!pedidoAEditar?.metodoPago || pedidoAEditar.metodoPago === 'PENDIENTE')
+                        ? 'Confirmar Cobro'
+                        : 'Guardar Modificaciones'
+                      : 'Confirmar Pedido y Generar Vales QR'}
+                  </span>
+                </Button>
+              </div>
+            )}
           </div>
         </form>
       </div>
-
-      {modalConfirmarEliminar && pedidoAEditar && (
-        <ModalConfirmacion
-          abierto={modalConfirmarEliminar}
-          onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
-          onConfirmar={handleEliminarPedido}
-          titulo="Eliminar Pedido de Evento"
-          tipo="peligro"
-          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Pedido'}
-          textoCancelar="Cancelar"
-          cargando={eliminando}
-          mensaje={
-            <div className="space-y-3">
-              <p className="text-sm text-ink leading-relaxed">
-                ¿Estás seguro de que deseas eliminar el pedido #{pedidoAEditar.id} de{' '}
-                <strong className="text-ink font-bold">{pedidoAEditar.compradorNombre}</strong>?
-              </p>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                Se anularán los vales QR emitidos y se restituirá el stock disponible. Podrás deshacer esta acción durante unos segundos.
-              </p>
-            </div>
-          }
-        />
-      )}
     </div>
   );
 };

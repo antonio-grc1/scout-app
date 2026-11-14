@@ -1,6 +1,6 @@
 import React from 'react';
 import { FileCheck2, Eye, Download, Pencil, Loader2 } from 'lucide-react';
-import { ESTADO_FICHA_CONFIG } from '../../lib/formatters';
+import { ESTADO_FICHA_CONFIG, obtenerCicloAnioActual } from '../../lib/formatters';
 import { DynamicFormRenderer, type EsquemaCampos } from '../DynamicFormRenderer';
 import { VisorFichaMiembro } from '../VisorFichaMiembro';
 
@@ -16,6 +16,7 @@ export interface PestanaLegajosFichasProps {
   descargandoPdfId: number | null;
   generandoVistaPrevia: boolean;
   pdfPreviewUrl: string | null;
+  ocultarModalPdf?: boolean;
   cargandoFichaEditor: boolean;
   puedeValidarFisico: boolean;
   puedeCompletarFicha: boolean;
@@ -42,6 +43,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
   descargandoPdfId,
   generandoVistaPrevia,
   pdfPreviewUrl,
+  ocultarModalPdf = false,
   cargandoFichaEditor,
   puedeValidarFisico,
   puedeCompletarFicha,
@@ -57,7 +59,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold text-ink-2">
-            Completando Ficha 2026
+            Completando Ficha {obtenerCicloAnioActual()}
           </span>
           <button
             type="button"
@@ -98,7 +100,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
             <span className="font-extrabold text-ink text-sm block">
-              Ficha Médica y Autorizaciones 2026
+              Ficha Médica y Autorizaciones {obtenerCicloAnioActual()}
             </span>
             <div className="flex items-center gap-2 flex-wrap">
               <span
@@ -122,7 +124,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
               type="button"
               disabled={validandoFichaId === ent?.id}
               onClick={() => onValidarFisicoDirecto(ent)}
-              className="col-span-2 sm:flex-1 min-h-[44px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+              className="col-span-2 sm:flex-1 min-h-[44px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
             >
               <FileCheck2 className="w-4 h-4" />
               <span>
@@ -182,6 +184,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
         miembro={miembro}
         entrega={ent}
         pdfPreviewUrl={pdfPreviewUrl}
+        ocultarModalPdf={ocultarModalPdf}
         onCerrarPdfPreview={onCerrarPdfPreview}
         onDescargarPdf={() => onDescargarPdfEducador(ent)}
       />

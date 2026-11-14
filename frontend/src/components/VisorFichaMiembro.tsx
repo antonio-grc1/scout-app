@@ -23,6 +23,7 @@ interface VisorFichaMiembroProps {
   miembro: any;
   entrega?: any | null;
   pdfPreviewUrl?: string | null;
+  ocultarModalPdf?: boolean;
   onCerrarPdfPreview?: () => void;
   onDescargarPdf?: () => void;
 }
@@ -42,6 +43,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   miembro,
   entrega,
   pdfPreviewUrl,
+  ocultarModalPdf = false,
   onCerrarPdfPreview,
   onDescargarPdf,
 }) => {
@@ -219,7 +221,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   return (
     <div className="space-y-3">
       {/* Modal Visor de PDF en pantalla (compatible con celulares Android/iOS sin apps externas) */}
-      {pdfPreviewUrl && (
+      {!ocultarModalPdf && pdfPreviewUrl && (
         <Suspense fallback={null}>
           <PdfViewerModal
             url={pdfPreviewUrl}
@@ -249,7 +251,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               onClick={() => setSeccion('salud')}
               className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'salud'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >
@@ -265,7 +267,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               onClick={() => setSeccion('familia')}
               className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'familia'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >
@@ -278,7 +280,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               onClick={() => setSeccion('retiro')}
               className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'retiro'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >
@@ -291,7 +293,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               onClick={() => setSeccion('apoyos')}
               className={`min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'apoyos'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >

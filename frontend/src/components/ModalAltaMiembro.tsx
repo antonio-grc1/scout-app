@@ -35,6 +35,7 @@ import {
 
 interface Props {
   abierto: boolean;
+  embedded?: boolean;
   onCerrar: () => void;
   onCreado: () => void;
   unidadesDisponibles: any[];
@@ -43,6 +44,7 @@ interface Props {
 
 export const ModalAltaMiembro: React.FC<Props> = ({
   abierto,
+  embedded = false,
   onCerrar,
   onCreado,
   unidadesDisponibles,
@@ -95,7 +97,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   };
 
   const { backdropProps, contentProps } = useModalOverlay({
-    abierto,
+    abierto: !embedded && abierto,
     onCerrar: cerrarModal,
     bloqueado: cargando,
   });
@@ -350,30 +352,8 @@ export const ModalAltaMiembro: React.FC<Props> = ({
     }
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
-      {...backdropProps}
-    >
-      <div
-        className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-xl max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col transition-colors"
-        {...contentProps}
-      >
-        <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
-          <div className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-brand" />
-            <h3 className="font-bold text-ink text-base">Nuevo Miembro</h3>
-          </div>
-          <button
-            onClick={cerrarModal}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {altaResultado ? (
-          <div className="p-5 sm:p-6 space-y-4 text-xs">
+  const cuerpo = altaResultado ? (
+    <div className={embedded ? 'space-y-4 text-xs' : 'p-5 sm:p-6 space-y-4 text-xs'}>
             <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
               <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-sm">
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
@@ -446,7 +426,10 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             </div>
           </div>
         ) : (
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1">
+        <form
+          onSubmit={handleSubmit}
+          className={embedded ? 'space-y-4 text-xs' : 'p-4 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1'}
+        >
           {error && (
             <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-center gap-2 text-xs font-medium">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -545,7 +528,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={() => handleConfirmarAdhesionGrupo(grupoPreseleccionado)}
-                        className="w-full min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+                        className="w-full min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         <span className="whitespace-nowrap">Confirmar adhesión al grupo familiar</span>
@@ -810,13 +793,49 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             <button
               type="submit"
               disabled={cargando}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
             >
               {cargando ? 'Guardando...' : 'Guardar Miembro'}
             </button>
           </div>
         </form>
-        )}
+  );
+
+  if (embedded) return cuerpo;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface border border-rule rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92dvh] transition-colors text-ink"
+        {...contentProps}
+      >
+        {/* Cabecera */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-rule shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-brand/15 text-brand">
+              <UserPlus className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-base">Nuevo Miembro</h3>
+              <span className="text-[11px] text-ink-muted">
+                Alta en padrón con credencial temporal
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={cerrarModal}
+            aria-label="Cerrar modal"
+            className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {cuerpo}
       </div>
     </div>
   );

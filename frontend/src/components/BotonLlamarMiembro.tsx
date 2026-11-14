@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Phone, X, User } from 'lucide-react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
-import { extraerTelefonosMiembro } from '../lib/formatters';
+import { extraerTelefonosMiembro, type OpcionTelefonoContacto } from '../lib/formatters';
 
 interface Props {
   miembro: any;
   entrega?: any;
   className?: string;
+  onAbrirCustom?: (telefonos: OpcionTelefonoContacto[]) => void;
 }
 
 const BADGE_POR_ETIQUETA: Record<string, string> = {
@@ -23,7 +24,7 @@ const BADGE_POR_ETIQUETA: Record<string, string> = {
     'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800',
 };
 
-export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, className }) => {
+export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, className, onAbrirCustom }) => {
   const [abierto, setAbierto] = useState(false);
   const telefonos = extraerTelefonosMiembro(miembro, entrega);
 
@@ -40,6 +41,10 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
         type="button"
         onClick={(e) => {
           e.stopPropagation();
+          if (onAbrirCustom) {
+            onAbrirCustom(telefonos);
+            return;
+          }
           setAbierto(true);
         }}
         title="Elegir a quién llamar"
@@ -57,11 +62,14 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
       {abierto &&
         createPortal(
           <div
+            role="presentation"
             className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
             {...backdropProps}
           >
             <div
-              className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-ink"
+              role="dialog"
+              aria-modal="true"
+              className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-md overflow-hidden text-ink"
               {...contentProps}
             >
               <div className="p-4 border-b border-rule flex items-center justify-between bg-paper-2">
@@ -116,7 +124,7 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
                           {item.telefono}
                         </span>
                       </div>
-                      <div className="px-3.5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 shrink-0 shadow-xs transition-colors">
+                      <div className="px-3.5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors">
                         <Phone className="w-3.5 h-3.5" />
                         <span>Llamar</span>
                       </div>

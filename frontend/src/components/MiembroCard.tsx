@@ -72,7 +72,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
   return (
     <div
       onClick={() => onAbrirDetalle('datos')}
-      className={`bg-surface rounded-2xl border border-rule border-l-4 p-4 shadow-2xs active:scale-[0.99] transition cursor-pointer ${
+      className={`s-card s-card-hover rounded-2xl border-l-4 p-4 transition cursor-pointer ${
         !miembro.activo
           ? 'border-l-rule opacity-65'
           : cfgRama.borderClases
@@ -82,7 +82,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center text-sm shrink-0 shadow-2xs ${
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center text-sm shrink-0 ${
               !miembro.activo
                 ? 'bg-paper-3 text-ink-muted'
                 : cfgRama.avatarClases
@@ -188,7 +188,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
             type="button"
             disabled={validandoDirecto}
             onClick={() => onValidarFichaDirecto(entrega)}
-            className="min-h-[42px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+            className="min-h-[42px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             {validandoDirecto ? (
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -204,7 +204,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
           <button
             type="button"
             onClick={() => onAbrirDetalle('pase')}
-            className="min-h-[42px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+            className="min-h-[42px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Pasar de Rama</span>

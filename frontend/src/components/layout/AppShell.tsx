@@ -29,8 +29,8 @@ import { Drawer } from '../ui/Drawer';
 import { ThemeToggle } from '../ThemeToggle';
 import { BotonInstalarPwa } from '../BotonInstalarPwa';
 import { CommandPaletteModal } from './CommandPaletteModal';
-import { QrScannerModal } from '../QrScannerModal';
-import { ModalScannerQR } from '../ModalScannerQR';
+import { QrScannerUniversalModal } from '../qr/QrScannerUniversalModal';
+import { useQrModalStore } from '../../core/qrModalStore';
 
 export const InsideAppShellContext = React.createContext(false);
 export const useInsideAppShell = () => React.useContext(InsideAppShellContext);
@@ -63,7 +63,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
 
   const [cmdkOpen, setCmdkOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
-  const [qrModeAbierto, setQrModeAbierto] = useState<'none' | 'selector' | 'legajo' | 'evento'>('none');
 
   const cicloAnio = obtenerCicloAnioActual();
 
@@ -188,13 +187,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
   const currentTitle = title || activeNav?.label || 'Juan XXIII';
 
   const handleOpenQr = () => {
-    if (caps.canValidateQr && caps.canSellEventos) {
-      setQrModeAbierto('selector');
-    } else if (caps.canValidateQr) {
-      setQrModeAbierto('legajo');
-    } else if (caps.canSellEventos) {
-      setQrModeAbierto('evento');
-    }
+    useQrModalStore.getState().abrirQr();
   };
 
   const handleLogout = () => {
@@ -520,61 +513,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
         </div>
       </Drawer>
 
-      {/* Selector Rápido de Escáner (unificado completamente en Fase 2) */}
-      <Drawer
-        abierto={qrModeAbierto === 'selector'}
-        onCerrar={() => setQrModeAbierto('none')}
-        titulo="Escáner QR Universal"
-        subtitulo="Elegí qué tipo de código vas a escanear"
-        mode="sheet"
-        maxWidthClass="sm:max-w-sm"
-      >
-        <div className="space-y-2.5">
-          <button
-            type="button"
-            onClick={() => setQrModeAbierto('legajo')}
-            className="w-full s-card s-card-hover p-3.5 rounded-xl text-left flex items-center gap-3 cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-xl bg-brand-soft text-brand-soft-ink flex items-center justify-center shrink-0">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-ink">Validar Legajo Físico</div>
-              <div className="text-xs text-ink-muted">Escanear QR SHA-256 al pie de la ficha</div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setQrModeAbierto('evento')}
-            className="w-full s-card s-card-hover p-3.5 rounded-xl text-left flex items-center gap-3 cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-xl bg-brand-soft text-brand-soft-ink flex items-center justify-center shrink-0">
-              <Ticket className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-bold text-ink">Canjear Vale / Entrada de Evento</div>
-              <div className="text-xs text-ink-muted">Modo puerta continuo y cobro pendiente</div>
-            </div>
-          </button>
-        </div>
-      </Drawer>
-
-      {qrModeAbierto === 'legajo' && (
-        <QrScannerModal
-          abierto={true}
-          onCerrar={() => setQrModeAbierto('none')}
-          onValidadoExitoso={() => setQrModeAbierto('none')}
-        />
-      )}
-
-      {qrModeAbierto === 'evento' && (
-        <ModalScannerQR
-          abierto={true}
-          onCerrar={() => setQrModeAbierto('none')}
-          onTicketValidado={() => {}}
-        />
-      )}
+      {/* Escáner QR Universal (Legajos + Eventos) */}
+      <QrScannerUniversalModal />
 
       {/* Buscador Global Ctrl+K */}
       <CommandPaletteModal

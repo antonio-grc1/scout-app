@@ -6,7 +6,6 @@ import {
   filtrarRolesParaPase,
   obtenerRamasPermitidasParaPase,
 } from '../../lib/permisos';
-import { ModalConfirmacion } from '../ModalConfirmacion';
 
 export interface PestanaPaseRolProps {
   candidatoPase: any;
@@ -217,10 +216,11 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
           <div className="space-y-1.5">
             {asignacionesActivas.map((asig: any) => {
               const esPrincipal = asig.id === asignacionPrincipalId;
+              const enConfirmacion = asigACerrarId === asig.id;
               return (
                 <div
                   key={asig.id}
-                  className="flex items-center justify-between p-2 rounded-xl bg-surface border border-rule gap-2"
+                  className="flex flex-wrap items-center justify-between p-2 rounded-xl bg-surface border border-rule gap-2"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <ShieldCheck className="w-4 h-4 text-brand shrink-0" />
@@ -241,18 +241,40 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
 
                   {asignacionesActivas.length > 1 &&
                     onCerrarAsignacion &&
-                    (!puedeCerrarAsignacion || puedeCerrarAsignacion(asig)) && (
-                    <button
-                      type="button"
-                      disabled={cerrandoId === asig.id || ejecutandoPase}
-                      onClick={() => handleCerrar(asig.id)}
-                      title="Finalizar este rol"
-                      className="px-2 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 transition cursor-pointer shrink-0 disabled:opacity-40"
-                    >
-                      <Trash2 className="w-3 h-3 inline mr-1" />
-                      Cerrar Rol
-                    </button>
-                  )}
+                    (!puedeCerrarAsignacion || puedeCerrarAsignacion(asig)) &&
+                    (enConfirmacion ? (
+                      <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                        <span className="text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                          ¿Finalizar rol?
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAsigACerrarId(null)}
+                          className="px-2 py-1 text-[11px] font-bold text-ink-2 rounded-lg border border-rule hover:bg-paper-2 transition cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={cerrandoId === asig.id || ejecutandoPase}
+                          onClick={confirmarCierreAsignacion}
+                          className="px-2 py-1 text-[11px] font-bold bg-rose-600 text-white rounded-lg hover:opacity-90 transition cursor-pointer disabled:opacity-40"
+                        >
+                          Sí, finalizar
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={cerrandoId === asig.id || ejecutandoPase}
+                        onClick={() => handleCerrar(asig.id)}
+                        title="Finalizar este rol"
+                        className="px-2 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 transition cursor-pointer shrink-0 disabled:opacity-40"
+                      >
+                        <Trash2 className="w-3 h-3 inline mr-1" />
+                        Cerrar Rol
+                      </button>
+                    ))}
                 </div>
               );
             })}
@@ -287,7 +309,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
             onClick={() => setModoAccion('MUDAR')}
             className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
               modoAccion === 'MUDAR'
-                ? 'bg-surface text-ink shadow-2xs'
+                ? 'bg-surface text-ink border border-rule'
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
@@ -299,7 +321,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
             onClick={() => setModoAccion('AGREGAR')}
             className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
               modoAccion === 'AGREGAR'
-                ? 'bg-surface text-ink shadow-2xs'
+                ? 'bg-surface text-ink border border-rule'
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
@@ -404,7 +426,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                       onClick={() => setUnidadDestinoId(String(u.id))}
                       className={`min-h-[42px] px-3 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
                         activa
-                          ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                          ? 'bg-brand text-brand-contrast border-brand font-bold'
                           : 'bg-surface text-ink-2 border-rule'
                       }`}
                     >
@@ -467,7 +489,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
           (modoAccion === 'MUDAR' && esMismoDestino)
         }
         onClick={handleConfirmar}
-        className="w-full min-h-[46px] rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs disabled:opacity-40"
+        className="w-full min-h-[46px] rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-40"
       >
         {modoAccion === 'MUDAR' ? (
           <ArrowRightLeft className="w-4 h-4" />
@@ -484,17 +506,6 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
               : 'Asignar Rol Adicional al Miembro'}
         </span>
       </button>
-
-      <ModalConfirmacion
-        abierto={asigACerrarId !== null}
-        titulo="Finalizar Rol Activo"
-        mensaje="¿Estás seguro de que deseas finalizar este rol activo para este miembro?"
-        tipo="peligro"
-        textoConfirmar="Sí, finalizar"
-        textoCancelar="Cancelar"
-        onCerrar={() => setAsigACerrarId(null)}
-        onConfirmar={confirmarCierreAsignacion}
-      />
     </div>
   );
 };

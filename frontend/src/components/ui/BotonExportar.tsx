@@ -76,7 +76,7 @@ export const BotonExportar: React.FC<BotonExportarProps> = ({
         aria-haspopup="menu"
         aria-expanded={menuAbierto}
         title={tituloTooltip}
-        className={`inline-flex items-center justify-center font-bold bg-surface text-ink border border-rule hover:bg-paper-2 active:bg-paper-3 transition cursor-pointer select-none shadow-2xs disabled:opacity-50 disabled:pointer-events-none ${padClasses} ${className}`}
+        className={`inline-flex items-center justify-center font-bold bg-surface text-ink border border-rule hover:bg-paper-2 active:bg-paper-3 transition cursor-pointer select-none disabled:opacity-50 disabled:pointer-events-none ${padClasses} ${className}`}
       >
         {procesando ? (
           <Loader2 className="w-4 h-4 animate-spin text-brand shrink-0" />

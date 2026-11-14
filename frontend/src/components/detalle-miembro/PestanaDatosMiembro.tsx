@@ -57,7 +57,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   desvinculandoMiembroId,
   puedeEditarIdentidad,
   puedeEditarContacto,
-  puedeDarBaja: _puedeDarBaja,
+  puedeDarBaja,
   puedeEditarMiembro,
   puedeGestionarTesoreria,
   puedeVincularHermano,
@@ -245,22 +245,33 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
       {/* Estado Activo / Baja y Botón Guardar */}
       {puedeEditarMiembro && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-rule">
-          <label className="flex items-center gap-2.5 cursor-pointer min-h-[42px]">
-            <input
-              type="checkbox"
-              checked={formData.activo}
-              onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
-              className="w-5 h-5 text-brand rounded border-rule cursor-pointer focus:ring-brand/20"
-            />
-            <span className="font-bold text-ink-2">
+          {puedeDarBaja ? (
+            <label className="flex items-center gap-2.5 cursor-pointer min-h-[42px]">
+              <input
+                type="checkbox"
+                checked={formData.activo}
+                onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                className="w-5 h-5 text-brand rounded border-rule cursor-pointer focus:ring-brand/20"
+              />
+              <span className="font-bold text-ink-2">
+                {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
+              </span>
+            </label>
+          ) : (
+            <span className="inline-flex items-center gap-2 min-h-[42px] px-3 rounded-xl bg-paper-2 border border-rule text-xs font-bold text-ink-2">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  formData.activo ? 'bg-emerald-500' : 'bg-ink-muted'
+                }`}
+              />
               {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
             </span>
-          </label>
+          )}
 
           <button
             type="submit"
             disabled={guardando}
-            className="min-h-[44px] px-5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+            className="min-h-[44px] px-5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
@@ -283,7 +294,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             type="button"
             disabled={eliminandoDefinitivo || guardando}
             onClick={onSolicitarEliminarDefinitivo}
-            className="min-h-[42px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer shrink-0 disabled:opacity-50"
+            className="min-h-[42px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
           >
             <Trash2 className="w-4 h-4" />
             <span>{eliminandoDefinitivo ? 'Eliminando...' : 'Eliminar definitivamente'}</span>
