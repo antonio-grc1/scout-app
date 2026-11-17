@@ -19,7 +19,6 @@ import {
 } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
-import { generarClaveTemporal } from '../common/utils/password.util.js';
 import {
   CLAVES_FAMILIARES_ESTANDAR,
   clavesCopiablesEntreHermanos,
@@ -578,8 +577,8 @@ export class MiembrosService {
 
     const unidadIdResuelta = await this.resolverYValidarUnidadYRol(alcance, dto.unidadId, dto.rolId);
     assertUnidadEnAlcance(alcance, unidadIdResuelta);
-    // Generamos clave temporal aleatoria; se fuerza el cambio en el primer login.
-    const claveTemporal = generarClaveTemporal();
+    // Temporal: usamos el DNI como clave inicial; se fuerza el cambio en el primer login.
+    const claveTemporal = dto.dni;
     const passwordHash = await bcrypt.hash(claveTemporal, BCRYPT_ROUNDS);
 
     const id = await this.prisma.$transaction(async (tx) => {

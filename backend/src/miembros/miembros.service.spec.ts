@@ -632,7 +632,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
     );
   });
 
-  it('P1-6 & P1-20: ListarMiembrosSchema limita porPagina <= 200 y parsea ids; crear genera claveTemporal != dni', async () => {
+  it('P1-6 & P1-20: ListarMiembrosSchema limita porPagina <= 200 y parsea ids; crear usa dni como claveTemporal inicial', async () => {
     const { ListarMiembrosSchema } = await import('./miembros.dto.js');
     expect(ListarMiembrosSchema.safeParse({ porPagina: 2000 }).success).toBe(false);
     const parsed = ListarMiembrosSchema.parse({ ids: '3, 7, 3, invalid', porPagina: 200 });
@@ -670,13 +670,11 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       unidadId: 1,
       rolId: 2,
     });
-    expect(res.claveTemporal).toBeDefined();
-    expect(res.claveTemporal).not.toBe('44555666');
-    expect(res.claveTemporal?.length).toBeGreaterThanOrEqual(8);
+    expect(res.claveTemporal).toBe('44555666');
     expect(mailerMock.enviarBienvenidaAlta).toHaveBeenCalledWith(
       expect.objectContaining({
         dni: '44555666',
-        claveTemporal: res.claveTemporal,
+        claveTemporal: '44555666',
       }),
     );
   });
