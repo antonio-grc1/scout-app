@@ -20,14 +20,14 @@ export class MailerController {
     }
   }
 
-  @RequireAnyPermission('organizacion.gestionar', 'roles.gestionar')
+  @RequireAnyPermission('organizacion.editar')
   @Get()
   obtener(@Alcance() alcance: AlcanceAcceso) {
     this.assertAlcanceGlobal(alcance);
     return this.mailer.obtenerConfiguracionPublica();
   }
 
-  @RequireAnyPermission('organizacion.gestionar', 'roles.gestionar')
+  @RequireAnyPermission('organizacion.editar')
   @Put()
   guardar(
     @Alcance() alcance: AlcanceAcceso,
@@ -37,7 +37,7 @@ export class MailerController {
     return this.mailer.guardarConfiguracion(dto);
   }
 
-  @RequireAnyPermission('organizacion.gestionar', 'roles.gestionar')
+  @RequireAnyPermission('organizacion.editar')
   @Post('probar')
   @HttpCode(200)
   probar(

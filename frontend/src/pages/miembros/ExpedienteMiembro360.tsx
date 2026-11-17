@@ -1,20 +1,45 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useModalOverlay } from '../hooks/useModalOverlay';
-import { api } from '../api/client';
-import { useAuthStore } from '../store/authStore';
-import { useToastStore } from '../store/toastStore';
-import { ModalConfirmacion, type ModalConfirmacionProps } from './ModalConfirmacion';
-import { ModalCobrarDeuda } from './ModalCobrarDeuda';
-import { ModalGenerarDeudaManual } from './ModalGenerarDeudaManual';
-import { ModalEditarFamilia } from './ModalEditarFamilia';
-import { ModalVincularHermano } from './ModalVincularHermano';
-import { obtenerConfigRama } from '../lib/ramaColors';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRightLeft,
+  CreditCard,
+  FileCheck2,
+  HeartPulse,
+  KeyRound,
+  Loader2,
+  Phone,
+  ShieldAlert,
+  User,
+  X,
+} from 'lucide-react';
+import { api } from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
+import { useOfflineStore } from '../../store/offlineStore';
+import { useToastStore } from '../../store/toastStore';
+import { useCapabilities } from '../../core/capabilities';
+import { ModalCobrarDeuda } from '../../components/ModalCobrarDeuda';
+import { ModalGenerarDeudaManual } from '../../components/ModalGenerarDeudaManual';
+import { ModalEditarFamilia } from '../../components/ModalEditarFamilia';
+import { ModalVincularHermano } from '../../components/ModalVincularHermano';
+import { BotonLlamarMiembro } from '../../components/BotonLlamarMiembro';
+import {
+  PestanaDatosMiembro,
+  type FormDatosMiembro,
+} from '../../components/detalle-miembro/PestanaDatosMiembro';
+import {
+  PestanaCuotasTesoreria,
+  type CargoEditando,
+  type PagoEditando,
+} from '../../components/detalle-miembro/PestanaCuotasTesoreria';
+import { PestanaLegajosFichas } from '../../components/detalle-miembro/PestanaLegajosFichas';
+import { PestanaPaseRol } from '../../components/detalle-miembro/PestanaPaseRol';
+import { PestanaSeguridad } from '../../components/detalle-miembro/PestanaSeguridad';
+import { SegmentedTabs, type SegmentedTabItem } from '../../components/ui';
+import { extraerInfoMedicaMiembro } from '../../lib/alertasMedicas';
+import { obtenerConfigRama } from '../../lib/ramaColors';
 import {
   calcularEdad,
-  obtenerAsignacionesActivas,
-  obtenerCicloAnioActual,
-  obtenerRolPrincipal,
-  obtenerRolesSecundarios,
   esRolAlcanceGlobal,
   esRolDeEducador,
   esRolDeProtagonista,
@@ -22,11 +47,15 @@ import {
   esRolRama,
   esRolSinRama,
   formatearMoneda,
+  obtenerAsignacionesActivas,
+  obtenerCicloAnioActual,
+  obtenerRolPrincipal,
+  obtenerRolesSecundarios,
   rolRequiereRama,
   seleccionarPlantillaPorMiembro,
   traducirErrorAmigable,
-} from '../lib/formatters';
-import { BotonLlamarMiembro } from './BotonLlamarMiembro';
+  type OpcionTelefonoContacto,
+} from '../../lib/formatters';
 import {
   esUnidadJefatura,
   esUnidadRama,
@@ -37,85 +66,103 @@ import {
   puedeCerrarAsignacionPorAlcance,
   puedeEditarFamiliaPorAlcance,
   usePermisosUI,
-} from '../lib/permisos';
+} from '../../lib/permisos';
 import {
-  X,
-  User,
-  FileCheck2,
-  CreditCard,
-  KeyRound,
-  ArrowRightLeft,
-} from 'lucide-react';
-import {
-  generarFichaPdf,
-  descargarPdfBlob,
   crearUrlPdfBlob,
+  descargarPdfBlob,
+  generarFichaPdf,
   type MapeoPdf,
-} from '../services/pdfGenerator';
-import { PestanaDatosMiembro } from './detalle-miembro/PestanaDatosMiembro';
-import { PestanaPaseRol } from './detalle-miembro/PestanaPaseRol';
-import { PestanaSeguridad } from './detalle-miembro/PestanaSeguridad';
-import { PestanaLegajosFichas } from './detalle-miembro/PestanaLegajosFichas';
-import { PestanaCuotasTesoreria } from './detalle-miembro/PestanaCuotasTesoreria';
+} from '../../services/pdfGenerator';
 
-interface Props {
-  usuarioId: number | null;
-  onCerrar: () => void;
+const PdfViewerModal = lazy(() =>
+  import('../../components/PdfViewerModal').then((m) => ({ default: m.PdfViewerModal })),
+);
+
+export type TabExpediente360 = 'datos' | 'cuotas' | 'ficha' | 'pase' | 'seguridad';
+
+type SubVistaExpediente =
+  | null
+  | 'cobrar'
+  | 'nuevo-cargo'
+  | 'editar-familia'
+  | 'vincular-hermano'
+  | 'llamar'
+  | 'pdf'
+  | 'confirmar';
+
+interface ConfirmInlineConfig {
+  tipo: 'peligro' | 'alerta';
+  titulo: string;
+  mensaje: string;
+  textoConfirmar: string;
+  textoCancelar: string | null;
+  cargando?: boolean;
+  onConfirmar: () => void | Promise<void>;
+}
+
+export interface ExpedienteMiembro360Props {
+  usuarioId: number;
+  tabInicial?: TabExpediente360;
+  onTabChange?: (tab: TabExpediente360) => void;
+  onCerrar?: () => void;
   onActualizado?: () => void;
   onEliminado?: (mensaje: string) => void;
   onClaveReseteada?: (mensaje: string) => void;
-  tabInicial?: 'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas';
+  mostrarBotonCerrar?: boolean;
 }
 
 const CARGOS_VACIOS: any[] = [];
 
-export const ModalDetalleMiembro: React.FC<Props> = ({
+export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   usuarioId,
+  tabInicial = 'datos',
+  onTabChange,
   onCerrar,
   onActualizado,
   onEliminado,
   onClaveReseteada,
-  tabInicial = 'datos',
+  mostrarBotonCerrar = false,
 }) => {
-  const { usuario: usuarioActual, asignaciones: asignacionesActuales, tieneGlobal, tienePermiso, refrescarSesionDesdeServidor } = useAuthStore();
+  const {
+    usuario: usuarioActual,
+    asignaciones: asignacionesActuales,
+    tieneGlobal,
+    tienePermiso,
+    refrescarSesionDesdeServidor,
+  } = useAuthStore();
+  const caps = useCapabilities();
+  const isOnline = useOfflineStore((s) => s.isOnline);
+  const mostrarToast = useToastStore((s) => s.mostrarToast);
   const { canEdit, canView } = usePermisosUI();
+
   const esGlobal = tieneGlobal();
   const unidadesEnAlcanceIds = useMemo(
     () => obtenerUnidadesEnAlcanceIds(asignacionesActuales),
     [asignacionesActuales],
   );
   const tieneBajaGlobal = asignacionesActuales.some(
-    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('miembros.baja'),
+    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('padron.editar'),
   );
-  const puedeVerCuotas = canView('cuotas');
-  const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
-  const puedeCrearCargoIndividual = canEdit('cuotas', 'cargoIndividual');
-  const puedeAjustarCuotas = canEdit('cuotas', 'editarCargo');
-  const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
-  const puedeVerFicha = canView('ficha');
-  const puedeCompletarFicha = canEdit('ficha', 'completar');
-  const puedeValidarFisico = canEdit('ficha', 'validarFisico');
-  const [tab, setTab] = useState<'datos' | 'pase' | 'seguridad' | 'ficha' | 'cuotas'>(tabInicial);
+
+  const [tab, setTab] = useState<TabExpediente360>(tabInicial);
+  useEffect(() => {
+    setTab(tabInicial);
+  }, [tabInicial, usuarioId]);
+
+  const cambiarTab = (next: TabExpediente360) => {
+    setTab(next);
+    setSubVista(null);
+    onTabChange?.(next);
+  };
+
   const [miembro, setMiembro] = useState<any | null>(null);
-  const targetEsGlobal = useMemo(() => miembroTieneAlcanceGlobal(miembro), [miembro]);
-  const targetEsEducador = useMemo(() => miembroEsEducador(miembro), [miembro]);
-  const esMismoUsuario = Boolean(miembro && usuarioActual && miembro.id === usuarioActual.id);
-  const bloqueadoPorTargetGlobal = !esGlobal && targetEsGlobal;
-  const puedeEditarIdentidad = canEdit('miembro', 'identidad') && !bloqueadoPorTargetGlobal;
-  const puedeEditarContacto = canEdit('miembro', 'contacto') && !bloqueadoPorTargetGlobal;
-  const puedeDarBaja = canEdit('miembro', 'estado') && !bloqueadoPorTargetGlobal;
-  const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
-  const puedeHacerPases =
-    canEdit('miembro', 'pase') &&
-    !bloqueadoPorTargetGlobal &&
-    !(!esGlobal && (esMismoUsuario || targetEsEducador));
-  const puedeResetearClave = canEdit('miembro', 'clave') && !bloqueadoPorTargetGlobal;
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
   const [entregas, setEntregas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [ramas, setRamas] = useState<any[]>([]);
   const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
+
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [eliminandoDefinitivo, setEliminandoDefinitivo] = useState(false);
@@ -131,45 +178,17 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const [precargaFicha, setPrecargaFicha] = useState<any | null>(null);
   const [cargandoFichaEditor, setCargandoFichaEditor] = useState(false);
   const [alerta, setAlerta] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
-  const [modalConf, setModalConf] = useState<ModalConfirmacionProps | null>(null);
 
-  // Modales secundarios de Cuotas y Familia
-  const [modalCobrarAbierto, setModalCobrarAbierto] = useState(false);
+  // Sub-vista inline para mantener máximo 1 overlay (cero portales apilados)
+  const [subVista, setSubVista] = useState<SubVistaExpediente>(null);
   const [cargoIdACobrar, setCargoIdACobrar] = useState<number | null>(null);
-  const [modalGenerarDeudaAbierto, setModalGenerarDeudaAbierto] = useState(false);
-  const [modalEditarFamiliaAbierto, setModalEditarFamiliaAbierto] = useState(false);
-  const [modalVincularHermanoAbierto, setModalVincularHermanoAbierto] = useState(false);
-
-  const hayModalHijoAbierto = Boolean(
-    modalConf ||
-      modalCobrarAbierto ||
-      modalGenerarDeudaAbierto ||
-      modalEditarFamiliaAbierto ||
-      modalVincularHermanoAbierto,
-  );
-
-  const { backdropProps, contentProps } = useModalOverlay({
-    abierto: Boolean(usuarioId),
-    onCerrar,
-    bloqueado: hayModalHijoAbierto,
-  });
+  const [telefonosInline, setTelefonosInline] = useState<OpcionTelefonoContacto[]>([]);
+  const [confirmInline, setConfirmInline] = useState<ConfirmInlineConfig | null>(null);
 
   // Estados de edición y reversión en pestaña Cuotas
   const [mostrarAnulados, setMostrarAnulados] = useState(false);
-  const [cargoEditando, setCargoEditando] = useState<{
-    id: number;
-    nombreConcepto: string;
-    esIndividual: boolean;
-    montoOriginal: string;
-    montoDescuento: string;
-    fechaVencimiento: string;
-  } | null>(null);
-  const [pagoEditando, setPagoEditando] = useState<{
-    id: number;
-    metodoPago: 'EFECTIVO' | 'TRANSFERENCIA' | 'OTRO';
-    referenciaComprobante: string;
-    observaciones: string;
-  } | null>(null);
+  const [cargoEditando, setCargoEditando] = useState<CargoEditando | null>(null);
+  const [pagoEditando, setPagoEditando] = useState<PagoEditando | null>(null);
   const [ajustandoSaldo, setAjustandoSaldo] = useState(false);
   const [tipoAjusteSaldo, setTipoAjusteSaldo] = useState<'CARGAR' | 'DESCONTAR' | 'FIJAR'>('CARGAR');
   const [montoAjusteSaldo, setMontoAjusteSaldo] = useState('');
@@ -177,8 +196,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const [procesandoAccionCuota, setProcesandoAccionCuota] = useState(false);
   const [desvinculandoMiembroId, setDesvinculandoMiembroId] = useState<number | null>(null);
 
-  // Formulario de edición
-  const [formData, setFormData] = useState({
+  // Formulario de edición de datos
+  const [formData, setFormData] = useState<FormDatosMiembro>({
     nombre: '',
     apellido: '',
     dni: '',
@@ -203,6 +222,29 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   const [ramaSeleccionadaId, setRamaSeleccionadaId] = useState<number | null>(null);
   const [unidadDestinoId, setUnidadDestinoId] = useState<string>('');
   const [rolDestinoId, setRolDestinoId] = useState<string>('');
+
+  const targetEsGlobal = useMemo(() => miembroTieneAlcanceGlobal(miembro), [miembro]);
+  const targetEsEducador = useMemo(() => miembroEsEducador(miembro), [miembro]);
+  const esMismoUsuario = Boolean(miembro && usuarioActual && miembro.id === usuarioActual.id);
+  const bloqueadoPorTargetGlobal = !esGlobal && targetEsGlobal;
+
+  const puedeVerCuotas = canView('cuotas');
+  const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
+  const puedeCrearCargoIndividual = canEdit('cuotas', 'cargoIndividual');
+  const puedeAjustarCuotas = canEdit('cuotas', 'editarCargo');
+  const puedeGestionarTesoreria = tienePermiso('cobranzas.editar') || tienePermiso('caja.editar');
+  const puedeVerFicha = canView('ficha');
+  const puedeCompletarFicha = canEdit('ficha', 'completar');
+  const puedeValidarFisico = canEdit('ficha', 'validarFisico');
+  const puedeEditarIdentidad = canEdit('miembro', 'identidad') && !bloqueadoPorTargetGlobal;
+  const puedeEditarContacto = canEdit('miembro', 'contacto') && !bloqueadoPorTargetGlobal;
+  const puedeDarBaja = canEdit('miembro', 'estado') && !bloqueadoPorTargetGlobal;
+  const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
+  const puedeHacerPases =
+    canEdit('miembro', 'pase') &&
+    !bloqueadoPorTargetGlobal &&
+    !(!esGlobal && (esMismoUsuario || targetEsEducador));
+  const puedeResetearClave = canEdit('miembro', 'clave') && !bloqueadoPorTargetGlobal;
 
   const ramaSeleccionadaObj = useMemo(
     () => ramas.find((r) => r.id === ramaSeleccionadaId),
@@ -232,11 +274,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     }
     return base;
   }, [roles, esEgreso, esGlobal]);
+
   const rolesSinRama = useMemo(() => {
     const permitidos = esGlobal ? roles : roles.filter((r) => !esRolAlcanceGlobal(r));
     const sr = permitidos.filter(esRolSinRama);
     return sr.length > 0 ? sr : permitidos.filter((r) => !rolRequiereRama(r) && !esRolJefe(r));
   }, [roles, esGlobal]);
+
   const rolesJefatura = useMemo(() => {
     if (!esGlobal) return [];
     const jf = roles.filter(esRolJefe);
@@ -260,36 +304,32 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     if (!asignacionPrincipal) return false;
     const unidadIdActual = asignacionPrincipal.unidad?.id ?? asignacionPrincipal.unidadId;
     const rolIdActual = asignacionPrincipal.rol?.id ?? asignacionPrincipal.rolId;
-    return (
-      Number(unidadDestinoId) === unidadIdActual && Number(rolDestinoId) === rolIdActual
-    );
+    return Number(unidadDestinoId) === unidadIdActual && Number(rolDestinoId) === rolIdActual;
   }, [asignacionPrincipal, unidadDestinoId, rolDestinoId]);
 
   const esEducador = esRolDeEducador(asignacionPrincipal?.rol);
 
-  // candidatoPase moved above
-
-  useEffect(() => {
-    if (!usuarioId) {
-      setMiembro(null);
-      setAlerta(null);
-      setClaveTemporalGenerada(null);
-      setEditandoFicha(false);
-      return;
+  const guardOffline = (accion = 'realizar esta acción'): boolean => {
+    if (!isOnline) {
+      mostrarToast(`Estás sin conexión. Recuperá señal para ${accion}.`, 'advertencia');
+      return true;
     }
-    setTab(tabInicial);
-    setAlerta(null);
-    setClaveTemporalGenerada(null);
-    setEditandoFicha(false);
-    setPlantillaActiva(null);
-    cargarDatos(usuarioId);
-  }, [usuarioId, tabInicial]);
+    return false;
+  };
 
-  const cargarDatos = async (id: number) => {
-    setCargando(true);
-    try {
-      const [resMiembro, resCuenta, resEntregas, resUnidades, resRoles, resCandidatos, resRamas] =
-        await Promise.all([
+  const cargarDatos = useCallback(
+    async (id: number) => {
+      setCargando(true);
+      try {
+        const [
+          resMiembro,
+          resCuenta,
+          resEntregas,
+          resUnidades,
+          resRoles,
+          resCandidatos,
+          resRamas,
+        ] = await Promise.all([
           api.get(`/miembros/${id}`),
           api.get(`/tesoreria/estado-cuenta/${id}`).catch(() => null),
           api.get(`/legajos/entregas?usuarioId=${id}`).catch(() => null),
@@ -299,138 +339,205 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           api.get('/organizacion/ramas').catch(() => ({ data: [] })),
         ]);
 
-      const m = resMiembro.data;
-      setMiembro(m);
-      if (resCuenta) setEstadoCuenta(resCuenta.data);
-      if (resEntregas) setEntregas(resEntregas.data);
-      setUnidades(resUnidades.data || []);
-      setRoles(resRoles.data || []);
-      setRamas(resRamas.data || []);
-      setCandidatosPase(resCandidatos.data || []);
+        const m = resMiembro.data;
+        setMiembro(m);
+        if (resCuenta) setEstadoCuenta(resCuenta.data);
+        if (resEntregas) setEntregas(resEntregas.data);
 
-      const fechaNac = m.fechaNacimiento
-        ? new Date(m.fechaNacimiento).toISOString().split('T')[0]
-        : '';
-      setFormData({
-        nombre: m.nombre || '',
-        apellido: m.apellido || '',
-        dni: m.dni || '',
-        fechaNacimiento: fechaNac,
-        emailContacto: m.emailContacto || '',
-        telefonoContacto: m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
-        madreNombres: m.datosFijosJson?.madre_nombres || '',
-        madreTelefono: m.datosFijosJson?.madre_telefono || '',
-        padreNombres: m.datosFijosJson?.padre_nombres || '',
-        padreTelefono: m.datosFijosJson?.padre_telefono || '',
-        tutorNombres: m.datosFijosJson?.tutor_nombres || '',
-        tutorTelefono: m.datosFijosJson?.tutor_telefono || '',
-        domicilio: m.datosFijosJson?.domicilio || '',
-        obraSocial: m.datosFijosJson?.obra_social || '',
-        telefonoUrgencias: m.datosFijosJson?.telefono_urgencias || '',
-        alergias: m.datosFijosJson?.alergias || '',
-        activo: m.activo ?? true,
-      });
+        // Fallback sintético de organización cuando /organizacion/* devuelve [] para roles sin permiso organizacion.ver
+        let unidadesResueltas: any[] = Array.isArray(resUnidades.data) ? resUnidades.data : [];
+        let rolesResueltos: any[] = Array.isArray(resRoles.data) ? resRoles.data : [];
+        let ramasResueltas: any[] = Array.isArray(resRamas.data) ? resRamas.data : [];
 
-      const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
-      const asigUnidadId = asig?.unidad?.id ?? asig?.unidadId;
-      const candidato = (resCandidatos.data || []).find((c: any) => c.usuario?.id === id);
-
-      let catIni: 'RAMA' | 'SIN_RAMA' | 'JEFATURA' = 'RAMA';
-      let ramaIniId: number | null = null;
-      let unidadIni = '';
-      let rolIni = '';
-
-      if (candidato) {
-        if (candidato.tipo === 'EGRESO' || candidato.tipo === 'EGRESO_SIN_RAMA') {
-          catIni = 'SIN_RAMA';
-          const uSin = (resUnidades.data || []).find(esUnidadSinRama);
-          const rSin =
-            (resRoles.data || []).find(esRolSinRama) ||
-            (resRoles.data || []).find((r: any) => !rolRequiereRama(r) && !esRolJefe(r));
-          if (uSin) unidadIni = String(uSin.id);
-          if (rSin) rolIni = String(rSin.id);
-        } else if (candidato.ramaSugerida) {
-          catIni = 'RAMA';
-          ramaIniId = candidato.ramaSugerida.id;
-          if (candidato.unidadesDestino?.length > 0) {
-            unidadIni = String(candidato.unidadesDestino[0].id);
-          } else {
-            const uRama = (resUnidades.data || []).find((u: any) => u.ramaId === ramaIniId);
-            if (uRama) unidadIni = String(uRama.id);
-          }
-          const rProt = (resRoles.data || []).find(
-            (r: any) => esRolDeProtagonista(r) && esRolRama(r),
-          );
-          if (rProt) rolIni = String(rProt.id);
-        }
-      } else {
-        const uActual = (resUnidades.data || []).find((u: any) => u.id === asigUnidadId);
-        if (uActual && esUnidadSinRama(uActual)) {
-          catIni = 'SIN_RAMA';
-          unidadIni = String(uActual.id);
-          const rSin =
-            asig?.rol?.id ||
-            (resRoles.data || []).find(esRolSinRama)?.id ||
-            (resRoles.data || []).find((r: any) => !rolRequiereRama(r))?.id;
-          if (rSin) rolIni = String(rSin);
-        } else if (uActual && esUnidadJefatura(uActual)) {
-          catIni = 'JEFATURA';
-          unidadIni = String(uActual.id);
-          const rJefe =
-            asig?.rol?.id ||
-            (resRoles.data || []).find(esRolJefe)?.id ||
-            (resRoles.data || []).find((r: any) => !rolRequiereRama(r))?.id;
-          if (rJefe) rolIni = String(rJefe);
-        } else {
-          catIni = 'RAMA';
-          const allRamas = resRamas.data || [];
-          let ramaTarget = null;
-          if (uActual?.ramaId != null) {
-            const idx = allRamas.findIndex((r: any) => r.id === uActual.ramaId);
-            if (idx >= 0 && idx + 1 < allRamas.length) {
-              ramaTarget = allRamas[idx + 1];
-            } else if (idx >= 0) {
-              ramaTarget = allRamas[idx];
+        if (unidadesResueltas.length === 0) {
+          const mapaU = new Map<number, any>();
+          for (const a of m?.asignaciones || []) {
+            if (a.unidad?.id && !mapaU.has(a.unidad.id)) {
+              mapaU.set(a.unidad.id, a.unidad);
             }
           }
-          if (!ramaTarget && allRamas.length > 0) {
-            ramaTarget = allRamas[0];
+          for (const u of caps.unidadesAsignadas) {
+            if (!mapaU.has(u.id)) {
+              mapaU.set(u.id, { id: u.id, nombre: u.nombre, activa: true });
+            }
           }
-          if (ramaTarget) {
-            ramaIniId = ramaTarget.id;
-            const uDest = (resUnidades.data || []).find((u: any) => u.ramaId === ramaTarget.id);
-            if (uDest) unidadIni = String(uDest.id);
-          }
-          const eraEdu = esRolDeEducador(asig?.rol);
-          const rolDef = eraEdu
-            ? (resRoles.data || []).find((r: any) => esRolDeEducador(r) && esRolRama(r))
-            : (resRoles.data || []).find((r: any) => esRolDeProtagonista(r) && esRolRama(r));
-          if (rolDef) rolIni = String(rolDef.id);
+          unidadesResueltas = Array.from(mapaU.values());
         }
-      }
 
-      setCategoriaDestino(catIni);
-      setRamaSeleccionadaId(ramaIniId);
-      setUnidadDestinoId(unidadIni);
-      setRolDestinoId(rolIni);
-    } catch (err: any) {
-      setAlerta({
-        tipo: 'error',
-        texto: traducirErrorAmigable(err, 'No se pudieron cargar los datos.'),
-      });
-    } finally {
-      setCargando(false);
+        if (rolesResueltos.length === 0) {
+          const mapaR = new Map<number, any>();
+          for (const a of m?.asignaciones || []) {
+            if (a.rol?.id && !mapaR.has(a.rol.id)) {
+              mapaR.set(a.rol.id, a.rol);
+            }
+          }
+          rolesResueltos = Array.from(mapaR.values());
+        }
+
+        if (ramasResueltas.length === 0) {
+          const mapaRa = new Map<number, any>();
+          for (const a of m?.asignaciones || []) {
+            if (a.unidad?.rama?.id && !mapaRa.has(a.unidad.rama.id)) {
+              mapaRa.set(a.unidad.rama.id, a.unidad.rama);
+            }
+          }
+          ramasResueltas = Array.from(mapaRa.values());
+        }
+
+        setUnidades(unidadesResueltas);
+        setRoles(rolesResueltos);
+        setRamas(ramasResueltas);
+        setCandidatosPase(Array.isArray(resCandidatos.data) ? resCandidatos.data : []);
+
+        const fechaNac = m.fechaNacimiento
+          ? new Date(m.fechaNacimiento).toISOString().split('T')[0]
+          : '';
+        setFormData({
+          nombre: m.nombre || '',
+          apellido: m.apellido || '',
+          dni: m.dni || '',
+          fechaNacimiento: fechaNac,
+          emailContacto: m.emailContacto || '',
+          telefonoContacto: m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
+          madreNombres: m.datosFijosJson?.madre_nombres || '',
+          madreTelefono: m.datosFijosJson?.madre_telefono || '',
+          padreNombres: m.datosFijosJson?.padre_nombres || '',
+          padreTelefono: m.datosFijosJson?.padre_telefono || '',
+          tutorNombres: m.datosFijosJson?.tutor_nombres || '',
+          tutorTelefono: m.datosFijosJson?.tutor_telefono || '',
+          domicilio: m.datosFijosJson?.domicilio || '',
+          obraSocial: m.datosFijosJson?.obra_social || '',
+          telefonoUrgencias: m.datosFijosJson?.telefono_urgencias || '',
+          alergias: m.datosFijosJson?.alergias || '',
+          activo: m.activo ?? true,
+        });
+
+        const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
+        const asigUnidadId = asig?.unidad?.id ?? asig?.unidadId;
+        const candidato = (resCandidatos.data || []).find((c: any) => c.usuario?.id === id);
+
+        let catIni: 'RAMA' | 'SIN_RAMA' | 'JEFATURA' = 'RAMA';
+        let ramaIniId: number | null = null;
+        let unidadIni = '';
+        let rolIni = '';
+
+        if (candidato) {
+          if (candidato.tipo === 'EGRESO' || candidato.tipo === 'EGRESO_SIN_RAMA') {
+            catIni = 'SIN_RAMA';
+            const uSin = unidadesResueltas.find(esUnidadSinRama);
+            const rSin =
+              rolesResueltos.find(esRolSinRama) ||
+              rolesResueltos.find((r: any) => !rolRequiereRama(r) && !esRolJefe(r));
+            if (uSin) unidadIni = String(uSin.id);
+            if (rSin) rolIni = String(rSin.id);
+          } else if (candidato.ramaSugerida) {
+            catIni = 'RAMA';
+            ramaIniId = candidato.ramaSugerida.id;
+            if (candidato.unidadesDestino?.length > 0) {
+              unidadIni = String(candidato.unidadesDestino[0].id);
+            } else {
+              const uRama = unidadesResueltas.find((u: any) => u.ramaId === ramaIniId);
+              if (uRama) unidadIni = String(uRama.id);
+            }
+            const rProt = rolesResueltos.find(
+              (r: any) => esRolDeProtagonista(r) && esRolRama(r),
+            );
+            if (rProt) rolIni = String(rProt.id);
+          }
+        } else {
+          const uActual = unidadesResueltas.find((u: any) => u.id === asigUnidadId);
+          if (uActual && esUnidadSinRama(uActual)) {
+            catIni = 'SIN_RAMA';
+            unidadIni = String(uActual.id);
+            const rSin =
+              asig?.rol?.id ||
+              rolesResueltos.find(esRolSinRama)?.id ||
+              rolesResueltos.find((r: any) => !rolRequiereRama(r))?.id;
+            if (rSin) rolIni = String(rSin);
+          } else if (uActual && esUnidadJefatura(uActual)) {
+            catIni = 'JEFATURA';
+            unidadIni = String(uActual.id);
+            const rJefe =
+              asig?.rol?.id ||
+              rolesResueltos.find(esRolJefe)?.id ||
+              rolesResueltos.find((r: any) => !rolRequiereRama(r))?.id;
+            if (rJefe) rolIni = String(rJefe);
+          } else {
+            catIni = 'RAMA';
+            let ramaTarget: any = null;
+            if (uActual?.ramaId != null) {
+              const idx = ramasResueltas.findIndex((r: any) => r.id === uActual.ramaId);
+              if (idx >= 0 && idx + 1 < ramasResueltas.length) {
+                ramaTarget = ramasResueltas[idx + 1];
+              } else if (idx >= 0) {
+                ramaTarget = ramasResueltas[idx];
+              }
+            }
+            if (!ramaTarget && ramasResueltas.length > 0) {
+              ramaTarget = ramasResueltas[0];
+            }
+            if (ramaTarget) {
+              ramaIniId = ramaTarget.id;
+              const uDest = unidadesResueltas.find((u: any) => u.ramaId === ramaTarget.id);
+              if (uDest) unidadIni = String(uDest.id);
+            }
+            const eraEdu = esRolDeEducador(asig?.rol);
+            const rolDef = eraEdu
+              ? rolesResueltos.find((r: any) => esRolDeEducador(r) && esRolRama(r))
+              : rolesResueltos.find((r: any) => esRolDeProtagonista(r) && esRolRama(r));
+            if (rolDef) rolIni = String(rolDef.id);
+          }
+        }
+
+        setCategoriaDestino(catIni);
+        setRamaSeleccionadaId(ramaIniId);
+        setUnidadDestinoId(unidadIni);
+        setRolDestinoId(rolIni);
+      } catch (err: any) {
+        setAlerta({
+          tipo: 'error',
+          texto: traducirErrorAmigable(err, 'No se pudieron cargar los datos.'),
+        });
+      } finally {
+        setCargando(false);
+      }
+    },
+    [caps.unidadesAsignadas],
+  );
+
+  useEffect(() => {
+    setAlerta(null);
+    setClaveTemporalGenerada(null);
+    setEditandoFicha(false);
+    setPlantillaActiva(null);
+    setSubVista(null);
+    void cargarDatos(usuarioId);
+  }, [usuarioId, cargarDatos]);
+
+  // Limpieza ObjectURL PDF
+  useEffect(() => {
+    return () => {
+      if (pdfPreviewUrl) {
+        URL.revokeObjectURL(pdfPreviewUrl);
+      }
+    };
+  }, [pdfPreviewUrl]);
+
+  const cerrarVistaPreviaPdf = () => {
+    if (pdfPreviewUrl) {
+      URL.revokeObjectURL(pdfPreviewUrl);
+      setPdfPreviewUrl(null);
     }
+    if (subVista === 'pdf') setSubVista(null);
   };
 
   const handleGuardarDatos = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!miembro) return;
+    if (!miembro || guardOffline('guardar los datos del miembro')) return;
     setGuardando(true);
     setAlerta(null);
 
     try {
-      // Actualización parcial: solo se envían los grupos de campos que el usuario puede modificar
       const payload: Record<string, unknown> = {};
       if (puedeEditarIdentidad) {
         payload.nombre = formData.nombre.trim();
@@ -468,14 +575,13 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             datosFijosMergeados[k] = v;
           }
         }
-
         payload.datosFijosJson = datosFijosMergeados;
       }
-      await api.patch(`/miembros/${miembro.id}`, payload);
 
+      await api.patch(`/miembros/${miembro.id}`, payload);
       setAlerta({ tipo: 'exito', texto: 'Datos guardados.' });
-      if (onActualizado) onActualizado();
-      cargarDatos(miembro.id);
+      onActualizado?.();
+      void cargarDatos(miembro.id);
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -491,8 +597,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   );
 
   const handleEjecutarEliminarDefinitivo = async (miembroObjetivo: any, forzarFichas = false) => {
+    if (guardOffline('eliminar definitivamente al miembro')) return;
     setEliminandoDefinitivo(true);
-    setModalConf((prev) => (prev ? { ...prev, cargando: true } : null));
+    setConfirmInline((prev) => (prev ? { ...prev, cargando: true } : null));
     try {
       const res = await api.delete(`/miembros/${miembroObjetivo.id}`, {
         params: forzarFichas ? { forzarFichas: true } : undefined,
@@ -500,14 +607,15 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       const msg =
         res.data?.mensaje ||
         `Miembro "${miembroObjetivo.nombre} ${miembroObjetivo.apellido}" eliminado definitivamente.`;
-      setModalConf(null);
+      setConfirmInline(null);
+      setSubVista(null);
       if (onEliminado) {
         onEliminado(msg);
       } else {
-        useToastStore.getState().mostrarToast(msg);
-        if (onActualizado) onActualizado();
+        mostrarToast(msg, 'exito');
+        onActualizado?.();
       }
-      onCerrar();
+      onCerrar?.();
     } catch (err: any) {
       if (err?.response?.status === 409) {
         const msg =
@@ -515,32 +623,32 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           'No se puede eliminar definitivamente porque posee historial asociado.';
         const puedeForzarFichas = Boolean(err.response?.data?.puedeForzarFichas) && !forzarFichas;
         if (puedeForzarFichas) {
-          setModalConf({
-            abierto: true,
+          setConfirmInline({
             tipo: 'peligro',
             titulo: 'El miembro posee fichas médicas emitidas o validadas',
             mensaje: `${msg}\n\nSi deseas eliminar este registro (por ejemplo, una cuenta de prueba), puedes forzar la eliminación definitiva borrando también sus fichas médicas. Esta acción es irreversible.`,
             textoConfirmar: 'Sí, eliminar con sus fichas médicas',
             textoCancelar: 'Cancelar',
             cargando: false,
-            onCerrar: () => setModalConf(null),
             onConfirmar: () => handleEjecutarEliminarDefinitivo(miembroObjetivo, true),
           });
         } else {
-          setModalConf({
-            abierto: true,
+          setConfirmInline({
             tipo: 'alerta',
             titulo: 'No se puede eliminar definitivamente',
             mensaje: `${msg}\n\nPara proteger el legajo histórico y la integridad contable del Grupo, este miembro debe permanecer dado de baja.`,
             textoConfirmar: 'Entendido',
             textoCancelar: null,
             cargando: false,
-            onCerrar: () => setModalConf(null),
-            onConfirmar: () => setModalConf(null),
+            onConfirmar: () => {
+              setConfirmInline(null);
+              setSubVista(null);
+            },
           });
         }
       } else {
-        setModalConf(null);
+        setConfirmInline(null);
+        setSubVista(null);
         setAlerta({
           tipo: 'error',
           texto: traducirErrorAmigable(err, 'No se pudo eliminar definitivamente el miembro.'),
@@ -553,21 +661,21 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
   const handleSolicitarEliminarDefinitivo = () => {
     if (!miembro || !puedeEliminarDefinitivo) return;
-    setModalConf({
-      abierto: true,
+    if (guardOffline('eliminar el miembro')) return;
+    setConfirmInline({
       tipo: 'peligro',
       titulo: `Eliminar definitivamente a ${miembro.nombre} ${miembro.apellido}`,
-      mensaje: `¿Estás seguro de que deseas eliminar permanentemente a ${miembro.nombre} ${miembro.apellido} (DNI ${miembro.dni})?\n\nEsta acción es irreversible y solo se completará si no posee historial contable, pagos, cargos activos ni fichas médicas emitidas o validadas. Si posee registros asociados, la eliminación será rechazada.`,
+      mensaje: `¿Estás seguro de que deseas eliminar permanentemente a ${miembro.nombre} ${miembro.apellido} (DNI ${miembro.dni})?\n\nEsta acción es irreversible y solo se completará si no posee historial contable, pagos, cargos activos ni fichas médicas emitidas o validadas.`,
       textoConfirmar: 'Eliminar definitivamente',
       textoCancelar: 'Cancelar',
       cargando: false,
-      onCerrar: () => setModalConf(null),
       onConfirmar: () => handleEjecutarEliminarDefinitivo(miembro),
     });
+    setSubVista('confirmar');
   };
 
   const handleDesvincularRapido = async (targetUserId: number, targetNombre: string) => {
-    if (!miembro) return;
+    if (!miembro || guardOffline('desvincular del grupo familiar')) return;
     setDesvinculandoMiembroId(targetUserId);
     setAlerta(null);
     try {
@@ -576,7 +684,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         tipo: 'exito',
         texto: `${targetNombre} fue eliminado del grupo familiar.`,
       });
-      if (onActualizado) onActualizado();
+      onActualizado?.();
       await cargarDatos(miembro.id);
     } catch (err: any) {
       setAlerta({
@@ -590,11 +698,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
   const handleCambioCategoria = (cat: 'RAMA' | 'SIN_RAMA' | 'JEFATURA') => {
     setCategoriaDestino(cat);
-
     if (cat === 'SIN_RAMA') {
       setRamaSeleccionadaId(null);
       const u = unidades.find(esUnidadSinRama) || unidades.find((x) => !esUnidadRama(x));
-      const r = roles.find(esRolSinRama) || roles.find((x) => !rolRequiereRama(x) && !esRolJefe(x));
+      const r =
+        roles.find(esRolSinRama) || roles.find((x) => !rolRequiereRama(x) && !esRolJefe(x));
       if (u) setUnidadDestinoId(String(u.id));
       if (r) setRolDestinoId(String(r.id));
     } else if (cat === 'JEFATURA') {
@@ -630,12 +738,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       if (!currentRol || !esRolRama(currentRol) || (esEgreso && !esRolDeEducador(currentRol))) {
         const asig = asignacionPrincipal;
         const eraEdu = esRolDeEducador(asig?.rol);
-        const rolDefecto = (eraEdu || esEgreso)
-          ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
-          : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
-        if (rolDefecto) {
-          setRolDestinoId(String(rolDefecto.id));
-        }
+        const rolDefecto =
+          eraEdu || esEgreso
+            ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
+            : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
+        if (rolDefecto) setRolDestinoId(String(rolDefecto.id));
       }
     }
   };
@@ -656,17 +763,17 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     if (!currentRol || !esRolRama(currentRol) || (esEgreso && !esRolDeEducador(currentRol))) {
       const asig = asignacionPrincipal;
       const eraEdu = esRolDeEducador(asig?.rol);
-      const rolDefecto = (eraEdu || esEgreso)
-        ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
-        : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
-      if (rolDefecto) {
-        setRolDestinoId(String(rolDefecto.id));
-      }
+      const rolDefecto =
+        eraEdu || esEgreso
+          ? roles.find((r) => esRolDeEducador(r) && esRolRama(r))
+          : roles.find((r) => esRolDeProtagonista(r) && esRolRama(r));
+      if (rolDefecto) setRolDestinoId(String(rolDefecto.id));
     }
   };
 
   const handleEjecutarPase = async () => {
     if (!asignacionPrincipal || (!unidadDestinoId && !rolDestinoId)) return;
+    if (guardOffline('ejecutar el pase de rama')) return;
     const destinoUnidad = unidades.find((u) => u.id === Number(unidadDestinoId));
     const destinoRol = roles.find((r) => r.id === Number(rolDestinoId));
     const nombreDestino = destinoUnidad?.nombre || destinoRol?.nombre || 'la nueva función';
@@ -687,8 +794,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           : `Pase / cambio de rol a ${nombreDestino} realizado.`,
       });
       await refrescarSesionDesdeServidor();
-      if (onActualizado) onActualizado();
-      cargarDatos(miembro.id);
+      onActualizado?.();
+      void cargarDatos(miembro.id);
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -700,7 +807,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleAgregarAsignacion = async (datos: { rolId: number; unidadId?: number }) => {
-    if (!miembro) return;
+    if (!miembro || guardOffline('asignar un rol adicional')) return;
     setEjecutandoPase(true);
     setAlerta(null);
     try {
@@ -710,8 +817,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         texto: 'Rol adicional asignado correctamente al miembro.',
       });
       await refrescarSesionDesdeServidor();
-      if (onActualizado) onActualizado();
-      cargarDatos(miembro.id);
+      onActualizado?.();
+      void cargarDatos(miembro.id);
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -723,7 +830,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleCerrarAsignacion = async (asigId: number) => {
-    if (!miembro) return;
+    if (!miembro || guardOffline('finalizar la asignación')) return;
     setEjecutandoPase(true);
     setAlerta(null);
     try {
@@ -733,8 +840,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         texto: 'Asignación de rol finalizada.',
       });
       await refrescarSesionDesdeServidor();
-      if (onActualizado) onActualizado();
-      cargarDatos(miembro.id);
+      onActualizado?.();
+      void cargarDatos(miembro.id);
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -746,20 +853,19 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleResetClave = (soloPorCorreo = false) => {
-    if (!miembro) return;
-
-    setModalConf({
-      abierto: true,
+    if (!miembro || guardOffline('restablecer la contraseña')) return;
+    setConfirmInline({
+      tipo: 'peligro',
       titulo: soloPorCorreo ? 'Enviar Clave Solo por Correo' : 'Restablecer Contraseña',
       mensaje: soloPorCorreo
         ? `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido}, se enviará únicamente a ${miembro.emailContacto || 'su correo'} (sin mostrarla en pantalla) y se revocarán sus sesiones activas.`
         : `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido} y se revocarán sus sesiones activas.`,
-      tipo: 'peligro',
       textoConfirmar: soloPorCorreo ? 'Enviar por correo' : 'Generar clave temporal',
       textoCancelar: 'Cancelar',
-      onCerrar: () => setModalConf(null),
+      cargando: false,
       onConfirmar: async () => {
         setReseteandoClave(true);
+        setConfirmInline((prev) => (prev ? { ...prev, cargando: true } : null));
         setAlerta(null);
         try {
           const res = await api.post(`/auth/usuarios/${miembro.id}/resetear-clave`, {
@@ -769,7 +875,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
           const emailEnviado = Boolean(res.data?.emailEnviado);
           const emailDestino: string | undefined = res.data?.emailDestino;
           setClaveTemporalGenerada(claveTemporal ?? null);
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           const detalleEmail = emailEnviado
             ? ` Se envió por correo a ${emailDestino}.`
             : emailDestino
@@ -784,10 +891,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   ? `Se generó una nueva clave temporal y se envió únicamente por correo a ${emailDestino}.`
                   : 'Se generó una nueva clave temporal.'),
           });
-          if (onClaveReseteada) onClaveReseteada(res.data?.mensaje || 'Clave restablecida.');
-          cargarDatos(miembro.id);
+          onClaveReseteada?.(res.data?.mensaje || 'Clave restablecida.');
+          void cargarDatos(miembro.id);
         } catch (err: any) {
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           setAlerta({
             tipo: 'error',
             texto: traducirErrorAmigable(err, 'No se pudo restablecer la contraseña.'),
@@ -797,9 +905,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         }
       },
     });
+    setSubVista('confirmar');
   };
 
   const handleAnularCargo = (cargo: any) => {
+    if (guardOffline('anular la cuota')) return;
     const conceptoNombre = cargo.concepto?.nombre || 'Cuota';
     const pagado = Number(cargo.montoPagado ?? 0);
     const mensajeDetalle =
@@ -807,26 +917,28 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         ? `¿Seguro que quieres anular "${conceptoNombre}"? Los ${formatearMoneda(pagado)} que ya estaban abonados pasarán automáticamente al Saldo a Favor del miembro.`
         : `¿Seguro que quieres anular "${conceptoNombre}"? Ya no figurará como deuda (podrás reactivarla cuando quieras desde Cuotas Anuladas).`;
 
-    setModalConf({
-      abierto: true,
+    setConfirmInline({
+      tipo: 'peligro',
       titulo: 'Anular Cuota',
       mensaje: mensajeDetalle,
-      tipo: 'peligro',
       textoConfirmar: 'Sí, anular cuota',
       textoCancelar: 'Cancelar',
-      onCerrar: () => setModalConf(null),
+      cargando: false,
       onConfirmar: async () => {
+        setConfirmInline((prev) => (prev ? { ...prev, cargando: true } : null));
         try {
           const res = await api.post(`/tesoreria/cargos/${cargo.id}/anular`);
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           setAlerta({
             tipo: 'exito',
             texto: res.data?.mensaje || `"${conceptoNombre}" fue anulada.`,
           });
-          if (usuarioId) cargarDatos(usuarioId);
-          if (onActualizado) onActualizado();
+          void cargarDatos(usuarioId);
+          onActualizado?.();
         } catch (err: any) {
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           setAlerta({
             tipo: 'error',
             texto: traducirErrorAmigable(err, 'No se pudo anular el cargo.'),
@@ -834,16 +946,18 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         }
       },
     });
+    setSubVista('confirmar');
   };
 
   const handleReactivarCargo = async (cargoId: number, conceptoNombre: string) => {
+    if (guardOffline('reactivar la cuota')) return;
     setProcesandoAccionCuota(true);
     setAlerta(null);
     try {
       await api.post(`/tesoreria/cargos/${cargoId}/reactivar`);
       setAlerta({ tipo: 'exito', texto: `"${conceptoNombre}" reactivada.` });
-      if (usuarioId) cargarDatos(usuarioId);
-      if (onActualizado) onActualizado();
+      void cargarDatos(usuarioId);
+      onActualizado?.();
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -855,23 +969,26 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleEliminarCargoDefinitivo = (cargoId: number, conceptoNombre: string) => {
-    setModalConf({
-      abierto: true,
+    if (guardOffline('eliminar el cargo')) return;
+    setConfirmInline({
+      tipo: 'peligro',
       titulo: 'Eliminar Cuota Definitivamente',
       mensaje: `¿Seguro que quieres borrar para siempre "${conceptoNombre}"?`,
-      tipo: 'peligro',
       textoConfirmar: 'Eliminar definitivamente',
       textoCancelar: 'Cancelar',
-      onCerrar: () => setModalConf(null),
+      cargando: false,
       onConfirmar: async () => {
+        setConfirmInline((prev) => (prev ? { ...prev, cargando: true } : null));
         try {
           await api.delete(`/tesoreria/cargos/${cargoId}`);
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           setAlerta({ tipo: 'exito', texto: `"${conceptoNombre}" eliminada.` });
-          if (usuarioId) cargarDatos(usuarioId);
-          if (onActualizado) onActualizado();
+          void cargarDatos(usuarioId);
+          onActualizado?.();
         } catch (err: any) {
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           setAlerta({
             tipo: 'error',
             texto: traducirErrorAmigable(err, 'No se pudo eliminar el cargo.'),
@@ -879,6 +996,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         }
       },
     });
+    setSubVista('confirmar');
   };
 
   const handleIniciarEdicionCargo = (c: any) => {
@@ -896,7 +1014,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
   const handleGuardarEdicionCargo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cargoEditando) return;
+    if (!cargoEditando || guardOffline('actualizar la cuota')) return;
     const montoOriginalNum = Number(cargoEditando.montoOriginal);
     const montoDescuentoNum = Number(cargoEditando.montoDescuento || 0);
     if (!Number.isFinite(montoOriginalNum) || montoOriginalNum < 0) {
@@ -936,8 +1054,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
             ? `Cuota actualizada. Se acreditaron ${formatearMoneda(exc)} a Saldo a Favor.`
             : 'Cuota actualizada.',
       });
-      if (usuarioId) cargarDatos(usuarioId);
-      if (onActualizado) onActualizado();
+      void cargarDatos(usuarioId);
+      onActualizado?.();
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -949,26 +1067,29 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleRevertirPago = (pago: any) => {
-    setModalConf({
-      abierto: true,
+    if (guardOffline('revertir el pago')) return;
+    setConfirmInline({
+      tipo: 'peligro',
       titulo: 'Revertir / Anular Pago',
       mensaje: `¿Seguro que quieres revertir este pago de ${formatearMoneda(pago.montoTotal)}? Las cuotas volverán a quedar pendientes por ese importe y se ajustará el saldo a favor correspondiente.`,
-      tipo: 'peligro',
       textoConfirmar: 'Sí, revertir pago',
       textoCancelar: 'Cancelar',
-      onCerrar: () => setModalConf(null),
+      cargando: false,
       onConfirmar: async () => {
+        setConfirmInline((prev) => (prev ? { ...prev, cargando: true } : null));
         try {
           const res = await api.delete(`/tesoreria/pagos/${pago.id}`);
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           setAlerta({
             tipo: 'exito',
             texto: res.data?.mensaje || 'Pago revertido correctamente.',
           });
-          if (usuarioId) cargarDatos(usuarioId);
-          if (onActualizado) onActualizado();
+          void cargarDatos(usuarioId);
+          onActualizado?.();
         } catch (err: any) {
-          setModalConf(null);
+          setConfirmInline(null);
+          setSubVista(null);
           setAlerta({
             tipo: 'error',
             texto: traducirErrorAmigable(err, 'No se pudo revertir el pago.'),
@@ -976,11 +1097,12 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         }
       },
     });
+    setSubVista('confirmar');
   };
 
   const handleGuardarEdicionPago = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pagoEditando) return;
+    if (!pagoEditando || guardOffline('editar el pago')) return;
     setProcesandoAccionCuota(true);
     setAlerta(null);
     try {
@@ -991,8 +1113,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       });
       setPagoEditando(null);
       setAlerta({ tipo: 'exito', texto: 'Datos del pago actualizados.' });
-      if (usuarioId) cargarDatos(usuarioId);
-      if (onActualizado) onActualizado();
+      void cargarDatos(usuarioId);
+      onActualizado?.();
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -1005,7 +1127,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
 
   const handleGuardarAjusteSaldo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!miembro || montoAjusteSaldo === '') return;
+    if (!miembro || montoAjusteSaldo === '' || guardOffline('ajustar el saldo a favor')) return;
     setProcesandoAccionCuota(true);
     setAlerta(null);
     try {
@@ -1022,8 +1144,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         tipo: 'exito',
         texto: res.data?.mensaje || 'Saldo a favor actualizado.',
       });
-      cargarDatos(miembro.id);
-      if (onActualizado) onActualizado();
+      void cargarDatos(miembro.id);
+      onActualizado?.();
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -1035,6 +1157,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleValidarFisicoDirecto = async (entrega: any) => {
+    if (guardOffline('validar la entrega física')) return;
     setValidandoFichaId(entrega.id);
     setAlerta(null);
     try {
@@ -1043,8 +1166,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         tipo: 'exito',
         texto: 'Papel firmado registrado como recibido.',
       });
-      if (onActualizado) onActualizado();
-      cargarDatos(miembro.id);
+      onActualizado?.();
+      void cargarDatos(miembro.id);
     } catch (err: any) {
       setAlerta({
         tipo: 'error',
@@ -1055,7 +1178,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     }
   };
 
-  const obtenerPlantillaActiva = async () => {
+  const obtenerPlantillaActiva = async (target = miembro) => {
     if (plantillaActiva) return plantillaActiva;
     try {
       const res = await api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`);
@@ -1064,7 +1187,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
         lista = Array.isArray(resTodas.data) ? resTodas.data : [];
       }
-      const p = seleccionarPlantillaPorMiembro(lista, miembro) || lista[0] || null;
+      const p = seleccionarPlantillaPorMiembro(lista, target) || lista[0] || null;
       setPlantillaActiva(p);
       return p;
     } catch {
@@ -1073,7 +1196,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const generarBytesPdfMiembro = async (ent?: any): Promise<Uint8Array> => {
-    const mapeo: MapeoPdf = { pdfBaseUrl: '', campos: {} };
+    const plantilla = plantillaActiva || (await obtenerPlantillaActiva(miembro));
+    const mapeo: MapeoPdf = plantilla?.mapeoPdfJson || { pdfBaseUrl: '', campos: {} };
     const ramaNombre = obtenerRolPrincipal(miembro)?.unidad?.nombre || '';
     const respuestasBase = ent?.respuestasSnapshotJson || {
       protagonista_telefono: miembro.telefonoContacto || '',
@@ -1097,21 +1221,6 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     );
   };
 
-  useEffect(() => {
-    return () => {
-      if (pdfPreviewUrl) {
-        URL.revokeObjectURL(pdfPreviewUrl);
-      }
-    };
-  }, [pdfPreviewUrl]);
-
-  const cerrarVistaPreviaPdf = () => {
-    if (pdfPreviewUrl) {
-      URL.revokeObjectURL(pdfPreviewUrl);
-      setPdfPreviewUrl(null);
-    }
-  };
-
   const handleVerPdfEducador = async (ent?: any) => {
     if (!miembro) return;
     setGenerandoVistaPrevia(true);
@@ -1120,6 +1229,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       const pdfBytes = await generarBytesPdfMiembro(ent);
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
       setPdfPreviewUrl(crearUrlPdfBlob(pdfBytes));
+      setSubVista('pdf');
     } catch (err) {
       setAlerta({
         tipo: 'error',
@@ -1148,11 +1258,11 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
   };
 
   const handleAbrirEditorFicha = async () => {
-    if (!miembro) return;
+    if (!miembro || guardOffline('cargar el editor de ficha')) return;
     setCargandoFichaEditor(true);
     setAlerta(null);
     try {
-      const p = await obtenerPlantillaActiva();
+      const p = await obtenerPlantillaActiva(miembro);
       if (!p) {
         setAlerta({ tipo: 'error', texto: 'No hay formulario activo configurado.' });
         return;
@@ -1176,7 +1286,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     datos: Record<string, unknown>,
     finalizarParaFirma: boolean,
   ) => {
-    if (!miembro || !plantillaActiva) return;
+    if (!miembro || !plantillaActiva || guardOffline('guardar la ficha')) return;
     setGuardando(true);
     setAlerta(null);
     try {
@@ -1193,7 +1303,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
       if (finalizarParaFirma && entrega.hashVerificacion) {
         const ramaNombre = obtenerRolPrincipal(miembro)?.unidad?.nombre || '';
         const pdfBytes = await generarFichaPdf(
-          plantillaActiva.mapeoPdfJson,
+          plantillaActiva.mapeoPdfJson || { pdfBaseUrl: '', campos: {} },
           datos,
           entrega.hashVerificacion,
           {
@@ -1213,8 +1323,8 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
         setAlerta({ tipo: 'exito', texto: 'Avance de ficha guardado.' });
       }
 
-      if (onActualizado) onActualizado();
-      cargarDatos(miembro.id);
+      onActualizado?.();
+      void cargarDatos(miembro.id);
     } catch (err) {
       setAlerta({
         tipo: 'error',
@@ -1225,204 +1335,426 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
     }
   };
 
-  if (!usuarioId) return null;
-
   const saldoPendiente = Number(estadoCuenta?.resumen?.saldoPendiente ?? 0);
   const saldoAFavor = Number(estadoCuenta?.resumen?.saldoAFavor ?? 0);
+  const cfgRama = miembro ? obtenerConfigRama(miembro, unidades) : null;
+  const infoMedica = useMemo(
+    () => (miembro ? extraerInfoMedicaMiembro(miembro, entregas?.[0]) : null),
+    [miembro, entregas],
+  );
+
+  const tabsItems = useMemo<SegmentedTabItem<TabExpediente360>[]>(() => {
+    const items: SegmentedTabItem<TabExpediente360>[] = [
+      { id: 'datos', label: 'Datos', icon: <User className="w-3.5 h-3.5" /> },
+    ];
+    if (puedeVerCuotas) {
+      items.push({
+        id: 'cuotas',
+        label: 'Cuotas',
+        icon: <CreditCard className="w-3.5 h-3.5" />,
+        badge: saldoPendiente > 0 ? formatearMoneda(saldoPendiente) : undefined,
+      });
+    }
+    if (puedeVerFicha) {
+      items.push({
+        id: 'ficha',
+        label: 'Ficha',
+        icon: <FileCheck2 className="w-3.5 h-3.5" />,
+      });
+    }
+    if (puedeHacerPases) {
+      items.push({
+        id: 'pase',
+        label: 'Pase',
+        icon: <ArrowRightLeft className="w-3.5 h-3.5" />,
+        badge: candidatoPase ? 'Sugerido' : undefined,
+      });
+    }
+    if (puedeResetearClave) {
+      items.push({
+        id: 'seguridad',
+        label: 'Clave',
+        icon: <KeyRound className="w-3.5 h-3.5" />,
+      });
+    }
+    return items;
+  }, [
+    puedeVerCuotas,
+    puedeVerFicha,
+    puedeHacerPases,
+    puedeResetearClave,
+    saldoPendiente,
+    candidatoPase,
+  ]);
+
+  const titulosSubVista: Record<Exclude<SubVistaExpediente, null>, string> = {
+    cobrar: 'Registrar Cobro',
+    'nuevo-cargo': 'Generar Cargo Individual',
+    'editar-familia': 'Descuento y Grupo Familiar',
+    'vincular-hermano': 'Vincular con Hermano / Familia',
+    llamar: 'Contactos de Emergencia',
+    pdf: `Ficha Médica · ${miembro?.apellido || ''}, ${miembro?.nombre || ''}`,
+    confirmar: confirmInline?.titulo || 'Confirmar Acción',
+  };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center sm:p-4"
-      {...backdropProps}
-    >
-      <div
-        className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-2xl overflow-hidden shadow-md flex flex-col max-h-[92dvh] border border-rule transition-colors animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
-        {...contentProps}
-      >
-        {/* Cabecera Compacta */}
-        <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0 text-ink">
-          <div className="flex items-center gap-3 min-w-0">
-            {(() => {
-              const cfgRama = miembro ? obtenerConfigRama(miembro, unidades) : null;
-              return (
-                <div
-                  className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-base shadow-xs shrink-0 ${
-                    !miembro?.activo
-                      ? 'bg-paper-3 text-ink-muted'
-                      : cfgRama?.avatarClases ||
-                        (esEducador ? 'bg-paper-3 text-brand' : 'bg-brand text-brand-contrast')
-                  }`}
-                >
-                  {miembro ? `${miembro.nombre?.[0] || ''}${miembro.apellido?.[0] || ''}` : '...'}
-                </div>
-              );
-            })()}
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <h3 className="text-base sm:text-lg font-extrabold text-ink truncate">
-                  {miembro ? `${miembro.apellido}, ${miembro.nombre}` : 'Cargando...'}
-                </h3>
-                {miembro && !miembro.activo && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-paper-3 text-ink-2">
-                    Baja
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                <span className="text-xs text-ink-muted">
-                  DNI {miembro?.dni || '—'} • {calcularEdad(miembro?.fechaNacimiento) ?? '—'} años
-                </span>
-                {asignacionPrincipal && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20">
-                    {asignacionPrincipal.rol?.nombre} ({asignacionPrincipal.unidad?.nombre})
-                  </span>
-                )}
-                {rolesSecundarios.map((sec: any) => (
-                  <span
-                    key={sec.id}
-                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-paper-3 text-ink-2 border border-rule"
-                  >
-                    +{sec.rol?.nombre} ({sec.unidad?.nombre || 'Global'})
-                  </span>
-                ))}
-              </div>
-            </div>
+    <div className="space-y-4 text-ink min-w-0">
+      {/* Cabecera Identidad del Expediente 360° */}
+      <div className="s-panel rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3.5 min-w-0">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-base shrink-0 ${
+              !miembro?.activo
+                ? 'bg-paper-3 text-ink-muted'
+                : cfgRama?.avatarClases ||
+                  (esEducador ? 'bg-paper-3 text-brand' : 'bg-brand text-brand-contrast')
+            }`}
+          >
+            {miembro ? `${miembro.nombre?.[0] || ''}${miembro.apellido?.[0] || ''}` : '…'}
           </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            {miembro && (
-              <BotonLlamarMiembro miembro={miembro} entrega={entregas?.[0]} />
-            )}
-            <button
-              onClick={onCerrar}
-              aria-label="Cerrar"
-              className="min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:hover:bg-paper-3 transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-extrabold text-ink truncate">
+                {miembro ? `${miembro.apellido}, ${miembro.nombre}` : 'Cargando…'}
+              </h2>
+              {miembro && !miembro.activo && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info whitespace-nowrap shrink-0">
+                  Baja
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-1">
+              <span className="text-[13px] text-ink-muted">
+                DNI {miembro?.dni || '—'} · {calcularEdad(miembro?.fechaNacimiento) ?? '—'} años
+              </span>
+              {asignacionPrincipal && (
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full s-badge-brand whitespace-nowrap shrink-0">
+                  {asignacionPrincipal.rol?.nombre} ({asignacionPrincipal.unidad?.nombre})
+                </span>
+              )}
+              {rolesSecundarios.map((sec: any) => (
+                <span
+                  key={sec.id}
+                  className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-paper-3 text-ink-2 border border-rule whitespace-nowrap shrink-0"
+                >
+                  +{sec.rol?.nombre} ({sec.unidad?.nombre || 'Global'})
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Pestañas Táctiles (Touch Target >= 44px) */}
-        <nav
-          aria-label="Secciones del miembro"
-          className="flex border-b border-rule bg-surface px-3 overflow-x-auto no-scrollbar text-xs font-bold text-ink-muted shrink-0"
-        >
-          <button
-            onClick={() => setTab('datos')}
-            aria-current={tab === 'datos' ? 'page' : undefined}
-            className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-              tab === 'datos'
-                ? 'border-brand text-brand font-bold'
-                : 'border-transparent hover:text-ink'
-            }`}
-          >
-            <User className="w-4 h-4" />
-            <span>Datos</span>
-          </button>
-
-          {puedeVerCuotas && (
+        <div className="flex items-center gap-2 shrink-0">
+          {miembro && (
+            <BotonLlamarMiembro
+              miembro={miembro}
+              entrega={entregas?.[0]}
+              onAbrirCustom={(telefonos) => {
+                setTelefonosInline(telefonos);
+                setSubVista('llamar');
+              }}
+              className="s-btn-sec min-h-[42px] min-w-[42px] px-3 rounded-xl inline-flex items-center justify-center gap-1.5 cursor-pointer"
+            />
+          )}
+          {mostrarBotonCerrar && onCerrar && (
             <button
-              onClick={() => setTab('cuotas')}
-              aria-current={tab === 'cuotas' ? 'page' : undefined}
-              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-                tab === 'cuotas'
-                  ? 'border-brand text-brand font-bold'
-                  : 'border-transparent hover:text-ink'
-              }`}
+              type="button"
+              onClick={onCerrar}
+              aria-label="Cerrar"
+              className="s-btn-sec min-w-[42px] min-h-[42px] rounded-xl inline-flex items-center justify-center cursor-pointer"
             >
-              <CreditCard className="w-4 h-4" />
-              <span>Cuotas</span>
-              {saldoPendiente > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300">
-                  {formatearMoneda(saldoPendiente)}
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Tira de Seguridad Vital fija arriba */}
+      {miembro && infoMedica && (
+        <div
+          className={`rounded-2xl p-3.5 sm:p-4 border text-[13px] space-y-2 ${
+            infoMedica.criticasCount > 0
+              ? 's-badge-err'
+              : infoMedica.tieneAlertas
+                ? 's-badge-warn'
+                : 's-panel'
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-extrabold">
+              <HeartPulse className="w-4 h-4 shrink-0" />
+              <span>Seguridad Vital</span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              {infoMedica.grupoSanguineo && (
+                <span className="px-2.5 py-0.5 rounded-md bg-surface/80 border border-rule font-bold text-ink">
+                  Grupo {infoMedica.grupoSanguineo}
                 </span>
               )}
-            </button>
-          )}
-
-          {puedeVerFicha && (
-            <button
-              onClick={() => setTab('ficha')}
-              aria-current={tab === 'ficha' ? 'page' : undefined}
-              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-                tab === 'ficha'
-                  ? 'border-brand text-brand font-bold'
-                  : 'border-transparent hover:text-ink'
-              }`}
-            >
-              <FileCheck2 className="w-4 h-4" />
-              <span>Ficha</span>
-            </button>
-          )}
-
-          {puedeHacerPases && (
-            <button
-              onClick={() => setTab('pase')}
-              aria-current={tab === 'pase' ? 'page' : undefined}
-              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-                tab === 'pase'
-                  ? 'border-brand text-brand font-bold'
-                  : 'border-transparent hover:text-ink'
-              }`}
-            >
-              <ArrowRightLeft className="w-4 h-4" />
-              <span>Pase</span>
-              {candidatoPase && (
-                <span className="w-2 h-2 rounded-full bg-brand inline-block animate-pulse" />
+              {infoMedica.obraSocial && (
+                <span className="px-2.5 py-0.5 rounded-md bg-surface/80 border border-rule font-semibold text-ink">
+                  {infoMedica.obraSocial}
+                  {infoMedica.afiliadoObraSocial ? ` (${infoMedica.afiliadoObraSocial})` : ''}
+                </span>
               )}
-            </button>
-          )}
-
-          {puedeResetearClave && (
-            <button
-              onClick={() => setTab('seguridad')}
-              aria-current={tab === 'seguridad' ? 'page' : undefined}
-              className={`min-h-[46px] px-3.5 border-b-2 flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
-                tab === 'seguridad'
-                  ? 'border-brand text-brand font-bold'
-                  : 'border-transparent hover:text-ink'
-              }`}
-            >
-              <KeyRound className="w-4 h-4" />
-              <span>Clave</span>
-            </button>
-          )}
-        </nav>
-
-        {/* Alerta interna */}
-        {alerta && (
-          <div
-            role={alerta.tipo === 'error' ? 'alert' : 'status'}
-            className={`mx-4 mt-3 p-3 rounded-xl text-xs font-bold flex items-center justify-between border ${
-              alerta.tipo === 'exito'
-                ? 'bg-brand/10 border-brand/30 text-ink'
-                : 'bg-rose-50 dark:bg-rose-950/50 border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300'
-            }`}
-          >
-            <span>{alerta.texto}</span>
-            <button
-              onClick={() => setAlerta(null)}
-              aria-label="Cerrar alerta"
-              className="ml-2 p-1 cursor-pointer"
-            >
-              ✕
-            </button>
+              {!infoMedica.grupoSanguineo && !infoMedica.obraSocial && !infoMedica.tieneAlertas && (
+                <span className="text-ink-muted font-medium">Sin alertas médicas declaradas</span>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Cuerpo del Modal */}
-        <div className="p-4 sm:p-5 overflow-y-auto space-y-5 text-xs flex-1">
+          {infoMedica.tieneAlertas && (
+            <div className="flex flex-wrap gap-1.5">
+              {infoMedica.alertas.map((al) => (
+                <span
+                  key={al.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface/85 border border-rule text-xs font-bold text-ink"
+                >
+                  <AlertTriangle
+                    className={`w-3.5 h-3.5 shrink-0 ${
+                      al.critico ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600'
+                    }`}
+                  />
+                  <span>
+                    {al.titulo}
+                    {al.detalle && al.detalle !== 'Sí' ? `: ${al.detalle}` : ''}
+                  </span>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Alerta interna */}
+      {alerta && (
+        <div
+          role={alerta.tipo === 'error' ? 'alert' : 'status'}
+          className={`p-3.5 rounded-xl text-sm font-bold flex items-center justify-between gap-2 ${
+            alerta.tipo === 'exito' ? 's-badge-ok' : 's-badge-err'
+          }`}
+        >
+          <span>{alerta.texto}</span>
+          <button
+            type="button"
+            onClick={() => setAlerta(null)}
+            aria-label="Cerrar alerta"
+            className="p-1 cursor-pointer shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Pestañas o Sub-vista Inline (nunca apila modales) */}
+      {subVista ? (
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-rule">
+            <button
+              type="button"
+              onClick={() => {
+                if (subVista === 'pdf') {
+                  cerrarVistaPreviaPdf();
+                } else {
+                  setConfirmInline(null);
+                  setSubVista(null);
+                }
+              }}
+              className="s-btn-sec min-h-[40px] px-3.5 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Volver al Expediente</span>
+            </button>
+            <span className="text-sm font-extrabold text-ink truncate">
+              {titulosSubVista[subVista]}
+            </span>
+          </div>
+
+          {subVista === 'cobrar' && miembro && (
+            <ModalCobrarDeuda
+              abierto={true}
+              embedded={true}
+              miembro={{
+                id: miembro.id,
+                nombre: miembro.nombre,
+                apellido: miembro.apellido,
+                dni: miembro.dni,
+                saldoAFavor,
+              }}
+              cargosPendientes={estadoCuenta?.cargos || CARGOS_VACIOS}
+              cargoInicialId={cargoIdACobrar}
+              onCerrar={() => setSubVista(null)}
+              onPagoExitoso={(mensaje) => {
+                setSubVista(null);
+                setAlerta({ tipo: 'exito', texto: mensaje });
+                void cargarDatos(miembro.id);
+                onActualizado?.();
+              }}
+            />
+          )}
+
+          {subVista === 'nuevo-cargo' && miembro && (
+            <ModalGenerarDeudaManual
+              abierto={true}
+              embedded={true}
+              miembro={{
+                id: miembro.id,
+                nombre: miembro.nombre,
+                apellido: miembro.apellido,
+                dni: miembro.dni,
+              }}
+              onCerrar={() => setSubVista(null)}
+              onGenerado={(mensaje) => {
+                setSubVista(null);
+                setAlerta({ tipo: 'exito', texto: mensaje });
+                void cargarDatos(miembro.id);
+                onActualizado?.();
+              }}
+            />
+          )}
+
+          {subVista === 'editar-familia' && familiaActual && (
+            <ModalEditarFamilia
+              abierto={true}
+              embedded={true}
+              familia={familiaActual}
+              onCerrar={() => setSubVista(null)}
+              onGuardado={() => {
+                setSubVista(null);
+                setAlerta({ tipo: 'exito', texto: 'Descuento familiar actualizado.' });
+                if (miembro) void cargarDatos(miembro.id);
+                onActualizado?.();
+              }}
+            />
+          )}
+
+          {subVista === 'vincular-hermano' && miembro && (
+            <ModalVincularHermano
+              abierto={true}
+              embedded={true}
+              usuarioId={miembro.id}
+              usuarioNombre={`${miembro.nombre} ${miembro.apellido}`}
+              onCerrar={() => setSubVista(null)}
+              onVinculado={() => {
+                setSubVista(null);
+                setAlerta({ tipo: 'exito', texto: 'Hermano vinculado.' });
+                void cargarDatos(miembro.id);
+                onActualizado?.();
+              }}
+            />
+          )}
+
+          {subVista === 'llamar' && (
+            <div className="space-y-2.5">
+              {telefonosInline.map((item, idx) => (
+                <a
+                  key={`${item.etiqueta}-${idx}`}
+                  href={`tel:${item.telefono}`}
+                  className="s-card s-card-hover p-4 rounded-2xl flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0 space-y-0.5">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info inline-block">
+                      {item.etiqueta}
+                    </span>
+                    <div className="text-[15px] font-extrabold text-ink truncate">
+                      {item.nombre || `${miembro?.nombre} ${miembro?.apellido}`}
+                    </div>
+                    <div className="text-[13px] font-mono text-ink-muted">{item.telefono}</div>
+                  </div>
+                  <span className="s-btn-brand min-h-[40px] px-3.5 py-2 rounded-xl text-[13px] inline-flex items-center gap-1.5 shrink-0">
+                    <Phone className="w-4 h-4" />
+                    <span>Llamar</span>
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
+
+          {subVista === 'pdf' && pdfPreviewUrl && (
+            <Suspense
+              fallback={
+                <div className="py-10 flex items-center justify-center gap-2 text-ink-muted">
+                  <Loader2 className="w-5 h-5 animate-spin text-brand" />
+                  <span className="text-sm font-bold">Preparando visor PDF…</span>
+                </div>
+              }
+            >
+              <PdfViewerModal
+                url={pdfPreviewUrl}
+                titulo={`Ficha: ${miembro?.apellido || ''}, ${miembro?.nombre || ''}`}
+                subtitulo={`Legajo Anual ${obtenerCicloAnioActual()}`}
+                embedded={true}
+                onCerrar={cerrarVistaPreviaPdf}
+                onDescargar={() => void handleDescargarPdfEducador(entregas?.[0])}
+              />
+            </Suspense>
+          )}
+
+          {subVista === 'confirmar' && confirmInline && (
+            <div className="s-panel rounded-2xl p-5 sm:p-6 space-y-4">
+              <div className="flex items-start gap-3.5">
+                <div
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                    confirmInline.tipo === 'peligro' ? 's-badge-err' : 's-badge-warn'
+                  }`}
+                >
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div className="space-y-1.5 min-w-0">
+                  <h3 className="text-base font-extrabold text-ink">{confirmInline.titulo}</h3>
+                  <p className="text-sm text-ink-2 whitespace-pre-line leading-relaxed">
+                    {confirmInline.mensaje}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2.5 border-t border-rule">
+                {confirmInline.textoCancelar !== null && (
+                  <button
+                    type="button"
+                    disabled={confirmInline.cargando}
+                    onClick={() => {
+                      setConfirmInline(null);
+                      setSubVista(null);
+                    }}
+                    className="s-btn-sec s-touch px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50"
+                  >
+                    {confirmInline.textoCancelar}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={confirmInline.cargando}
+                  onClick={() => void confirmInline.onConfirmar()}
+                  className={`s-touch px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                    confirmInline.tipo === 'peligro' ? 's-btn-danger' : 's-btn-brand'
+                  }`}
+                >
+                  {confirmInline.cargando && <Loader2 className="w-4 h-4 animate-spin" />}
+                  <span>{confirmInline.textoConfirmar}</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="pb-1 border-b border-rule">
+            <SegmentedTabs
+              items={tabsItems}
+              activeId={tab}
+              onChange={cambiarTab}
+              ariaLabel="Pestañas del expediente del miembro"
+            />
+          </div>
+
           {cargando ? (
-            <div className="py-14 text-center text-ink-muted">
-              <div className="inline-block animate-spin rounded-full h-7 w-7 border-b-2 border-brand mb-2" />
-              <p>Cargando…</p>
+            <div className="py-12 text-center text-ink-muted space-y-2">
+              <Loader2 className="w-6 h-6 animate-spin text-brand mx-auto" />
+              <p className="text-sm font-semibold">Cargando expediente…</p>
             </div>
           ) : miembro ? (
-            <>
-              {/* ======================================================== */}
-              {/* PESTAÑA 1: DATOS PERSONALES, FAMILIA Y SALUD              */}
-              {/* ======================================================== */}
+            <div className="s-anim-tab text-sm">
               {tab === 'datos' && (
                 <PestanaDatosMiembro
                   miembro={miembro}
@@ -1444,15 +1776,16 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   eliminandoDefinitivo={eliminandoDefinitivo}
                   onGuardarDatos={handleGuardarDatos}
                   onDesvincularRapido={handleDesvincularRapido}
-                  onAbrirEditarFamilia={() => setModalEditarFamiliaAbierto(true)}
-                  onAbrirVincularHermano={() => setModalVincularHermanoAbierto(true)}
+                  onAbrirEditarFamilia={() => {
+                    if (!guardOffline('editar el grupo familiar')) setSubVista('editar-familia');
+                  }}
+                  onAbrirVincularHermano={() => {
+                    if (!guardOffline('vincular un hermano')) setSubVista('vincular-hermano');
+                  }}
                   onSolicitarEliminarDefinitivo={handleSolicitarEliminarDefinitivo}
                 />
               )}
 
-              {/* ======================================================== */}
-              {/* PESTAÑA 2: CUOTAS Y PAGOS (Tarjetas Mobile-First + 1-Tap) */}
-              {/* ======================================================== */}
               {tab === 'cuotas' && (
                 <PestanaCuotasTesoreria
                   miembro={miembro}
@@ -1493,18 +1826,22 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   onGuardarEdicionPago={handleGuardarEdicionPago}
                   onDesvincularRapido={handleDesvincularRapido}
                   onCobrarCargo={(cId) => {
+                    if (guardOffline('registrar un cobro')) return;
                     setCargoIdACobrar(cId ?? null);
-                    setModalCobrarAbierto(true);
+                    setSubVista('cobrar');
                   }}
-                  onAbrirModalGenerarDeuda={() => setModalGenerarDeudaAbierto(true)}
-                  onAbrirModalEditarFamilia={() => setModalEditarFamiliaAbierto(true)}
-                  onAbrirModalVincularHermano={() => setModalVincularHermanoAbierto(true)}
+                  onAbrirModalGenerarDeuda={() => {
+                    if (!guardOffline('generar un cargo individual')) setSubVista('nuevo-cargo');
+                  }}
+                  onAbrirModalEditarFamilia={() => {
+                    if (!guardOffline('editar el grupo familiar')) setSubVista('editar-familia');
+                  }}
+                  onAbrirModalVincularHermano={() => {
+                    if (!guardOffline('vincular un hermano')) setSubVista('vincular-hermano');
+                  }}
                 />
               )}
 
-              {/* ======================================================== */}
-              {/* PESTAÑA 3: FICHA MÉDICA (1-Tap Validación, Descarga y Relleno) */}
-              {/* ======================================================== */}
               {tab === 'ficha' && (
                 <PestanaLegajosFichas
                   miembro={miembro}
@@ -1518,6 +1855,7 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   descargandoPdfId={descargandoPdfId}
                   generandoVistaPrevia={generandoVistaPrevia}
                   pdfPreviewUrl={pdfPreviewUrl}
+                  ocultarModalPdf={true}
                   cargandoFichaEditor={cargandoFichaEditor}
                   puedeValidarFisico={puedeValidarFisico}
                   puedeCompletarFicha={puedeCompletarFicha}
@@ -1530,9 +1868,6 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                 />
               )}
 
-              {/* ======================================================== */}
-              {/* PESTAÑA 4: PASE DE RAMA / CAMBIO DE SECCIÓN              */}
-              {/* ======================================================== */}
               {tab === 'pase' && (
                 <PestanaPaseRol
                   candidatoPase={candidatoPase}
@@ -1575,9 +1910,6 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                 />
               )}
 
-              {/* ======================================================== */}
-              {/* PESTAÑA 5: SEGURIDAD Y CONTRASEÑA                        */}
-              {/* ======================================================== */}
               {tab === 'seguridad' && (
                 <PestanaSeguridad
                   miembro={miembro}
@@ -1586,77 +1918,9 @@ export const ModalDetalleMiembro: React.FC<Props> = ({
                   onResetClave={handleResetClave}
                 />
               )}
-            </>
+            </div>
           ) : null}
-        </div>
-      </div>
-
-      {modalConf && <ModalConfirmacion {...modalConf} />}
-
-      {modalCobrarAbierto && miembro && (
-        <ModalCobrarDeuda
-          abierto={modalCobrarAbierto}
-          miembro={{
-            id: miembro.id,
-            nombre: miembro.nombre,
-            apellido: miembro.apellido,
-            dni: miembro.dni,
-            saldoAFavor,
-          }}
-          cargosPendientes={estadoCuenta?.cargos || CARGOS_VACIOS}
-          cargoInicialId={cargoIdACobrar}
-          onCerrar={() => setModalCobrarAbierto(false)}
-          onPagoExitoso={(mensaje) => {
-            setAlerta({ tipo: 'exito', texto: mensaje });
-            cargarDatos(miembro.id);
-            if (onActualizado) onActualizado();
-          }}
-        />
-      )}
-
-      {modalGenerarDeudaAbierto && miembro && (
-        <ModalGenerarDeudaManual
-          abierto={modalGenerarDeudaAbierto}
-          miembro={{
-            id: miembro.id,
-            nombre: miembro.nombre,
-            apellido: miembro.apellido,
-            dni: miembro.dni,
-          }}
-          onCerrar={() => setModalGenerarDeudaAbierto(false)}
-          onGenerado={(mensaje) => {
-            setAlerta({ tipo: 'exito', texto: mensaje });
-            cargarDatos(miembro.id);
-            if (onActualizado) onActualizado();
-          }}
-        />
-      )}
-
-      {modalEditarFamiliaAbierto && (miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar) && (
-        <ModalEditarFamilia
-          abierto={modalEditarFamiliaAbierto}
-          familia={miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar}
-          onCerrar={() => setModalEditarFamiliaAbierto(false)}
-          onGuardado={() => {
-            setAlerta({ tipo: 'exito', texto: 'Descuento familiar actualizado.' });
-            if (miembro) cargarDatos(miembro.id);
-            if (onActualizado) onActualizado();
-          }}
-        />
-      )}
-
-      {modalVincularHermanoAbierto && miembro && (
-        <ModalVincularHermano
-          abierto={modalVincularHermanoAbierto}
-          usuarioId={miembro.id}
-          usuarioNombre={`${miembro.nombre} ${miembro.apellido}`}
-          onCerrar={() => setModalVincularHermanoAbierto(false)}
-          onVinculado={() => {
-            setAlerta({ tipo: 'exito', texto: 'Hermano vinculado.' });
-            if (miembro) cargarDatos(miembro.id);
-            if (onActualizado) onActualizado();
-          }}
-        />
+        </>
       )}
     </div>
   );

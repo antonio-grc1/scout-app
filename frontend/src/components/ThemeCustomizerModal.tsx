@@ -1,15 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { Sun, Moon, Monitor, Palette, Check, RotateCcw, Type, X, Compass } from 'lucide-react';
 import {
-  Palette,
-  X,
-  Check,
-  RotateCcw,
-  Sparkles,
-  Type,
-  Sliders,
-  Compass,
-} from 'lucide-react';
-import { useThemeStore, getContrastTextColor, FontScale, THEME_PRESETS } from '../store/themeStore';
+  useThemeStore,
+  FontScale,
+  THEME_PRESETS,
+} from '../store/themeStore';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { BrandLogo } from './ui/BrandLogo';
@@ -22,40 +17,6 @@ export interface ThemeCustomizerModalProps {
   onClose?: () => void;
 }
 
-// Preset definitions metadata
-const PRESET_CARDS = [
-  {
-    id: 'scout',
-    name: 'Scout Tradicional',
-    subtitle: 'Oficial Juan XXIII',
-    badge: 'Por defecto',
-  },
-  {
-    id: 'nautical',
-    name: 'Azul Marino & Oro',
-    subtitle: 'Náutica & Mar',
-    badge: 'Naval',
-  },
-  {
-    id: 'forest',
-    name: 'Bosque & Arena',
-    subtitle: 'Campamento & Naturaleza',
-    badge: 'Aire libre',
-  },
-  {
-    id: 'contrast',
-    name: 'Alto Contraste',
-    subtitle: 'Accesibilidad WCAG AAA',
-    badge: 'Accesible',
-  },
-  {
-    id: 'custom',
-    name: 'Personalizado',
-    subtitle: 'Ajustes a tu medida',
-    badge: 'Libre',
-  },
-] as const;
-
 export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
   abierto,
   onCerrar,
@@ -63,12 +24,13 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
   onClose,
 }) => {
   const {
+    theme,
     resolvedTheme,
     isCustomizerOpen,
     closeCustomizer,
     customization,
-    setPreset,
-    setCustomization,
+    setTheme,
+    setFontScale,
     resetDefaults,
   } = useThemeStore();
 
@@ -81,42 +43,6 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
 
   const handleClose = onClose || onCerrar || closeCustomizer;
 
-  const initialTokens =
-    customization.preset && customization.preset !== 'custom' && THEME_PRESETS[customization.preset]
-      ? THEME_PRESETS[customization.preset][resolvedTheme]
-      : THEME_PRESETS.scout[resolvedTheme];
-
-  // Active local state for fine-tuning
-  const [activePreset, setActivePreset] = useState<string>(customization.preset || 'scout');
-  const [brandColor, setBrandColor] = useState(customization.brandColor || initialTokens.brand);
-  const [paperColor, setPaperColor] = useState(customization.paperColor || initialTokens.paper);
-  const [navColor, setNavColor] = useState(customization.navColor || initialTokens.nav || initialTokens.paper);
-  const [inkColor, setInkColor] = useState(customization.inkColor || initialTokens.ink);
-  const [fontScale, setFontScale] = useState<FontScale>(customization.fontScale || '100%');
-
-  // Sync state on modal open or when resolvedTheme / customization changes
-  useEffect(() => {
-    if (!isVisible) return;
-
-    const currentPreset = customization.preset || 'scout';
-    setActivePreset(currentPreset);
-    setFontScale(customization.fontScale || '100%');
-
-    if (currentPreset !== 'custom' && THEME_PRESETS[currentPreset]) {
-      const pTokens = THEME_PRESETS[currentPreset][resolvedTheme];
-      setBrandColor(pTokens.brand);
-      setPaperColor(pTokens.paper);
-      setNavColor(pTokens.nav || pTokens.paper);
-      setInkColor(pTokens.ink);
-    } else {
-      const defTokens = THEME_PRESETS.scout[resolvedTheme];
-      setBrandColor(customization.brandColor || defTokens.brand);
-      setPaperColor(customization.paperColor || defTokens.paper);
-      setNavColor(customization.navColor || customization.paperColor || defTokens.nav || defTokens.paper);
-      setInkColor(customization.inkColor || defTokens.ink);
-    }
-  }, [isVisible, customization, resolvedTheme]);
-
   const { backdropProps, contentProps } = useModalOverlay({
     abierto: isVisible,
     onCerrar: handleClose,
@@ -124,196 +50,144 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
 
   if (!isVisible) return null;
 
-  // 1-Tap preset selection (updates preset in store without writing hardcoded color overrides)
-  const handleSelectPreset = (presetId: (typeof PRESET_CARDS)[number]['id']) => {
-    setActivePreset(presetId);
-    setPreset(presetId);
+  const presetCards = [
+    {
+      id: 'light',
+      title: 'Modo Claro',
+      subtitle: 'Lienzo cálido #f6f6f2 y texto carbón de alta lectura',
+      badge: 'Claro',
+      icon: Sun,
+      active: theme === 'light',
+      swatches: [
+        THEME_PRESETS.scout.light.brand,
+        THEME_PRESETS.scout.light.surface,
+        THEME_PRESETS.scout.light.paper,
+        THEME_PRESETS.scout.light.ink,
+      ],
+      onSelect: () => setTheme('light'),
+    },
+    {
+      id: 'dark',
+      title: 'Modo Oscuro',
+      subtitle: 'Pizarra nocturna descansada con acento ámbar Scout',
+      badge: 'Oscuro',
+      icon: Moon,
+      active: theme === 'dark',
+      swatches: [
+        THEME_PRESETS.scout.dark.brand,
+        THEME_PRESETS.scout.dark.surface,
+        THEME_PRESETS.scout.dark.paper,
+        THEME_PRESETS.scout.dark.ink,
+      ],
+      onSelect: () => setTheme('dark'),
+    },
+    {
+      id: 'system',
+      title: 'Automático del Sistema',
+      subtitle: 'Sigue el tema claro u oscuro de tu dispositivo',
+      badge: 'Auto',
+      icon: Monitor,
+      active: theme === 'system',
+      swatches: [
+        THEME_PRESETS.scout[resolvedTheme].brand,
+        THEME_PRESETS.scout[resolvedTheme].surface,
+        THEME_PRESETS.scout[resolvedTheme].paper,
+        THEME_PRESETS.scout[resolvedTheme].ink,
+      ],
+      onSelect: () => setTheme('system'),
+    },
+  ];
 
-    if (presetId !== 'custom') {
-      const target = THEME_PRESETS[presetId][resolvedTheme];
-      setBrandColor(target.brand);
-      setPaperColor(target.paper);
-      setNavColor(target.nav || target.paper);
-      setInkColor(target.ink);
-      if (presetId === 'contrast') {
-        setFontScale('110%');
-      } else {
-        setFontScale(target.fontScale || '100%');
-      }
-    }
-  };
-
-  // Granular color updates
-  const handleColorChange = (key: 'brand' | 'paper' | 'ink' | 'nav', value: string) => {
-    setActivePreset('custom');
-    let nextBrand = brandColor;
-    let nextPaper = paperColor;
-    let nextNav = navColor;
-    let nextInk = inkColor;
-
-    if (key === 'brand') {
-      nextBrand = value;
-      setBrandColor(value);
-    } else if (key === 'paper') {
-      nextPaper = value;
-      setPaperColor(value);
-      // Mantener sincronizada la barra de navegación con el color de fondo si no fue personalizada aparte
-      if (!navColor || navColor === paperColor) {
-        nextNav = value;
-        setNavColor(value);
-      }
-    } else if (key === 'nav') {
-      nextNav = value;
-      setNavColor(value);
-    } else if (key === 'ink') {
-      nextInk = value;
-      setInkColor(value);
-    }
-
-    setCustomization({
-      preset: 'custom',
-      brandColor: nextBrand,
-      brandContrast: getContrastTextColor(nextBrand),
-      paperColor: nextPaper,
-      navColor: nextNav,
-      navContrast: getContrastTextColor(nextNav),
-      inkColor: nextInk,
-      fontScale,
-    });
-  };
-
-  // Font scale update
-  const handleFontScaleChange = (scale: FontScale) => {
-    setFontScale(scale);
-    setCustomization({
-      fontScale: scale,
-    });
-  };
-
-  // Reset to default Juan XXIII theme
-  const handleResetDefaults = () => {
+  const handleReset = () => {
     resetDefaults();
-    setActivePreset('scout');
-    const def = THEME_PRESETS.scout[resolvedTheme];
-    setBrandColor(def.brand);
-    setPaperColor(def.paper);
-    setNavColor(def.nav || def.paper);
-    setInkColor(def.ink);
-    setFontScale('100%');
+    setTheme('system');
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3 sm:p-4 overflow-y-auto motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      className="s-anim-backdrop fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 overflow-y-auto"
       role="presentation"
       {...backdropProps}
     >
       <div
-        className="bg-surface border border-rule rounded-2xl w-full max-w-2xl shadow-xl overflow-hidden my-auto transition-colors"
+        className="s-anim-sheet-up sm:s-anim-modal-pop bg-surface border border-rule rounded-t-2xl sm:rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-auto"
         role="dialog"
         aria-modal="true"
         aria-labelledby="theme-customizer-title"
         {...contentProps}
       >
-        {/* Cabecera del Modal */}
-        <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between gap-3 bg-surface">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
+        <div className="p-5 sm:p-6 border-b border-rule flex items-center justify-between gap-3 bg-surface">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-xl bg-brand-soft text-brand-soft-ink flex items-center justify-center shrink-0">
               <Palette className="w-5 h-5" aria-hidden="true" />
             </div>
-            <div>
+            <div className="min-w-0">
               <h2
                 id="theme-customizer-title"
-                className="text-base sm:text-lg font-extrabold text-ink leading-tight font-display"
+                className="text-lg sm:text-xl font-extrabold text-ink leading-tight truncate"
               >
-                Personalización y Apariencia
+                Apariencia
               </h2>
-              <p className="text-xs text-ink-muted leading-tight mt-0.5">
-                Ajustá la paleta institucional y la accesibilidad tipográfica.
+              <p className="text-xs sm:text-sm text-ink-muted leading-tight mt-0.5 truncate">
+                Modo claro, modo oscuro y escala tipográfica adaptable.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            aria-label="Cerrar personalizador"
-            className="text-ink-muted hover:text-ink p-2 rounded-xl hover:bg-paper-2 transition-colors cursor-pointer"
+            aria-label="Cerrar preferencias de apariencia"
+            className="text-ink-muted hover:text-ink p-2 rounded-xl hover:bg-paper-2 transition-colors cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Cuerpo del Modal con Scroll Suave */}
-        <div className="p-4 sm:p-6 space-y-6 max-h-[75dvh] overflow-y-auto">
-          {/* SECCIÓN 1: Tarjetas de los 5 Presets */}
+        <div className="p-5 sm:p-6 space-y-5 max-h-[75dvh] overflow-y-auto">
+          {/* Claro / Oscuro / Sistema */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-brand" />
-                Estilos predefinidos (1-tap)
-              </span>
-              <span className="text-[11px] text-ink-muted">Adaptables a modo claro y oscuro</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {PRESET_CARDS.map((p) => {
-                const isActive = activePreset === p.id;
-                const pTokens =
-                  p.id !== 'custom'
-                    ? THEME_PRESETS[p.id][resolvedTheme]
-                    : {
-                        brand: brandColor,
-                        paper: paperColor,
-                        ink: inkColor,
-                        nav: navColor,
-                      };
-
+            <span className="text-sm font-bold text-ink block">
+              Tema Visual
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {presetCards.map((card) => {
+                const Icon = card.icon;
                 return (
                   <button
-                    key={p.id}
+                    key={card.id}
                     type="button"
-                    onClick={() => handleSelectPreset(p.id)}
-                    className={`p-3 rounded-xl border text-left transition-colors cursor-pointer relative flex flex-col justify-between gap-2 ${
-                      isActive
-                        ? 'border-brand ring-2 ring-brand/20 bg-brand/5 shadow-xs'
+                    onClick={card.onSelect}
+                    className={`p-3.5 rounded-xl border text-left transition-colors cursor-pointer flex flex-col justify-between gap-2.5 ${
+                      card.active
+                        ? 'border-brand ring-2 ring-brand/20 bg-brand-soft/30'
                         : 'border-rule hover:border-ink-muted bg-surface'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="font-bold text-xs text-ink">{p.name}</span>
-                      {isActive && (
-                        <span className="w-4 h-4 rounded-full bg-brand text-brand-contrast flex items-center justify-center shrink-0">
-                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-sm text-ink flex items-center gap-1.5">
+                        <Icon className="w-4 h-4 text-brand shrink-0" />
+                        <span>{card.title}</span>
+                      </span>
+                      {card.active && (
+                        <span className="w-4.5 h-4.5 rounded-full bg-brand text-brand-contrast flex items-center justify-center shrink-0">
+                          <Check className="w-3 h-3 stroke-[3]" />
                         </span>
                       )}
                     </div>
 
-                    <p className="text-[11px] text-ink-muted line-clamp-1">{p.subtitle}</p>
+                    <p className="text-xs text-ink-muted leading-snug">{card.subtitle}</p>
 
-                    {/* Muestrario de Colores del Preset en el Modo Actual */}
-                    <div className="flex items-center gap-1.5 pt-1">
-                      <span
-                        className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
-                        style={{ backgroundColor: pTokens.brand }}
-                        title="Color Institucional"
-                      />
-                      <span
-                        className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
-                        style={{ backgroundColor: pTokens.nav || pTokens.paper }}
-                        title="Barra de Navegación"
-                      />
-                      <span
-                        className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
-                        style={{ backgroundColor: pTokens.paper }}
-                        title="Fondo Papel"
-                      />
-                      <span
-                        className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
-                        style={{ backgroundColor: pTokens.ink }}
-                        title="Tinta de Texto"
-                      />
-                      <span className="text-[10px] text-ink-muted ml-auto font-medium">
-                        {p.badge}
+                    <div className="flex items-center gap-1.5 pt-0.5">
+                      {card.swatches.map((color, idx) => (
+                        <span
+                          key={idx}
+                          className="w-4 h-4 rounded-full border border-rule shrink-0"
+                          style={{ backgroundColor: color }}
+                          aria-hidden="true"
+                        />
+                      ))}
+                      <span className="text-xs font-bold text-ink-muted ml-auto">
+                        {card.badge}
                       </span>
                     </div>
                   </button>
@@ -322,24 +196,49 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
             </div>
           </div>
 
-          {/* SECCIÓN 2: Micro-Lienzo de Vista Previa en Vivo */}
-          <div className="p-3.5 bg-paper rounded-2xl border border-rule space-y-2.5">
-            <span className="text-[11px] font-extrabold text-ink-muted flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5 text-brand" />
-              Lienzo de demostración en tiempo real
+          {/* Escala Tipográfica */}
+          <div className="space-y-3">
+            <span className="text-sm font-bold text-ink flex items-center gap-2">
+              <Type className="w-4 h-4 text-brand" />
+              Escala tipográfica y legibilidad
             </span>
-            <div
-              style={{
-                backgroundColor: 'var(--color-navbar)',
-                borderColor: 'var(--color-navbar-rule, var(--color-rule))',
-                color: 'var(--color-navbar-ink, var(--color-ink))',
-              }}
-              className="p-3 rounded-xl border flex flex-wrap items-center justify-between gap-3 shadow-2xs transition-colors"
-            >
-              <BrandLogo variant="icon" size="sm" showSubtitle subtitleText="Vista en vivo" className="m-1" />
+
+            <div className="grid grid-cols-3 gap-2.5">
+              {(
+                [
+                  { id: '100%', label: 'Normal', note: '100%' },
+                  { id: '110%', label: 'Grande', note: '110%' },
+                  { id: '125%', label: 'Accesible', note: '125%' },
+                ] as { id: FontScale; label: string; note: string }[]
+              ).map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setFontScale(s.id)}
+                  className={`p-3 rounded-xl border text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                    customization.fontScale === s.id
+                      ? 'border-brand bg-brand-soft/40 text-ink font-extrabold'
+                      : 'border-rule bg-surface text-ink hover:bg-paper-2'
+                  }`}
+                >
+                  <span className="text-sm">{s.label}</span>
+                  <span className="text-xs text-ink-muted font-medium s-tabular">{s.note}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Vista previa en vivo */}
+          <div className="p-4 bg-paper-2 rounded-xl border border-rule space-y-3">
+            <span className="text-xs font-bold text-ink-muted flex items-center gap-1.5">
+              <Compass className="w-4 h-4 text-brand" />
+              Vista previa en tiempo real
+            </span>
+            <div className="p-3 rounded-xl border border-rule bg-surface flex flex-wrap items-center justify-between gap-2.5">
+              <BrandLogo variant="icon" size="sm" showSubtitle subtitleText="Juan XXIII" className="m-0" />
               <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="primary" size="sm">
-                  Botón Primario
+                  Acción Principal
                 </Button>
                 <Button variant="secondary" size="sm">
                   Secundario
@@ -350,155 +249,19 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
               </div>
             </div>
           </div>
-
-          {/* SECCIÓN 3: Controles de Ajuste Fino */}
-          <div className="space-y-4 pt-1">
-            <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5 text-brand" />
-              Ajuste personalizado de colores
-            </span>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Color Brand */}
-              <div className="p-3 rounded-xl border border-rule bg-surface space-y-2">
-                <label className="block text-xs font-bold text-ink">
-                  Color Primario
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={brandColor}
-                    onChange={(e) => handleColorChange('brand', e.target.value)}
-                    className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent shrink-0"
-                    title="Elegir color institucional"
-                  />
-                  <input
-                    type="text"
-                    value={brandColor}
-                    onChange={(e) => handleColorChange('brand', e.target.value)}
-                    className="w-full text-xs font-mono px-2 py-1.5 rounded-lg border border-rule bg-paper text-ink"
-                  />
-                </div>
-              </div>
-
-              {/* Color Barra de Navegación */}
-              <div className="p-3 rounded-xl border border-rule bg-surface space-y-2">
-                <label className="block text-xs font-bold text-ink">
-                  Barra de Navegación
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={navColor}
-                    onChange={(e) => handleColorChange('nav', e.target.value)}
-                    className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent shrink-0"
-                    title="Elegir color de la barra de navegación"
-                  />
-                  <input
-                    type="text"
-                    value={navColor}
-                    onChange={(e) => handleColorChange('nav', e.target.value)}
-                    className="w-full text-xs font-mono px-2 py-1.5 rounded-lg border border-rule bg-paper text-ink"
-                  />
-                </div>
-              </div>
-
-              {/* Color Paper */}
-              <div className="p-3 rounded-xl border border-rule bg-surface space-y-2">
-                <label className="block text-xs font-bold text-ink">
-                  Fondo de Papel
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={paperColor}
-                    onChange={(e) => handleColorChange('paper', e.target.value)}
-                    className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent shrink-0"
-                    title="Elegir color de fondo"
-                  />
-                  <input
-                    type="text"
-                    value={paperColor}
-                    onChange={(e) => handleColorChange('paper', e.target.value)}
-                    className="w-full text-xs font-mono px-2 py-1.5 rounded-lg border border-rule bg-paper text-ink"
-                  />
-                </div>
-              </div>
-
-              {/* Color Ink */}
-              <div className="p-3 rounded-xl border border-rule bg-surface space-y-2">
-                <label className="block text-xs font-bold text-ink">
-                  Tinta de Texto
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={inkColor}
-                    onChange={(e) => handleColorChange('ink', e.target.value)}
-                    className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent shrink-0"
-                    title="Elegir color de texto"
-                  />
-                  <input
-                    type="text"
-                    value={inkColor}
-                    onChange={(e) => handleColorChange('ink', e.target.value)}
-                    className="w-full text-xs font-mono px-2 py-1.5 rounded-lg border border-rule bg-paper text-ink"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SECCIÓN 4: Escala Tipográfica (Accesibilidad) */}
-          <div className="space-y-2.5">
-            <span className="text-xs font-bold text-ink flex items-center gap-1.5">
-              <Type className="w-3.5 h-3.5 text-brand" />
-              Escala tipográfica y legibilidad
-            </span>
-
-            <div className="grid grid-cols-3 gap-2">
-              {(
-                [
-                  { id: '100%', label: 'Normal', note: '100%' },
-                  { id: '110%', label: 'Grande', note: '110%' },
-                  { id: '125%', label: 'Accesibilidad', note: '125%' },
-                ] as const
-              ).map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => handleFontScaleChange(s.id)}
-                  className={`p-2.5 rounded-xl border text-center transition-colors cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                    fontScale === s.id
-                      ? 'border-brand bg-brand/10 text-brand font-extrabold shadow-2xs'
-                      : 'border-rule bg-surface text-ink hover:bg-paper-2'
-                  }`}
-                >
-                  <span className="text-xs">{s.label}</span>
-                  <span className="text-[10px] text-ink-muted font-normal">{s.note}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
-        {/* Pie del Modal con Botón de Restablecer y Cerrar */}
-        <div className="p-4 sm:p-5 border-t border-rule flex items-center justify-between gap-3 bg-paper">
+        <div className="p-4 border-t border-rule flex flex-wrap items-center justify-between gap-2 bg-paper-2">
           <Button
             variant="ghost"
             size="md"
-            onClick={handleResetDefaults}
+            onClick={handleReset}
             leftIcon={<RotateCcw className="w-4 h-4" />}
           >
-            Restablecer tema por defecto
+            Restablecer
           </Button>
-
-          <Button
-            variant="primary"
-            size="md"
-            onClick={handleClose}
-          >
-            Aplicar y Salir
+          <Button variant="primary" size="md" onClick={handleClose}>
+            Listo
           </Button>
         </div>
       </div>

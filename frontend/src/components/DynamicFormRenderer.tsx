@@ -19,7 +19,9 @@ import {
   Loader2,
   Tent,
   Hammer,
+  Eye,
 } from 'lucide-react';
+import { obtenerCicloAnioActual } from '../lib/formatters';
 
 export interface CampoSchema {
   key: string;
@@ -45,6 +47,7 @@ interface Props {
   esquema: EsquemaCampos;
   valoresIniciales?: Record<string, unknown>;
   onSubmit: (datos: Record<string, unknown>, finalizarParaFirma: boolean) => Promise<void>;
+  onPreviewPdf?: (datosActuales: Record<string, unknown>) => void;
   cargando?: boolean;
 }
 
@@ -137,6 +140,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
   esquema,
   valoresIniciales = {},
   onSubmit,
+  onPreviewPdf,
   cargando = false,
 }) => {
   const [pasoActivo, setPasoActivo] = useState(0);
@@ -344,7 +348,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       const valorActual = String(formData[campo.key] || '');
       return (
         <div key={campo.key} className="space-y-1.5">
-          <label className="block text-xs font-bold text-ink-2">
+          <label className="block text-sm font-bold text-ink-2">
             {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
           </label>
           <input
@@ -361,19 +365,19 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                   key={opt.value}
                   type="button"
                   onClick={() => setValue(campo.key, opt.value, { shouldValidate: true })}
-                  className={`flex-1 min-w-[76px] min-h-[44px] px-3 py-2 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer border ${
+                  className={`flex-1 min-w-[82px] min-h-[46px] px-3.5 py-2 rounded-xl font-bold text-[13px] transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                     activo
-                      ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                      ? 'bg-brand text-brand-contrast border-brand font-bold'
                       : 'bg-paper-2 text-ink-2 border-rule hover:bg-paper-2'
                   }`}
                 >
-                  {activo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  {activo && <Check className="w-4 h-4 stroke-[3]" />}
                   <span>{opt.label}</span>
                 </button>
               );
             })}
           </div>
-          {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
+          {error && <p className="text-[13px] font-bold text-rose-500">{error}</p>}
         </div>
       );
     }
@@ -396,9 +400,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           <button
             type="button"
             onClick={() => setValue(campo.key, !isChecked, { shouldValidate: true })}
-            className="w-full min-h-[52px] px-4 py-3 flex items-center justify-between gap-3 text-left cursor-pointer"
+            className="w-full min-h-[54px] px-4 py-3.5 flex items-center justify-between gap-3 text-left cursor-pointer"
           >
-            <span className="text-xs sm:text-sm font-bold text-ink leading-snug">
+            <span className="text-sm sm:text-[15px] font-bold text-ink leading-snug">
               {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
             </span>
 
@@ -407,19 +411,19 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 isChecked ? 'bg-brand justify-end' : 'bg-paper-3 justify-start'
               }`}
             >
-              <span className="w-6 h-6 rounded-full bg-white shadow-xs flex items-center justify-center text-[10px] font-extrabold text-ink-2">
+              <span className="w-6 h-6 rounded-full bg-white shadow-xs flex items-center justify-center text-xs font-extrabold text-ink-2">
                 {isChecked ? 'SÍ' : 'NO'}
               </span>
             </span>
           </button>
 
           {isChecked && campoDetalle && (
-            <div className="px-4 pb-3.5 pt-1 border-t border-brand/30">
+            <div className="px-4 pb-4 pt-1.5 border-t border-brand/30">
               <input
                 type="text"
                 placeholder={`${campoDetalle.label}...`}
                 {...register(campoDetalle.key)}
-                className="w-full min-h-[42px] px-3.5 py-2 bg-surface border border-brand/40 rounded-xl text-xs sm:text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand"
+                className="w-full min-h-[46px] px-3.5 py-2.5 bg-surface border border-brand/40 rounded-xl text-base sm:text-[15px] text-ink focus:outline-none focus:ring-2 focus:ring-brand"
               />
             </div>
           )}
@@ -434,39 +438,39 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
       return (
         <div key={campo.key} className="md:col-span-2 space-y-3 pt-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-semibold text-ink-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-sm font-semibold text-ink-2">
               Materiales para Prestar o Donar
             </span>
             <div className="flex bg-paper-3 p-1 rounded-xl">
               <button
                 type="button"
                 onClick={() => setCatMateriales('campamento')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-[13px] font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   catMateriales === 'campamento'
-                    ? 'bg-surface text-brand shadow-2xs'
+                    ? 'bg-surface text-brand'
                     : 'text-ink-muted'
                 }`}
               >
-                <Tent className="w-3.5 h-3.5" />
+                <Tent className="w-4 h-4" />
                 <span>Campamento</span>
               </button>
               <button
                 type="button"
                 onClick={() => setCatMateriales('construccion')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-[13px] font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                   catMateriales === 'construccion'
-                    ? 'bg-surface text-brand shadow-2xs'
+                    ? 'bg-surface text-brand'
                     : 'text-ink-muted'
                 }`}
               >
-                <Hammer className="w-3.5 h-3.5" />
+                <Hammer className="w-4 h-4" />
                 <span>Construcción</span>
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {lista.map((item) => {
               const preKey = `mat_${item.key}_prestamo`;
               const donKey = `mat_${item.key}_donacion`;
@@ -476,22 +480,22 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               return (
                 <div
                   key={item.key}
-                  className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition ${
+                  className={`p-3 rounded-xl border flex items-center justify-between gap-2 transition ${
                     isPre || isDon
                       ? 'bg-brand/10 border-brand/40'
                       : 'bg-surface border-rule'
                   }`}
                 >
-                  <span className="text-xs font-bold text-ink truncate">
+                  <span className="text-[13px] font-bold text-ink truncate">
                     {item.label}
                   </span>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => setValue(preKey, !isPre)}
-                      className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                      className={`min-h-[38px] px-3 rounded-lg text-xs font-bold transition cursor-pointer border ${
                         isPre
-                          ? 'bg-brand text-brand-contrast border-brand shadow-xs'
+                          ? 'bg-brand text-brand-contrast border-brand'
                           : 'bg-paper-2 text-ink-muted border-rule'
                       }`}
                     >
@@ -500,9 +504,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => setValue(donKey, !isDon)}
-                      className={`min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                      className={`min-h-[38px] px-3 rounded-lg text-xs font-bold transition cursor-pointer border ${
                         isDon
-                          ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs'
+                          ? 'bg-brand text-brand-contrast border-brand font-bold'
                           : 'bg-paper-2 text-ink-muted border-rule'
                       }`}
                     >
@@ -521,7 +525,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
     if (campo.type === 'textarea') {
       return (
         <div key={campo.key} className="space-y-1.5 md:col-span-2">
-          <label htmlFor={campo.key} className="block text-xs font-bold text-ink-2">
+          <label htmlFor={campo.key} className="block text-sm font-bold text-ink-2">
             {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
           </label>
           <textarea
@@ -530,9 +534,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             {...register(campo.key, {
               required: esRequerido ? 'Completá este campo' : false,
             })}
-            className="w-full px-3.5 py-2.5 bg-surface border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+            className="w-full px-3.5 py-2.5 bg-surface border border-rule rounded-xl text-base sm:text-[15px] text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
           />
-          {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
+          {error && <p className="text-[13px] font-bold text-rose-500">{error}</p>}
         </div>
       );
     }
@@ -543,7 +547,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
     return (
       <div key={campo.key} className="space-y-1.5">
-        <label htmlFor={campo.key} className="block text-xs font-bold text-ink-2">
+        <label htmlFor={campo.key} className="block text-sm font-bold text-ink-2">
           {labelLimpio} {esRequerido && <span className="text-rose-500">*</span>}
         </label>
         <input
@@ -553,9 +557,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           {...register(campo.key, {
             required: esRequerido ? 'Completá este campo' : false,
           })}
-          className="w-full min-h-[44px] px-3.5 py-2 bg-surface border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+          className="w-full min-h-[46px] px-3.5 py-2 bg-surface border border-rule rounded-xl text-base sm:text-[15px] text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
         />
-        {error && <p className="text-xs font-bold text-rose-500">{error}</p>}
+        {error && <p className="text-[13px] font-bold text-rose-500">{error}</p>}
       </div>
     );
   };
@@ -583,7 +587,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           {/* Selector de Familiares por Pestañas Táctiles (montados en DOM para validación completa) */}
           <div className="pt-4 border-t border-rule space-y-4">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-xs font-semibold text-ink-muted">
+              <span className="text-[13px] font-semibold text-ink-muted">
                 Datos de familiares obligatorios
               </span>
               <div className="flex bg-paper-3 p-1 rounded-xl w-full sm:w-auto">
@@ -601,9 +605,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                       key={t.id}
                       type="button"
                       onClick={() => setFamiliarTab(t.id)}
-                      className={`flex-1 sm:flex-initial min-h-[40px] px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                      className={`flex-1 sm:flex-initial min-h-[42px] px-4 py-1.5 rounded-lg text-[13px] font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                         familiarTab === t.id
-                          ? 'bg-surface text-brand shadow-2xs'
+                          ? 'bg-surface text-brand'
                           : tieneErrores
                             ? 'text-rose-600 dark:text-rose-400'
                             : 'text-ink-muted'
@@ -663,7 +667,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => setPersonasRetiroVisibles((n) => Math.min(3, n + 1))}
-              className="w-full min-h-[44px] py-2.5 px-4 rounded-xl border border-dashed border-brand dark:border-brand/40 text-brand font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-brand/10 transition-colors cursor-pointer whitespace-nowrap"
+              className="w-full min-h-[46px] py-2.5 px-4 rounded-xl border border-dashed border-brand dark:border-brand/40 text-brand font-bold text-[13px] flex items-center justify-center gap-1.5 hover:bg-brand/10 transition-colors cursor-pointer whitespace-nowrap"
             >
               <Plus className="w-4 h-4 shrink-0" />
               <span className="whitespace-nowrap">Agregar otra persona autorizada ({personasRetiroVisibles}/3)</span>
@@ -710,9 +714,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
     return (
       <div className="space-y-4">
         {seccionActual.id === 'seccion_autorizacion_salidas' && (
-          <div className="p-3.5 rounded-xl bg-paper-2 border border-rule text-xs text-ink-2 space-y-1">
+          <div className="p-4 rounded-xl bg-paper-2 border border-rule text-[13px] text-ink-2 space-y-1.5">
             <p className="font-bold text-ink">
-              Salidas por el día sin pernocte (Ciclo 2026)
+              Salidas por el día sin pernocte (Ciclo {obtenerCicloAnioActual()})
             </p>
             <p>
               Habilita paseos barriales, visitas a parques, actividades comunitarias y traslados del
@@ -736,33 +740,46 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
   return (
     <div ref={formTopRef} className="space-y-4 scroll-mt-20">
-      {/* Navegador de Pasos Compacto (1 fila deslizable con el pulgar) */}
-      <div className="bg-surface rounded-2xl p-3 sm:p-4 border border-rule shadow-2xs space-y-3">
-        <div className="flex items-center justify-between gap-2">
+      {/* Navegador de Pasos Compacto Sticky */}
+      <div className="sticky top-14 lg:top-16 z-10 bg-surface rounded-2xl p-3.5 sm:p-4 border border-rule space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className="px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 font-bold text-xs shrink-0">
+            <span className="px-2.5 py-0.5 rounded-md bg-paper-2 text-ink-2 font-bold text-xs shrink-0 border border-rule">
               Paso {pasoActivo + 1} de {secciones.length}
             </span>
-            <h2 className="text-sm sm:text-base font-extrabold text-ink truncate">
+            <h2 className="text-base sm:text-lg font-extrabold text-ink truncate">
               {NOMBRES_CORTOS_PASO[seccionActual?.id] || seccionActual?.titulo}
             </h2>
           </div>
 
-          <button
-            type="button"
-            onClick={handleGuardarBorrador}
-            disabled={cargando}
-            className="min-h-[36px] px-3 rounded-xl bg-paper-3 hover:bg-paper-3 text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
-          >
-            <Save className="w-3.5 h-3.5 text-brand" />
-            <span>Guardar avance</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onPreviewPdf && (
+              <button
+                type="button"
+                onClick={() => onPreviewPdf(getValues())}
+                disabled={cargando}
+                className="min-h-[40px] px-3.5 rounded-xl bg-paper-2 hover:bg-paper-3 border border-rule text-ink-2 font-bold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <Eye className="w-4 h-4 text-brand" />
+                <span>Vista Previa PDF</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleGuardarBorrador}
+              disabled={cargando}
+              className="min-h-[40px] px-3.5 rounded-xl bg-paper-3 hover:bg-paper-2 border border-rule text-ink-2 font-bold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4 text-brand" />
+              <span>Guardar avance</span>
+            </button>
+          </div>
         </div>
 
         {/* Barra de Progreso Dinámica de Carga y Avance */}
         <div className="w-full bg-paper-3 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-brand h-full rounded-full transition-all duration-300 ease-out shadow-xs"
+            className="bg-brand h-full rounded-full transition-all duration-300 ease-out"
             style={{ width: `${((pasoActivo + 1) / Math.max(secciones.length, 1)) * 100}%` }}
           />
         </div>
@@ -779,18 +796,18 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 key={sec.id}
                 type="button"
                 onClick={() => irAPaso(idx)}
-                className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer shrink-0 border ${
+                className={`min-h-[42px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold whitespace-nowrap flex items-center gap-1.5 transition cursor-pointer shrink-0 border ${
                   esActivo
-                    ? 'bg-brand text-brand-contrast shadow-xs font-bold border-brand'
+                    ? 'bg-brand text-brand-contrast font-bold border-brand'
                     : esPasado
                       ? 'bg-brand/10 text-brand border-brand/30'
                       : 'bg-paper-2 text-ink-muted border-rule'
                 }`}
               >
                 {esPasado ? (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <CheckCircle2 className="w-4 h-4" />
                 ) : (
-                  PASO_ICONOS[sec.id] || <FileText className="w-3.5 h-3.5" />
+                  PASO_ICONOS[sec.id] || <FileText className="w-4 h-4" />
                 )}
                 <span>
                   {idx + 1}. {nombreCorto}
@@ -803,28 +820,28 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
       {/* Alerta de Validación Directa */}
       {errorValidacion && (
-        <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-2xl p-3.5 flex items-center gap-2.5 text-rose-800 dark:text-rose-200 text-xs font-bold">
+        <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-2xl p-4 flex items-center gap-2.5 text-rose-800 dark:text-rose-200 text-[13px] font-bold">
           <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
           <span>{errorValidacion}</span>
         </div>
       )}
 
       {/* Cuerpo de Campos del Paso Actual */}
-      <div className="bg-surface rounded-2xl p-4 sm:p-6 border border-rule shadow-2xs">
+      <div className="bg-surface rounded-2xl p-4 sm:p-6 border border-rule">
         {renderContenidoSeccion()}
       </div>
 
       {/* Barra de Acción Inferior Optimizada para el Pulgar */}
-      <div className="bg-surface rounded-2xl p-3.5 sm:p-5 border border-rule shadow-2xs space-y-3">
+      <div className="bg-surface rounded-2xl p-4 sm:p-5 border border-rule space-y-3">
         {pasoActivo < secciones.length - 1 ? (
           <div className="space-y-3">
             {/* Fila Principal: Botón Siguiente Destacado y Botón Anterior */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 disabled={pasoActivo === 0}
                 onClick={() => irAPaso(pasoActivo - 1)}
-                className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule text-ink-2 font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-30 cursor-pointer shrink-0"
+                className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule text-ink-2 font-bold text-sm flex items-center justify-center gap-1 disabled:opacity-30 cursor-pointer shrink-0"
                 aria-label="Paso anterior"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -834,7 +851,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={handleSiguientePaso}
-                className="flex-1 min-h-[52px] sm:min-h-[56px] px-5 sm:px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-sm sm:text-base shadow-xs flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="flex-1 min-h-[52px] sm:min-h-[56px] px-5 sm:px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-[15px] sm:text-base flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <span>
                   Siguiente:{' '}
@@ -845,20 +862,33 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* Acción Secundaria: Finalizar y Descargar PDF (discreto para no confundir al usuario) */}
-            <div className="flex items-center justify-between pt-1 border-t border-rule text-xs">
-              <span className="text-[11px] font-semibold text-ink-muted">
+            {/* Acción Secundaria: Vista Previa y Finalizar */}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-rule text-[13px]">
+              <span className="text-xs font-semibold text-ink-muted">
                 Paso {pasoActivo + 1} de {secciones.length}
               </span>
-              <button
-                type="button"
-                onClick={handleFinalizarFirma}
-                disabled={cargando}
-                className="text-ink-muted hover:text-ink font-bold text-xs flex items-center gap-1.5 transition-colors py-1.5 px-2.5 rounded-lg hover:bg-paper-2 cursor-pointer disabled:opacity-50 whitespace-nowrap"
-              >
-                <Download className="w-3.5 h-3.5 text-ink-muted shrink-0" />
-                <span className="whitespace-nowrap">Finalizar y descargar PDF</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {onPreviewPdf && (
+                  <button
+                    type="button"
+                    onClick={() => onPreviewPdf(getValues())}
+                    disabled={cargando}
+                    className="text-brand hover:bg-brand/10 font-bold text-[13px] flex items-center gap-1.5 transition-colors py-1.5 px-3 rounded-lg cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                  >
+                    <Eye className="w-4 h-4 shrink-0" />
+                    <span>Vista Previa PDF</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleFinalizarFirma}
+                  disabled={cargando}
+                  className="text-ink-muted hover:text-ink font-bold text-[13px] flex items-center gap-1.5 transition-colors py-1.5 px-3 rounded-lg hover:bg-paper-2 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                >
+                  <Download className="w-4 h-4 text-ink-muted shrink-0" />
+                  <span className="whitespace-nowrap">Finalizar y descargar PDF</span>
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -867,17 +897,29 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             <button
               type="button"
               onClick={() => irAPaso(pasoActivo - 1)}
-              className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule text-ink-2 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+              className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule text-ink-2 font-bold text-sm flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
               <span>Paso anterior</span>
             </button>
 
+            {onPreviewPdf && (
+              <button
+                type="button"
+                onClick={() => onPreviewPdf(getValues())}
+                disabled={cargando}
+                className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule bg-paper-2 hover:bg-paper-3 text-ink font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50 whitespace-nowrap"
+              >
+                <Eye className="w-4 h-4 text-brand shrink-0" />
+                <span>Vista Previa PDF</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={handleFinalizarFirma}
               disabled={cargando}
-              className="flex-1 min-h-[54px] sm:min-h-[58px] px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-black text-sm sm:text-base shadow-lg shadow-sm flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              className="flex-1 min-h-[54px] sm:min-h-[58px] px-6 rounded-2xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-black text-[15px] sm:text-base flex items-center justify-center gap-2.5 transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
             >
               {cargando ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

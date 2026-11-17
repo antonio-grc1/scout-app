@@ -702,21 +702,17 @@ export class MiembrosService {
       }
     }
 
-    // Permisos por campo: cada grupo de campos exige su propio permiso (actualización parcial).
-    const PERMISO_POR_CAMPO: Record<string, string> = {
-      nombre: 'miembros.editar_identidad',
-      apellido: 'miembros.editar_identidad',
-      dni: 'miembros.editar_identidad',
-      fechaNacimiento: 'miembros.editar_identidad',
-      activo: 'miembros.baja',
-      emailContacto: 'miembros.editar',
-      telefonoContacto: 'miembros.editar',
-      datosFijosJson: 'miembros.editar',
-    };
+    // Permiso unificado por panel: padron.editar habilita editar toda la ficha del miembro en su alcance.
+    const CAMPOS_SENSIBLES_COBERTURA_TOTAL = new Set([
+      'nombre',
+      'apellido',
+      'dni',
+      'fechaNacimiento',
+      'activo',
+    ]);
     if (!esPropio || alcance.tipo === 'GLOBAL') {
+      const alcanceEdicion = resolverAlcance(actor, 'padron.editar');
       const sinPermiso = Object.keys(dto).filter((k) => {
-        const req = PERMISO_POR_CAMPO[k];
-        if (!req) return false;
         // Enviar el mismo valor no cuenta como modificación
         const actual = (objetivo as Record<string, unknown>)[k];
         const nuevo = (dto as Record<string, unknown>)[k];
@@ -726,16 +722,15 @@ export class MiembrosService {
             : actual === nuevo;
         if (igual) return false;
 
-        const alcanceCampo = resolverAlcance(actor, req);
-        if (!alcanceCampo) return true;
-        if (alcanceCampo.tipo === 'GLOBAL') return false;
-        if (alcanceCampo.tipo === 'UNIDAD') {
+        if (!alcanceEdicion) return true;
+        if (alcanceEdicion.tipo === 'GLOBAL') return false;
+        if (alcanceEdicion.tipo === 'UNIDAD') {
           const unidadesObjetivo = objetivo.asignaciones.map((a) => a.unidadId);
           // Campos sensibles (identidad / baja) requieren cobertura de TODAS las unidades activas del objetivo.
-          const requiereCoberturaCompleta = req === 'miembros.editar_identidad' || req === 'miembros.baja';
+          const requiereCoberturaCompleta = CAMPOS_SENSIBLES_COBERTURA_TOTAL.has(k);
           const cubierto = requiereCoberturaCompleta
-            ? unidadesObjetivo.length > 0 && unidadesObjetivo.every((uId) => alcanceCampo.unidadIds.includes(uId))
-            : unidadesObjetivo.some((uId) => alcanceCampo.unidadIds.includes(uId));
+            ? unidadesObjetivo.length > 0 && unidadesObjetivo.every((uId) => alcanceEdicion.unidadIds.includes(uId))
+            : unidadesObjetivo.some((uId) => alcanceEdicion.unidadIds.includes(uId));
           return !cubierto;
         }
         return true;
@@ -1100,7 +1095,7 @@ export class MiembrosService {
     }
     return asig.rol.permisos.some((p) => {
       const clave = typeof p === 'string' ? p : p.permiso?.clave;
-      return clave === 'organizacion.gestionar' || clave === 'roles.gestionar';
+      return clave === 'organizacion.editar';
     });
   }
 

@@ -1,28 +1,24 @@
 # Frontend Route Pages (`frontend/src/pages`)
 
 ## Overview
-Top-level route page views for the Scout application frontend, containing direct authentication and mandatory password-change screens (`Login.tsx`, `CambiarClave.tsx`) and organizing domain route modules into dedicated subdirectories (`autogestion`, `global`, `padron`, `perfil`, `unidad`).
+Top-level route page views for the Scout application frontend, containing authentication/password-change screens (`Login.tsx`, `CambiarClave.tsx`) and domain workspaces (`inicio`, `mi-espacio`, `miembros`, `legajos`, `pases`, `tesoreria`, `eventos`, `organizacion`) mounted inside `AppShell`.
 
 ## Interface
-- `[Login.tsx:Login]` — Exported `React.FC` page component for DNI + password authentication and role-aware post-login redirection.
-- `[CambiarClave.tsx:CambiarClave]` — Exported `React.FC` page component for mandatory initial password update or voluntary password change.
-- [Autogestión (`./autogestion/README.md`)](./autogestion/README.md) — `[AutogestionPage.tsx:AutogestionPage]` member self-service portal (`'papeles'`, `'cuotas'`, `'eventos'`).
-- [Global (`./global/README.md`)](./global/README.md) — `[GlobalPage.tsx:GlobalPage]` group administration and treasury management console.
-- [Padrón (`./padron/README.md`)](./padron/README.md) — `[PadronPage.tsx:PadronPage]` `@deprecated` legacy route wrapper delegating to `UnidadPage`.
-- [Perfil (`./perfil/README.md`)](./perfil/README.md) — `[PerfilPage.tsx:PerfilPage]` personal profile, family group, contact details, and password management view.
-- [Unidad (`./unidad/README.md`)](./unidad/README.md) — `[UnidadPage.tsx:UnidadPage]` operational member roster, multi-filter view, QR validation, and cohort transition (`pases`) manager.
+- `[Login.tsx:Login]` — DNI + password authentication and capability-aware redirect to `/inicio` (or `/cambiar-clave`).
+- `[CambiarClave.tsx:CambiarClave]` — Mandatory initial or voluntary password update screen.
+- `inicio/InicioPage.tsx` — Role-adaptive home (`/inicio`), personal status bar, operational KPIs, emergency alerts drawer, and **Modo Campamento** offline sync (`Preparar para Campamento` + pending draft sync).
+- `mi-espacio/MiEspacioPage.tsx` — Personal portal (`/mi-espacio`) with 4 sub-tabs: `Mi Legajo`, `Mis Cuotas y Recibos`, `Mis Pedidos y Vales`, and `Mi Perfil`.
+- `miembros/` (`MiembrosPage.tsx`, `DrawerMiembro360.tsx`, `ExpedienteMiembro360.tsx`, `MiembroDetallePage.tsx`) — Polymorphic member roster (`/miembros`), Slide-over 360° drawer (desktop) and dedicated 360° view (`/miembros/:id`).
+- `legajos/` (`LegajosPage.tsx`, `CompletarLegajoPage.tsx`, `VisualPdfEditorDrawer.tsx`) — Compliance dashboard, adult collaborators, template CRUD + bidirectional visual PDF coordinate editor (`/legajos`), and 7-step form wizard (`/legajos/completar`) with IndexedDB offline draft persistence.
+- `pases/PasesPage.tsx` — Branch progression by June 30 cohort (`30/06`) and inter-section transfer requests inbox (`/pases`).
+- `tesoreria/TesoreriaPage.tsx` — Capability-gated treasury module (`/tesoreria`) with `Cobranzas y Familias` (partial collection drawer + scope lock), `Planes y Conceptos`, `Caja, Bancos y Gastos`, and `Cuadro de Resultados`.
+- `eventos/` (`EventosCatalogoPage.tsx`, `EventoWorkspacePage.tsx`) — Event catalog cards (`/eventos`) and 3-tab operational workspace (`/eventos/:id`: POS quick sale, Orders & QR vouchers, Family earnings liquidation).
+- `organizacion/OrganizacionPage.tsx` — Group governance (`/organizacion`) with `Ramas y Unidades`, `Roles RBAC`, and `Correo SMTP`.
 
 ## Invariants
-- `[Login.tsx:Login]` — If `token` and `usuario` are already present in `useAuthStore`, immediately renders `<Navigate replace />` to `'/cambiar-clave'` (if `requiereCambioClave`), `'/rama'` (if `puedeVerPadron()`), `'/global'` (if `puedeAccederPanelGestion()`), or `'/autogestion'`.
-- `[Login.tsx:Login]` — Strips non-digit characters (`/\D/g`) from the DNI input on change and trims `dni` on submit.
-- `[Login.tsx:handleSubmit]` — After login, redirects with `{ replace: true }` to `'/cambiar-clave'` if `res.data.requiereCambioClave` is truthy; otherwise redirects to `'/rama'` if any entry in `res.data.asignaciones` has `alcance === 'GLOBAL'` or `'UNIDAD'`, else `'/autogestion'`.
-- `[CambiarClave.tsx:handleSubmit]` — Trims `claveActual`, `claveNueva`, and `claveRepetir`; requires `claveNueva.length >= 8`, `claveNueva === claveRepetir`, and `claveNueva !== claveActual` before submitting.
-- `[CambiarClave.tsx:rutaDestino]` — Computes destination route as `'/rama'` if `puedeVerPadron()`, else `'/global'` if `puedeAccederPanelGestion()`, else `'/autogestion'`.
-- `[CambiarClave.tsx:CambiarClave]` — Hides `<Navbar />` and the back button when `requiereCambioClave` is `true`, rendering `<ThemeToggle variant="segmented" />` instead.
-
-## Side Effects
-- `[Login.tsx:handleSubmit]` — Sends `POST '/auth/login'` with `{ dni, password }`, calls `useAuthStore.setSesion(res.data)`, and navigates with `{ replace: true }` via `react-router-dom` `useNavigate`.
-- `[CambiarClave.tsx:handleSubmit]` — Sends `POST '/auth/cambiar-clave'` with `{ claveActual, claveNueva }`, calls `useAuthStore.setSesion(res.data)` and `setRequiereCambioClave(false)`, and navigates to `rutaDestino()` after a 1000ms `setTimeout`.
+- `[Login.tsx:Login]` / `[CambiarClave.tsx:CambiarClave]` — Authenticated users without pending password change resolve to `/inicio` via `obtenerRutaInicialUsuario`.
+- `[Login.tsx:Login]` — Strips non-digits (`/\D/g`) from DNI input and trims credentials on submit.
+- `[CambiarClave.tsx:handleSubmit]` — Requires `claveNueva.length >= 8`, `claveNueva === claveRepetir`, and `claveNueva !== claveActual`.
 
 ## Verification
 - Run: `npm run build && npm run lint`

@@ -379,6 +379,12 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
   ) {
     return 'No tienes permisos para realizar esta acción.';
   }
+  if (lower.includes('alcance')) {
+    if (status === 404 || lower.includes('no encontrado')) {
+      return 'No encontramos la información solicitada o no tienes acceso a ella.';
+    }
+    return 'No tienes permisos para realizar esta acción.';
+  }
   if (
     lower.includes('not found') ||
     (status === 404 && (!serverRaw || lower.startsWith('cannot '))) ||

@@ -14,13 +14,13 @@ describe('TesoreriaService - Flujo Completo Reversible y Modificable', () => {
   const alcanceGlobal: AlcanceAcceso = {
     tipo: 'GLOBAL',
     usuarioId: 1,
-    permisos: new Set(['tesoreria.gestionar', 'cuotas.cobrar', 'cuotas.ver']),
+    permisos: new Set(['caja.editar', 'cobranzas.editar', 'cobranzas.ver']),
   };
 
   const alcancePropio: AlcanceAcceso = {
     tipo: 'PROPIO',
     usuarioId: 2,
-    permisos: new Set(['cuotas.ver']),
+    permisos: new Set(['cobranzas.ver']),
   };
 
   it('eliminarConcepto: rechaza acceso si alcance es PROPIO', async () => {
@@ -473,13 +473,13 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
   const alcanceGlobal: AlcanceAcceso = {
     tipo: 'GLOBAL',
     usuarioId: 10,
-    permisos: new Set(['tesoreria.gestionar', 'cuotas.cobrar', 'cuotas.ver']),
+    permisos: new Set(['caja.editar', 'cobranzas.editar', 'cobranzas.ver']),
   };
 
   const alcancePropio: AlcanceAcceso = {
     tipo: 'PROPIO',
     usuarioId: 2,
-    permisos: new Set(['cuotas.ver']),
+    permisos: new Set(['cobranzas.ver']),
   };
 
   describe('Cuentas Financieras', () => {

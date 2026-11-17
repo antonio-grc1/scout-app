@@ -155,10 +155,10 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
                 <ArrowLeftRight className="w-5 h-5" />
               </div>
               <div>
-                <h3 id="modal-traspaso-title" className="text-base sm:text-lg font-bold text-ink leading-snug">
+                <h3 id="modal-traspaso-title" className="text-lg font-bold text-ink leading-snug">
                   Traspaso entre Cuentas
                 </h3>
-                <p className="text-xs text-ink-muted">
+                <p className="text-[13px] text-ink-muted">
                   Extracción, depósito o movimiento interno entre fondos del grupo.
                 </p>
               </div>
@@ -268,7 +268,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
             {saldoInsuficiente && (
               <div
                 role="alert"
-                className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 font-medium"
+                className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2 font-medium"
               >
                 <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span>
@@ -293,7 +293,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
             {error && (
               <div
                 role="alert"
-                className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 font-medium"
+                className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-sm text-rose-700 dark:text-rose-300 font-medium"
               >
                 {error}
               </div>

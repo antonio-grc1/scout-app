@@ -28,7 +28,7 @@ describe('Integración Real PostgreSQL - Concurrencia, Constraints, SQL y Búsqu
   const alcanceGlobal: AlcanceAcceso = {
     tipo: 'GLOBAL',
     usuarioId: 0,
-    permisos: new Set(['tesoreria.gestionar', 'cuotas.cobrar', 'cuotas.ver', 'eventos.gestionar']),
+    permisos: new Set(['caja.editar', 'cobranzas.editar', 'cobranzas.ver', 'eventos.editar']),
   };
 
   // IDs creados para limpieza ordenada al finalizar

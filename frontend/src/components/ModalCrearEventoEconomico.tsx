@@ -359,45 +359,45 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
         {...contentProps}
       >
         {/* Header */}
-        <div className="p-4 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="p-5 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
             {esModoEdicion ? (
               <Edit2 className="w-5 h-5 text-brand" />
             ) : (
               <Sparkles className="w-5 h-5 text-brand" />
             )}
             <div>
-              <h3 className="text-sm font-black text-ink">
+              <h3 className="text-lg font-black text-ink">
                 {esModoEdicion ? `Editar Evento: ${eventoAEditar?.titulo}` : 'Crear Evento Económico / Entradas QR'}
               </h3>
-              <span className="text-[11px] text-ink-muted">Gestión de recaudación y vales digitales</span>
+              <span className="text-[13px] text-ink-muted">Gestión de recaudación y vales digitales</span>
             </div>
           </div>
           <button
             type="button"
             onClick={onCerrar}
-            className="p-1 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+            className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
               {error}
             </div>
           )}
 
           {/* Tipo y Estado de Evento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">Tipo de Evento:</label>
+              <label className="block text-[13px] font-bold text-ink mb-1.5">Tipo de Evento:</label>
               <select
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value as any)}
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
               >
                 <option value="RECAUDACION_PEDIDOS">Venta / Pedidos (Pizzas, Empanadas, Rosas, etc.)</option>
                 <option value="FESTIVAL_ENTRADAS">Festival / Cumpleaños / Entradas para evento</option>
@@ -405,11 +405,11 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">Estado de Publicación:</label>
+              <label className="block text-[13px] font-bold text-ink mb-1.5">Estado de Publicación:</label>
               <select
                 value={estado}
                 onChange={(e) => setEstado(e.target.value as any)}
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
               >
                 <option value="PUBLICADO">Publicado (Habilitado para vender)</option>
                 <option value="BORRADOR">Borrador (Oculto para familias)</option>
@@ -421,47 +421,47 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
 
           {/* Título y Descripción */}
           <div>
-            <label className="block text-xs font-bold text-ink mb-1">Título del Evento *</label>
+            <label className="block text-[13px] font-bold text-ink mb-1.5">Título del Evento *</label>
             <input
               type="text"
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Ej: Venta de pizzas"
-              className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+              className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-ink mb-1">Descripción / Instrucciones</label>
+            <label className="block text-[13px] font-bold text-ink mb-1.5">Descripción / Instrucciones</label>
             <textarea
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
               placeholder="Detalles o instrucciones de retiro"
               rows={2}
-              className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand resize-none"
+              className="w-full py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand resize-none"
             />
           </div>
 
           {/* Fecha y Lugar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-brand" />
+              <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-brand" />
                 Fecha del Evento o Retiro *
               </label>
               <input
                 type="date"
                 value={fechaEvento}
                 onChange={(e) => setFechaEvento(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-brand" />
+              <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-brand" />
                 Lugar de Entrega / Retiro
               </label>
               <input
@@ -469,22 +469,22 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                 value={lugarEntrega}
                 onChange={(e) => setLugarEntrega(e.target.value)}
                 placeholder="Ej: Sede del grupo"
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
               />
             </div>
           </div>
 
           {/* Imputación Contable */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-rule">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2.5 border-t border-rule">
             <div>
-              <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-brand" />
+              <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                <Tag className="w-4 h-4 text-brand" />
                 Rubro Contable Asociado
               </label>
               <select
                 value={rubroId}
                 onChange={(e) => setRubroId(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
               >
                 <option value="">(Sin rubro asignado)</option>
                 {rubros.map((r) => (
@@ -496,14 +496,14 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                <Landmark className="w-3.5 h-3.5 text-brand" />
+              <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                <Landmark className="w-4 h-4 text-brand" />
                 Cuenta de Cobro por Defecto
               </label>
               <select
                 value={cuentaId}
                 onChange={(e) => setCuentaId(e.target.value)}
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
               >
                 <option value="">(Sin cuenta asignada)</option>
                 {cuentas.map((c) => (
@@ -516,16 +516,16 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
           </div>
 
           {/* LISTA DE PRODUCTOS O TIPOS DE ENTRADAS */}
-          <div className="pt-2 border-t border-rule space-y-3">
-            <div className="flex items-center justify-between">
+          <div className="pt-2.5 border-t border-rule space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h4 className="text-xs font-black text-ink">Productos o Entradas a la Venta</h4>
-                <span className="text-[11px] text-ink-muted">
+                <h4 className="text-sm font-black text-ink">Productos o Entradas a la Venta</h4>
+                <span className="text-xs text-ink-muted">
                   Por cada unidad vendida se calcula la ganancia automática para el scout
                 </span>
               </div>
-              <Button type="button" variant="secondary" size="sm" onClick={agregarItem} className="gap-1 text-xs">
-                <PlusCircle className="w-3.5 h-3.5" />
+              <Button type="button" variant="secondary" size="sm" onClick={agregarItem} className="gap-1.5">
+                <PlusCircle className="w-4 h-4" />
                 <span>Agregar Producto</span>
               </Button>
             </div>
@@ -545,7 +545,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                 return (
                   <div
                     key={idx}
-                    className="p-3.5 rounded-2xl bg-paper-2 border border-rule space-y-2 relative"
+                    className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2.5 relative"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <input
@@ -553,7 +553,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                         value={it.nombre}
                         onChange={(e) => actualizarItem(idx, 'nombre', e.target.value)}
                         placeholder="Ej: Pizza especial"
-                        className="flex-1 py-1 px-2.5 rounded-xl bg-surface border border-rule text-xs font-bold text-ink focus:outline-brand"
+                        className="flex-1 min-h-[42px] py-1.5 px-3 rounded-xl bg-surface border border-rule text-base sm:text-[15px] font-bold text-ink focus:outline-brand"
                         required
                       />
 
@@ -561,7 +561,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                         <button
                           type="button"
                           onClick={() => eliminarItem(idx)}
-                          className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                          className="p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
                           title="Eliminar este producto"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -569,9 +569,9 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-2.5">
                       <div>
-                        <label className="block text-[10px] font-bold text-ink-muted mb-0.5">
+                        <label className="block text-xs font-bold text-ink-muted mb-1">
                           Precio Venta ($) *
                         </label>
                         <input
@@ -581,13 +581,13 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                           value={it.precioVenta}
                           onChange={(e) => actualizarItem(idx, 'precioVenta', e.target.value)}
                           placeholder="0"
-                          className="w-full py-1 px-2 rounded-xl bg-surface border border-rule text-xs font-black text-ink"
+                          className="w-full min-h-[40px] py-1.5 px-2.5 rounded-xl bg-surface border border-rule text-sm font-black text-ink"
                           required
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-ink-muted mb-0.5">
+                        <label className="block text-xs font-bold text-ink-muted mb-1">
                           Costo Unitario ($)
                         </label>
                         <input
@@ -597,12 +597,12 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                           value={it.costoUnitario}
                           onChange={(e) => actualizarItem(idx, 'costoUnitario', e.target.value)}
                           placeholder="0"
-                          className="w-full py-1 px-2 rounded-xl bg-surface border border-rule text-xs text-ink"
+                          className="w-full min-h-[40px] py-1.5 px-2.5 rounded-xl bg-surface border border-rule text-sm text-ink"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold text-ink-muted mb-0.5">
+                        <label className="block text-xs font-bold text-ink-muted mb-1">
                           Ganancia Scout ($)
                         </label>
                         <input
@@ -612,7 +612,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                           value={gananciaVal}
                           onChange={(e) => actualizarItem(idx, 'gananciaUnitaria', e.target.value)}
                           placeholder="0"
-                          className="w-full py-1 px-2 rounded-xl bg-surface border border-rule text-xs font-black text-emerald-600 dark:text-emerald-400"
+                          className="w-full min-h-[40px] py-1.5 px-2.5 rounded-xl bg-surface border border-rule text-sm font-black text-emerald-600 dark:text-emerald-400"
                         />
                       </div>
                     </div>
@@ -622,7 +622,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             </div>
           </div>
 
-          <div className="pt-3 flex items-center justify-between gap-2 border-t border-rule shrink-0">
+          <div className="pt-3.5 flex items-center justify-between gap-2 border-t border-rule shrink-0">
             {esModoEdicion ? (
               <Button
                 type="button"
@@ -630,9 +630,9 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                 size="sm"
                 onClick={() => setModalConfirmarEliminar(true)}
                 disabled={guardando || eliminando}
-                className="gap-1.5 text-xs"
+                className="gap-1.5"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
                 <span>Eliminar Evento</span>
               </Button>
             ) : <div />}

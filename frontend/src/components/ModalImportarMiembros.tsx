@@ -71,6 +71,7 @@ export function construirPayloadActualizacionMiembro(
 
 export interface ModalImportarMiembrosProps {
   abierto: boolean;
+  embedded?: boolean;
   onCerrar: () => void;
   onImportado: () => void;
   unidadesDisponibles: any[];
@@ -145,6 +146,7 @@ function encontrarValorPorColumna(fila: Record<string, any>, clavesPosibles: str
 
 export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   abierto,
+  embedded = false,
   onCerrar,
   onImportado,
   unidadesDisponibles,
@@ -179,7 +181,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   } | null>(null);
 
   const { backdropProps, contentProps } = useModalOverlay({
-    abierto,
+    abierto: !embedded && abierto,
     onCerrar: () => {
       if (!ejecutando) {
         limpiarEstado();
@@ -602,46 +604,59 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
 
   if (!abierto) return null;
 
-  return (
-    <div
-      {...backdropProps}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none overflow-y-auto"
-    >
-      <div
-        {...contentProps}
-        className="relative w-full max-w-3xl bg-surface border border-rule rounded-2xl shadow-xl flex flex-col max-h-[92vh] overflow-hidden my-auto"
-      >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-rule flex items-center justify-between gap-3 bg-paper-2 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
-              <Upload className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-extrabold text-ink leading-tight">
-                Importar Miembros desde Hoja de Cálculo
-              </h2>
-              <p className="text-xs text-ink-muted">
-                Carga un archivo Excel (.xlsx) o CSV con el listado de personas
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            disabled={ejecutando}
-            onClick={() => {
-              limpiarEstado();
-              onCerrar();
-            }}
-            aria-label="Cerrar modal"
-            className="p-1.5 text-ink-muted hover:text-ink hover:bg-paper-3 rounded-xl transition cursor-pointer disabled:opacity-50"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+  const renderWrapper = (children: React.ReactNode) => {
+    if (embedded) {
+      return <div className="space-y-4 text-xs">{children}</div>;
+    }
 
-        {/* Cuerpo con scroll */}
-        <div className="p-5 space-y-5 overflow-y-auto flex-1 text-xs">
+    return (
+      <div
+        {...backdropProps}
+        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none overflow-y-auto"
+      >
+        <div
+          {...contentProps}
+          className="relative w-full max-w-3xl bg-surface border border-rule rounded-2xl shadow-xl flex flex-col max-h-[92vh] overflow-hidden my-auto"
+        >
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-rule flex items-center justify-between gap-3 bg-paper-2 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
+                <Upload className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-extrabold text-ink leading-tight">
+                  Importar Miembros desde Hoja de Cálculo
+                </h2>
+                <p className="text-[13px] text-ink-muted">
+                  Carga un archivo Excel (.xlsx) o CSV con el listado de personas
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={ejecutando}
+              onClick={() => {
+                limpiarEstado();
+                onCerrar();
+              }}
+              aria-label="Cerrar modal"
+              className="p-1.5 text-ink-muted hover:text-ink hover:bg-paper-3 rounded-xl transition cursor-pointer disabled:opacity-50"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+  return renderWrapper(
+    <>
+      {/* Cuerpo con scroll */}
+      <div className={embedded ? 'space-y-5 text-[13px]' : 'p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 text-[13px]'}>
           {errorGlobal && (
             <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -655,28 +670,28 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
               <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 rounded-2xl space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  <span className="font-extrabold text-sm">
+                  <span className="font-extrabold text-[15px]">
                     ¡Proceso de importación finalizado!
                   </span>
                 </div>
-                <div className="grid grid-cols-3 gap-2 pt-2 text-center text-xs">
-                  <div className="p-2 bg-surface rounded-xl border border-rule">
-                    <span className="block font-black text-lg text-emerald-600">
+                <div className="grid grid-cols-3 gap-2.5 pt-2 text-center text-xs">
+                  <div className="p-2.5 bg-surface rounded-xl border border-rule">
+                    <span className="block font-black text-xl text-emerald-600">
                       {resumenFin.creados}
                     </span>
-                    <span className="text-[11px] text-ink-muted font-semibold">Nuevos Creados</span>
+                    <span className="text-xs text-ink-muted font-semibold">Nuevos Creados</span>
                   </div>
-                  <div className="p-2 bg-surface rounded-xl border border-rule">
-                    <span className="block font-black text-lg text-blue-600">
+                  <div className="p-2.5 bg-surface rounded-xl border border-rule">
+                    <span className="block font-black text-xl text-blue-600">
                       {resumenFin.actualizados}
                     </span>
-                    <span className="text-[11px] text-ink-muted font-semibold">Actualizados</span>
+                    <span className="text-xs text-ink-muted font-semibold">Actualizados</span>
                   </div>
-                  <div className="p-2 bg-surface rounded-xl border border-rule">
-                    <span className="block font-black text-lg text-ink-muted">
+                  <div className="p-2.5 bg-surface rounded-xl border border-rule">
+                    <span className="block font-black text-xl text-ink-muted">
                       {resumenFin.omitidos}
                     </span>
-                    <span className="text-[11px] text-ink-muted font-semibold">Omitidos</span>
+                    <span className="text-xs text-ink-muted font-semibold">Omitidos</span>
                   </div>
                 </div>
               </div>
@@ -701,28 +716,28 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                           filas: resumenFin.clavesGeneradas,
                         })
                       }
-                      className="min-h-[34px] px-3 rounded-lg border border-rule bg-surface hover:bg-paper-3 text-ink font-bold text-[11px] cursor-pointer"
+                      className="min-h-[38px] px-3.5 py-1.5 rounded-lg border border-rule bg-surface hover:bg-paper-3 text-ink font-bold text-xs cursor-pointer"
                     >
                       Descargar CSV de claves
                     </button>
                   </div>
-                  <div className="max-h-40 overflow-y-auto rounded-xl border border-rule bg-surface">
-                    <table className="w-full text-left text-[11px]">
-                      <thead className="bg-paper-2 text-ink-muted border-b border-rule sticky top-0">
+                  <div className="max-h-44 overflow-y-auto rounded-xl border border-rule bg-surface">
+                    <table className="w-full text-left text-[13px]">
+                      <thead className="bg-paper-2 text-ink-muted border-b border-rule sticky top-0 text-xs">
                         <tr>
-                          <th className="py-1.5 px-2.5">DNI</th>
-                          <th className="py-1.5 px-2.5">Miembro</th>
-                          <th className="py-1.5 px-2.5">Clave Temporal</th>
+                          <th className="py-2 px-3">DNI</th>
+                          <th className="py-2 px-3">Miembro</th>
+                          <th className="py-2 px-3">Clave Temporal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-rule">
                         {resumenFin.clavesGeneradas.map((c) => (
                           <tr key={c.dni}>
-                            <td className="py-1.5 px-2.5 font-semibold text-ink">{c.dni}</td>
-                            <td className="py-1.5 px-2.5 text-ink-2">
+                            <td className="py-2 px-3 font-semibold text-ink">{c.dni}</td>
+                            <td className="py-2 px-3 text-ink-2">
                               {c.apellido}, {c.nombre}
                             </td>
-                            <td className="py-1.5 px-2.5 font-mono font-bold text-ink select-all">
+                            <td className="py-2 px-3 font-mono font-bold text-ink select-all">
                               {c.claveTemporal}
                             </td>
                           </tr>
@@ -757,24 +772,24 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   <label className="font-bold text-ink">
                     1. Selecciona o arrastra el archivo de la planilla:
                   </label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-ink-muted font-medium">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs text-ink-muted font-medium">
                       Descargar modelo:
                     </span>
                     <button
                       type="button"
                       onClick={() => handleDescargarPlantilla('xlsx')}
-                      className="px-2 py-1 rounded-lg border border-rule hover:bg-paper-2 text-ink font-semibold flex items-center gap-1 cursor-pointer transition"
+                      className="min-h-[36px] px-2.5 py-1 rounded-lg border border-rule hover:bg-paper-2 text-ink text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition"
                     >
-                      <FileSpreadsheet className="w-3 h-3 text-emerald-600" />
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Excel (.xlsx)</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDescargarPlantilla('csv')}
-                      className="px-2 py-1 rounded-lg border border-rule hover:bg-paper-2 text-ink font-semibold flex items-center gap-1 cursor-pointer transition"
+                      className="min-h-[36px] px-2.5 py-1 rounded-lg border border-rule hover:bg-paper-2 text-ink text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition"
                     >
-                      <FileText className="w-3 h-3 text-blue-600" />
+                      <FileText className="w-3.5 h-3.5 text-blue-600" />
                       <span>CSV (.csv)</span>
                     </button>
                   </div>
@@ -810,10 +825,10 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                         <Upload className="w-6 h-6" />
                       </div>
                       <div>
-                        <span className="font-bold text-ink block sm:text-sm">
+                        <span className="font-bold text-ink block text-sm sm:text-[15px]">
                           Haz clic aquí para seleccionar tu archivo Excel o CSV
                         </span>
-                        <span className="text-ink-muted text-[11px] block mt-0.5">
+                        <span className="text-ink-muted text-xs block mt-1">
                           Formatos aceptados: .xlsx, .xls, .csv (columnas: DNI, Nombre, Apellido, Fecha de Nacimiento)
                         </span>
                       </div>
@@ -829,13 +844,13 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">
+                    <label className="text-[13px] font-bold text-ink-muted block mb-1.5">
                       Rama / Sección de destino:
                     </label>
                     <select
                       value={unidadId}
                       onChange={(e) => handleCambioUnidad(Number(e.target.value) || '')}
-                      className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-ink text-xs font-semibold focus:border-brand outline-none cursor-pointer"
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-semibold focus:border-brand outline-none cursor-pointer"
                     >
                       {(esGlobal || unidadesPermitidas.length !== 1) && (
                         <option value="">-- Seleccionar Rama / Sección --</option>
@@ -849,13 +864,13 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold text-ink-muted block mb-1">
+                    <label className="text-[13px] font-bold text-ink-muted block mb-1.5">
                       Función / Rol asignado:
                     </label>
                     <select
                       value={rolId}
                       onChange={(e) => setRolId(Number(e.target.value) || '')}
-                      className="w-full min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-ink text-xs font-semibold focus:border-brand outline-none cursor-pointer"
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-semibold focus:border-brand outline-none cursor-pointer"
                     >
                       <option value="">-- Seleccionar Rol / Función --</option>
                       {rolesFiltrados.map((r) => (
@@ -875,17 +890,17 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                     <span className="font-bold text-ink">
                       3. Previsualización de los datos ({filasParseadas.length} filas):
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-md font-bold text-xs bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
                         {totalValidosNuevos} Nuevos
                       </span>
                       {totalExistentes > 0 && (
-                        <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                        <span className="px-2.5 py-0.5 rounded-md font-bold text-xs bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
                           {totalExistentes} Ya Registrados
                         </span>
                       )}
                       {totalErrores > 0 && (
-                        <span className="px-2 py-0.5 rounded-md font-bold text-[11px] bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300">
+                        <span className="px-2.5 py-0.5 rounded-md font-bold text-xs bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300">
                           {totalErrores} Con Errores
                         </span>
                       )}
@@ -898,23 +913,23 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                       <div className="flex items-start gap-2.5">
                         <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                         <div>
-                          <span className="font-bold text-amber-900 dark:text-amber-200 block text-xs">
+                          <span className="font-bold text-amber-900 dark:text-amber-200 block text-[13px]">
                             Se encontraron {totalExistentes} personas cuyo DNI ya existe en el grupo.
                           </span>
-                          <span className="text-[11px] text-amber-800/80 dark:text-amber-300/80 block mt-0.5">
+                          <span className="text-xs text-amber-800/80 dark:text-amber-300/80 block mt-0.5">
                             Puedes actualizar sus datos de contacto (teléfono, email, domicilio) o dejarlos intactos.
                           </span>
                         </div>
                       </div>
 
-                      <label className="flex items-center gap-2 cursor-pointer select-none bg-surface px-3 py-1.5 rounded-xl border border-rule shrink-0">
+                      <label className="flex items-center gap-2 cursor-pointer select-none bg-surface px-3.5 py-2 rounded-xl border border-rule shrink-0">
                         <input
                           type="checkbox"
                           checked={actualizarExistentes}
                           onChange={(e) => setActualizarExistentes(e.target.checked)}
                           className="w-4 h-4 rounded accent-brand cursor-pointer"
                         />
-                        <span className="text-xs font-bold text-ink">
+                        <span className="text-[13px] font-bold text-ink">
                           Actualizar existentes
                         </span>
                       </label>
@@ -922,16 +937,16 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   )}
 
                   {/* Tabla de previsualización */}
-                  <div className="max-h-60 overflow-y-auto rounded-xl border border-rule bg-surface shadow-2xs">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-paper-2 text-ink-muted border-b border-rule sticky top-0 font-bold">
+                  <div className="max-h-60 overflow-y-auto rounded-xl border border-rule bg-surface">
+                    <table className="w-full text-left text-[13px]">
+                      <thead className="bg-paper-2 text-ink-muted border-b border-rule sticky top-0 text-xs font-bold">
                         <tr>
-                          <th className="py-2 px-3">Estado</th>
-                          <th className="py-2 px-3">DNI</th>
-                          <th className="py-2 px-3">Nombre y Apellido</th>
-                          <th className="py-2 px-3">Fecha Nac.</th>
-                          <th className="py-2 px-3">Teléfono</th>
-                          <th className="py-2 px-3">Email</th>
+                          <th className="py-2.5 px-3">Estado</th>
+                          <th className="py-2.5 px-3">DNI</th>
+                          <th className="py-2.5 px-3">Nombre y Apellido</th>
+                          <th className="py-2.5 px-3">Fecha Nac.</th>
+                          <th className="py-2.5 px-3">Teléfono</th>
+                          <th className="py-2.5 px-3">Email</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-rule">
@@ -946,44 +961,44 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                                 : 'hover:bg-paper-2 transition-colors'
                             }
                           >
-                            <td className="py-2 px-3 whitespace-nowrap">
+                            <td className="py-2.5 px-3 whitespace-nowrap">
                               {f.estado === 'VALIDO_NUEVO' && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>Nuevo</span>
                                 </span>
                               )}
                               {f.estado === 'VALIDO_EXISTENTE' && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600" title={`Ya registrado: ${f.nombreExistente}`}>
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600" title={`Ya registrado: ${f.nombreExistente}`}>
                                   <UserCheck className="w-3.5 h-3.5" />
                                   <span>{actualizarExistentes ? 'Se Actualizará' : 'Se Omitirá'}</span>
                                 </span>
                               )}
                               {f.estado === 'ERROR' && (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600" title={f.motivoError}>
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-600" title={f.motivoError}>
                                   <AlertCircle className="w-3.5 h-3.5" />
                                   <span>Error</span>
                                 </span>
                               )}
                             </td>
-                            <td className="py-2 px-3 font-semibold text-ink whitespace-nowrap">
+                            <td className="py-2.5 px-3 font-semibold text-ink whitespace-nowrap">
                               {f.dni}
                             </td>
-                            <td className="py-2 px-3 text-ink">
+                            <td className="py-2.5 px-3 text-ink">
                               {f.apellido ? `${f.apellido}, ${f.nombre}` : '-'}
                               {f.motivoError && (
-                                <span className="block text-[10px] text-rose-600 font-medium mt-0.5">
+                                <span className="block text-xs text-rose-600 font-medium mt-0.5">
                                   {f.motivoError}
                                 </span>
                               )}
                             </td>
-                            <td className="py-2 px-3 text-ink-2 whitespace-nowrap">
+                            <td className="py-2.5 px-3 text-ink-2 whitespace-nowrap">
                               {f.fechaNacimiento ? formatearFecha(f.fechaNacimiento) : '-'}
                             </td>
-                            <td className="py-2 px-3 text-ink-2 whitespace-nowrap">
+                            <td className="py-2.5 px-3 text-ink-2 whitespace-nowrap">
                               {f.telefonoContacto || '-'}
                             </td>
-                            <td className="py-2 px-3 text-ink-2 truncate max-w-[140px]">
+                            <td className="py-2.5 px-3 text-ink-2 truncate max-w-[140px]">
                               {f.emailContacto || '-'}
                             </td>
                           </tr>
@@ -999,7 +1014,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
           {/* Barra de Progreso en ejecución */}
           {ejecutando && (
             <div className="p-4 bg-paper-2 rounded-2xl border border-rule space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-ink">
+              <div className="flex items-center justify-between text-[13px] font-bold text-ink">
                 <span className="flex items-center gap-2">
                   <RefreshCw className="w-4 h-4 animate-spin text-brand" />
                   <span>Importando miembros al padrón...</span>
@@ -1021,7 +1036,13 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-rule flex items-center justify-end gap-2.5 bg-paper-2 shrink-0">
+        <div
+          className={
+            embedded
+              ? 'pt-4 border-t border-rule flex items-center justify-end gap-2.5'
+              : 'p-4 border-t border-rule flex items-center justify-end gap-2.5 bg-paper-2 shrink-0'
+          }
+        >
           {resumenFin ? (
             <button
               type="button"
@@ -1029,7 +1050,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                 limpiarEstado();
                 onCerrar();
               }}
-              className="min-h-[40px] px-5 py-2 rounded-xl bg-brand text-brand-contrast font-bold text-xs hover:opacity-95 transition cursor-pointer"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand text-brand-contrast font-bold text-sm hover:opacity-95 transition cursor-pointer"
             >
               Cerrar y Ver Padrón
             </button>
@@ -1042,7 +1063,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   limpiarEstado();
                   onCerrar();
                 }}
-                className="min-h-[40px] px-4 py-2 rounded-xl border border-rule hover:bg-paper-3 text-ink font-semibold text-xs transition cursor-pointer disabled:opacity-50"
+                className="min-h-[44px] px-4 py-2 rounded-xl border border-rule hover:bg-paper-3 text-ink font-semibold text-sm transition cursor-pointer disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -1055,7 +1076,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   (totalValidosNuevos === 0 && (!actualizarExistentes || totalExistentes === 0))
                 }
                 onClick={handleConfirmarImportacion}
-                className="min-h-[40px] px-5 py-2 rounded-xl bg-brand text-brand-contrast font-bold text-xs hover:opacity-95 transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none shadow-2xs flex items-center gap-2"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand text-brand-contrast font-bold text-sm hover:opacity-95 transition cursor-pointer disabled:opacity-50 disabled:pointer-events-none flex items-center gap-2"
               >
                 {ejecutando ? (
                   <>
@@ -1076,7 +1097,6 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
             </>
           )}
         </div>
-      </div>
-    </div>
+    </>,
   );
 };

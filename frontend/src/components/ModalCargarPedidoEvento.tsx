@@ -19,7 +19,6 @@ import { useAuthStore } from '../store/authStore';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
-import { ModalConfirmacion } from './ModalConfirmacion';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface PedidoAEditar {
@@ -56,7 +55,7 @@ export interface ModalCargarPedidoEventoProps {
     gananciaUnitaria: string | number;
     stockDisponible: number | null;
   }>;
-  pedidoAEditar?: PedidoAEditar | null;
+  pedidoAEditar?: (PedidoAEditar & { estado?: string; preferirCobro?: boolean }) | null;
   bloquearVendedor?: boolean;
   vendedorFijoNombre?: string;
   vendedorFijoId?: number;
@@ -124,9 +123,10 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         setObservaciones(pedidoAEditar.observaciones || '');
         if (pedidoAEditar.metodoPago === 'EFECTIVO' || pedidoAEditar.metodoPago === 'TRANSFERENCIA') {
           setMetodoPago(pedidoAEditar.metodoPago);
-        } else {
-          // Pre-seleccionar EFECTIVO para agilizar el cobro directo de pedidos pendientes
+        } else if (pedidoAEditar.preferirCobro) {
           setMetodoPago('EFECTIVO');
+        } else {
+          setMetodoPago('PENDIENTE');
         }
         if (pedidoAEditar.cuentaId) {
           setCuentaId(String(pedidoAEditar.cuentaId));
@@ -159,6 +159,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
       }
       setBusquedaMiembro('');
       setMostrarDropdownMiembros(false);
+      setModalConfirmarEliminar(false);
       setError(null);
     }
   }, [abierto, pedidoAEditar, itemsEvento, bloquearVendedor, vendedorFijoId]);
@@ -421,42 +422,42 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         {...contentProps}
       >
         {/* Header */}
-        <div className="p-4 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="p-5 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
             {esModoEdicion ? (
               <Edit2 className="w-5 h-5 text-brand" />
             ) : (
               <ShoppingBag className="w-5 h-5 text-brand" />
             )}
             <div>
-              <h3 className="text-sm font-black text-ink">
+              <h3 className="text-lg font-black text-ink">
                 {esModoEdicion ? `Editar Pedido #${pedidoAEditar?.id}` : 'Cargar Pedido / Venta'}
               </h3>
-              <span className="text-[11px] text-ink-muted">{eventoTitulo}</span>
+              <span className="text-[13px] text-ink-muted">{eventoTitulo}</span>
             </div>
           </div>
           <button
             type="button"
             onClick={onCerrar}
-            className="p-1 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+            className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-4 flex-1">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
               {error}
             </div>
           )}
 
           {/* Datos del Comprador */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-brand" />
+              <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                <User className="w-4 h-4 text-brand" />
                 Nombre del Comprador *
               </label>
               <input
@@ -464,14 +465,14 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 value={compradorNombre}
                 onChange={(e) => setCompradorNombre(e.target.value)}
                 placeholder="Ej: Juan Pérez"
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5 text-brand" />
+              <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                <Phone className="w-4 h-4 text-brand" />
                 Teléfono de quien retira
               </label>
               <input
@@ -479,44 +480,44 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 value={compradorContacto}
                 onChange={(e) => setCompradorContacto(e.target.value)}
                 placeholder="Ej: 11 2345-6789"
-                className="w-full py-2 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
               />
             </div>
           </div>
 
           {/* Buscador de Scout / Familia Vendedora */}
           <div>
-            <label className="block text-xs font-bold text-ink mb-1 flex items-center justify-between">
+            <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <Sparkles className="w-4 h-4 text-emerald-600" />
                 Scout / Familia Vendedora (Acredita Ganancia)
               </span>
-              <span className="text-[10px] text-ink-muted">
+              <span className="text-xs text-ink-muted">
                 {bloquearVendedor ? 'Asignado a tu cuenta' : 'Opcional'}
               </span>
             </label>
 
             {bloquearVendedor ? (
-              <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                  <Lock className="w-4 h-4 text-emerald-600" />
+                  <span className="text-sm font-bold text-emerald-800 dark:text-emerald-200">
                     {vendedorFijoNombre || 'Tu cuenta de beneficiario'}
                   </span>
                 </div>
-                <span className="text-[10px] text-emerald-600 font-semibold">Ganancia para tu saldo</span>
+                <span className="text-xs text-emerald-600 font-semibold">Ganancia para tu saldo</span>
               </div>
             ) : (
               <div className="relative">
                 {miembroSeleccionado ? (
-                  <div className="p-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Sparkles className="w-4 h-4 text-emerald-600" />
-                      <span className="text-xs font-bold text-ink">
+                      <span className="text-sm font-bold text-ink">
                         {miembroSeleccionado.nombre} {miembroSeleccionado.apellido}
                       </span>
                       {miembroSeleccionado.dni && (
-                        <span className="text-[10px] text-ink-muted">(DNI: {miembroSeleccionado.dni})</span>
+                        <span className="text-xs text-ink-muted">(DNI: {miembroSeleccionado.dni})</span>
                       )}
                     </div>
                     <button
@@ -525,7 +526,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                         setVendedorUsuarioId('');
                         setBusquedaMiembro('');
                       }}
-                      className="p-1 rounded-lg hover:bg-paper-3 text-ink-muted hover:text-ink cursor-pointer"
+                      className="p-1.5 rounded-lg hover:bg-paper-3 text-ink-muted hover:text-ink cursor-pointer"
                       title="Quitar asignación (Venta general)"
                     >
                       <X className="w-4 h-4" />
@@ -534,7 +535,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 ) : (
                   <div>
                     <div className="relative">
-                      <Search className="w-3.5 h-3.5 text-ink-muted absolute left-3 top-3 pointer-events-none" />
+                      <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
                         value={busquedaMiembro}
@@ -544,12 +545,12 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                         }}
                         onFocus={() => setMostrarDropdownMiembros(true)}
                         placeholder="Buscar scout por nombre, apellido o DNI..."
-                        className="w-full py-2 pl-9 pr-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                        className="w-full min-h-[44px] py-2 pl-10 pr-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
                       />
                     </div>
 
                     {mostrarDropdownMiembros && (
-                      <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-xl bg-surface border border-rule shadow-xl z-20 py-1 divide-y divide-rule/40">
+                      <div className="absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl bg-surface border border-rule shadow-xl z-20 py-1 divide-y divide-rule/40">
                         <button
                           type="button"
                           onClick={() => {
@@ -557,10 +558,10 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                             setMostrarDropdownMiembros(false);
                             setBusquedaMiembro('');
                           }}
-                          className="w-full px-3 py-2 text-left text-xs text-ink-muted hover:bg-paper-2 flex items-center justify-between cursor-pointer"
+                          className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink-muted hover:bg-paper-2 flex items-center justify-between cursor-pointer"
                         >
                           <span>(Venta general del Grupo Scout - sin vendedor)</span>
-                          <span className="text-[10px] text-ink-muted">Sin ganancia individual</span>
+                          <span className="text-xs text-ink-muted">Sin ganancia individual</span>
                         </button>
 
                         {miembrosFiltrados.map((m) => (
@@ -572,17 +573,17 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                               setMostrarDropdownMiembros(false);
                               setBusquedaMiembro('');
                             }}
-                            className="w-full px-3 py-2 text-left text-xs text-ink hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center justify-between cursor-pointer"
+                            className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-emerald-50 dark:hover:bg-emerald-950/30 flex items-center justify-between cursor-pointer"
                           >
                             <span className="font-bold">
                               {m.nombre} {m.apellido}
                             </span>
-                            {m.dni && <span className="text-[10px] text-ink-muted">DNI {m.dni}</span>}
+                            {m.dni && <span className="text-xs text-ink-muted">DNI {m.dni}</span>}
                           </button>
                         ))}
 
                         {miembrosFiltrados.length === 0 && (
-                          <div className="px-3 py-2 text-xs text-ink-muted text-center">
+                          <div className="px-3.5 py-2.5 text-[13px] text-ink-muted text-center">
                             No se encontraron scouts con ese nombre o DNI.
                           </div>
                         )}
@@ -590,7 +591,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                     )}
                   </div>
                 )}
-                <p className="text-[11px] text-ink-muted mt-1">
+                <p className="text-xs text-ink-muted mt-1.5">
                   Al retirar el pedido, la ganancia se acreditará automáticamente en el <strong>saldo a favor</strong> de este miembro.
                 </p>
               </div>
@@ -598,19 +599,19 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           </div>
 
           {/* Selección de Productos y Cantidades */}
-          <div className="space-y-2 pt-2 border-t border-rule">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-ink block">Productos solicitados:</span>
+          <div className="space-y-2.5 pt-2.5 border-t border-rule">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[13px] font-bold text-ink block">Productos solicitados:</span>
               {valesRetirados && (
-                <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                  <Lock className="w-3 h-3" />
+                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5" />
                   Vales retirados (solo lectura)
                 </span>
               )}
             </div>
 
             {valesRetirados && (
-              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-[13px] text-amber-900 dark:text-amber-200 flex items-center gap-2">
                 <Lock className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 <span>
                   <strong>Vales ya retirados:</strong> Los productos y cantidades quedan fijos para preservar la entrega. Podés registrar el cobro, cambiar la cuenta o actualizar observaciones.
@@ -619,44 +620,44 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             )}
 
             {safeItems.length === 0 ? (
-              <div className="p-3 text-center text-xs text-ink-muted bg-paper-2 rounded-xl">
+              <div className="p-4 text-center text-[13px] text-ink-muted bg-paper-2 rounded-xl">
                 No hay productos configurados para este evento.
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {safeItems.map((it) => {
                   const cant = cantidades[it.id] || 0;
                   return (
                     <div
                       key={it.id}
-                      className="p-3 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3"
+                      className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3"
                     >
                       <div>
-                        <h4 className="text-xs font-black text-ink">{it.nombre}</h4>
-                        <span className="text-[11px] text-emerald-600 font-bold block">
+                        <h4 className="text-sm font-black text-ink">{it.nombre}</h4>
+                        <span className="text-[13px] text-emerald-600 font-bold block">
                           {formatearMoneda(Number(it.precioVenta))}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5">
                         <button
                           type="button"
                           onClick={() => handleCambiarCantidad(it.id, -1)}
                           disabled={valesRetirados || cant <= 0}
-                          className="w-7 h-7 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 disabled:opacity-30 cursor-pointer"
+                          className="w-9 h-9 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 disabled:opacity-30 cursor-pointer"
                           title={valesRetirados ? 'No se puede modificar: vales ya retirados' : undefined}
                         >
-                          <Minus className="w-3.5 h-3.5" />
+                          <Minus className="w-4 h-4" />
                         </button>
-                        <span className="w-6 text-center text-xs font-black text-ink">{cant}</span>
+                        <span className="w-7 text-center text-sm font-black text-ink">{cant}</span>
                         <button
                           type="button"
                           onClick={() => handleCambiarCantidad(it.id, 1)}
                           disabled={valesRetirados}
-                          className="w-7 h-7 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 disabled:opacity-30 cursor-pointer"
+                          className="w-9 h-9 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 disabled:opacity-30 cursor-pointer"
                           title={valesRetirados ? 'No se puede modificar: vales ya retirados' : undefined}
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Plus className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -667,17 +668,17 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           </div>
 
           {/* Resumen de Importes */}
-          <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+          <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
             <div>
-              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-200 block">Total a Cobrar:</span>
-              <span className="text-lg font-black text-emerald-700 dark:text-emerald-300">
+              <span className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200 block">Total a Cobrar:</span>
+              <span className="text-xl font-black text-emerald-700 dark:text-emerald-300">
                 {formatearMoneda(totalCobrar)}
               </span>
             </div>
 
             <div className="text-right">
-              <span className="text-xs font-bold text-emerald-800 dark:text-emerald-200 block">Ganancia Familiar:</span>
-              <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+              <span className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200 block">Ganancia Familiar:</span>
+              <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
                 +{formatearMoneda(totalGanancia)}
               </span>
             </div>
@@ -685,25 +686,25 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
           {/* Observaciones */}
           <div>
-            <label className="block text-xs font-bold text-ink mb-1">Observaciones / Aclaraciones</label>
+            <label className="block text-[13px] font-bold text-ink mb-1.5">Observaciones / Aclaraciones</label>
             <input
               type="text"
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
               placeholder="Aclaraciones u observaciones"
-              className="w-full py-1.5 px-3 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+              className="w-full min-h-[44px] py-2 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
             />
           </div>
 
           {/* Cobro en el momento (solo con alcance global y fuera de autogestión) */}
           {puedeImputarCuenta && (
-            <div className="space-y-2 pt-2 border-t border-rule">
-              <label className="block text-xs font-bold text-ink">Estado del Cobro:</label>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-2.5 pt-2.5 border-t border-rule">
+              <label className="block text-[13px] font-bold text-ink">Estado del Cobro:</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setMetodoPago('PENDIENTE')}
-                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition cursor-pointer text-center ${
+                  className={`min-h-[42px] py-2 px-3 rounded-xl border text-[13px] font-bold transition cursor-pointer text-center ${
                     metodoPago === 'PENDIENTE'
                       ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 text-amber-900 dark:text-amber-100'
                       : 'bg-surface border-rule text-ink-muted'
@@ -715,7 +716,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 <button
                   type="button"
                   onClick={() => setMetodoPago('EFECTIVO')}
-                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition cursor-pointer text-center ${
+                  className={`min-h-[42px] py-2 px-3 rounded-xl border text-[13px] font-bold transition cursor-pointer text-center ${
                     metodoPago === 'EFECTIVO'
                       ? 'bg-emerald-100 dark:bg-emerald-950 border-emerald-400 text-emerald-900 dark:text-emerald-100'
                       : 'bg-surface border-rule text-ink-muted'
@@ -727,7 +728,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 <button
                   type="button"
                   onClick={() => setMetodoPago('TRANSFERENCIA')}
-                  className={`py-2 px-2.5 rounded-xl border text-xs font-bold transition cursor-pointer text-center ${
+                  className={`min-h-[42px] py-2 px-3 rounded-xl border text-[13px] font-bold transition cursor-pointer text-center ${
                     metodoPago === 'TRANSFERENCIA'
                       ? 'bg-blue-100 dark:bg-blue-950 border-blue-400 text-blue-900 dark:text-blue-100'
                       : 'bg-surface border-rule text-ink-muted'
@@ -738,15 +739,15 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
               </div>
 
               {metodoPago !== 'PENDIENTE' && (
-                <div className="mt-2">
-                  <label className="block text-xs font-bold text-ink mb-1 flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-brand" />
+                <div className="mt-2.5">
+                  <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                    <Landmark className="w-4 h-4 text-brand" />
                     Ingresa en la cuenta:
                   </label>
                   <select
                     value={cuentaId}
                     onChange={(e) => setCuentaId(e.target.value)}
-                    className="w-full py-1.5 px-2.5 rounded-xl bg-surface border border-rule text-xs text-ink focus:outline-brand"
+                    className="w-full min-h-[44px] py-2 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
                     required
                   >
                     {Array.isArray(cuentas) &&
@@ -761,73 +762,79 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             </div>
           )}
 
-          <div className="pt-3 flex items-center justify-between gap-2 border-t border-rule shrink-0">
+          <div className="pt-3.5 flex flex-wrap items-center justify-between gap-2.5 border-t border-rule shrink-0">
             {esModoEdicion ? (
-              <Button
-                type="button"
-                variant="danger"
-                size="sm"
-                onClick={() => setModalConfirmarEliminar(true)}
-                disabled={guardando || eliminando || valesRetirados}
-                className="gap-1.5 text-xs"
-                title={valesRetirados ? 'No se puede eliminar un pedido con vales ya retirados' : undefined}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Eliminar Pedido</span>
-              </Button>
+              modalConfirmarEliminar ? (
+                <div className="w-full p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex flex-wrap items-center justify-between gap-2.5">
+                  <span className="text-[13px] font-bold text-rose-800 dark:text-rose-200">
+                    ¿Eliminar el pedido #{pedidoAEditar?.id}? Se anularán los vales QR y se restituirá el stock.
+                  </span>
+                  <div className="flex items-center gap-2 ml-auto">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setModalConfirmarEliminar(false)}
+                      disabled={eliminando}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      onClick={handleEliminarPedido}
+                      disabled={eliminando}
+                    >
+                      {eliminando ? 'Eliminando...' : 'Sí, Eliminar Pedido'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setModalConfirmarEliminar(true)}
+                  disabled={guardando || eliminando || valesRetirados}
+                  className="gap-1.5"
+                  title={valesRetirados ? 'No se puede eliminar un pedido con vales ya retirados' : undefined}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Eliminar Pedido</span>
+                </Button>
+              )
             ) : (
               <div />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando || eliminando}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={guardando || eliminando || totalUnidades <= 0}
-                className="gap-1.5"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>
-                  {guardando
-                    ? 'Guardando...'
-                    : esModoEdicion
-                    ? metodoPago !== 'PENDIENTE' && (!pedidoAEditar?.metodoPago || pedidoAEditar.metodoPago === 'PENDIENTE')
-                      ? 'Confirmar Cobro'
-                      : 'Guardar Modificaciones'
-                    : 'Confirmar Pedido y Generar Vales QR'}
-                </span>
-              </Button>
-            </div>
+            {!modalConfirmarEliminar && (
+              <div className="flex items-center gap-2 ml-auto">
+                <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando || eliminando}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={guardando || eliminando || totalUnidades <= 0}
+                  className="gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>
+                    {guardando
+                      ? 'Guardando...'
+                      : esModoEdicion
+                      ? metodoPago !== 'PENDIENTE' && (!pedidoAEditar?.metodoPago || pedidoAEditar.metodoPago === 'PENDIENTE')
+                        ? 'Confirmar Cobro'
+                        : 'Guardar Modificaciones'
+                      : 'Confirmar Pedido y Generar Vales QR'}
+                  </span>
+                </Button>
+              </div>
+            )}
           </div>
         </form>
       </div>
-
-      {modalConfirmarEliminar && pedidoAEditar && (
-        <ModalConfirmacion
-          abierto={modalConfirmarEliminar}
-          onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
-          onConfirmar={handleEliminarPedido}
-          titulo="Eliminar Pedido de Evento"
-          tipo="peligro"
-          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Pedido'}
-          textoCancelar="Cancelar"
-          cargando={eliminando}
-          mensaje={
-            <div className="space-y-3">
-              <p className="text-sm text-ink leading-relaxed">
-                ¿Estás seguro de que deseas eliminar el pedido #{pedidoAEditar.id} de{' '}
-                <strong className="text-ink font-bold">{pedidoAEditar.compradorNombre}</strong>?
-              </p>
-              <p className="text-xs text-ink-muted leading-relaxed">
-                Se anularán los vales QR emitidos y se restituirá el stock disponible. Podrás deshacer esta acción durante unos segundos.
-              </p>
-            </div>
-          }
-        />
-      )}
     </div>
   );
 };

@@ -102,7 +102,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
           type="button"
           onClick={handleClickInstalar}
           title="Descargar e instalar la App en tu celular"
-          className="min-h-[40px] px-3 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer shrink-0"
+          className="min-h-[42px] px-3.5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm flex items-center gap-2 shadow-2xs transition-colors cursor-pointer shrink-0"
         >
           <Download className="w-4 h-4 shrink-0" />
           <span className="hidden md:inline">Instalar App</span>
@@ -114,10 +114,10 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
               <Smartphone className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-sm font-extrabold text-ink font-display">
+              <h3 className="text-base font-extrabold text-ink font-display">
                 Instalá Juan XXIII en tu Celular
               </h3>
-              <p className="text-xs text-ink-muted mt-0.5">
+              <p className="text-sm text-ink-muted mt-0.5">
                 Accedé directo desde tu pantalla de inicio y consultá fichas médicas en campamento sin conexión.
               </p>
             </div>
@@ -125,7 +125,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
           <button
             type="button"
             onClick={handleClickInstalar}
-            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
+            className="min-h-[46px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
           >
             <Download className="w-4 h-4" />
             <span>Descargar en Celular</span>
@@ -151,10 +151,10 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                     className="w-8 h-8 object-contain shrink-0 m-1"
                   />
                   <div>
-                    <h4 className="text-sm font-extrabold text-ink font-display">
+                    <h4 className="text-base font-extrabold text-ink font-display">
                       Instalar App en tu Celular
                     </h4>
-                    <p className="text-[11px] text-ink-muted">
+                    <p className="text-xs text-ink-muted">
                       Grupo Scout Juan XXIII
                     </p>
                   </div>
@@ -162,16 +162,16 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                 <button
                   type="button"
                   onClick={() => setModalGuiaAbierto(false)}
-                  className="min-w-[36px] min-h-[36px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition-colors cursor-pointer"
+                  className="min-w-[38px] min-h-[38px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="p-5 space-y-4 text-xs text-neutral-700 dark:text-neutral-200">
+              <div className="p-5 space-y-4 text-sm text-neutral-700 dark:text-neutral-200">
                 {esIos ? (
                   <div className="space-y-3">
-                    <p className="font-bold text-ink text-sm">
+                    <p className="font-bold text-ink text-base">
                       Pasos para instalar en iPhone / iPad (Safari):
                     </p>
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-paper border border-rule">
@@ -199,7 +199,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <p className="font-bold text-ink text-sm">
+                    <p className="font-bold text-ink text-base">
                       Pasos para instalar en Android / Chrome:
                     </p>
                     <div className="flex items-start gap-3 p-3 rounded-xl bg-paper border border-rule">
@@ -237,7 +237,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                 <button
                   type="button"
                   onClick={() => setModalGuiaAbierto(false)}
-                  className="w-full min-h-[44px] py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition-colors cursor-pointer"
+                  className="w-full min-h-[46px] py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors cursor-pointer"
                 >
                   Entendido
                 </button>

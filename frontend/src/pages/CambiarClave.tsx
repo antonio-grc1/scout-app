@@ -5,8 +5,9 @@ import { useAuthStore } from '../store/authStore';
 import { obtenerRutaInicialUsuario } from '../lib/permisos';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { ThemeToggle } from '../components/ThemeToggle';
-import { Navbar } from '../components/Navbar';
-import { KeyRound, AlertCircle, Eye, EyeOff, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { AppShell } from '../components/layout/AppShell';
+import { Button } from '../components/ui/Button';
+import { KeyRound, AlertCircle, Eye, EyeOff, CheckCircle2, ArrowLeft, Check } from 'lucide-react';
 
 export const CambiarClave: React.FC = () => {
   const [claveActual, setClaveActual] = useState('');
@@ -18,12 +19,12 @@ export const CambiarClave: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
+
   const {
+    usuario,
     requiereCambioClave,
     setRequiereCambioClave,
     setSesion,
-    puedeVerPadron,
-    puedeAccederPanelGestion,
   } = useAuthStore();
   const navigate = useNavigate();
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -36,12 +37,26 @@ export const CambiarClave: React.FC = () => {
     };
   }, []);
 
+  const actual = claveActual.trim();
+  const nueva = claveNueva.trim();
+  const repetir = claveRepetir.trim();
+
+  const reglaLargoOk = nueva.length >= 8;
+  const reglaDistintaOk =
+    nueva.length > 0 &&
+    nueva !== (usuario?.dni || '') &&
+    (requiereCambioClave || nueva !== actual);
+  const reglaCoincideOk = nueva.length > 0 && nueva === repetir;
+  const formularioValido =
+    (requiereCambioClave || actual.length > 0) &&
+    reglaLargoOk &&
+    reglaDistintaOk &&
+    reglaCoincideOk;
+
   const rutaDestino = () =>
     obtenerRutaInicialUsuario({
       token: useAuthStore.getState().token,
       requiereCambioClave: false,
-      puedeVerPadron,
-      puedeAccederPanelGestion,
     });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,24 +64,20 @@ export const CambiarClave: React.FC = () => {
     setError(null);
     setExito(null);
 
-    const actual = claveActual.trim();
-    const nueva = claveNueva.trim();
-    const repetir = claveRepetir.trim();
-
     if (!requiereCambioClave && !actual) {
-      setError('Ingresa tu contraseña actual.');
+      setError('Ingresá tu contraseña actual.');
       return;
     }
-    if (nueva.length < 8) {
+    if (!reglaLargoOk) {
       setError('La nueva contraseña debe tener al menos 8 caracteres.');
       return;
     }
-    if (nueva !== repetir) {
+    if (!reglaCoincideOk) {
       setError('Las contraseñas nuevas no coinciden.');
       return;
     }
-    if (!requiereCambioClave && nueva === actual) {
-      setError('La nueva contraseña debe ser distinta de la actual.');
+    if (!reglaDistintaOk) {
+      setError('La nueva contraseña debe ser distinta a tu DNI y contraseña actual.');
       return;
     }
 
@@ -101,7 +112,7 @@ export const CambiarClave: React.FC = () => {
       }
       redirectTimeoutRef.current = setTimeout(() => {
         navigate(rutaDestino(), { replace: true });
-      }, 1000);
+      }, 900);
     } catch (err: any) {
       setError(traducirErrorAmigable(err, 'Error al actualizar la contraseña.'));
     } finally {
@@ -109,156 +120,203 @@ export const CambiarClave: React.FC = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-paper text-ink flex flex-col transition-colors">
-      {!requiereCambioClave ? (
-        <Navbar />
-      ) : (
-        <div className="absolute top-4 right-4">
-          <ThemeToggle variant="segmented" />
+  const cardContenido = (
+    <div className="sm:mx-auto sm:w-full sm:max-w-md w-full s-anim-view">
+      <div className="s-card py-7 px-6 sm:px-8 rounded-2xl">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <KeyRound className="w-5 h-5 text-brand shrink-0" />
+            <h1 className="text-xl sm:text-2xl font-extrabold text-ink truncate">
+              {requiereCambioClave ? 'Cambio Obligatorio de Clave' : 'Cambiar Contraseña'}
+            </h1>
+          </div>
+
+          {!requiereCambioClave && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              leftIcon={<ArrowLeft className="w-4 h-4" />}
+              onClick={() => navigate(-1)}
+            >
+              Volver
+            </Button>
+          )}
         </div>
-      )}
 
-      <div className="flex-1 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8">
-        <div className="sm:mx-auto sm:w-full sm:max-w-md w-full">
-          <div className="bg-surface py-8 px-6 shadow-sm border border-rule rounded-2xl sm:px-10 transition-colors">
-            <div className="flex items-center justify-between gap-2 mb-4">
-              <div className="flex items-center gap-2">
-                <KeyRound className="w-6 h-6 text-brand" />
-                <h1 className="text-xl font-bold text-ink">
-                  {requiereCambioClave ? 'Actualizar Contraseña Inicial' : 'Cambiar Contraseña'}
-                </h1>
-              </div>
+        <div
+          className={`${
+            requiereCambioClave ? 's-badge-warn rounded-xl p-3.5 text-sm font-medium' : 'text-sm text-ink-muted'
+          } mb-5 leading-relaxed`}
+        >
+          {requiereCambioClave
+            ? 'Ingresaste con clave temporal o alta inicial. Por seguridad, definí una contraseña personal de al menos 8 caracteres para continuar.'
+            : 'Ingresá tu contraseña actual y definí una nueva clave personal de al menos 8 caracteres.'}
+        </div>
 
-              {!requiereCambioClave && (
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          {error && (
+            <div
+              role="alert"
+              className="s-badge-err p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {exito && (
+            <div
+              role="status"
+              className="s-badge-ok p-3.5 rounded-xl text-sm font-bold flex items-center gap-2"
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0" />
+              <span>{exito}</span>
+            </div>
+          )}
+
+          {!requiereCambioClave && (
+            <div>
+              <label htmlFor="clave-actual" className="block text-sm font-semibold text-ink">
+                Contraseña Actual
+              </label>
+              <div className="mt-1.5 relative">
+                <input
+                  id="clave-actual"
+                  type={mostrarActual ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  required
+                  value={claveActual}
+                  onChange={(e) => setClaveActual(e.target.value)}
+                  placeholder="••••••••"
+                  className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+                />
                 <button
                   type="button"
-                  onClick={() => navigate(-1)}
-                  className="min-h-[38px] px-3 rounded-xl border border-rule text-xs font-bold text-ink-2 hover:bg-paper-2 flex items-center gap-1 transition cursor-pointer"
+                  onClick={() => setMostrarActual((v) => !v)}
+                  aria-label={mostrarActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
+                  className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Volver</span>
+                  {mostrarActual ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
-              )}
+              </div>
             </div>
+          )}
 
-            <p className="text-xs text-ink-muted mb-6">
-              {requiereCambioClave
-                ? 'Por seguridad institucional, define tu nueva contraseña personal de al menos 8 caracteres para continuar.'
-                : 'Ingresa tu contraseña actual y define una nueva clave personal de al menos 8 caracteres.'}
-            </p>
-
-            <form className="space-y-5" onSubmit={handleSubmit}>
-              {error && (
-                <div
-                  role="alert"
-                  className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl text-xs flex items-center gap-2"
-                >
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {exito && (
-                <div
-                  role="status"
-                  className="p-3 bg-brand/10 border border-brand/30 text-ink rounded-xl text-xs font-bold flex items-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4 shrink-0 text-brand" />
-                  <span>{exito}</span>
-                </div>
-              )}
-
-              {!requiereCambioClave && (
-                <div>
-                  <label htmlFor="clave-actual" className="block text-xs font-semibold text-ink">
-                    Contraseña Actual
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
-                      id="clave-actual"
-                      type={mostrarActual ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      required
-                      value={claveActual}
-                      onChange={(e) => setClaveActual(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setMostrarActual((v) => !v)}
-                      aria-label={mostrarActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
-                      className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition cursor-pointer"
-                    >
-                      {mostrarActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label htmlFor="clave-nueva" className="block text-xs font-semibold text-ink">
-                  Nueva Contraseña (mínimo 8 caracteres)
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="clave-nueva"
-                    type={mostrarNueva ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    required
-                    value={claveNueva}
-                    onChange={(e) => setClaveNueva(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setMostrarNueva((v) => !v)}
-                    aria-label={mostrarNueva ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                  >
-                    {mostrarNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="clave-repetir" className="block text-xs font-semibold text-ink">
-                  Repetir Nueva Contraseña
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="clave-repetir"
-                    type={mostrarRepetir ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    required
-                    value={claveRepetir}
-                    onChange={(e) => setClaveRepetir(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/20 outline-none transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setMostrarRepetir((v) => !v)}
-                    aria-label={mostrarRepetir ? 'Ocultar repetición de contraseña' : 'Ver repetición de contraseña'}
-                    className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                  >
-                    {mostrarRepetir ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
+          <div>
+            <label htmlFor="clave-nueva" className="block text-sm font-semibold text-ink">
+              Nueva Contraseña
+            </label>
+            <div className="mt-1.5 relative">
+              <input
+                id="clave-nueva"
+                type={mostrarNueva ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={claveNueva}
+                onChange={(e) => setClaveNueva(e.target.value)}
+                placeholder="••••••••"
+                className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+              />
               <button
-                type="submit"
-                disabled={cargando}
-                className="w-full min-h-[46px] py-2.5 px-4 rounded-xl text-sm font-bold text-brand-contrast bg-brand hover:opacity-90 active:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] transition-colors cursor-pointer disabled:opacity-50"
+                type="button"
+                onClick={() => setMostrarNueva((v) => !v)}
+                aria-label={mostrarNueva ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
+                className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
               >
-                {cargando ? 'Guardando…' : 'Confirmar Nueva Contraseña'}
+                {mostrarNueva ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
-            </form>
+            </div>
           </div>
-        </div>
+
+          <div>
+            <label htmlFor="clave-repetir" className="block text-sm font-semibold text-ink">
+              Repetir Nueva Contraseña
+            </label>
+            <div className="mt-1.5 relative">
+              <input
+                id="clave-repetir"
+                type={mostrarRepetir ? 'text' : 'password'}
+                autoComplete="new-password"
+                required
+                value={claveRepetir}
+                onChange={(e) => setClaveRepetir(e.target.value)}
+                placeholder="••••••••"
+                className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+              />
+              <button
+                type="button"
+                onClick={() => setMostrarRepetir((v) => !v)}
+                aria-label={
+                  mostrarRepetir
+                    ? 'Ocultar repetición de contraseña'
+                    : 'Ver repetición de contraseña'
+                }
+                className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
+              >
+                {mostrarRepetir ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de verificación en vivo */}
+          <div className="s-panel rounded-xl p-3.5 space-y-2 text-[13px]">
+            <div
+              className={`flex items-center gap-2 ${
+                reglaLargoOk ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-ink-muted'
+              }`}
+            >
+              {reglaLargoOk ? <Check className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 text-center">○</span>}
+              <span>Mínimo 8 caracteres</span>
+            </div>
+            <div
+              className={`flex items-center gap-2 ${
+                reglaDistintaOk ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-ink-muted'
+              }`}
+            >
+              {reglaDistintaOk ? <Check className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 text-center">○</span>}
+              <span>Distinta a tu DNI y contraseña actual</span>
+            </div>
+            <div
+              className={`flex items-center gap-2 ${
+                reglaCoincideOk ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-ink-muted'
+              }`}
+            >
+              {reglaCoincideOk ? <Check className="w-3.5 h-3.5 shrink-0" /> : <span className="w-3.5 text-center">○</span>}
+              <span>Ambas contraseñas coinciden</span>
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={cargando || !formularioValido}
+            loading={cargando}
+            variant="primary"
+            size="lg"
+            className="w-full"
+          >
+            {cargando ? 'Guardando…' : 'Confirmar Nueva Contraseña'}
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+
+  if (!requiereCambioClave) {
+    return (
+      <AppShell title="Cambiar Contraseña">
+        <div className="py-4 sm:py-8 flex justify-center">{cardContenido}</div>
+      </AppShell>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-paper text-ink flex flex-col">
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle variant="segmented" />
+      </div>
+      <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+        {cardContenido}
       </div>
     </div>
   );

@@ -196,7 +196,7 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
             nombre: 'Jefe de Grupo Admin',
             alcancePorDefecto: AlcanceRol.GLOBAL,
             _count: { asignaciones: 0 },
-            permisos: [{ permiso: { clave: 'organizacion.gestionar' } }],
+            permisos: [{ permiso: { clave: 'organizacion.editar' } }],
           }),
           findMany: vi.fn().mockResolvedValue([
             {
@@ -204,7 +204,7 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
               nombre: 'Jefe de Grupo Admin',
               alcancePorDefecto: AlcanceRol.GLOBAL,
               _count: { asignaciones: 0 },
-              permisos: [{ permiso: { clave: 'organizacion.gestionar' } }],
+              permisos: [{ permiso: { clave: 'organizacion.editar' } }],
             },
           ]),
         },
@@ -233,7 +233,7 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
             {
               id: 500,
               unidadId: 10,
-              rol: { permisos: [{ permiso: { clave: 'organizacion.gestionar' } }] },
+              rol: { permisos: [{ permiso: { clave: 'organizacion.editar' } }] },
             },
           ]),
         },

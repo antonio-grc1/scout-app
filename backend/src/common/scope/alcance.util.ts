@@ -9,16 +9,36 @@ import type { AlcanceAcceso, AuthUser } from '../types/auth.types.js';
  */
 const PERMISOS_AUTOGESTION_PROPIA = new Set([
   'legajos.ver',
-  'legajos.completar',
-  'cuotas.ver',
-  'miembros.ver',
+  'legajos.editar',
+  'cobranzas.ver',
+  'padron.ver',
+  'eventos.ver',
 ]);
+
+/**
+ * Evalúa si una lista de permisos de una asignación satisface el permiso requerido.
+ * Poseer `<panel>.editar` implica automáticamente `<panel>.ver`.
+ */
+export function asignacionOtorgaPermiso(permisosAsignacion: readonly string[], requerido: string): boolean {
+  if (permisosAsignacion.includes(requerido)) return true;
+  if (requerido.endsWith('.ver')) {
+    const base = requerido.slice(0, -4);
+    if (permisosAsignacion.includes(`${base}.editar`)) return true;
+    if (requerido === 'legajos.ver') {
+      return permisosAsignacion.includes('plantillas.ver') || permisosAsignacion.includes('plantillas.editar');
+    }
+    if (requerido === 'cobranzas.ver' || requerido === 'planes.ver' || requerido === 'eventos.ver') {
+      return permisosAsignacion.includes('caja.editar');
+    }
+  }
+  return false;
+}
 
 export function resolverAlcance(user: AuthUser, permiso: string | string[]): AlcanceAcceso | null {
   const esMultiple = Array.isArray(permiso);
   const listaPermisos = esMultiple ? permiso : [permiso];
   const conPermiso = user.asignaciones.filter((a) =>
-    a.permisos.some((p) => listaPermisos.includes(p)),
+    listaPermisos.some((req) => asignacionOtorgaPermiso(a.permisos, req)),
   );
   if (conPermiso.length === 0) {
     // Solo se habilita autogestión propia en permisos unitarios explícitos y si el usuario conserva asignaciones activas.

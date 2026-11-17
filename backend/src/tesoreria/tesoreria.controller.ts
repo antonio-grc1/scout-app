@@ -96,23 +96,24 @@ import {
 } from './tesoreria.dto.js';
 import { TesoreriaService } from './tesoreria.service.js';
 
-const CUOTAS_VER = 'cuotas.ver';
-const CUOTAS_COBRAR = 'cuotas.cobrar';
-const CUOTAS_AJUSTAR = 'cuotas.ajustar';
-const TESORERIA_CONCEPTOS = 'tesoreria.conceptos_planes';
-const TESORERIA_CAJA = 'tesoreria.caja_ver';
-const TESORERIA_GASTOS = 'tesoreria.gastos_registrar';
-const TESORERIA_GESTIONAR = 'tesoreria.gestionar';
+const CUOTAS_VER = 'cobranzas.ver';
+const CUOTAS_COBRAR = 'cobranzas.editar';
+const CUOTAS_AJUSTAR = 'cobranzas.editar';
+const PLANES_VER = 'planes.ver';
+const TESORERIA_CONCEPTOS = 'planes.editar';
+const TESORERIA_CAJA = 'caja.ver';
+const TESORERIA_GASTOS = 'caja.editar';
+const TESORERIA_GESTIONAR = 'caja.editar';
 const EVENTOS_VER = 'eventos.ver';
-const EVENTOS_VENDER = 'eventos.vender';
-const EVENTOS_GESTIONAR = 'eventos.gestionar';
+const EVENTOS_VENDER = 'eventos.editar';
+const EVENTOS_GESTIONAR = 'eventos.editar';
 
 @Controller('tesoreria')
 export class TesoreriaController {
   constructor(private readonly tesoreria: TesoreriaService) {}
 
   // ---------------- Conceptos ----------------
-  @RequireAnyPermission(CUOTAS_VER, TESORERIA_CONCEPTOS, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(PLANES_VER, CUOTAS_VER, TESORERIA_CAJA)
   @Get('conceptos')
   listarConceptos(
     @Alcance() a: AlcanceAcceso,
@@ -150,7 +151,7 @@ export class TesoreriaController {
   }
 
   // ---------------- Grupos Familiares ----------------
-  @RequireAnyPermission(CUOTAS_VER, TESORERIA_GESTIONAR, 'miembros.ver', CUOTAS_AJUSTAR, 'miembros.editar')
+  @RequireAnyPermission(CUOTAS_VER, TESORERIA_CAJA, 'padron.ver')
   @Get('familias')
   listarGruposFamiliares(@Alcance() a: AlcanceAcceso) {
     return this.tesoreria.listarGruposFamiliares(a);
@@ -166,13 +167,13 @@ export class TesoreriaController {
     return this.tesoreria.actualizarDescuentoFamilia(a, id, dto);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(CUOTAS_AJUSTAR, TESORERIA_GESTIONAR)
   @Delete('familias/:id')
   eliminarGrupoFamiliar(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
     return this.tesoreria.eliminarGrupoFamiliar(a, id);
   }
 
-  @RequireAnyPermission('miembros.editar', CUOTAS_AJUSTAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission('padron.editar', CUOTAS_AJUSTAR, TESORERIA_GESTIONAR)
   @Post('familias/vincular-hermano')
   vincularHermano(
     @Alcance() a: AlcanceAcceso,
@@ -181,7 +182,7 @@ export class TesoreriaController {
     return this.tesoreria.vincularHermano(a, dto);
   }
 
-  @RequireAnyPermission('miembros.editar', CUOTAS_AJUSTAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission('padron.editar', CUOTAS_AJUSTAR, TESORERIA_GESTIONAR)
   @Post('familias/desvincular-hermano')
   desvincularHermano(
     @Alcance() a: AlcanceAcceso,
@@ -238,7 +239,7 @@ export class TesoreriaController {
     return this.tesoreria.eliminarCargo(a, id);
   }
 
-  @RequireAnyPermission(CUOTAS_VER, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(CUOTAS_VER, TESORERIA_CAJA)
   @Get('cargos')
   listarCargos(
     @Alcance() a: AlcanceAcceso,
@@ -247,7 +248,7 @@ export class TesoreriaController {
     return this.tesoreria.listarCargos(a, q);
   }
 
-  @RequireAnyPermission(CUOTAS_VER, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequirePermission(CUOTAS_VER)
   @Get('estado-cuenta/:usuarioId')
   obtenerEstadoCuenta(
     @Alcance() a: AlcanceAcceso,
@@ -283,7 +284,7 @@ export class TesoreriaController {
     return this.tesoreria.revertirPago(a, id);
   }
 
-  @RequireAnyPermission(CUOTAS_VER, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(CUOTAS_VER, TESORERIA_CAJA)
   @Get('pagos')
   listarPagos(
     @Alcance() a: AlcanceAcceso,
@@ -293,7 +294,7 @@ export class TesoreriaController {
   }
 
   // ---------------- Planes de Cuota Mensual ----------------
-  @RequireAnyPermission(CUOTAS_VER, TESORERIA_CONCEPTOS, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(PLANES_VER, CUOTAS_VER, TESORERIA_CAJA)
   @Get('planes-mensuales')
   listarPlanesCuotaMensual(
     @Alcance() a: AlcanceAcceso,
@@ -433,7 +434,7 @@ export class TesoreriaController {
   }
 
   // ---------------- Rubros Contables (Fase 2) ----------------
-  @RequireAnyPermission(TESORERIA_CAJA, TESORERIA_GASTOS, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_CAJA, TESORERIA_GASTOS, TESORERIA_GESTIONAR, PLANES_VER, TESORERIA_CONCEPTOS)
   @Get('rubros')
   listarRubros(
     @Alcance() a: AlcanceAcceso,
@@ -582,7 +583,7 @@ export class TesoreriaController {
   }
 
   // ---------------- Eventos Económicos y Entradas QR (Fase 4) ----------------
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
+  @RequirePermission(EVENTOS_VER)
   @Get('eventos')
   listarEventos(
     @Alcance() a: AlcanceAcceso,
@@ -591,7 +592,7 @@ export class TesoreriaController {
     return this.tesoreria.listarEventos(a, tipo);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
+  @RequirePermission(EVENTOS_VER)
   @Get('eventos/:id')
   obtenerEventoPorId(
     @Alcance() a: AlcanceAcceso,
@@ -630,7 +631,7 @@ export class TesoreriaController {
     return this.tesoreria.eliminarEvento(a, id);
   }
 
-  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
+  @RequirePermission(EVENTOS_VER)
   @Post('eventos/pedidos')
   crearPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -640,7 +641,7 @@ export class TesoreriaController {
     return this.tesoreria.crearPedidoEvento(u, a, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
+  @RequirePermission(EVENTOS_VER)
   @Patch('eventos/pedidos/:id')
   actualizarPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -651,7 +652,7 @@ export class TesoreriaController {
     return this.tesoreria.actualizarPedidoEvento(u, a, id, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
+  @RequirePermission(EVENTOS_VER)
   @Delete('eventos/pedidos/:id')
   eliminarPedidoEvento(
     @CurrentUser() u: AuthUser,
@@ -681,13 +682,13 @@ export class TesoreriaController {
     return this.tesoreria.acreditarGananciasEvento(u, a, dto);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR)
+  @RequirePermission(EVENTOS_VER)
   @Get('mis-tickets')
   obtenerMisTickets(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisTickets(u);
   }
 
-  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR)
+  @RequirePermission(EVENTOS_VER)
   @Get('mis-pedidos')
   obtenerMisPedidos(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisPedidos(u);

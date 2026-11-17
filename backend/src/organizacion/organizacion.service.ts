@@ -318,7 +318,7 @@ export class OrganizacionService {
 
     const admins = asignacionesGlobales.filter((a) =>
       a.rol.permisos?.some(
-        (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+        (rp) => rp.permiso?.clave === 'organizacion.editar',
       ),
     );
     if (admins.length === 0) return;
@@ -430,8 +430,7 @@ export class OrganizacionService {
     const esRolAdmin = (r: Prisma.RolGetPayload<{ include: typeof ROL_INCLUDE }>) =>
       r.alcancePorDefecto === AlcanceRol.GLOBAL &&
       r.permisos?.some(
-        (rp) =>
-          rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+        (rp) => rp.permiso?.clave === 'organizacion.editar',
       );
 
     const actual = todosRoles.find((r) => r.id === rolId);
@@ -505,9 +504,7 @@ export class OrganizacionService {
       const nuevosPermisos = dto.permisos ?? actual.permisos?.map((rp) => rp.permiso.clave) ?? [];
       const pierdeCapacidadAdmin =
         nuevoAlcance !== AlcanceRol.GLOBAL ||
-        (!nuevosPermisos.includes('organizacion.gestionar') &&
-          !nuevosPermisos.includes('roles.gestionar')) ||
-        !nuevosPermisos.includes('organizacion.ver');
+        !nuevosPermisos.includes('organizacion.editar');
 
       if (pierdeCapacidadAdmin) {
         await this.asegurarNoBloquearUltimoAdmin(id, tx);
@@ -585,7 +582,7 @@ export class OrganizacionService {
       esSistema: r.esSistema,
       esRolAdministrador:
         r.alcancePorDefecto === AlcanceRol.GLOBAL &&
-        (permisos.includes('organizacion.gestionar') || permisos.includes('roles.gestionar')),
+        permisos.includes('organizacion.editar'),
       asignacionesActivas: r._count.asignaciones,
       permisos,
     };

@@ -160,7 +160,7 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
             none: expect.objectContaining({
               permiso: expect.objectContaining({
                 clave: expect.objectContaining({
-                  in: expect.arrayContaining(['roles.gestionar', 'organizacion.gestionar', 'tesoreria.gestionar']),
+                  in: expect.arrayContaining(['organizacion.editar', 'caja.editar']),
                 }),
               }),
             }),

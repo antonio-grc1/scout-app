@@ -206,15 +206,15 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
           {...contentProps}
         >
           <div className="px-5 py-4 border-b border-rule flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <ArrowDownRight className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-ink">
+                <h3 className="text-base sm:text-lg font-black text-ink">
                   {esModoEdicion ? 'Modificar Ingreso Manual' : 'Registrar Ingreso Manual'}
                 </h3>
-                <p className="text-[11px] text-ink-muted">
+                <p className="text-[13px] text-ink-muted">
                   {esModoEdicion
                     ? 'Actualizará los datos del ingreso y el saldo de la cuenta.'
                     : 'Acreditará saldo inmediatamente en la cuenta seleccionada.'}
@@ -224,23 +224,23 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
             <button
               type="button"
               onClick={onCerrar}
-              className="p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+              className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
+          <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-start gap-2">
+              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
             )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="text-xs font-bold text-ink block mb-1">
+                <label className="text-[13px] font-bold text-ink block mb-1.5">
                   Monto ($) *
                 </label>
                 <Input
@@ -256,7 +256,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-ink block mb-1">
+                <label className="text-[13px] font-bold text-ink block mb-1.5">
                   Fecha y Hora del Ingreso *
                 </label>
                 <Input
@@ -270,13 +270,13 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
 
             {/* Cuenta de destino (Caja o Banco) */}
             <div>
-              <label className="text-xs font-bold text-ink block mb-1">
+              <label className="text-[13px] font-bold text-ink block mb-1.5">
                 Cuenta de Ingreso (¿Dónde entra la plata?) *
               </label>
               <select
                 value={cuentaId}
                 onChange={(e) => setCuentaId(Number(e.target.value) || '')}
-                className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
+                className="w-full min-h-[46px] px-3.5 rounded-xl bg-paper-2 border border-rule text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
                 required
               >
                 {cuentas.map((c) => (
@@ -289,11 +289,11 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
 
             {/* Rubro de Ingreso con botón para crear y editar */}
             <div>
-              <div className="flex flex-wrap items-center justify-between gap-1 mb-1">
-                <label className="text-xs font-bold text-ink">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                <label className="text-[13px] font-bold text-ink">
                   Rubro / Categoría de Ingreso *
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   {rubroId && (
                     <button
                       type="button"
@@ -309,10 +309,10 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
                           setModalNuevoRubroAbierto(true);
                         }
                       }}
-                      className="text-[11px] font-bold text-ink-muted hover:text-ink hover:underline flex items-center gap-1 cursor-pointer"
+                      className="text-xs font-bold text-ink-muted hover:text-ink hover:underline flex items-center gap-1 cursor-pointer"
                       title="Modificar o eliminar esta categoría"
                     >
-                      <Pencil className="w-3 h-3" />
+                      <Pencil className="w-3.5 h-3.5" />
                       <span>Editar</span>
                     </button>
                   )}
@@ -322,23 +322,23 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
                       setRubroAEditar(null);
                       setModalNuevoRubroAbierto(true);
                     }}
-                    className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    <PlusCircle className="w-3.5 h-3.5" />
+                    <PlusCircle className="w-4 h-4" />
                     <span>+ Nuevo Rubro</span>
                   </button>
                 </div>
               </div>
 
               {rubros.length === 0 && !cargandoDatos ? (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-[11px] text-amber-800 dark:text-amber-300">
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
                   No hay rubros de ingreso creados. Creá uno con el botón de arriba (ej. "Donaciones", "Subsidios", "Venta de garage").
                 </div>
               ) : (
                 <select
                   value={rubroId}
                   onChange={(e) => setRubroId(Number(e.target.value) || '')}
-                  className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  className="w-full min-h-[46px] px-3.5 rounded-xl bg-paper-2 border border-rule text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
                   required
                 >
                   <option value="" disabled>
@@ -355,7 +355,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
 
             {/* Descripción */}
             <div>
-              <label className="text-xs font-bold text-ink block mb-1">
+              <label className="text-[13px] font-bold text-ink block mb-1.5">
                 Descripción / Detalle *
               </label>
               <Input
@@ -370,7 +370,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
 
             {/* Comprobante / Recibo */}
             <div>
-              <label className="text-xs font-bold text-ink block mb-1">
+              <label className="text-[13px] font-bold text-ink block mb-1.5">
                 N° de Recibo / Comprobante (Opcional)
               </label>
               <Input
@@ -382,7 +382,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
               />
             </div>
 
-            <div className="pt-3 border-t border-rule flex items-center justify-end gap-2">
+            <div className="pt-3.5 border-t border-rule flex items-center justify-end gap-2.5">
               <Button
                 type="button"
                 variant="ghost"

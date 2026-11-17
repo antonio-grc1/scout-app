@@ -507,12 +507,12 @@ export async function buildOfficialPdf(
   }
 
   // ==========================================
-  // PAGE 1: FICHA DE INSCRIPCIÓN - 2026 (Letter)
+  // PAGE 1: FICHA DE INSCRIPCIÓN (Letter)
   // ==========================================
   {
     const page1 = pdfDoc.addPage([612, 792]);
     const { width, height } = page1.getSize();
-    drawGroupHeader(page1, 'FICHA DE INSCRIPCIÓN - 2026');
+    drawGroupHeader(page1, `FICHA DE INSCRIPCIÓN - ${cicloActual}`);
 
     const rama = String(data.rama_nombre || data.rama || 'Scout');
     page1.drawText('RAMA:', { x: 40, y: height - 95, size: 11, font: fontBold, color: labelColor });
@@ -1028,7 +1028,7 @@ export async function buildOfficialPdf(
       { text: String(data.protagonista_dni || ''), bold: true },
       { text: ', con domicilio en ', bold: false },
       { text: String(data.protagonista_domicilio || ''), bold: true },
-      { text: ', para salir de la sede del Grupo Scout N° 196 “Juan XXIII” del Distrito N° 1, perteneciente a la Zona N° 22 de Scouts de Argentina Asociación Civil, durante el presente año 2026, cuando las actividades planificadas así lo requieran y bajo el cuidado de los/las Educadores/as Scout del Grupo Scout.-------------------------', bold: false },
+      { text: `, para salir de la sede del Grupo Scout N° 196 “Juan XXIII” del Distrito N° 1, perteneciente a la Zona N° 22 de Scouts de Argentina Asociación Civil, durante el presente año ${cicloActual}, cuando las actividades planificadas así lo requieran y bajo el cuidado de los/las Educadores/as Scout del Grupo Scout.-------------------------`, bold: false },
     ];
 
     let curY = drawStyledParagraph(page4, p4Spans, 40, height - 135, width - 80, 13, 8.5);
@@ -1106,7 +1106,7 @@ export async function buildOfficialPdf(
   if (shouldIncludePage5) {
     const page5 = pdfDoc.addPage([612, 792]);
     const { width, height } = page5.getSize();
-    drawGroupHeader(page5, 'FICHA DE NECESIDADES ESPECIALES - 2026');
+    drawGroupHeader(page5, `FICHA DE NECESIDADES ESPECIALES - ${cicloActual}`);
 
     let curY = height - 105;
     page5.drawText('Este documento es para poder conocer el diagnóstico y tratamientos de cada protagonista que desee', { x: 40, y: curY, size: 7.5, font: fontItalic, color: labelColor });
@@ -1174,7 +1174,7 @@ export async function buildOfficialPdf(
   if (shouldIncludePage6) {
     const page6 = pdfDoc.addPage([612, 792]);
     const { width, height } = page6.getSize();
-    drawGroupHeader(page6, 'AUTORIZACIÓN RETIRO DE MENORES - 2026');
+    drawGroupHeader(page6, `AUTORIZACIÓN RETIRO DE MENORES - ${cicloActual}`);
 
     const autDate = parseDateParts(data.autorizante_fecha_nac);
     const minDate = parseDateParts(data.protagonista_fecha_nac);
@@ -1284,7 +1284,7 @@ export async function buildOfficialPdf(
   if (shouldIncludePage7) {
     const page7 = pdfDoc.addPage([612, 792]);
     const { width, height } = page7.getSize();
-    drawGroupHeader(page7, 'FICHA DE ADULTOS - 2026');
+    drawGroupHeader(page7, `FICHA DE ADULTOS - ${cicloActual}`);
 
     let curY = height - 105;
     page7.drawText('Este formulario debe ser rellenado por cualquier adulto que esté predispuesto a colaborar en el grupo scout.', { x: 40, y: curY, size: 7.5, font: fontItalic, color: labelColor });
@@ -1495,5 +1495,5 @@ export async function buildOfficialPdf(
  * Genera el PDF base oficial en blanco de 7 páginas para firma física manual.
  */
 export async function generarMoldeEnBlancoPdf(): Promise<Uint8Array> {
-  return await buildOfficialPdf({}, { blank: true, hashVerificacion: 'MOLDE-OFICIAL-BLANCO-2026' });
+  return await buildOfficialPdf({}, { blank: true, hashVerificacion: `MOLDE-OFICIAL-BLANCO-${obtenerCicloAnioActual()}` });
 }

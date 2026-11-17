@@ -147,14 +147,14 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
             </div>
             <div>
               <h2 className="text-base font-extrabold text-ink">Correo Saliente y Envío de Contraseñas</h2>
-              <p className="text-xs text-ink-muted mt-0.5">
-                Configurá el servidor SMTP desde la app para enviar altas, contraseñas temporales y recuperación de clave sin tocar variables de entorno.
+              <p className="text-[13px] text-ink-muted mt-0.5">
+                Configurá el correo saliente para enviar altas, contraseñas temporales y recuperación de clave.
               </p>
             </div>
           </div>
 
           <span
-            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${
+            className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
               !habilitado
                 ? 'bg-paper-2 text-ink-muted border-rule'
                 : fuente === 'sin_configurar'
@@ -173,34 +173,34 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
         </div>
 
         <form onSubmit={handleGuardar} className="space-y-5">
-          <label className="flex items-start gap-3 p-3.5 rounded-xl bg-paper-2 border border-rule cursor-pointer">
+          <label className="flex items-start gap-3 p-4 rounded-xl bg-paper-2 border border-rule cursor-pointer">
             <input
               type="checkbox"
               checked={habilitado}
               onChange={(e) => setHabilitado(e.target.checked)}
               className="mt-0.5 w-4 h-4 accent-[var(--color-brand)] cursor-pointer"
             />
-            <div className="text-xs">
+            <div className="text-sm">
               <span className="font-bold text-ink block">Habilitar envío automático de contraseñas y credenciales por correo</span>
-              <span className="text-ink-muted">
+              <span className="text-[13px] text-ink-muted">
                 Permite enviar la clave inicial al dar de alta miembros, restablecer contraseñas y usar "¿Olvidaste tu contraseña?" en el login.
               </span>
             </div>
           </label>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex flex-wrap items-center gap-2 text-[13px]">
             <span className="text-ink-muted font-semibold">Plantillas rápidas:</span>
             <button
               type="button"
               onClick={() => aplicarPreset('gmail')}
-              className="px-3 py-1.5 rounded-lg border border-rule bg-paper-2 hover:bg-paper-3 text-ink font-semibold cursor-pointer transition-colors"
+              className="min-h-[36px] px-3 py-1.5 rounded-lg border border-rule bg-paper-2 hover:bg-paper-3 text-ink font-semibold cursor-pointer transition-colors"
             >
               Gmail (smtp.gmail.com:587)
             </button>
             <button
               type="button"
               onClick={() => aplicarPreset('brevo')}
-              className="px-3 py-1.5 rounded-lg border border-rule bg-paper-2 hover:bg-paper-3 text-ink font-semibold cursor-pointer transition-colors"
+              className="min-h-[36px] px-3 py-1.5 rounded-lg border border-rule bg-paper-2 hover:bg-paper-3 text-ink font-semibold cursor-pointer transition-colors"
             >
               Brevo (smtp-relay.brevo.com:587)
             </button>
@@ -208,18 +208,18 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-ink mb-1">Servidor SMTP (Host)</label>
+              <label className="block text-sm font-bold text-ink mb-1.5">Servidor SMTP (Host)</label>
               <input
                 type="text"
                 value={host}
                 onChange={(e) => setHost(e.target.value)}
                 placeholder="smtp.gmail.com o smtp-relay.brevo.com"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-sm text-ink focus:border-[var(--color-focus)] outline-none"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">Puerto</label>
+              <label className="block text-sm font-bold text-ink mb-1.5">Puerto</label>
               <input
                 type="number"
                 min={1}
@@ -227,26 +227,26 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
                 placeholder="587"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-sm text-ink focus:border-[var(--color-focus)] outline-none"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">Usuario SMTP</label>
+              <label className="block text-sm font-bold text-ink mb-1.5">Usuario SMTP</label>
               <input
                 type="text"
                 value={user}
                 onChange={(e) => setUser(e.target.value)}
                 placeholder="notificaciones@grupo.org"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-sm text-ink focus:border-[var(--color-focus)] outline-none"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">
+              <label className="block text-sm font-bold text-ink mb-1.5">
                 Contraseña / API Key SMTP
                 {tienePassword && (
-                  <span className="ml-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="ml-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     (guardada)
                   </span>
                 )}
@@ -258,7 +258,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
                   onChange={(e) => setPass(e.target.value)}
                   placeholder={tienePassword ? 'Dejar vacío para mantener la actual' : 'Clave de aplicación o SMTP key'}
                   autoComplete="new-password"
-                  className="w-full min-h-[42px] pl-3 pr-10 py-2 rounded-xl border border-rule bg-surface text-sm text-ink focus:border-[var(--color-focus)] outline-none"
+                  className="w-full min-h-[46px] pl-3.5 pr-10 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
                 />
                 <button
                   type="button"
@@ -272,18 +272,18 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">Remitente (From)</label>
+              <label className="block text-sm font-bold text-ink mb-1.5">Remitente (From)</label>
               <input
                 type="text"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
                 placeholder='"Grupo Scout Juan XXIII" <correo@grupo.org>'
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-sm text-ink focus:border-[var(--color-focus)] outline-none"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
               />
             </div>
 
             <div className="sm:col-span-3">
-              <label className="block text-xs font-bold text-ink mb-1">
+              <label className="block text-sm font-bold text-ink mb-1.5">
                 URL pública de la aplicación (enlace en los correos)
               </label>
               <input
@@ -291,20 +291,20 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
                 value={appUrl}
                 onChange={(e) => setAppUrl(e.target.value)}
                 placeholder="https://scout-app.vercel.app"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-sm text-ink focus:border-[var(--color-focus)] outline-none"
+                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
               />
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <p className="text-[11px] text-ink-muted inline-flex items-center gap-1.5">
+            <p className="text-xs sm:text-[13px] text-ink-muted inline-flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>La contraseña SMTP se almacena cifrada en la base de datos y nunca se reenvía al navegador.</span>
+              <span>La contraseña se guarda de forma segura y no vuelve a mostrarse.</span>
             </p>
             <button
               type="submit"
               disabled={guardando}
-              className="min-h-[42px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 text-brand-contrast text-xs font-extrabold cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 text-brand-contrast text-sm font-extrabold cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
             >
               {guardando && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{guardando ? 'Guardando...' : 'Guardar configuración'}</span>
@@ -315,8 +315,8 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
 
       <div className="bg-surface rounded-2xl border border-rule shadow-xs p-5 sm:p-6 space-y-4">
         <div>
-          <h3 className="text-sm font-extrabold text-ink">Probar envío de correo</h3>
-          <p className="text-xs text-ink-muted mt-0.5">
+          <h3 className="text-base font-extrabold text-ink">Probar envío de correo</h3>
+          <p className="text-sm text-ink-muted mt-0.5">
             Guardá la configuración y enviá un mail de prueba para verificar que el servidor SMTP responde correctamente.
           </p>
         </div>
@@ -328,12 +328,12 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
             value={emailPrueba}
             onChange={(e) => setEmailPrueba(e.target.value)}
             placeholder="tu-correo@ejemplo.com"
-            className="flex-1 min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-sm text-ink focus:border-[var(--color-focus)] outline-none"
+            className="flex-1 min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
           />
           <button
             type="submit"
             disabled={probando || !emailPrueba.trim()}
-            className="min-h-[42px] px-5 py-2 rounded-xl border border-rule bg-paper-2 hover:bg-paper-3 text-ink text-xs font-extrabold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
+            className="min-h-[46px] px-5 py-2.5 rounded-xl border border-rule bg-paper-2 hover:bg-paper-3 text-ink text-sm font-extrabold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
           >
             {probando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             <span>{probando ? 'Enviando...' : 'Enviar correo de prueba'}</span>
@@ -343,7 +343,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
         {resultadoPrueba && (
           <div
             role="status"
-            className={`p-3.5 rounded-xl border text-xs flex items-start gap-2 ${
+            className={`p-4 rounded-xl border text-sm flex items-start gap-2.5 ${
               resultadoPrueba.ok
                 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
                 : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300'

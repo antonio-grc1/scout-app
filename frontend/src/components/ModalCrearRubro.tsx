@@ -179,11 +179,11 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
           {...contentProps}
         >
           <div className="px-5 py-4 border-b border-rule flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                 {esModoEdicion ? <Pencil className="w-4 h-4" /> : <Tag className="w-4 h-4" />}
               </div>
-              <h3 className="text-sm font-black text-ink">
+              <h3 className="text-base sm:text-lg font-black text-ink">
                 {esModoEdicion ? 'Editar Categoría / Rubro' : 'Nueva Categoría / Rubro Contable'}
               </h3>
             </div>
@@ -191,7 +191,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
               <button
                 type="button"
                 onClick={onCerrar}
-                className="p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -200,24 +200,24 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
 
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold">
                 {error}
               </div>
             )}
 
             {!esModoEdicion && (
               <div>
-                <label className="text-xs font-bold text-ink block mb-1">
+                <label className="text-[13px] font-bold text-ink block mb-1.5">
                   Tipo de Rubro
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={() => {
                       setTipo('INGRESO');
                       setPermiteDescuentoDefault(true);
                     }}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer text-center ${
+                    className={`min-h-[44px] py-2 px-3.5 rounded-xl text-[13px] font-bold border transition cursor-pointer text-center ${
                       tipo === 'INGRESO'
                         ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
                         : 'bg-paper-2 text-ink-muted border-rule hover:text-ink'
@@ -231,7 +231,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                       setTipo('EGRESO');
                       setPermiteDescuentoDefault(false);
                     }}
-                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition cursor-pointer text-center ${
+                    className={`min-h-[44px] py-2 px-3.5 rounded-xl text-[13px] font-bold border transition cursor-pointer text-center ${
                       tipo === 'EGRESO'
                         ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-700'
                         : 'bg-paper-2 text-ink-muted border-rule hover:text-ink'
@@ -244,7 +244,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
             )}
 
             <div>
-              <label className="text-xs font-bold text-ink block mb-1">
+              <label className="text-[13px] font-bold text-ink block mb-1.5">
                 Nombre de la Categoría
               </label>
               <Input
@@ -263,24 +263,24 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
             </div>
 
             {tipo === 'INGRESO' && (
-              <label className="flex items-start gap-2.5 p-3 rounded-xl bg-paper-2 border border-rule cursor-pointer">
+              <label className="flex items-start gap-2.5 p-3.5 rounded-xl bg-paper-2 border border-rule cursor-pointer">
                 <input
                   type="checkbox"
                   checked={permiteDescuentoDefault}
                   onChange={(e) => setPermiteDescuentoDefault(e.target.checked)}
                   disabled={guardando || eliminando}
-                  className="mt-0.5 rounded text-brand focus:ring-brand"
+                  className="mt-0.5 w-4 h-4 rounded text-brand focus:ring-brand"
                 />
-                <span className="text-xs text-ink">
+                <span className="text-[13px] text-ink">
                   <strong>Permitir descuento por hermanos por defecto</strong>
-                  <span className="block text-[11px] text-ink-muted mt-0.5">
+                  <span className="block text-xs text-ink-muted mt-0.5">
                     Si se tilda, los cobros creados bajo este rubro aplicarán el % familiar predeterminado.
                   </span>
                 </span>
               </label>
             )}
 
-            <div className="pt-2 flex items-center justify-between gap-2 border-t border-rule">
+            <div className="pt-3 flex items-center justify-between gap-2 border-t border-rule">
               {esModoEdicion ? (
                 <Button
                   type="button"
@@ -288,9 +288,9 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                   size="sm"
                   onClick={() => setModalConfirmarEliminar(true)}
                   disabled={guardando || eliminando}
-                  className="gap-1.5 text-xs"
+                  className="gap-1.5"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4" />
                   <span>Eliminar</span>
                 </Button>
               ) : (

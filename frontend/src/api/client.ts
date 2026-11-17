@@ -6,6 +6,7 @@ import {
   limpiarCacheApi,
 } from '../lib/offlineCache';
 import { useOfflineStore } from '../store/offlineStore';
+import { useToastStore } from '../store/toastStore';
 
 const rawApiUrl = import.meta.env?.VITE_API_URL?.trim();
 const baseURL = rawApiUrl ? `${rawApiUrl.replace(/\/$/, '')}/api` : '/api';
@@ -47,18 +48,23 @@ api.get = ((url: string, config?: AxiosRequestConfig) => {
   return requestPromise;
 }) as typeof api.get;
 
+function estaOfflineCliente(): boolean {
+  const navOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const storeOffline = useOfflineStore.getState().isOnline === false;
+  return navOffline || storeOffline;
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('scout_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // Si el dispositivo está sin red, responder de inmediato con la caché sin esperar timeout
-  if (
-    typeof navigator !== 'undefined' &&
-    navigator.onLine === false &&
-    config.method?.toLowerCase() === 'get'
-  ) {
+  const method = config.method?.toLowerCase() || 'get';
+  const offline = estaOfflineCliente();
+
+  // Si el dispositivo está sin red, responder GET de inmediato con la caché sin esperar timeout
+  if (offline && method === 'get') {
     const offlineErr = new Error('Sin conexión a internet (offline)') as Error & {
       __isOfflineFastFail: boolean;
       config: typeof config;
@@ -66,6 +72,24 @@ api.interceptors.request.use((config) => {
     offlineErr.__isOfflineFastFail = true;
     offlineErr.config = config;
     return Promise.reject(offlineErr);
+  }
+
+  // Bloquear mutaciones de servidor cuando no hay señal mostrando aviso claro al usuario
+  const esMutacion = method === 'post' || method === 'put' || method === 'patch' || method === 'delete';
+  const esLogout = typeof config.url === 'string' && config.url.includes('/auth/logout');
+  if (offline && esMutacion && !esLogout) {
+    const msg =
+      'Sin conexión a internet: los cambios en el servidor están bloqueados hasta recuperar señal.';
+    useToastStore.getState().mostrarToast(msg, 'advertencia', 5000);
+    const offlineMutationErr = new Error(msg) as Error & {
+      __isOfflineFastFail: boolean;
+      __isOfflineMutationBlocked: boolean;
+      config: typeof config;
+    };
+    offlineMutationErr.__isOfflineFastFail = true;
+    offlineMutationErr.__isOfflineMutationBlocked = true;
+    offlineMutationErr.config = config;
+    return Promise.reject(offlineMutationErr);
   }
 
   return config;

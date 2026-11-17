@@ -35,6 +35,7 @@ import {
 
 interface Props {
   abierto: boolean;
+  embedded?: boolean;
   onCerrar: () => void;
   onCreado: () => void;
   unidadesDisponibles: any[];
@@ -43,6 +44,7 @@ interface Props {
 
 export const ModalAltaMiembro: React.FC<Props> = ({
   abierto,
+  embedded = false,
   onCerrar,
   onCreado,
   unidadesDisponibles,
@@ -95,7 +97,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   };
 
   const { backdropProps, contentProps } = useModalOverlay({
-    abierto,
+    abierto: !embedded && abierto,
     onCerrar: cerrarModal,
     bloqueado: cargando,
   });
@@ -350,30 +352,8 @@ export const ModalAltaMiembro: React.FC<Props> = ({
     }
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
-      {...backdropProps}
-    >
-      <div
-        className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-xl max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col transition-colors"
-        {...contentProps}
-      >
-        <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
-          <div className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-brand" />
-            <h3 className="font-bold text-ink text-base">Nuevo Miembro</h3>
-          </div>
-          <button
-            onClick={cerrarModal}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {altaResultado ? (
-          <div className="p-5 sm:p-6 space-y-4 text-xs">
+  const cuerpo = altaResultado ? (
+    <div className={embedded ? 'space-y-4 text-sm' : 'p-5 sm:p-6 space-y-4 text-sm'}>
             <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
               <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300 font-bold text-sm">
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
@@ -408,7 +388,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             {altaResultado.claveTemporal && (
               <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex items-center justify-between gap-3">
                 <div>
-                  <span className="block text-[11px] font-semibold text-ink-muted">
+                  <span className="block text-xs font-semibold text-ink-muted">
                     Contraseña temporal generada (se muestra una única vez):
                   </span>
                   <code className="text-base font-mono font-extrabold text-ink select-all">
@@ -439,14 +419,17 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               <button
                 type="button"
                 onClick={cerrarModal}
-                className="min-h-[44px] px-5 py-2 rounded-xl bg-brand text-brand-contrast font-bold text-xs cursor-pointer"
+                className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand text-brand-contrast font-bold text-sm cursor-pointer"
               >
                 Listo
               </button>
             </div>
           </div>
         ) : (
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 text-xs overflow-y-auto flex-1">
+        <form
+          onSubmit={handleSubmit}
+          className={embedded ? 'space-y-4 text-[13px]' : 'p-4 sm:p-6 space-y-4 text-[13px] overflow-y-auto flex-1'}
+        >
           {error && (
             <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-center gap-2 text-xs font-medium">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -470,7 +453,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                     placeholder="Escribí DNI, nombre o apellido para ver los grupos de hermanos..."
                     value={dniHermano}
                     onChange={(e) => setDniHermano(e.target.value)}
-                    className="w-full min-h-[42px] pl-9 pr-9 py-2 rounded-xl border border-rule text-xs bg-surface text-ink placeholder:text-ink-muted outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
+                    className="w-full min-h-[44px] pl-9 pr-9 py-2.5 rounded-xl border border-rule text-base sm:text-[15px] bg-surface text-ink placeholder:text-ink-muted outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition-colors"
                   />
                   {buscandoHermano && (
                     <Loader2 className="w-4 h-4 text-brand animate-spin absolute right-3 top-1/2 -translate-y-1/2" />
@@ -478,14 +461,14 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 </div>
 
                 {dniHermano.trim().length >= 2 && !buscandoHermano && gruposOpciones.length === 0 && (
-                  <p className="text-[11px] text-ink-muted px-1">
+                  <p className="text-xs text-ink-muted px-1">
                     No se encontraron coincidencias para "{dniHermano.trim()}".
                   </p>
                 )}
 
                 {gruposOpciones.length > 0 && (
                   <div className="space-y-2 pt-1">
-                    <span className="text-[11px] font-bold text-ink block">
+                    <span className="text-xs font-bold text-ink block">
                       Seleccioná el grupo de hermanos correspondiente:
                     </span>
                     <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
@@ -517,7 +500,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                               {grupo.integrantes.map((m) => (
                                 <span
                                   key={m.id}
-                                  className="px-2 py-0.5 rounded-md bg-paper-3 text-[11px] font-semibold text-ink-2"
+                                  className="px-2 py-0.5 rounded-md bg-paper-3 text-xs font-semibold text-ink-2"
                                 >
                                   {m.nombre} {m.apellido} (DNI {m.dni} • {m.ramaNombre})
                                 </span>
@@ -525,7 +508,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                             </div>
 
                             {(grupo.madreNombre || grupo.padreNombre || grupo.domicilio) && (
-                              <div className="text-[10px] text-ink-muted flex flex-wrap gap-x-2.5">
+                              <div className="text-xs text-ink-muted flex flex-wrap gap-x-2.5">
                                 {grupo.madreNombre && <span>Madre: {grupo.madreNombre}</span>}
                                 {grupo.padreNombre && <span>Padre: {grupo.padreNombre}</span>}
                                 {grupo.domicilio && (
@@ -545,7 +528,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                       <button
                         type="button"
                         onClick={() => handleConfirmarAdhesionGrupo(grupoPreseleccionado)}
-                        className="w-full min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
+                        className="w-full min-h-[42px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 text-brand-contrast font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap"
                       >
                         <CheckCircle2 className="w-4 h-4" />
                         <span className="whitespace-nowrap">Confirmar adhesión al grupo familiar</span>
@@ -562,7 +545,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                     <span className="font-bold text-ink block truncate">
                       Adherido a {grupoConfirmado.nombreFamilia}
                     </span>
-                    <span className="text-[11px] text-ink-muted block truncate">
+                    <span className="text-xs text-ink-muted block truncate">
                       Hermanos:{' '}
                       {grupoConfirmado.integrantes.map((i) => `${i.nombre} ${i.apellido}`).join(', ')}
                     </span>
@@ -571,7 +554,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 <button
                   type="button"
                   onClick={() => setGrupoConfirmado(null)}
-                  className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-[11px] shrink-0 cursor-pointer transition-colors"
+                  className="px-3 py-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-bold text-xs shrink-0 cursor-pointer transition-colors"
                 >
                   Quitar
                 </button>
@@ -694,7 +677,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
               {emailContacto.trim() && (
-                <label className="mt-2 flex items-start gap-2 text-[11px] text-ink-2 cursor-pointer select-none">
+                <label className="mt-2 flex items-start gap-2 text-xs text-ink-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={soloEnviarPorCorreo}
@@ -803,20 +786,56 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             <button
               type="button"
               onClick={cerrarModal}
-              className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-bold text-xs hover:bg-paper-2 transition cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-bold text-sm hover:bg-paper-2 transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={cargando}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors cursor-pointer disabled:opacity-50"
             >
               {cargando ? 'Guardando...' : 'Guardar Miembro'}
             </button>
           </div>
         </form>
-        )}
+  );
+
+  if (embedded) return cuerpo;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
+      {...backdropProps}
+    >
+      <div
+        className="bg-surface border border-rule rounded-t-3xl sm:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[92dvh] transition-colors text-ink"
+        {...contentProps}
+      >
+        {/* Cabecera */}
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-rule shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-brand/15 text-brand">
+              <UserPlus className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-ink text-lg">Nuevo Miembro</h3>
+              <span className="text-[13px] text-ink-muted">
+                Alta en padrón con credencial temporal
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={cerrarModal}
+            aria-label="Cerrar modal"
+            className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {cuerpo}
       </div>
     </div>
   );

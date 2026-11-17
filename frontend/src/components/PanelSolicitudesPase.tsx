@@ -63,11 +63,11 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
     <div className="bg-surface rounded-2xl border border-amber-300 dark:border-amber-700/60 shadow-xs overflow-hidden">
       <div className="p-4 sm:px-5 bg-amber-50/70 dark:bg-amber-950/25 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h3 className="text-sm font-extrabold text-ink flex items-center gap-2">
-            <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <h3 className="text-base font-extrabold text-ink flex items-center gap-2">
+            <Clock className="w-[18px] h-[18px] text-amber-600 dark:text-amber-400" />
             <span>Solicitudes de Pase Pendientes ({solicitudes.length})</span>
           </h3>
-          <p className="text-xs text-ink-muted mt-0.5">
+          <p className="text-[13px] text-ink-muted mt-0.5">
             Pases hacia ramas con múltiples secciones que esperan confirmación de la sección receptora.
           </p>
         </div>
@@ -85,7 +85,7 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
           return (
             <div
               key={s.id}
-              className="p-3.5 sm:px-5 flex flex-col md:flex-row md:items-center justify-between gap-3"
+              className="p-4 sm:px-5 flex flex-col md:flex-row md:items-center justify-between gap-3"
             >
               <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -93,18 +93,18 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
                     <button
                       type="button"
                       onClick={() => onAbrirMiembro(s.usuario?.id)}
-                      className="font-bold text-sm text-ink hover:text-brand hover:underline cursor-pointer"
+                      className="font-bold text-[15px] text-ink hover:text-brand hover:underline cursor-pointer"
                     >
                       {s.usuario?.apellido}, {s.usuario?.nombre}
                     </button>
                   ) : (
-                    <span className="font-bold text-sm text-ink">
+                    <span className="font-bold text-[15px] text-ink">
                       {s.usuario?.apellido}, {s.usuario?.nombre}
                     </span>
                   )}
                   <span className="text-xs text-ink-muted">DNI {s.usuario?.dni}</span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                       s.puedeAprobar
                         ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
                         : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
@@ -114,7 +114,7 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
                   </span>
                 </div>
 
-                <p className="text-xs text-ink-2">
+                <p className="text-[13px] text-ink-2">
                   <strong>{s.unidadOrigen?.nombre}</strong> → <strong>{s.unidadDestino?.nombre}</strong>
                   {s.solicitadoPor && (
                     <span className="text-ink-muted">
@@ -138,7 +138,7 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
                           [s.id]: Number(e.target.value),
                         }))
                       }
-                      className="min-h-[36px] px-2.5 py-1 rounded-xl border border-rule bg-paper-2 text-xs font-semibold text-ink outline-none"
+                      className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-[13px] font-semibold text-ink outline-none"
                     >
                       {secciones.map((u: any) => (
                         <option key={u.id} value={u.id}>
@@ -153,12 +153,12 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
                       type="button"
                       disabled={enProceso}
                       onClick={() => handleAprobar(s)}
-                      className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="min-h-[40px] px-4 py-1.5 rounded-xl bg-brand text-brand-contrast hover:opacity-90 font-bold text-[13px] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {enProceso ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
-                        <Check className="w-3.5 h-3.5" />
+                        <Check className="w-4 h-4" />
                       )}
                       <span>Confirmar ingreso</span>
                     </button>
@@ -169,9 +169,9 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
                       type="button"
                       disabled={enProceso}
                       onClick={() => handleRechazar(s)}
-                      className="min-h-[36px] px-3 py-1.5 rounded-xl border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 font-bold text-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      className="min-h-[40px] px-3.5 py-1.5 rounded-xl border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 font-bold text-[13px] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                       <span>{s.puedeAprobar ? 'Rechazar' : 'Cancelar'}</span>
                     </button>
                   )}

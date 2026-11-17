@@ -23,6 +23,7 @@ interface VisorFichaMiembroProps {
   miembro: any;
   entrega?: any | null;
   pdfPreviewUrl?: string | null;
+  ocultarModalPdf?: boolean;
   onCerrarPdfPreview?: () => void;
   onDescargarPdf?: () => void;
 }
@@ -42,6 +43,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   miembro,
   entrega,
   pdfPreviewUrl,
+  ocultarModalPdf = false,
   onCerrarPdfPreview,
   onDescargarPdf,
 }) => {
@@ -219,7 +221,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   return (
     <div className="space-y-3">
       {/* Modal Visor de PDF en pantalla (compatible con celulares Android/iOS sin apps externas) */}
-      {pdfPreviewUrl && (
+      {!ocultarModalPdf && pdfPreviewUrl && (
         <Suspense fallback={null}>
           <PdfViewerModal
             url={pdfPreviewUrl}
@@ -233,27 +235,27 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
 
       {!tieneDatosCargados ? (
         <div className="p-6 text-center bg-paper-2 rounded-2xl border border-dashed border-rule space-y-1.5">
-          <p className="text-xs font-bold text-ink-2">
+          <p className="text-sm font-bold text-ink-2">
             Este miembro todavía no tiene respuestas cargadas en su ficha digital.
           </p>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             Tocá &ldquo;Rellenar Ficha&rdquo; arriba para completarla desde el celular.
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           {/* Selector de Secciones de la Ficha (Mobile-First Chips) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-paper-3/90 p-1.5 rounded-2xl">
             <button
               type="button"
               onClick={() => setSeccion('salud')}
-              className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'salud'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >
-              <HeartPulse className="w-3.5 h-3.5 shrink-0" />
+              <HeartPulse className="w-4 h-4 shrink-0" />
               <span>Salud</span>
               {alertasMedicas.length > 0 && (
                 <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0" />
@@ -263,39 +265,39 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
             <button
               type="button"
               onClick={() => setSeccion('familia')}
-              className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'familia'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >
-              <Users className="w-3.5 h-3.5 shrink-0" />
+              <Users className="w-4 h-4 shrink-0" />
               <span>Familia</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSeccion('retiro')}
-              className={`min-h-[40px] px-2.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'retiro'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >
-              <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              <ShieldCheck className="w-4 h-4 shrink-0" />
               <span>Retiro y Salidas</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSeccion('apoyos')}
-              className={`min-h-[40px] px-2.5 py-1.5 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[42px] px-3 py-1.5 rounded-lg text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'apoyos'
-                  ? 'bg-brand text-brand-contrast shadow-xs font-bold'
+                  ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <Sparkles className="w-4 h-4 shrink-0" />
               <span>Apoyos</span>
             </button>
           </div>
@@ -304,33 +306,33 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
           {/* SECCIÓN 1: SALUD Y EMERGENCIAS                             */}
           {/* ========================================================== */}
           {seccion === 'salud' && (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {/* Tarjeta Rápida de Biometría y Cobertura */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/50">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/70 dark:border-rose-900/50">
                   <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 block">
                     Grupo y Factor
                   </span>
-                  <span className="text-base font-black text-rose-900 dark:text-rose-100">
+                  <span className="text-lg font-black text-rose-900 dark:text-rose-100">
                     {grupoSanguineo}
                   </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-paper-2 border border-rule/70">
+                <div className="p-3.5 rounded-xl bg-paper-2 border border-rule/70">
                   <span className="text-xs font-semibold text-ink-muted block">
                     Peso / Talla
                   </span>
-                  <span className="text-sm font-extrabold text-ink">
+                  <span className="text-[15px] font-extrabold text-ink">
                     {datos.peso_kg ? `${datos.peso_kg} kg` : '—'} •{' '}
                     {datos.talla_m ? `${datos.talla_m} m` : '—'}
                   </span>
                 </div>
 
-                <div className="col-span-2 p-3 rounded-xl bg-paper-2 border border-rule/70">
+                <div className="col-span-2 p-3.5 rounded-xl bg-paper-2 border border-rule/70">
                   <span className="text-xs font-semibold text-ink-muted block">
                     Obra Social / Prepaga
                   </span>
-                  <span className="text-sm font-extrabold text-ink block truncate">
+                  <span className="text-[15px] font-extrabold text-ink block truncate">
                     {obraSocial}
                     {afiliadoObraSocial ? ` (Afiliado: ${afiliadoObraSocial})` : ''}
                   </span>
@@ -338,18 +340,18 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               </div>
 
               {/* Teléfonos de Emergencia con 1-Tap Call */}
-              <div className="p-3.5 rounded-2xl bg-surface/50 border border-rule/70 space-y-2">
-                <span className="text-xs font-semibold text-ink-muted block">
+              <div className="p-4 rounded-2xl bg-surface/50 border border-rule/70 space-y-2.5">
+                <span className="text-[13px] font-semibold text-ink-muted block">
                   Teléfonos de Emergencia
                 </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {telEmergencia1 ? (
                     <a
                       href={`tel:${telEmergencia1}`}
-                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-brand/10 border border-brand/30/70 flex items-center justify-between gap-2 text-ink font-bold text-xs"
+                      className="min-h-[48px] px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/30/70 flex items-center justify-between gap-2 text-ink font-bold text-sm"
                     >
                       <div>
-                        <span className="text-[10px] text-brand block">
+                        <span className="text-xs text-brand block">
                           Emergencia 1
                         </span>
                         <span>{telEmergencia1}</span>
@@ -357,7 +359,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                       <Phone className="w-4 h-4 text-brand shrink-0" />
                     </a>
                   ) : (
-                    <div className="p-2.5 rounded-xl bg-paper-2 text-xs text-ink-muted">
+                    <div className="p-3 rounded-xl bg-paper-2 text-[13px] text-ink-muted">
                       Sin teléfono de emergencia 1
                     </div>
                   )}
@@ -365,10 +367,10 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                   {telEmergencia2 && (
                     <a
                       href={`tel:${telEmergencia2}`}
-                      className="min-h-[44px] px-3.5 py-2 rounded-xl bg-brand/10 border border-brand/30/70 flex items-center justify-between gap-2 text-ink font-bold text-xs"
+                      className="min-h-[48px] px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/30/70 flex items-center justify-between gap-2 text-ink font-bold text-sm"
                     >
                       <div>
-                        <span className="text-[10px] text-brand block">
+                        <span className="text-xs text-brand block">
                           Emergencia 2
                         </span>
                         <span>{telEmergencia2}</span>
@@ -381,15 +383,15 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
 
               {/* Alertas Médicas y Condiciones Declaradas */}
               {alertasMedicas.length > 0 ? (
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 block">
+                <div className="space-y-2.5">
+                  <span className="text-[13px] font-semibold text-rose-600 dark:text-rose-400 block">
                     Atención Médica a Tener en Cuenta
                   </span>
                   <div className="grid grid-cols-1 gap-2">
                     {alertasMedicas.map((al, i) => (
                       <div
                         key={i}
-                        className={`p-3 rounded-xl border flex items-start gap-2.5 ${
+                        className={`p-3.5 rounded-xl border flex items-start gap-2.5 ${
                           al.critico
                             ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/80 text-rose-950 dark:text-rose-100'
                             : 'bg-brand/10 border-brand/30/80 text-ink'
@@ -400,7 +402,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                             al.critico ? 'text-rose-600 dark:text-rose-400' : 'text-brand'
                           }`}
                         />
-                        <div className="text-xs">
+                        <div className="text-[13px]">
                           <span className="font-extrabold block">{al.titulo}</span>
                           {al.detalle && <span className="opacity-90">{al.detalle}</span>}
                         </div>
@@ -409,7 +411,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-3 rounded-xl bg-brand/10 border border-brand/30 flex items-center gap-2 text-ink text-xs font-bold">
+                <div className="p-3.5 rounded-xl bg-brand/10 border border-brand/30 flex items-center gap-2 text-ink text-[13px] font-bold">
                   <CheckCircle2 className="w-4 h-4 text-brand shrink-0" />
                   <span>Sin alergias, medicaciones ni alertas médicas críticas declaradas.</span>
                 </div>
@@ -417,15 +419,15 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
 
               {/* Situaciones clínicas y Vacunas */}
               {situacionesPuntuales.length > 0 && (
-                <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule space-y-2">
-                  <span className="text-xs font-semibold text-ink-muted block">
+                <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2.5">
+                  <span className="text-[13px] font-semibold text-ink-muted block">
                     Antecedentes Clínicos
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {situacionesPuntuales.map((s) => (
                       <span
                         key={s}
-                        className="px-2.5 py-1 rounded-lg bg-surface border border-rule text-xs font-bold text-ink-2"
+                        className="px-3 py-1 rounded-lg bg-surface border border-rule text-[13px] font-bold text-ink-2"
                       >
                         {s}
                       </span>
@@ -434,32 +436,32 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                 </div>
               )}
 
-              <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule space-y-2">
+              <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2.5">
                 <div className="flex items-center gap-1.5 text-ink-muted">
-                  <Syringe className="w-3.5 h-3.5" />
-                  <span className="text-xs font-semibold text-ink-2">Vacunas y Controles</span>
+                  <Syringe className="w-4 h-4" />
+                  <span className="text-[13px] font-semibold text-ink-2">Vacunas y Controles</span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-2 gap-3 text-[13px]">
                   <div>
-                    <span className="text-ink-muted block text-[10px]">Quíntuple</span>
+                    <span className="text-ink-muted block text-xs">Quíntuple</span>
                     <span className="font-bold text-ink-2">
                       {valorTexto(datos.vacuna_quintuple)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-ink-muted block text-[10px]">Triple Celular</span>
+                    <span className="text-ink-muted block text-xs">Triple Celular</span>
                     <span className="font-bold text-ink-2">
                       {valorTexto(datos.vacuna_triple_celular)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-ink-muted block text-[10px]">Triple Acelular</span>
+                    <span className="text-ink-muted block text-xs">Triple Acelular</span>
                     <span className="font-bold text-ink-2">
                       {valorTexto(datos.vacuna_triple_acelular)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-ink-muted block text-[10px]">Doble Bacteriana</span>
+                    <span className="text-ink-muted block text-xs">Doble Bacteriana</span>
                     <span className="font-bold text-ink-2">
                       {valorTexto(datos.vacuna_doble_bacteriana)}
                     </span>
@@ -473,9 +475,9 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
           {/* SECCIÓN 2: FAMILIA Y ESCOLARIDAD                           */}
           {/* ========================================================== */}
           {seccion === 'familia' && (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {/* Domicilio y Escuela del Protagonista */}
-              <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-4 rounded-2xl bg-paper-2 border border-rule grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px]">
                 <div className="flex items-start gap-2">
                   <MapPin className="w-4 h-4 text-brand shrink-0 mt-0.5" />
                   <div>
@@ -503,18 +505,18 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               </div>
 
               {/* Tarjetas de Madre, Padre y Tutor */}
-              <div className="grid grid-cols-1 gap-2.5">
+              <div className="grid grid-cols-1 gap-3">
                 {familiares.map((fam) => (
                   <div
                     key={fam.rol}
-                    className="p-3.5 rounded-2xl bg-surface border border-rule/70 space-y-2"
+                    className="p-4 rounded-2xl bg-surface border border-rule/70 space-y-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <span className="text-xs font-semibold text-brand block">
                           {fam.rol}
                         </span>
-                        <span className="text-sm font-extrabold text-ink">
+                        <span className="text-[15px] font-extrabold text-ink">
                           {valorTexto(fam.nombre, 'Sin completar')}
                         </span>
                       </div>
@@ -522,41 +524,41 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                       {fam.telefono && (
                         <a
                           href={`tel:${fam.telefono}`}
-                          className="min-h-[38px] px-3 rounded-xl bg-brand/10 text-ink-2 font-bold text-xs flex items-center gap-1.5"
+                          className="min-h-[40px] px-3.5 rounded-xl bg-brand/10 text-ink-2 font-bold text-[13px] flex items-center gap-1.5"
                         >
-                          <Phone className="w-3.5 h-3.5" />
+                          <Phone className="w-4 h-4" />
                           <span>{fam.telefono}</span>
                         </a>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 border-t border-rule text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1.5 border-t border-rule text-[13px]">
                       <div>
-                        <span className="text-[10px] text-ink-muted block">DNI</span>
+                        <span className="text-xs text-ink-muted block">DNI</span>
                         <span className="font-semibold text-ink-2">
                           {valorTexto(fam.dni)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-ink-muted block">Ocupación</span>
+                        <span className="text-xs text-ink-muted block">Ocupación</span>
                         <span className="font-semibold text-ink-2">
                           {valorTexto(fam.profesion)}
                         </span>
                       </div>
                       <div className="col-span-2 sm:col-span-1">
-                        <span className="text-[10px] text-ink-muted block">Email</span>
+                        <span className="text-xs text-ink-muted block">Email</span>
                         <span className="font-semibold text-ink-2 truncate block">
                           {valorTexto(fam.email)}
                         </span>
                       </div>
                       <div className="col-span-2">
-                        <span className="text-[10px] text-ink-muted block">Domicilio</span>
+                        <span className="text-xs text-ink-muted block">Domicilio</span>
                         <span className="font-semibold text-ink-2">
                           {valorTexto(fam.domicilio)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-ink-muted block">Convive</span>
+                        <span className="text-xs text-ink-muted block">Convive</span>
                         <span className="font-semibold text-ink-2">
                           {fam.convive === undefined ? '—' : esVerdadero(fam.convive) ? 'Sí' : 'No'}
                         </span>
@@ -572,18 +574,18 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
           {/* SECCIÓN 3: RETIRO DE MENORES Y PERMISOS                    */}
           {/* ========================================================== */}
           {seccion === 'retiro' && (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {/* Badges de Permisos Clave */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div
-                  className={`p-3.5 rounded-2xl border flex items-center gap-3 ${
+                  className={`p-4 rounded-2xl border flex items-center gap-3 ${
                     esVerdadero(datos.ret_autoriza_retirarse_solo)
                       ? 'bg-brand/10 border-brand/30'
                       : 'bg-brand/10 border-brand/30'
                   }`}
                 >
                   <Car className="w-5 h-5 text-brand shrink-0" />
-                  <div className="text-xs">
+                  <div className="text-[13px]">
                     <span className="text-xs font-semibold opacity-85 block">
                       Retiro al finalizar actividades
                     </span>
@@ -593,7 +595,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                         : 'NO se retira solo (Solo con autorizados)'}
                     </span>
                     {datos.ret_retiro_solo_aclaracion && (
-                      <span className="block text-[11px] mt-0.5 opacity-80">
+                      <span className="block text-xs mt-0.5 opacity-80">
                         Nota: {datos.ret_retiro_solo_aclaracion}
                       </span>
                     )}
@@ -601,14 +603,14 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                 </div>
 
                 <div
-                  className={`p-3.5 rounded-2xl border flex items-center gap-3 ${
+                  className={`p-4 rounded-2xl border flex items-center gap-3 ${
                     esVerdadero(datos.confirma_autorizacion_salidas)
                       ? 'bg-brand/10 border-brand/30'
                       : 'bg-paper-2 border-rule'
                   }`}
                 >
                   <UserCheck className="w-5 h-5 text-brand shrink-0" />
-                  <div className="text-xs">
+                  <div className="text-[13px]">
                     <span className="text-xs font-semibold opacity-85 block">
                       Salidas Cercanas por el Día
                     </span>
@@ -622,13 +624,13 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               </div>
 
               {/* Lista de Personas Autorizadas a Retirar */}
-              <div className="p-3.5 rounded-2xl bg-surface border border-rule/70 space-y-2.5">
-                <span className="text-xs font-semibold text-ink-muted block">
+              <div className="p-4 rounded-2xl bg-surface border border-rule/70 space-y-2.5">
+                <span className="text-[13px] font-semibold text-ink-muted block">
                   Personas Autorizadas a Retirar al Menor
                 </span>
 
                 {personasRetiro.length === 0 ? (
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-[13px] text-ink-muted">
                     No se especificaron personas adicionales fuera de Madre / Padre.
                   </p>
                 ) : (
@@ -636,13 +638,13 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                     {personasRetiro.map((p, idx) => (
                       <div
                         key={idx}
-                        className="p-3 rounded-xl bg-paper-2 border border-rule flex items-center justify-between gap-2"
+                        className="p-3.5 rounded-xl bg-paper-2 border border-rule flex items-center justify-between gap-2"
                       >
-                        <div className="text-xs">
+                        <div className="text-[13px]">
                           <span className="font-extrabold text-ink block">
                             {p.nombre}
                           </span>
-                          <span className="text-[11px] text-ink-muted">
+                          <span className="text-xs text-ink-muted">
                             {p.vinculo ? `${p.vinculo} / ` : ''}DNI {valorTexto(p.dni)}
                           </span>
                         </div>
@@ -650,9 +652,9 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                         {p.telefono && (
                           <a
                             href={`tel:${p.telefono}`}
-                            className="min-h-[36px] px-3 rounded-xl bg-brand/10 text-brand font-bold text-xs flex items-center gap-1.5 shrink-0"
+                            className="min-h-[40px] px-3.5 rounded-xl bg-brand/10 text-brand font-bold text-[13px] flex items-center gap-1.5 shrink-0"
                           >
-                            <Phone className="w-3.5 h-3.5" />
+                            <Phone className="w-4 h-4" />
                             <span>{p.telefono}</span>
                           </a>
                         )}
@@ -664,7 +666,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
 
               {/* Adulto Firmante de Ingreso */}
               {datos.autorizante_nombre && (
-                <div className="p-3 rounded-xl bg-paper-2 border border-rule text-xs">
+                <div className="p-3.5 rounded-xl bg-paper-2 border border-rule text-[13px]">
                   <span className="text-xs font-semibold text-ink-muted block">
                     Adulto Firmante de las Autorizaciones
                   </span>
@@ -681,10 +683,10 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
           {/* SECCIÓN 4: APOYOS, ADAPTACIONES Y COLABORACIÓN             */}
           {/* ========================================================== */}
           {seccion === 'apoyos' && (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {/* Necesidades Especiales y Pautas Pedagógicas */}
-              <div className="p-3.5 rounded-2xl bg-surface border border-rule/70 space-y-2.5 text-xs">
-                <span className="text-xs font-semibold text-ink-muted block">
+              <div className="p-4 rounded-2xl bg-surface border border-rule/70 space-y-2.5 text-[13px]">
+                <span className="text-[13px] font-semibold text-ink-muted block">
                   Acompañamiento Pedagógico y Salud
                 </span>
 
@@ -693,10 +695,10 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                 datos.ne_descripcion_hijo_gustos_miedos ||
                 datos.ne_expectativas_familia ||
                 datos.comunicacion_educador_necesaria ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {datos.ne_diagnostico && (
                       <div>
-                        <span className="text-[10px] text-ink-muted block">Diagnóstico</span>
+                        <span className="text-xs text-ink-muted block">Diagnóstico</span>
                         <span className="font-bold text-ink">
                           {datos.ne_diagnostico}
                         </span>
@@ -704,7 +706,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                     )}
                     {datos.ne_situaciones_estres_abordaje && (
                       <div>
-                        <span className="text-[10px] text-ink-muted block">
+                        <span className="text-xs text-ink-muted block">
                           Situaciones de estrés y cómo abordarlas
                         </span>
                         <span className="font-semibold text-ink-2">
@@ -714,7 +716,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                     )}
                     {datos.ne_descripcion_hijo_gustos_miedos && (
                       <div>
-                        <span className="text-[10px] text-ink-muted block">
+                        <span className="text-xs text-ink-muted block">
                           Gustos, estímulos y miedos
                         </span>
                         <span className="font-semibold text-ink-2">
@@ -724,7 +726,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                     )}
                     {datos.ne_expectativas_familia && (
                       <div>
-                        <span className="text-[10px] text-ink-muted block">
+                        <span className="text-xs text-ink-muted block">
                           Expectativas de la familia
                         </span>
                         <span className="font-semibold text-ink-2">
@@ -733,8 +735,8 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                       </div>
                     )}
                     {datos.comunicacion_educador_necesaria && (
-                      <div className="p-2.5 rounded-xl bg-brand/10/30 border border-brand/30">
-                        <span className="text-[10px] font-bold text-brand block">
+                      <div className="p-3 rounded-xl bg-brand/10/30 border border-brand/30">
+                        <span className="text-xs font-bold text-brand block">
                           Pedido de comunicación con educadores:
                         </span>
                         <span className="font-bold text-ink">
@@ -751,7 +753,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
               </div>
 
               {/* Adulto Colaborador */}
-              <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule space-y-1.5 text-xs">
+              <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-1.5 text-[13px]">
                 <span className="text-xs font-semibold text-ink-muted block">
                   Colaboración Familiar
                 </span>

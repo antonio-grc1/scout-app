@@ -32,7 +32,7 @@ export class PasesController {
     return this.pases.listarSolicitudes(a);
   }
 
-  @RequirePermission('pases.ejecutar')
+  @RequirePermission('pases.editar')
   @Post()
   ejecutar(
     @CurrentUser() u: AuthUser,
@@ -42,7 +42,7 @@ export class PasesController {
     return this.pases.ejecutar(a, dto, u.sub);
   }
 
-  @RequirePermission('pases.ejecutar')
+  @RequirePermission('pases.editar')
   @Post('lote')
   ejecutarLote(
     @CurrentUser() u: AuthUser,
@@ -52,7 +52,7 @@ export class PasesController {
     return this.pases.ejecutarLote(a, dto, u.sub);
   }
 
-  @RequirePermission('pases.ejecutar')
+  @RequirePermission('pases.editar')
   @Post('solicitudes/:id/aprobar')
   aprobarSolicitud(
     @CurrentUser() u: AuthUser,
@@ -63,7 +63,7 @@ export class PasesController {
     return this.pases.aprobarSolicitud(a, id, dto, u.sub);
   }
 
-  @RequirePermission('pases.ejecutar')
+  @RequirePermission('pases.editar')
   @Post('solicitudes/:id/rechazar')
   rechazarSolicitud(
     @CurrentUser() u: AuthUser,

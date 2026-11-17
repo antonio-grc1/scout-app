@@ -129,7 +129,7 @@ export class AuthController {
     return this.auth.recuperarClave(dto);
   }
 
-  @RequirePermission('auth.resetear_clave')
+  @RequirePermission('padron.editar')
   @Post('usuarios/:id/resetear-clave')
   @HttpCode(200)
   resetearClave(

@@ -38,7 +38,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs sm:text-sm font-bold text-ink leading-none"
+            className="block text-sm font-bold text-ink leading-snug"
           >
             {label} {required && <span className="text-rose-500">*</span>}
           </label>
@@ -61,7 +61,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               error ? errorId : helperText ? helperId : undefined
             }
             className={cn(
-              'w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-surface text-ink placeholder:text-ink-muted text-base sm:text-sm transition-colors outline-none',
+              'w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border bg-surface text-ink placeholder:text-ink-muted text-base sm:text-[15px] transition-colors outline-none',
               leftIcon && 'pl-10',
               rightAction && 'pr-11',
               error
@@ -83,15 +83,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <div
             id={errorId}
             role="alert"
-            className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1"
+            className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-rose-600 dark:text-rose-400 mt-1"
           >
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
 
         {!error && helperText && (
-          <p id={helperId} className="text-xs text-ink-muted mt-1">
+          <p id={helperId} className="text-xs sm:text-[13px] text-ink-muted mt-1">
             {helperText}
           </p>
         )}
@@ -140,7 +140,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="block text-xs sm:text-sm font-bold text-ink leading-none"
+            className="block text-sm font-bold text-ink leading-snug"
           >
             {label} {required && <span className="text-rose-500">*</span>}
           </label>
@@ -162,7 +162,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
               error ? errorId : helperText ? helperId : undefined
             }
             className={cn(
-              'w-full min-h-[44px] px-3.5 py-2.5 rounded-xl border bg-surface text-ink text-base sm:text-sm transition-colors outline-none cursor-pointer',
+              'w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border bg-surface text-ink text-base sm:text-[15px] transition-colors outline-none cursor-pointer',
               leftIcon && 'pl-10',
               error
                 ? 'border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/25'
@@ -179,15 +179,15 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
           <div
             id={errorId}
             role="alert"
-            className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1"
+            className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-rose-600 dark:text-rose-400 mt-1"
           >
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
 
         {!error && helperText && (
-          <p id={helperId} className="text-xs text-ink-muted mt-1">
+          <p id={helperId} className="text-xs sm:text-[13px] text-ink-muted mt-1">
             {helperText}
           </p>
         )}
@@ -234,7 +234,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="block text-xs sm:text-sm font-bold text-ink leading-none"
+            className="block text-sm font-bold text-ink leading-snug"
           >
             {label} {required && <span className="text-rose-500">*</span>}
           </label>
@@ -250,7 +250,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
             error ? errorId : helperText ? helperId : undefined
           }
           className={cn(
-            'w-full min-h-[80px] px-3.5 py-2.5 rounded-xl border bg-surface text-ink placeholder:text-ink-muted text-base sm:text-sm transition-colors outline-none resize-y',
+            'w-full min-h-[88px] px-3.5 py-2.5 rounded-xl border bg-surface text-ink placeholder:text-ink-muted text-base sm:text-[15px] transition-colors outline-none resize-y',
             error
               ? 'border-rose-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/25'
               : 'border-rule focus:border-[var(--color-focus)] focus:ring-2 focus:ring-[var(--color-focus)]/25',
@@ -263,15 +263,15 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           <div
             id={errorId}
             role="alert"
-            className="flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400 mt-1"
+            className="flex items-center gap-1.5 text-xs sm:text-[13px] font-semibold text-rose-600 dark:text-rose-400 mt-1"
           >
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+            <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span>{error}</span>
           </div>
         )}
 
         {!error && helperText && (
-          <p id={helperId} className="text-xs text-ink-muted mt-1">
+          <p id={helperId} className="text-xs sm:text-[13px] text-ink-muted mt-1">
             {helperText}
           </p>
         )}

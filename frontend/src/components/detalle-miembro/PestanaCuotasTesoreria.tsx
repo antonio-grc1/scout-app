@@ -144,14 +144,14 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
   return (
     <div className="space-y-4">
       {/* Resumen Financiero + Botones de Acción Directa */}
-      <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-4 flex-wrap">
+      <div className="p-4 sm:p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+        <div className="flex items-center gap-5 flex-wrap">
           <div>
-            <span className="text-xs font-semibold text-ink-muted block">
+            <span className="text-xs sm:text-[13px] font-semibold text-ink-muted block">
               Deuda Total
             </span>
             <span
-              className={`text-xl font-black ${
+              className={`text-2xl font-black ${
                 saldoPendiente > 0
                   ? 'text-rose-600 dark:text-rose-400'
                   : 'text-ink'
@@ -161,9 +161,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             </span>
           </div>
 
-          <div className="pl-4 border-l border-rule">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">
+          <div className="pl-5 border-l border-rule">
+            <div className="flex items-center gap-2">
+              <span className="text-xs sm:text-[13px] font-semibold text-teal-600 dark:text-teal-400">
                 Saldo a Favor
               </span>
               {habilitarAjustes && (
@@ -174,13 +174,13 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                     setMontoAjusteSaldo('');
                     setMotivoAjusteSaldo('');
                   }}
-                  className="text-[10px] font-bold text-teal-700 dark:text-teal-300 underline hover:opacity-80 cursor-pointer"
+                  className="text-xs font-bold text-teal-700 dark:text-teal-300 underline hover:opacity-80 cursor-pointer"
                 >
                   {ajustandoSaldo ? 'Cerrar' : 'Ajustar'}
                 </button>
               )}
             </div>
-            <span className="text-xl font-black text-teal-600 dark:text-teal-400">
+            <span className="text-2xl font-black text-teal-600 dark:text-teal-400">
               {formatearMoneda(saldoAFavor)}
             </span>
           </div>
@@ -191,7 +191,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             <button
               type="button"
               onClick={onAbrirModalGenerarDeuda}
-              className="min-h-[42px] px-3.5 rounded-xl border border-rule bg-surface text-ink-2 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+              className="min-h-[44px] px-4 rounded-xl border border-rule bg-surface text-ink-2 font-bold text-[13px] flex items-center gap-1.5 cursor-pointer"
             >
               <PlusCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span>+ Cargo</span>
@@ -202,7 +202,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             <button
               type="button"
               onClick={() => onCobrarCargo(null)}
-              className="min-h-[42px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+              className="min-h-[44px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <CreditCard className="w-4 h-4" />
               <span>{saldoPendiente > 0 ? 'Cobrar / Pagar' : 'Registrar Adelanto'}</span>
@@ -215,23 +215,23 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
       {ajustandoSaldo && (
         <form
           onSubmit={onGuardarAjusteSaldo}
-          className="p-4 rounded-2xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 space-y-3 animate-in fade-in"
+          className="p-4 sm:p-5 rounded-2xl bg-teal-50/70 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 space-y-3.5 animate-in fade-in"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-extrabold text-teal-950 dark:text-teal-100 flex items-center gap-1.5">
+            <span className="text-sm font-extrabold text-teal-950 dark:text-teal-100 flex items-center gap-2">
               <Wallet className="w-4 h-4 text-teal-600" />
               Ajustar Saldo a Favor Manualmente
             </span>
             <button
               type="button"
               onClick={() => setAjustandoSaldo(false)}
-              className="text-ink-muted hover:text-ink cursor-pointer"
+              className="text-ink-muted hover:text-ink cursor-pointer p-1"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-3 gap-2">
             {([
               { k: 'CARGAR', label: '+ Cargar saldo' },
               { k: 'DESCONTAR', label: '- Devolver / Descontar' },
@@ -241,7 +241,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                 key={opt.k}
                 type="button"
                 onClick={() => setTipoAjusteSaldo(opt.k)}
-                className={`py-2 px-2 rounded-xl text-[11px] font-bold border transition cursor-pointer ${
+                className={`min-h-[40px] py-2 px-2.5 rounded-xl text-xs sm:text-[13px] font-bold border transition cursor-pointer ${
                   tipoAjusteSaldo === opt.k
                     ? 'bg-teal-600 text-white border-teal-600'
                     : 'bg-surface text-ink-2 border-rule'
@@ -252,9 +252,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             ))}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-teal-900 dark:text-teal-200 mb-1">
+              <label className="block text-xs sm:text-[13px] font-bold text-teal-900 dark:text-teal-200 mb-1.5">
                 {tipoAjusteSaldo === 'FIJAR' ? 'Nuevo Saldo ($)' : 'Monto ($)'} *
               </label>
               <input
@@ -265,11 +265,11 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                 value={montoAjusteSaldo}
                 onChange={(e) => setMontoAjusteSaldo(e.target.value)}
                 placeholder="Ej: 5000"
-                className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-xs font-bold text-ink"
+                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-sm font-bold text-ink"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-teal-900 dark:text-teal-200 mb-1">
+              <label className="block text-xs sm:text-[13px] font-bold text-teal-900 dark:text-teal-200 mb-1.5">
                 Motivo / Nota (opcional)
               </label>
               <input
@@ -277,7 +277,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                 value={motivoAjusteSaldo}
                 onChange={(e) => setMotivoAjusteSaldo(e.target.value)}
                 placeholder="Ej: Devolución en mano, saldo año anterior..."
-                className="w-full px-3 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-xs text-ink"
+                className="w-full min-h-[44px] px-3.5 py-2 rounded-xl border border-teal-300 dark:border-teal-700 bg-surface text-sm text-ink"
               />
             </div>
           </div>
@@ -286,14 +286,14 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             <button
               type="button"
               onClick={() => setAjustandoSaldo(false)}
-              className="px-3 py-1.5 rounded-xl border border-rule text-xs font-semibold text-ink-2 cursor-pointer"
+              className="min-h-[40px] px-3.5 py-2 rounded-xl border border-rule text-[13px] font-semibold text-ink-2 cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={procesandoAccionCuota || montoAjusteSaldo === ''}
-              className="px-4 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+              className="min-h-[40px] px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[13px] font-bold cursor-pointer disabled:opacity-50"
             >
               {procesandoAccionCuota ? 'Guardando...' : 'Aplicar Ajuste'}
             </button>
@@ -302,26 +302,26 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
       )}
 
       {/* Barra rápida de Grupo Familiar y Descuento Hermanos */}
-      <div className="p-3 rounded-2xl bg-brand/10 border border-brand/30 space-y-2">
+      <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <Users className="w-4 h-4 text-brand shrink-0" />
-            <span className="font-bold text-ink text-xs">
+            <span className="font-bold text-ink text-sm">
               {familiar ? familiar.nombreFamilia : 'Sin grupo familiar'}
             </span>
             {familiar && (
-              <span className="px-2 py-0.5 rounded-full bg-brand/15 text-brand text-[10px] font-bold">
+              <span className="px-2.5 py-0.5 rounded-full bg-brand/15 text-brand text-xs font-bold">
                 {pctDesc > 0 ? `-${pctDesc}% desc. hermanos` : '0% desc.'}
               </span>
             )}
           </div>
           {(habilitarVincularHermano || habilitarEditarDescuento) && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               {familiar && habilitarEditarDescuento && (
                 <button
                   type="button"
                   onClick={onAbrirModalEditarFamilia}
-                  className="px-2.5 py-1 rounded-lg bg-surface border border-brand/40 text-brand font-bold text-[11px] cursor-pointer"
+                  className="min-h-[36px] px-3 py-1 rounded-lg bg-surface border border-brand/40 text-brand font-bold text-xs cursor-pointer"
                 >
                   Editar Familia ({pctDesc}%)
                 </button>
@@ -330,7 +330,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                 <button
                   type="button"
                   onClick={onAbrirModalVincularHermano}
-                  className="px-2.5 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[11px] cursor-pointer transition-colors"
+                  className="min-h-[36px] px-3 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
                 >
                   + Hermano
                 </button>
@@ -340,14 +340,14 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
         </div>
 
         {integrantesFamilia.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rule">
-            <span className="text-[11px] font-bold text-ink-muted mr-1">
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-rule">
+            <span className="text-xs font-bold text-ink-muted mr-1">
               Integrantes:
             </span>
             {integrantesFamilia.map((h: any) => (
               <span
                 key={h.id}
-                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-0.5 rounded-lg bg-surface border border-brand/30 text-[11px] font-bold text-ink"
+                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-surface border border-brand/30 text-xs font-bold text-ink"
               >
                 <span>
                   {h.nombre} {h.apellido}
@@ -358,7 +358,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                     disabled={desvinculandoMiembroId === h.id}
                     onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
                     title={`Quitar a ${h.nombre} del grupo familiar`}
-                    className="px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
+                    className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
                   >
                     {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
                   </button>
@@ -370,13 +370,13 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
       </div>
 
       {/* Lista de Cuotas / Cargos en Tarjetas Mobile-First */}
-      <div className="space-y-2">
-        <span className="text-xs font-semibold text-ink-muted block">
+      <div className="space-y-2.5">
+        <span className="text-[13px] font-semibold text-ink-muted block">
           Cuotas y Conceptos Activos ({estadoCuenta?.cargos?.length || 0})
         </span>
 
         {estadoCuenta?.cargos?.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {estadoCuenta.cargos.map((c: any) => {
               const pendiente = Math.max(
                 0,
@@ -392,27 +392,27 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               return (
                 <div
                   key={c.id}
-                  className="p-3.5 rounded-2xl bg-surface border border-rule space-y-3"
+                  className="p-4 rounded-2xl bg-surface border border-rule space-y-3"
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-ink text-sm">
+                        <span className="font-bold text-ink text-[15px]">
                           {c.concepto?.nombre || 'Cuota'}
                         </span>
                         {c.concepto?.mes && (
-                          <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold">
                             {NOMBRES_MESES_CORTOS[c.concepto.mes]}
                           </span>
                         )}
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${cfgEstado.badgeClass}`}
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${cfgEstado.badgeClass}`}
                         >
                           {cfgEstado.label}
                         </span>
                       </div>
 
-                      <div className="text-xs text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <div className="text-[13px] text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span>
                           Total: <strong>{formatearMoneda(c.montoFinal)}</strong>
                         </span>
@@ -435,14 +435,14 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                     </div>
 
                     {/* Acciones 1-Tap por Cuota */}
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {puedeCobrar && (
                         <button
                           type="button"
                           onClick={() => onCobrarCargo(c.id)}
-                          className="min-h-[38px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                          className="min-h-[42px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center gap-1.5 cursor-pointer transition-colors"
                         >
-                          <CreditCard className="w-3.5 h-3.5" />
+                          <CreditCard className="w-4 h-4" />
                           <span>Cobrar {formatearMoneda(pendiente)}</span>
                         </button>
                       )}
@@ -457,18 +457,18 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                                 : onIniciarEdicionCargo(c)
                             }
                             title="Editar monto o descuento de esta cuota"
-                            className="min-h-[38px] px-2.5 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                            className="min-h-[42px] px-3 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-xs flex items-center gap-1 cursor-pointer"
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <Pencil className="w-4 h-4" />
                           </button>
 
                           <button
                             type="button"
                             onClick={() => onAnularCargo(c)}
                             title="Anular cuota (si tiene pagos, pasan a Saldo a Favor)"
-                            className="min-h-[38px] px-2.5 rounded-xl border border-rose-200/70 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                            className="min-h-[42px] px-3 rounded-xl border border-rose-200/70 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold text-xs flex items-center gap-1 cursor-pointer"
                           >
-                            <Ban className="w-3.5 h-3.5" />
+                            <Ban className="w-4 h-4" />
                           </button>
                         </>
                       )}
@@ -479,11 +479,11 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                   {estaEditandoEste && cargoEditando && (
                     <form
                       onSubmit={onGuardarEdicionCargo}
-                      className="pt-3 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-2.5 animate-in fade-in"
+                      className="pt-3 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-3 animate-in fade-in"
                     >
                       {cargoEditando.esIndividual && (
                         <div className="sm:col-span-3">
-                          <label className="block text-[11px] font-bold text-ink-2 mb-1">
+                          <label className="block text-xs font-bold text-ink-2 mb-1">
                             Concepto / Motivo
                           </label>
                           <input
@@ -496,12 +496,12 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                                 nombreConcepto: e.target.value,
                               })
                             }
-                            className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs"
+                            className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-paper-2 text-sm"
                           />
                         </div>
                       )}
                       <div>
-                        <label className="block text-[11px] font-bold text-ink-2 mb-1">
+                        <label className="block text-xs font-bold text-ink-2 mb-1">
                           Monto Original ($)
                         </label>
                         <input
@@ -516,11 +516,11 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                               montoOriginal: e.target.value,
                             })
                           }
-                          className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs font-bold"
+                          className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-paper-2 text-sm font-bold"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-ink-2 mb-1">
+                        <label className="block text-xs font-bold text-ink-2 mb-1">
                           Descuento ($)
                         </label>
                         <input
@@ -535,21 +535,21 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                               montoDescuento: e.target.value,
                             })
                           }
-                          className="w-full px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-xs font-bold text-brand"
+                          className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-paper-2 text-sm font-bold text-brand"
                         />
                       </div>
-                      <div className="flex items-end justify-end gap-1.5">
+                      <div className="flex items-end justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => setCargoEditando(null)}
-                          className="px-3 py-1.5 rounded-xl border border-rule text-xs font-semibold cursor-pointer"
+                          className="min-h-[42px] px-3.5 py-2 rounded-xl border border-rule text-[13px] font-semibold cursor-pointer"
                         >
                           Cancelar
                         </button>
                         <button
                           type="submit"
                           disabled={procesandoAccionCuota}
-                          className="px-3.5 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold cursor-pointer disabled:opacity-50 transition-colors"
+                          className="min-h-[42px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-[13px] font-bold cursor-pointer disabled:opacity-50 transition-colors"
                         >
                           Guardar
                         </button>
@@ -561,7 +561,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             })}
           </div>
         ) : (
-          <div className="p-6 text-center bg-paper-2 rounded-2xl border border-rule text-ink-muted">
+          <div className="p-6 text-center text-sm bg-paper-2 rounded-2xl border border-rule text-ink-muted">
             Sin cuotas activas asignadas.
           </div>
         )}
@@ -573,7 +573,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
           <button
             type="button"
             onClick={() => setMostrarAnulados(!mostrarAnulados)}
-            className="w-full p-3 bg-paper-2 flex items-center justify-between text-xs font-bold text-ink-2 cursor-pointer"
+            className="w-full p-3.5 bg-paper-2 flex items-center justify-between text-[13px] font-bold text-ink-2 cursor-pointer"
           >
             <span>
               Cuotas anuladas ({estadoCuenta.cargosAnulados.length})
@@ -586,11 +586,11 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
           </button>
 
           {mostrarAnulados && (
-            <div className="p-3 space-y-2 bg-surface divide-y divide-rule">
+            <div className="p-3.5 space-y-2.5 bg-surface divide-y divide-rule">
               {estadoCuenta.cargosAnulados.map((ca: any) => (
                 <div
                   key={ca.id}
-                  className="pt-2 first:pt-0 flex items-center justify-between gap-2 text-xs"
+                  className="pt-2.5 first:pt-0 flex items-center justify-between gap-2 text-[13px]"
                 >
                   <div>
                     <span className="font-bold text-ink-2 line-through">
@@ -608,9 +608,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                         onClick={() =>
                           onReactivarCargo(ca.id, ca.concepto?.nombre || 'Cuota')
                         }
-                        className="px-2.5 py-1 rounded-lg bg-brand/10 text-brand border border-brand/30 font-bold text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg bg-brand/10 text-brand border border-brand/30 font-bold text-xs flex items-center gap-1 cursor-pointer transition-colors"
                       >
-                        <RotateCcw className="w-3 h-3" />
+                        <RotateCcw className="w-3.5 h-3.5" />
                         <span>Reactivar</span>
                       </button>
                       <button
@@ -623,9 +623,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                           )
                         }
                         title="Eliminar definitivamente"
-                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                        className="p-2 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   )}
@@ -638,9 +638,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
 
       {/* Historial de Pagos (con Edición y Reversión) */}
       {estadoCuenta?.pagos?.length > 0 && (
-        <div className="space-y-2 pt-2 border-t border-rule">
-          <span className="text-xs font-semibold text-ink-muted flex items-center gap-1.5">
-            <Receipt className="w-3.5 h-3.5" />
+        <div className="space-y-2.5 pt-2.5 border-t border-rule">
+          <span className="text-[13px] font-semibold text-ink-muted flex items-center gap-1.5">
+            <Receipt className="w-4 h-4" />
             <span>Pagos Registrados ({estadoCuenta.pagos.length})</span>
           </span>
 
@@ -656,22 +656,22 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               return (
                 <div
                   key={p.id}
-                  className="p-3 rounded-xl bg-paper-2 border border-rule space-y-2"
+                  className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-extrabold text-brand text-sm">
+                        <span className="font-extrabold text-brand text-[15px]">
                           +{formatearMoneda(p.montoTotal)}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-surface text-ink-2 text-[10px] font-bold border border-rule">
+                        <span className="px-2 py-0.5 rounded-md bg-surface text-ink-2 text-xs font-bold border border-rule">
                           {METODO_PAGO_LABELS[p.metodoPago] || p.metodoPago}
                         </span>
-                        <span className="text-[11px] text-ink-muted font-semibold truncate">
+                        <span className="text-xs sm:text-[13px] text-ink-muted font-semibold truncate">
                           {conceptosImputados}
                         </span>
                       </div>
-                      <span className="text-[11px] text-ink-muted block mt-0.5">
+                      <span className="text-xs text-ink-muted block mt-1">
                         {formatearFecha(p.fechaPago)}
                         {p.referenciaComprobante &&
                           ` • Comprobante: ${p.referenciaComprobante}`}
@@ -680,7 +680,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                     </div>
 
                     {habilitarAjustes && (
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() =>
@@ -694,17 +694,17 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                                 })
                           }
                           title="Editar método o comprobante"
-                          className="p-1.5 rounded-lg text-ink-muted hover:bg-paper-3 cursor-pointer"
+                          className="p-2 rounded-lg text-ink-muted hover:bg-paper-3 cursor-pointer"
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           type="button"
                           onClick={() => onRevertirPago(p)}
                           title="Revertir / Anular este pago"
-                          className="px-2 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                          className="min-h-[34px] px-2.5 py-1 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-xs flex items-center gap-1 cursor-pointer"
                         >
-                          <RotateCcw className="w-3 h-3" />
+                          <RotateCcw className="w-3.5 h-3.5" />
                           <span>Revertir</span>
                         </button>
                       </div>
@@ -714,7 +714,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                   {editandoEstePago && pagoEditando && (
                     <form
                       onSubmit={onGuardarEdicionPago}
-                      className="pt-2 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-2 animate-in fade-in"
+                      className="pt-2.5 border-t border-rule grid grid-cols-1 sm:grid-cols-3 gap-2.5 animate-in fade-in"
                     >
                       <select
                         value={pagoEditando.metodoPago}
@@ -724,7 +724,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                             metodoPago: e.target.value as any,
                           })
                         }
-                        className="px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs font-semibold"
+                        className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-[13px] font-semibold"
                       >
                         <option value="EFECTIVO">Efectivo</option>
                         <option value="TRANSFERENCIA">Transferencia</option>
@@ -740,9 +740,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                           })
                         }
                         placeholder="N° Comprobante"
-                        className="px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs"
+                        className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-[13px]"
                       />
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-2">
                         <input
                           type="text"
                           value={pagoEditando.observaciones}
@@ -753,12 +753,12 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                             })
                           }
                           placeholder="Observaciones"
-                          className="flex-1 px-2.5 py-1.5 rounded-xl border border-rule bg-surface text-xs"
+                          className="flex-1 min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-[13px]"
                         />
                         <button
                           type="submit"
                           disabled={procesandoAccionCuota}
-                          className="px-3 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold cursor-pointer transition-colors"
+                          className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-[13px] font-bold cursor-pointer transition-colors"
                         >
                           OK
                         </button>

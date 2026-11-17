@@ -47,14 +47,14 @@ export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaci
         type="button"
         onClick={() => setAbierto((prev) => !prev)}
         aria-expanded={abierto}
-        className="w-full p-3.5 sm:p-4 flex items-center justify-between text-left bg-surface hover:bg-paper-3/50 transition-colors cursor-pointer select-none"
+        className="w-full p-4 sm:p-4.5 flex items-center justify-between text-left bg-surface hover:bg-paper-3/50 transition-colors cursor-pointer select-none"
       >
-        <div className="flex items-center gap-2 flex-wrap">
-          <History className="w-4 h-4 text-brand shrink-0" />
-          <span className="font-extrabold text-ink text-xs sm:text-sm">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <History className="w-[18px] h-[18px] text-brand shrink-0" />
+          <span className="font-extrabold text-ink text-sm sm:text-[15px]">
             Trayectoria en el Grupo
           </span>
-          <span className="px-2 py-0.5 rounded-full bg-brand/15 text-brand font-bold text-[10px]">
+          <span className="px-2.5 py-0.5 rounded-full bg-brand/15 text-brand font-bold text-xs">
             {totalEtapas} {totalEtapas === 1 ? 'asignación' : 'asignaciones'}
           </span>
         </div>
@@ -66,11 +66,11 @@ export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaci
       </button>
 
       {abierto && (
-        <div className="p-3.5 sm:p-4 pt-2 border-t border-rule">
+        <div className="p-4 sm:p-4.5 pt-2.5 border-t border-rule">
           {totalEtapas === 0 ? (
             <div className="p-6 text-center rounded-xl bg-surface border border-rule/60 text-ink-muted flex flex-col items-center justify-center gap-2">
               <Clock className="w-7 h-7 text-ink-muted/70" />
-              <p className="text-xs font-semibold">Sin historial de asignaciones registrado.</p>
+              <p className="text-sm font-semibold">Sin historial de asignaciones registrado.</p>
             </div>
           ) : (
             <div className="relative border-l-2 border-rule ml-3.5 sm:ml-4 my-2 pl-4 sm:pl-6 space-y-4">
@@ -110,7 +110,7 @@ export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaci
 
                     {/* Tarjeta de la asignación */}
                     <div
-                      className={`p-3 rounded-xl bg-surface border border-rule/80 shadow-xs space-y-1.5 transition-opacity ${
+                      className={`p-3.5 rounded-xl bg-surface border border-rule/80 shadow-xs space-y-2 transition-opacity ${
                         tieneBajaEstructural ? 'opacity-75' : ''
                       }`}
                     >
@@ -118,7 +118,7 @@ export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaci
                       <div className="flex flex-wrap items-center gap-1.5">
                         {/* Rama */}
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold text-[10px] border ${cfgRama.badgeClases}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold text-xs border ${cfgRama.badgeClases}`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full ${cfgRama.dotColor}`} />
                           {asig.unidad?.rama?.nombre || cfgRama.nombre}
@@ -126,44 +126,44 @@ export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaci
 
                         {/* Rol */}
                         {asig.rol?.nombre && (
-                          <span className="text-[10px] font-semibold text-ink-2 bg-paper-2 px-2 py-0.5 rounded-full border border-rule">
+                          <span className="text-xs font-semibold text-ink-2 bg-paper-2 px-2.5 py-0.5 rounded-full border border-rule">
                             {asig.rol.nombre}
                           </span>
                         )}
 
                         {/* Estado */}
                         {asig.activo ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-extrabold">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-extrabold">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                             Actual
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-paper-3 text-ink-muted border border-rule text-[10px] font-semibold">
+                          <span className="px-2.5 py-0.5 rounded-full bg-paper-3 text-ink-muted border border-rule text-xs font-semibold">
                             Finalizada
                           </span>
                         )}
 
                         {/* Indicadores de inactividad de unidad o rama */}
                         {esInactivaUnidad && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
                             Sección inactiva
                           </span>
                         )}
 
                         {esInactivaRama && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                             Rama inactiva
                           </span>
                         )}
                       </div>
 
                       {/* Nombre de la unidad */}
-                      <h4 className="text-xs sm:text-sm font-bold text-ink">
+                      <h4 className="text-sm sm:text-[15px] font-bold text-ink">
                         {asig.unidad?.nombre || 'Sin Sección'}
                       </h4>
 
                       {/* Fechas y Ciclo */}
-                      <div className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+                      <div className="flex items-center gap-1.5 text-xs text-ink-muted">
                         <Calendar className="w-3.5 h-3.5 shrink-0" />
                         <span>{textoRango}</span>
                       </div>
