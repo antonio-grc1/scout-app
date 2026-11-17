@@ -50,11 +50,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         'rounded-full border border-rule bg-surface text-ink hover:bg-paper-2 active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus)] shadow-none',
     };
 
-    // Size mapping with guaranteed WCAG touch targets
+    // Size mapping with guaranteed WCAG touch targets & Google Workspace proportions
     const sizeClasses = {
-      sm: 'min-h-[36px] px-3 py-1.5 text-xs gap-1.5 rounded-xl',
-      md: 'min-h-[44px] px-4 py-2 text-xs sm:text-sm gap-2 rounded-xl',
-      lg: 'min-h-[48px] px-5 py-2.5 text-sm sm:text-base gap-2.5 rounded-2xl',
+      sm: 'min-h-[38px] px-3.5 py-2 text-[13px] gap-1.5 rounded-xl',
+      md: 'min-h-[44px] px-4.5 py-2.5 text-sm gap-2 rounded-xl',
+      lg: 'min-h-[50px] px-6 py-3 text-base gap-2.5 rounded-2xl',
     };
 
     const combinedClassName = cn(

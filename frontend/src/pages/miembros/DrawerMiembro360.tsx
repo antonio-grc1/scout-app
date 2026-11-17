@@ -43,9 +43,9 @@ export const DrawerMiembro360: React.FC<DrawerMiembro360Props> = ({
           to={`/miembros/${usuarioId}?tab=${tabActual}`}
           onClick={onCerrar}
           title="Abrir ficha completa en página dedicada"
-          className="s-btn-sec min-h-[34px] px-2.5 py-1 rounded-xl text-[11px] font-bold inline-flex items-center gap-1 whitespace-nowrap shrink-0"
+          className="s-btn-sec min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
         >
-          <ExternalLink className="w-3.5 h-3.5 text-brand" />
+          <ExternalLink className="w-4 h-4 text-brand" />
           <span className="hidden sm:inline">Abrir completo</span>
         </Link>
       }

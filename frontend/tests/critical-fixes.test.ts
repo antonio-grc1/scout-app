@@ -167,8 +167,8 @@ describe('C1 & C2: offlineCache y authStore', () => {
   });
 });
 
-describe('C3: permisos de cuotas vs ajustes en PestanaCuotasTesoreria', () => {
-  it('separa cobrar de editarCargo/anularCargo/revertirPago/ajustarSaldo y oculta acciones en UI', async () => {
+describe('C3: permisos por pestaña (Solo lectura vs Edición) en PestanaCuotasTesoreria', () => {
+  it('oculta acciones en modo Solo lectura (cobranzas.ver) y habilita todas las herramientas en Edición (cobranzas.editar)', async () => {
     localStorage.clear();
     const React = (await import('react')).default;
     const { renderToStaticMarkup } = await import('react-dom/server');
@@ -252,35 +252,35 @@ describe('C3: permisos de cuotas vs ajustes en PestanaCuotasTesoreria', () => {
       });
     };
 
-    // 1. Cobrador puro (solo cuotas.cobrar): puede cobrar y + Cargo, NO editar/anular/revertir/ajustar
+    // 1. Solo lectura (cobranzas.ver): consulta la pestaña sin acciones de cobro ni ajuste
     useAuthStore.getState().setSesion({
-      accessToken: 't-cobrador',
-      usuario: { id: 30, dni: '30', nombre: 'Cobrador', apellido: 'Test' },
+      accessToken: 't-lector',
+      usuario: { id: 30, dni: '30', nombre: 'Lector', apellido: 'Test' },
       requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
           unidadNombre: 'Manada',
-          rol: 'Cobrador',
+          rol: 'Lector',
           alcance: 'UNIDAD',
-          permisos: ['cuotas.ver', 'cuotas.cobrar'],
+          permisos: ['cobranzas.ver'],
         },
       ],
     });
 
-    const htmlCobrador = renderToStaticMarkup(React.createElement(VistaTest));
-    assert.match(htmlCobrador, /Cobrar \/ Pagar/);
-    assert.match(htmlCobrador, /\+ Cargo/);
-    assert.doesNotMatch(htmlCobrador, /Editar monto o descuento/);
-    assert.doesNotMatch(htmlCobrador, /Anular cuota/);
-    assert.doesNotMatch(htmlCobrador, /Reactivar/);
-    assert.doesNotMatch(htmlCobrador, /Revertir/);
-    assert.doesNotMatch(htmlCobrador, />Ajustar</);
+    const htmlLectura = renderToStaticMarkup(React.createElement(VistaTest));
+    assert.doesNotMatch(htmlLectura, /Cobrar \/ Pagar/);
+    assert.doesNotMatch(htmlLectura, /\+ Cargo/);
+    assert.doesNotMatch(htmlLectura, /Editar monto o descuento/);
+    assert.doesNotMatch(htmlLectura, /Anular cuota/);
+    assert.doesNotMatch(htmlLectura, /Reactivar/);
+    assert.doesNotMatch(htmlLectura, /Revertir/);
+    assert.doesNotMatch(htmlLectura, />Ajustar</);
 
-    // 2. Usuario con cuotas.ajustar pero sin cuotas.cobrar: puede ajustar/editar/anular/revertir, NO cobrar
+    // 2. Edición (cobranzas.editar): habilita cobrar, + Cargo y todas las herramientas de la pestaña
     useAuthStore.getState().setSesion({
-      accessToken: 't-ajustador',
-      usuario: { id: 31, dni: '31', nombre: 'Ajustador', apellido: 'Test' },
+      accessToken: 't-editor',
+      usuario: { id: 31, dni: '31', nombre: 'Tesorero', apellido: 'Test' },
       requiereCambioClave: false,
       asignaciones: [
         {
@@ -288,18 +288,19 @@ describe('C3: permisos de cuotas vs ajustes en PestanaCuotasTesoreria', () => {
           unidadNombre: 'Grupo',
           rol: 'Tesorero Adjunto',
           alcance: 'GLOBAL',
-          permisos: ['cuotas.ver', 'cuotas.ajustar'],
+          permisos: ['cobranzas.ver', 'cobranzas.editar'],
         },
       ],
     });
 
-    const htmlAjustador = renderToStaticMarkup(React.createElement(VistaTest));
-    assert.doesNotMatch(htmlAjustador, /Cobrar \/ Pagar/);
-    assert.match(htmlAjustador, /Editar monto o descuento/);
-    assert.match(htmlAjustador, /Anular cuota/);
-    assert.match(htmlAjustador, /Reactivar/);
-    assert.match(htmlAjustador, /Revertir/);
-    assert.match(htmlAjustador, />Ajustar</);
+    const htmlEdicion = renderToStaticMarkup(React.createElement(VistaTest));
+    assert.match(htmlEdicion, /Cobrar \/ Pagar/);
+    assert.match(htmlEdicion, /\+ Cargo/);
+    assert.match(htmlEdicion, /Editar monto o descuento/);
+    assert.match(htmlEdicion, /Anular cuota/);
+    assert.match(htmlEdicion, /Reactivar/);
+    assert.match(htmlEdicion, /Revertir/);
+    assert.match(htmlEdicion, />Ajustar</);
   });
 });
 

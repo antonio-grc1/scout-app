@@ -114,7 +114,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   ];
 
   const claseInput =
-    'w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors';
+    'w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors';
 
   const mostrarValor = (c: Campo) => {
     const v = String(formData[c.key] ?? '');
@@ -136,7 +136,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
           if (!c.editable && !valor) return null;
           return (
             <div key={c.key} className={c.full ? 'sm:col-span-2' : ''}>
-              <label className="block text-ink-2 font-bold mb-1">
+              <label className="block text-sm text-ink-2 font-bold mb-1.5">
                 {c.label}
                 {c.editable && c.required ? ' *' : ''}
               </label>
@@ -161,7 +161,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                   />
                 )
               ) : (
-                <p className="min-h-[42px] px-1 py-2 text-sm font-semibold text-ink whitespace-pre-wrap break-words">
+                <p className="min-h-[44px] px-1 py-2 text-[15px] font-semibold text-ink whitespace-pre-wrap break-words">
                   {valor}
                 </p>
               )}
@@ -171,15 +171,15 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
       </div>
 
       {/* Grupo Familiar */}
-      <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 space-y-2.5">
+      <div className="p-4 rounded-2xl bg-brand/10 border border-brand/30 space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <Users className="w-4 h-4 text-brand" />
-            <span className="font-bold text-ink">
+            <Users className="w-[18px] h-[18px] text-brand" />
+            <span className="font-bold text-[15px] text-ink">
               {familiar ? familiar.nombreFamilia : 'Sin hermanos vinculados'}
             </span>
             {familiar && pctDesc > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-brand/20 text-brand font-bold text-[10px]">
+              <span className="px-2.5 py-0.5 rounded-full bg-brand/20 text-brand font-bold text-xs">
                 -{pctDesc}% cuota
               </span>
             )}
@@ -191,7 +191,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                 <button
                   type="button"
                   onClick={onAbrirEditarFamilia}
-                  className="min-h-[38px] px-3 rounded-xl border border-brand/40 bg-surface text-brand font-bold text-xs cursor-pointer"
+                  className="min-h-[40px] px-3.5 rounded-xl border border-brand/40 bg-surface text-brand font-bold text-[13px] cursor-pointer"
                 >
                   Descuento ({pctDesc}%)
                 </button>
@@ -200,7 +200,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                 <button
                   type="button"
                   onClick={onAbrirVincularHermano}
-                  className="min-h-[38px] px-3 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
+                  className="min-h-[40px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] cursor-pointer transition-colors"
                 >
                   + Hermano
                 </button>
@@ -210,14 +210,14 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
         </div>
 
         {integrantesFamilia.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rule">
-            <span className="text-[11px] font-bold text-ink-muted mr-1">
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-rule">
+            <span className="text-xs font-bold text-ink-muted mr-1">
               Integrantes:
             </span>
             {integrantesFamilia.map((h: any) => (
               <span
                 key={h.id}
-                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-xl bg-surface border border-brand/30 text-xs font-bold text-ink"
+                className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-xl bg-surface border border-brand/30 text-[13px] font-bold text-ink"
               >
                 <span>
                   {h.nombre} {h.apellido}
@@ -228,7 +228,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                     disabled={desvinculandoMiembroId === h.id}
                     onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
                     title={`Quitar a ${h.nombre} del grupo familiar`}
-                    className="px-1.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold transition cursor-pointer disabled:opacity-50"
+                    className="px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
                   >
                     {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
                   </button>
@@ -244,21 +244,21 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
 
       {/* Estado Activo / Baja y Botón Guardar */}
       {puedeEditarMiembro && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-rule">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2.5 border-t border-rule">
           {puedeDarBaja ? (
-            <label className="flex items-center gap-2.5 cursor-pointer min-h-[42px]">
+            <label className="flex items-center gap-2.5 cursor-pointer min-h-[44px]">
               <input
                 type="checkbox"
                 checked={formData.activo}
                 onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
                 className="w-5 h-5 text-brand rounded border-rule cursor-pointer focus:ring-brand/20"
               />
-              <span className="font-bold text-ink-2">
+              <span className="font-bold text-sm text-ink-2">
                 {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
               </span>
             </label>
           ) : (
-            <span className="inline-flex items-center gap-2 min-h-[42px] px-3 rounded-xl bg-paper-2 border border-rule text-xs font-bold text-ink-2">
+            <span className="inline-flex items-center gap-2 min-h-[44px] px-3.5 rounded-xl bg-paper-2 border border-rule text-[13px] font-bold text-ink-2">
               <span
                 className={`w-2 h-2 rounded-full ${
                   formData.activo ? 'bg-emerald-500' : 'bg-ink-muted'
@@ -271,7 +271,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
           <button
             type="submit"
             disabled={guardando}
-            className="min-h-[44px] px-5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+            className="min-h-[46px] px-5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
@@ -281,12 +281,12 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
 
       {/* Eliminación definitiva (solo alcance global cuando el miembro ya está dado de baja) */}
       {!miembro?.activo && puedeEliminarDefinitivo && onSolicitarEliminarDefinitivo && (
-        <div className="p-3.5 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-0.5">
-            <span className="block text-xs font-extrabold text-rose-700 dark:text-rose-300">
+        <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <span className="block text-sm font-extrabold text-rose-700 dark:text-rose-300">
               Eliminar miembro definitivamente
             </span>
-            <p className="text-[11px] text-ink-2 leading-relaxed">
+            <p className="text-[13px] text-ink-2 leading-relaxed">
               Borra permanentemente este registro del padrón. Solo es posible si no posee pagos, cargos activos ni fichas emitidas.
             </p>
           </div>
@@ -294,7 +294,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             type="button"
             disabled={eliminandoDefinitivo || guardando}
             onClick={onSolicitarEliminarDefinitivo}
-            className="min-h-[42px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
+            className="min-h-[44px] px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 disabled:opacity-50"
           >
             <Trash2 className="w-4 h-4" />
             <span>{eliminandoDefinitivo ? 'Eliminando...' : 'Eliminar definitivamente'}</span>

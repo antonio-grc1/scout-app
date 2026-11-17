@@ -60,7 +60,7 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
         rol: 'Colaborador Sin Nombre Conocido',
         tipoMiembro: 'EDUCADOR',
         alcance: 'UNIDAD',
-        permisos: ['miembros.ver', 'cuotas.cobrar', 'pases.ver', 'pases.ejecutar'],
+        permisos: ['padron.ver', 'cobranzas.editar', 'pases.ver', 'pases.editar'],
       },
     ]);
 
@@ -109,7 +109,7 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
         rol: 'Protagonista',
         tipoMiembro: 'PROTAGONISTA',
         alcance: 'PROPIO',
-        permisos: ['legajos.completar', 'eventos.ver'],
+        permisos: ['legajos.editar', 'eventos.ver'],
       },
       {
         unidadId: 4,
@@ -117,7 +117,7 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
         rol: 'Educador',
         tipoMiembro: 'EDUCADOR',
         alcance: 'UNIDAD',
-        permisos: ['miembros.ver', 'tesoreria.caja_ver', 'legajos.plantillas_gestionar'],
+        permisos: ['padron.ver', 'caja.ver', 'plantillas.editar'],
       },
     ]);
 
@@ -136,7 +136,7 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
         rol: 'Educador',
         tipoMiembro: 'EDUCADOR',
         alcance: 'UNIDAD',
-        permisos: ['miembros.ver'],
+        permisos: ['padron.ver'],
       },
       {
         unidadId: 1,
@@ -144,7 +144,7 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
         rol: 'Administrador',
         tipoMiembro: 'EDUCADOR',
         alcance: 'GLOBAL',
-        permisos: ['tesoreria.caja_ver', 'legajos.plantillas_gestionar', 'organizacion.gestionar'],
+        permisos: ['caja.ver', 'plantillas.editar', 'organizacion.editar'],
       },
     ]);
 
@@ -178,6 +178,75 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
     });
 
     assert.equal(useActiveUnitStore.getState().activeUnitId, 'ALL');
+  });
+
+  it('abstrae el alcance en rolPrincipalLabel y oculta selector multi-vista cuando hay 1 sola unidad', async () => {
+    const {
+      computeCapabilities,
+      obtenerUnidadesVisibles,
+      obtenerNombreUnidadActiva,
+    } = await vite.ssrLoadModule('/src/core/capabilities.ts');
+
+    const capsUnaUnidad = computeCapabilities([
+      {
+        unidadId: 2,
+        unidadNombre: 'Manada',
+        rol: 'Educador',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'UNIDAD',
+        permisos: ['padron.ver'],
+      },
+    ]);
+    assert.equal(capsUnaUnidad.rolPrincipalLabel, 'Educador');
+    assert.equal(capsUnaUnidad.rolPrincipalLabel.includes('Alcance'), false);
+    assert.deepEqual(obtenerUnidadesVisibles(capsUnaUnidad), [{ id: 2, nombre: 'Manada' }]);
+    assert.equal(obtenerNombreUnidadActiva('ALL', capsUnaUnidad), 'Manada');
+
+    // Con asignación PROPIO en otra unidad + 1 UNIDAD: solo cuenta la unidad de gestión
+    const capsMixtoUnaUnidadGestion = computeCapabilities([
+      {
+        unidadId: 5,
+        unidadNombre: 'Rover',
+        rol: 'Protagonista',
+        tipoMiembro: 'PROTAGONISTA',
+        alcance: 'PROPIO',
+        permisos: ['legajos.editar'],
+      },
+      {
+        unidadId: 2,
+        unidadNombre: 'Manada',
+        rol: 'Educador',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'UNIDAD',
+        permisos: ['padron.ver'],
+      },
+    ]);
+    assert.deepEqual(obtenerUnidadesVisibles(capsMixtoUnaUnidadGestion), [
+      { id: 2, nombre: 'Manada' },
+    ]);
+    assert.equal(obtenerNombreUnidadActiva('ALL', capsMixtoUnaUnidadGestion), 'Manada');
+
+    // Con 2 unidades de gestión sí habilita selector
+    const capsDosUnidades = computeCapabilities([
+      {
+        unidadId: 2,
+        unidadNombre: 'Manada',
+        rol: 'Educador',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'UNIDAD',
+        permisos: ['padron.ver'],
+      },
+      {
+        unidadId: 3,
+        unidadNombre: 'Unidad Scout',
+        rol: 'Educador',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'UNIDAD',
+        permisos: ['padron.ver'],
+      },
+    ]);
+    assert.equal(obtenerUnidadesVisibles(capsDosUnidades).length, 2);
+    assert.equal(obtenerNombreUnidadActiva('ALL', capsDosUnidades), 'Todas tus unidades');
   });
 });
 

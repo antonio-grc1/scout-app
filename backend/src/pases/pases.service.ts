@@ -316,12 +316,11 @@ export class PasesService {
             permiso: {
               clave: {
                 in: [
-                  'roles.gestionar',
-                  'organizacion.gestionar',
-                  'tesoreria.gestionar',
-                  'eventos.gestionar',
-                  'cuotas.ajustar',
-                  'miembros.baja',
+                  'organizacion.editar',
+                  'caja.editar',
+                  'eventos.editar',
+                  'cobranzas.editar',
+                  'padron.editar',
                 ],
               },
             },
@@ -449,13 +448,13 @@ export class PasesService {
       const esOrigenAdminGlobal =
         (origen.alcanceOverride ?? origen.rol.alcancePorDefecto) === AlcanceRol.GLOBAL &&
         (origen.rol as { permisos?: Array<{ permiso?: { clave: string } }> }).permisos?.some(
-          (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+          (rp) => rp.permiso?.clave === 'organizacion.editar',
         );
       if (esOrigenAdminGlobal && tx.asignacionMiembro.findMany) {
         const destinoMantieneAdmin =
           alcanceDestino === AlcanceRol.GLOBAL &&
           (rolDestino as { permisos?: Array<{ permiso?: { clave: string } }> }).permisos?.some(
-            (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+            (rp) => rp.permiso?.clave === 'organizacion.editar',
           );
         if (!destinoMantieneAdmin) {
           const otrasGlobales = await tx.asignacionMiembro.findMany({
@@ -473,7 +472,7 @@ export class PasesService {
           });
           const hayOtroAdmin = otrasGlobales.some((a) =>
             a.rol.permisos?.some(
-              (rp) => rp.permiso?.clave === 'organizacion.gestionar' || rp.permiso?.clave === 'roles.gestionar',
+              (rp) => rp.permiso?.clave === 'organizacion.editar',
             ),
           );
           if (!hayOtroAdmin) {

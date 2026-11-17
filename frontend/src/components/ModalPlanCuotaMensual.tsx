@@ -71,7 +71,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
     () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
     [unidades, esGlobal, asignaciones],
   );
-  const puedeCrearRubroGlobal = esGlobal && tienePermiso('tesoreria.gestionar');
+  const puedeCrearRubroGlobal = esGlobal && tienePermiso('caja.editar');
 
   const [nombre, setNombre] = useState('');
   const [cicloAnio, setCicloAnio] = useState(anioActual);
@@ -237,10 +237,10 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-ink text-base">
+              <h3 className="font-bold text-ink text-lg">
                 {planAEditar ? 'Editar Cuadro de Cuota Mensual' : 'Nuevo Cuadro de Cuota Mensual'}
               </h3>
-              <p className="text-xs text-ink-muted">
+              <p className="text-[13px] text-ink-muted">
                 Configure la cuota progresiva y los casilleros de meses del año
               </p>
             </div>
@@ -254,17 +254,17 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
         </div>
 
         {/* Formulario con scroll */}
-        <form onSubmit={handleGuardar} className="p-6 overflow-y-auto space-y-5 flex-1">
+        <form onSubmit={handleGuardar} className="p-5 sm:p-6 overflow-y-auto space-y-5 flex-1">
           {error && (
-            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold">
               {error}
             </div>
           )}
 
           {/* Nombre y Ciclo */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-ink-2 mb-1">
+              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
                 Nombre del Cuadro / Plan *
               </label>
               <input
@@ -273,12 +273,12 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder={`Ej. Cuota Social ${anioActual}, Cuota Rovers ${anioActual}...`}
-                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink-2 mb-1">
+              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
                 Ciclo / Año *
               </label>
               <input
@@ -288,7 +288,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 max={2100}
                 value={cicloAnio}
                 onChange={(e) => setCicloAnio(Number(e.target.value))}
-                className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>
           </div>
@@ -296,12 +296,12 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           {/* Categoría / Rubro de Ingreso */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-bold text-ink-2">
+              <label className="block text-[13px] font-bold text-ink-2">
                 Categoría / Rubro Contable (Opcional)
               </label>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 {rubroId !== '' &&
-                  tienePermiso('tesoreria.gestionar') &&
+                  tienePermiso('caja.editar') &&
                   puedeModificarPorAlcanceUnidad(
                     rubros.find((x) => x.id === rubroId)?.unidadId ?? null,
                     { esGlobal, unidadesEnAlcanceIds },
@@ -319,10 +319,10 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                         });
                       }
                     }}
-                    className="text-[11px] font-bold text-ink-muted hover:text-brand flex items-center gap-1 cursor-pointer transition"
+                    className="text-xs font-bold text-ink-muted hover:text-brand flex items-center gap-1 cursor-pointer transition"
                     title="Modificar o eliminar categoría seleccionada"
                   >
-                    <Pencil className="w-3 h-3" />
+                    <Pencil className="w-3.5 h-3.5" />
                     <span>Editar</span>
                   </button>
                 )}
@@ -333,9 +333,9 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                       setRubroAEditar(null);
                       setModalCrearRubroAbierto(true);
                     }}
-                    className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    <PlusCircle className="w-3 h-3" />
+                    <PlusCircle className="w-3.5 h-3.5" />
                     <span>+ Nueva</span>
                   </button>
                 )}
@@ -344,7 +344,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
             <select
               value={rubroId}
               onChange={(e) => setRubroId(Number(e.target.value) || '')}
-              className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
             >
               <option value="">Sin categoría específica (Cuota General)</option>
               {rubros.map((r) => (
@@ -356,13 +356,13 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           </div>
 
           {/* Monto Mensual y Día de Vencimiento */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-ink-2 mb-1">
+              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
                 Monto Mensual por Miembro ($) *
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs font-bold text-ink-muted pointer-events-none">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
                   $
                 </span>
                 <input
@@ -373,17 +373,17 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                   value={montoMensual}
                   onChange={(e) => setMontoMensual(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="5000.00"
-                  className="w-full rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2 text-xs font-bold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-bold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink-2 mb-1">
+              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
                 Día de Vencimiento de Cada Mes
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-2 text-xs font-bold text-ink-muted pointer-events-none">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] font-bold text-ink-muted pointer-events-none">
                   Día
                 </span>
                 <input
@@ -392,7 +392,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                   max={31}
                   value={diaVencimiento}
                   onChange={(e) => setDiaVencimiento(Number(e.target.value))}
-                  className="w-full rounded-xl border border-rule bg-surface pl-11 pr-3.5 py-2 text-xs font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-12 pr-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
@@ -400,36 +400,36 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
 
           {/* CASILLEROS DE MESES DEL AÑO */}
           <div className="space-y-3 p-4 rounded-2xl border border-rule bg-paper-2">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rule pb-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rule pb-3">
               <div>
-                <label className="text-xs font-bold text-ink block">
+                <label className="text-sm font-bold text-ink block">
                   Casilleros de Meses del Año ({mesesHabilitados.length} seleccionados)
                 </label>
-                <p className="text-[11px] text-ink-muted">
+                <p className="text-xs text-ink-muted">
                   Cada mes habilitado genera y acumula la deuda mensual para los destinatarios
                 </p>
               </div>
 
               {/* Acciones Rápidas */}
-              <div className="flex items-center gap-1.5 text-[11px]">
+              <div className="flex items-center gap-1.5 text-xs">
                 <button
                   type="button"
                   onClick={seleccionarCicloEscolar}
-                  className="px-2.5 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-semibold hover:bg-brand/15 transition-colors cursor-pointer"
+                  className="min-h-[34px] px-3 py-1 rounded-lg bg-brand/10 text-ink-2 border border-brand/30 font-semibold hover:bg-brand/15 transition-colors cursor-pointer"
                 >
                   Mar-Dic
                 </button>
                 <button
                   type="button"
                   onClick={seleccionarTodosLosMeses}
-                  className="px-2.5 py-1 rounded-lg bg-paper-3 text-ink-2 border border-rule font-semibold hover:bg-paper-3 transition-colors cursor-pointer"
+                  className="min-h-[34px] px-3 py-1 rounded-lg bg-paper-3 text-ink-2 border border-rule font-semibold hover:bg-paper-3 transition-colors cursor-pointer"
                 >
                   Ene-Dic
                 </button>
                 <button
                   type="button"
                   onClick={desmarcarTodosLosMeses}
-                  className="px-2 py-1 rounded-lg text-ink-muted hover:bg-paper-3 transition cursor-pointer"
+                  className="min-h-[34px] px-2.5 py-1 rounded-lg text-ink-muted hover:bg-paper-3 transition cursor-pointer"
                 >
                   Ninguno
                 </button>
@@ -437,7 +437,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
             </div>
 
             {/* Grilla 12 meses */}
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {MESES.map((m) => {
                 const activo = mesesHabilitados.includes(m.num);
                 return (
@@ -445,14 +445,14 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                     key={m.num}
                     type="button"
                     onClick={() => toggleMes(m.num)}
-                    className={`py-2 px-1.5 rounded-xl text-center border transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    className={`min-h-[54px] py-2 px-1.5 rounded-xl text-center border transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                       activo
                         ? 'bg-brand text-brand-contrast border-brand font-bold shadow-xs ring-2 ring-brand/20'
                         : 'bg-surface text-ink-muted border-rule hover:border-rule'
                     }`}
                   >
-                    <span className="text-xs font-semibold">{m.nombre}</span>
-                    <span className="text-[9px] opacity-80">Mes {m.num}</span>
+                    <span className="text-[13px] font-semibold">{m.nombre}</span>
+                    <span className="text-xs opacity-80">Mes {m.num}</span>
                   </button>
                 );
               })}
@@ -472,26 +472,26 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
 
           {/* DESCUENTO FAMILIAR POR HERMANOS */}
           <div className="p-4 rounded-2xl border border-rule bg-paper-2 space-y-3">
-            <label className="flex items-center gap-2 cursor-pointer">
+            <label className="flex items-center gap-2.5 cursor-pointer">
               <input
                 type="checkbox"
                 checked={permiteDescuentoHermanos}
                 onChange={(e) => setPermiteDescuentoHermanos(e.target.checked)}
                 className="w-4 h-4 rounded text-brand focus:ring-brand/20"
               />
-              <span className="text-xs font-bold text-ink">
+              <span className="text-sm font-bold text-ink">
                 Permitir descuento por grupo familiar / hermanos
               </span>
             </label>
 
             {permiteDescuentoHermanos && (
-              <div className="pl-6 space-y-2 pt-1">
-                <label className="flex items-center gap-2 cursor-pointer text-xs text-ink-muted">
+              <div className="pl-6 space-y-2.5 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-[13px] text-ink-muted">
                   <input
                     type="checkbox"
                     checked={usarPorcentajePersonalizado}
                     onChange={(e) => setUsarPorcentajePersonalizado(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded text-brand focus:ring-brand/20"
+                    className="w-4 h-4 rounded text-brand focus:ring-brand/20"
                   />
                   <span>Fijar porcentaje de descuento específico para este cuadro</span>
                 </label>
@@ -508,9 +508,9 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                           setPorcentajeDescuentoHermanos(e.target.value === '' ? '' : Number(e.target.value))
                         }
                         placeholder="Ej. 15"
-                        className="w-full rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs font-semibold text-ink"
+                        className="w-full min-h-[42px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-sm font-semibold text-ink"
                       />
-                      <span className="absolute right-3 top-1.5 text-xs font-bold text-ink-muted">%</span>
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-ink-muted">%</span>
                     </div>
                   </div>
                 )}
@@ -519,18 +519,18 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           </div>
 
           {/* Footer del Form */}
-          <div className="pt-3 border-t border-rule flex items-center justify-end gap-3">
+          <div className="pt-3.5 border-t border-rule flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onCerrar}
-              className="px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-xs hover:bg-paper-2 transition cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-sm hover:bg-paper-2 transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{guardando ? 'Guardando...' : planAEditar ? 'Guardar Cambios' : 'Crear Cuadro de Cuota'}</span>

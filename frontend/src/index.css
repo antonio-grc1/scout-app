@@ -111,12 +111,6 @@
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 
-[data-contrast="aaa"] .s-glass-bar {
-  background-color: var(--color-surface);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-
 /* Crisp Buttons WITHOUT Glow */
 .s-btn-brand,
 .s-btn-sec,
@@ -146,10 +140,6 @@
   background-color: var(--color-paper-2);
 }
 
-[data-contrast="aaa"] .s-btn-sec:hover:not(:disabled) {
-  border-color: var(--color-brand);
-}
-
 .s-btn-danger {
   background-color: var(--s-err-bg);
   color: var(--s-err-ink);
@@ -177,12 +167,6 @@
   box-shadow: 0 0 0 3px var(--color-brand-soft);
 }
 
-[data-contrast="aaa"] .s-input:focus {
-  outline: 2px solid var(--color-brand);
-  outline-offset: 1px;
-  box-shadow: none;
-}
-
 .s-nav-item {
   transition: transform 150ms ease, background-color 160ms ease, color 160ms ease;
 }
@@ -205,10 +189,6 @@
   }
 }
 
-[data-contrast="aaa"] .s-fab-btn {
-  box-shadow: none;
-}
-
 .s-fab-btn:active {
   transform: scale(0.94);
 }
@@ -227,7 +207,7 @@
 }
 
 .s-tabular { font-variant-numeric: tabular-nums; }
-.s-touch { min-height: 44px; }
+.s-touch { min-height: 46px; }
 
 .s-badge-ok { background: var(--s-ok-bg); color: var(--s-ok-ink); border: 1px solid var(--s-ok-border); }
 .s-badge-warn { background: var(--s-warn-bg); color: var(--s-warn-ink); border: 1px solid var(--s-warn-border); }
@@ -304,13 +284,15 @@
   100% { transform: translateY(38px); opacity: 0.45; }
 }
 
-.s-anim-view { animation: s-fade-up 240ms var(--ease-out) both; }
-.s-anim-tab { animation: s-tab-in 190ms var(--ease-out) both; }
-.s-anim-drawer-right { animation: s-drawer-right 230ms var(--ease-out) both; }
-.s-anim-sheet-up { animation: s-sheet-up 240ms var(--ease-out) both; }
-.s-anim-modal-pop { animation: s-modal-pop 210ms var(--ease-out) both; }
+/* Usamos fill-mode: backwards (sin forwards) en animaciones con transform para no crear
+   un containing block permanente que atrape modales `position: fixed` dentro de vistas/tabs. */
+.s-anim-view { animation: s-fade-up 240ms var(--ease-out) backwards; }
+.s-anim-tab { animation: s-tab-in 190ms var(--ease-out) backwards; }
+.s-anim-drawer-right { animation: s-drawer-right 230ms var(--ease-out) backwards; }
+.s-anim-sheet-up { animation: s-sheet-up 240ms var(--ease-out) backwards; }
+.s-anim-modal-pop { animation: s-modal-pop 210ms var(--ease-out) backwards; }
 .s-anim-backdrop { animation: s-backdrop-in 170ms ease-out both; }
-.s-anim-toast-in { animation: s-toast-in 210ms var(--ease-out) both; }
+.s-anim-toast-in { animation: s-toast-in 210ms var(--ease-out) backwards; }
 
 .s-qr-laser {
   position: absolute;
@@ -325,7 +307,7 @@
   pointer-events: none;
 }
 
-.s-stagger > * { animation: s-fade-up 260ms var(--ease-out) both; }
+.s-stagger > * { animation: s-fade-up 260ms var(--ease-out) backwards; }
 .s-stagger > *:nth-child(1) { animation-delay: 20ms; }
 .s-stagger > *:nth-child(2) { animation-delay: 55ms; }
 .s-stagger > *:nth-child(3) { animation-delay: 90ms; }

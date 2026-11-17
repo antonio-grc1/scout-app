@@ -141,7 +141,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     [asignacionesActuales],
   );
   const tieneBajaGlobal = asignacionesActuales.some(
-    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('miembros.baja'),
+    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('padron.editar'),
   );
 
   const [tab, setTab] = useState<TabExpediente360>(tabInicial);
@@ -232,7 +232,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
   const puedeCrearCargoIndividual = canEdit('cuotas', 'cargoIndividual');
   const puedeAjustarCuotas = canEdit('cuotas', 'editarCargo');
-  const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
+  const puedeGestionarTesoreria = tienePermiso('cobranzas.editar') || tienePermiso('caja.editar');
   const puedeVerFicha = canView('ficha');
   const puedeCompletarFicha = canEdit('ficha', 'completar');
   const puedeValidarFisico = canEdit('ficha', 'validarFisico');
@@ -1398,12 +1398,12 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   };
 
   return (
-    <div className="space-y-3.5 text-ink min-w-0">
+    <div className="space-y-4 text-ink min-w-0">
       {/* Cabecera Identidad del Expediente 360° */}
-      <div className="s-panel rounded-2xl p-3.5 sm:p-4 flex items-start justify-between gap-3 min-w-0">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="s-panel rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3.5 min-w-0">
+        <div className="flex items-center gap-3.5 min-w-0">
           <div
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center font-extrabold text-base shrink-0 ${
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center font-extrabold text-base shrink-0 ${
               !miembro?.activo
                 ? 'bg-paper-3 text-ink-muted'
                 : cfgRama?.avatarClases ||
@@ -1413,29 +1413,29 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             {miembro ? `${miembro.nombre?.[0] || ''}${miembro.apellido?.[0] || ''}` : '…'}
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <h2 className="text-base sm:text-lg font-extrabold text-ink truncate">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-extrabold text-ink truncate">
                 {miembro ? `${miembro.apellido}, ${miembro.nombre}` : 'Cargando…'}
               </h2>
               {miembro && !miembro.activo && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-info whitespace-nowrap shrink-0">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info whitespace-nowrap shrink-0">
                   Baja
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-              <span className="text-xs text-ink-muted">
+            <div className="flex items-center gap-2 flex-wrap mt-1">
+              <span className="text-[13px] text-ink-muted">
                 DNI {miembro?.dni || '—'} · {calcularEdad(miembro?.fechaNacimiento) ?? '—'} años
               </span>
               {asignacionPrincipal && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full s-badge-brand whitespace-nowrap shrink-0">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full s-badge-brand whitespace-nowrap shrink-0">
                   {asignacionPrincipal.rol?.nombre} ({asignacionPrincipal.unidad?.nombre})
                 </span>
               )}
               {rolesSecundarios.map((sec: any) => (
                 <span
                   key={sec.id}
-                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-paper-3 text-ink-2 border border-rule whitespace-nowrap shrink-0"
+                  className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-paper-3 text-ink-2 border border-rule whitespace-nowrap shrink-0"
                 >
                   +{sec.rol?.nombre} ({sec.unidad?.nombre || 'Global'})
                 </span>
@@ -1444,7 +1444,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {miembro && (
             <BotonLlamarMiembro
               miembro={miembro}
@@ -1453,7 +1453,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 setTelefonosInline(telefonos);
                 setSubVista('llamar');
               }}
-              className="s-btn-sec min-h-[40px] min-w-[40px] px-2.5 rounded-xl inline-flex items-center justify-center gap-1 cursor-pointer"
+              className="s-btn-sec min-h-[42px] min-w-[42px] px-3 rounded-xl inline-flex items-center justify-center gap-1.5 cursor-pointer"
             />
           )}
           {mostrarBotonCerrar && onCerrar && (
@@ -1461,7 +1461,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               type="button"
               onClick={onCerrar}
               aria-label="Cerrar"
-              className="s-btn-sec min-w-[40px] min-h-[40px] rounded-xl inline-flex items-center justify-center cursor-pointer"
+              className="s-btn-sec min-w-[42px] min-h-[42px] rounded-xl inline-flex items-center justify-center cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1472,7 +1472,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
       {/* Tira de Seguridad Vital fija arriba */}
       {miembro && infoMedica && (
         <div
-          className={`rounded-2xl p-3 border text-xs space-y-2 ${
+          className={`rounded-2xl p-3.5 sm:p-4 border text-[13px] space-y-2 ${
             infoMedica.criticasCount > 0
               ? 's-badge-err'
               : infoMedica.tieneAlertas
@@ -1481,18 +1481,18 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 font-extrabold">
+            <div className="flex items-center gap-2 font-extrabold">
               <HeartPulse className="w-4 h-4 shrink-0" />
               <span>Seguridad Vital</span>
             </div>
-            <div className="flex items-center gap-2 flex-wrap text-[11px]">
+            <div className="flex items-center gap-2 flex-wrap text-xs">
               {infoMedica.grupoSanguineo && (
-                <span className="px-2 py-0.5 rounded-md bg-surface/80 border border-rule font-bold text-ink">
+                <span className="px-2.5 py-0.5 rounded-md bg-surface/80 border border-rule font-bold text-ink">
                   Grupo {infoMedica.grupoSanguineo}
                 </span>
               )}
               {infoMedica.obraSocial && (
-                <span className="px-2 py-0.5 rounded-md bg-surface/80 border border-rule font-semibold text-ink">
+                <span className="px-2.5 py-0.5 rounded-md bg-surface/80 border border-rule font-semibold text-ink">
                   {infoMedica.obraSocial}
                   {infoMedica.afiliadoObraSocial ? ` (${infoMedica.afiliadoObraSocial})` : ''}
                 </span>
@@ -1508,10 +1508,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               {infoMedica.alertas.map((al) => (
                 <span
                   key={al.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface/85 border border-rule text-[11px] font-bold text-ink"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface/85 border border-rule text-xs font-bold text-ink"
                 >
                   <AlertTriangle
-                    className={`w-3 h-3 shrink-0 ${
+                    className={`w-3.5 h-3.5 shrink-0 ${
                       al.critico ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600'
                     }`}
                   />
@@ -1530,7 +1530,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
       {alerta && (
         <div
           role={alerta.tipo === 'error' ? 'alert' : 'status'}
-          className={`p-3 rounded-xl text-xs font-bold flex items-center justify-between gap-2 ${
+          className={`p-3.5 rounded-xl text-sm font-bold flex items-center justify-between gap-2 ${
             alerta.tipo === 'exito' ? 's-badge-ok' : 's-badge-err'
           }`}
         >
@@ -1541,15 +1541,15 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             aria-label="Cerrar alerta"
             className="p-1 cursor-pointer shrink-0"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       {/* Pestañas o Sub-vista Inline (nunca apila modales) */}
       {subVista ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2 pb-2 border-b border-rule">
+        <div className="space-y-3.5">
+          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-rule">
             <button
               type="button"
               onClick={() => {
@@ -1560,12 +1560,12 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   setSubVista(null);
                 }
               }}
-              className="s-btn-sec min-h-[36px] px-3 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+              className="s-btn-sec min-h-[40px] px-3.5 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
             >
-              <ArrowLeft className="w-3.5 h-3.5" />
+              <ArrowLeft className="w-4 h-4" />
               <span>Volver al Expediente</span>
             </button>
-            <span className="text-xs font-extrabold text-ink truncate">
+            <span className="text-sm font-extrabold text-ink truncate">
               {titulosSubVista[subVista]}
             </span>
           </div>
@@ -1650,19 +1650,19 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 <a
                   key={`${item.etiqueta}-${idx}`}
                   href={`tel:${item.telefono}`}
-                  className="s-card s-card-hover p-3.5 rounded-2xl flex items-center justify-between gap-3"
+                  className="s-card s-card-hover p-4 rounded-2xl flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0 space-y-0.5">
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-info inline-block">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info inline-block">
                       {item.etiqueta}
                     </span>
-                    <div className="text-sm font-extrabold text-ink truncate">
+                    <div className="text-[15px] font-extrabold text-ink truncate">
                       {item.nombre || `${miembro?.nombre} ${miembro?.apellido}`}
                     </div>
-                    <div className="text-xs font-mono text-ink-muted">{item.telefono}</div>
+                    <div className="text-[13px] font-mono text-ink-muted">{item.telefono}</div>
                   </div>
-                  <span className="s-btn-brand px-3 py-2 rounded-xl text-xs inline-flex items-center gap-1.5 shrink-0">
-                    <Phone className="w-3.5 h-3.5" />
+                  <span className="s-btn-brand min-h-[40px] px-3.5 py-2 rounded-xl text-[13px] inline-flex items-center gap-1.5 shrink-0">
+                    <Phone className="w-4 h-4" />
                     <span>Llamar</span>
                   </span>
                 </a>
@@ -1675,7 +1675,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               fallback={
                 <div className="py-10 flex items-center justify-center gap-2 text-ink-muted">
                   <Loader2 className="w-5 h-5 animate-spin text-brand" />
-                  <span className="text-xs font-bold">Preparando visor PDF…</span>
+                  <span className="text-sm font-bold">Preparando visor PDF…</span>
                 </div>
               }
             >
@@ -1691,24 +1691,24 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           )}
 
           {subVista === 'confirmar' && confirmInline && (
-            <div className="s-panel rounded-2xl p-4 sm:p-5 space-y-4">
-              <div className="flex items-start gap-3">
+            <div className="s-panel rounded-2xl p-5 sm:p-6 space-y-4">
+              <div className="flex items-start gap-3.5">
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
                     confirmInline.tipo === 'peligro' ? 's-badge-err' : 's-badge-warn'
                   }`}
                 >
                   <ShieldAlert className="w-5 h-5" />
                 </div>
-                <div className="space-y-1 min-w-0">
-                  <h3 className="text-sm font-extrabold text-ink">{confirmInline.titulo}</h3>
-                  <p className="text-xs text-ink-2 whitespace-pre-line leading-relaxed">
+                <div className="space-y-1.5 min-w-0">
+                  <h3 className="text-base font-extrabold text-ink">{confirmInline.titulo}</h3>
+                  <p className="text-sm text-ink-2 whitespace-pre-line leading-relaxed">
                     {confirmInline.mensaje}
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-rule">
+              <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2.5 border-t border-rule">
                 {confirmInline.textoCancelar !== null && (
                   <button
                     type="button"
@@ -1717,7 +1717,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                       setConfirmInline(null);
                       setSubVista(null);
                     }}
-                    className="s-btn-sec s-touch px-4 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
+                    className="s-btn-sec s-touch px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer disabled:opacity-50"
                   >
                     {confirmInline.textoCancelar}
                   </button>
@@ -1726,11 +1726,11 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   type="button"
                   disabled={confirmInline.cargando}
                   onClick={() => void confirmInline.onConfirmar()}
-                  className={`s-touch px-4 py-2 rounded-xl text-xs inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                  className={`s-touch px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
                     confirmInline.tipo === 'peligro' ? 's-btn-danger' : 's-btn-brand'
                   }`}
                 >
-                  {confirmInline.cargando && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {confirmInline.cargando && <Loader2 className="w-4 h-4 animate-spin" />}
                   <span>{confirmInline.textoConfirmar}</span>
                 </button>
               </div>
@@ -1751,10 +1751,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           {cargando ? (
             <div className="py-12 text-center text-ink-muted space-y-2">
               <Loader2 className="w-6 h-6 animate-spin text-brand mx-auto" />
-              <p className="text-xs font-semibold">Cargando expediente…</p>
+              <p className="text-sm font-semibold">Cargando expediente…</p>
             </div>
           ) : miembro ? (
-            <div className="s-anim-tab text-xs">
+            <div className="s-anim-tab text-sm">
               {tab === 'datos' && (
                 <PestanaDatosMiembro
                   miembro={miembro}

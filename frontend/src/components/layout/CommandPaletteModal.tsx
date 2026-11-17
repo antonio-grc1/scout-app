@@ -11,7 +11,7 @@ import {
   Repeat,
   Shield,
   User,
-  Contrast,
+  Palette,
   ArrowRight,
   Users,
 } from 'lucide-react';
@@ -200,8 +200,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canViewOrganizacion) {
       items.push({
         id: 'organizacion',
-        label: 'Ir a Organización y Roles RBAC',
-        hint: 'Ramas, unidades, roles y SMTP',
+        label: 'Ir a Organización y Roles',
+        hint: 'Ramas, unidades, roles y correo',
         icon: <Shield className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
           onCerrar();
@@ -223,9 +223,9 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
     items.push({
       id: 'tema',
-      label: 'Apariencia y Accesibilidad (Claro / Oscuro / AAA)',
+      label: 'Apariencia (Claro / Oscuro)',
       hint: 'Cambiar tema visual y escala tipográfica',
-      icon: <Contrast className="w-4 h-4 text-brand shrink-0" />,
+      icon: <Palette className="w-4 h-4 text-brand shrink-0" />,
       onSelect: () => {
         onCerrar();
         openCustomizer();
@@ -252,8 +252,8 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         className="s-anim-sheet-up sm:s-anim-modal-pop w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden bg-surface text-ink border border-rule shadow-2xl"
         {...contentProps}
       >
-        <div className="px-4 py-3 border-b border-rule flex items-center gap-2.5">
-          <Search className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />
+        <div className="px-4 py-3.5 border-b border-rule flex items-center gap-3">
+          <Search className="w-[18px] h-[18px] text-brand shrink-0" aria-hidden="true" />
           <input
             ref={inputRef}
             type="text"
@@ -264,23 +264,23 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                 ? 'Buscar miembro, DNI o acción rápida…'
                 : 'Buscar acción o módulo rápido…'
             }
-            className="flex-1 min-w-0 bg-transparent outline-none text-sm text-ink placeholder:text-ink-muted"
+            className="flex-1 min-w-0 bg-transparent outline-none text-base text-ink placeholder:text-ink-muted"
           />
           <button
             type="button"
             onClick={onCerrar}
-            className="s-btn-sec text-[11px] font-bold px-2 py-1 rounded-lg cursor-pointer shrink-0"
+            className="s-btn-sec text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer shrink-0"
           >
             Esc
           </button>
         </div>
 
-        <div className="p-2 max-h-[65dvh] sm:max-h-96 overflow-y-auto space-y-2">
+        <div className="p-2.5 max-h-[65dvh] sm:max-h-[420px] overflow-y-auto space-y-2.5">
           {caps.canViewMiembros && (
             <div className="space-y-1">
-              <div className="px-2.5 pt-1 text-[10px] uppercase font-bold tracking-wider text-ink-muted flex items-center justify-between">
-                <span>Miembros en tu alcance</span>
-                {isFetching && <span className="text-[10px] lowercase font-medium">buscando…</span>}
+              <div className="px-3 pt-1 text-xs uppercase font-bold tracking-wider text-ink-muted flex items-center justify-between">
+                <span>Miembros</span>
+                {isFetching && <span className="text-xs lowercase font-medium">buscando…</span>}
               </div>
 
               {miembrosFiltrados.length > 0 ? (
@@ -295,35 +295,35 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                         onCerrar();
                         navigate(`/miembros/${m.id}`);
                       }}
-                      className="w-full px-3 py-2 rounded-xl text-left text-xs flex items-center justify-between gap-2 hover:bg-brand-soft/45 transition-colors cursor-pointer"
+                      className="w-full px-3 py-2.5 rounded-xl text-left text-sm flex items-center justify-between gap-2.5 hover:bg-brand-soft/45 transition-colors cursor-pointer"
                     >
                       <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-ink truncate">
                           {m.apellido}, {m.nombre}
                         </span>
-                        <span className="text-ink-muted s-tabular">DNI {m.dni}</span>
+                        <span className="text-ink-muted s-tabular text-[13px]">DNI {m.dni}</span>
                         {m.activo === false && (
-                          <span className="s-badge-err px-1.5 py-0.5 rounded text-[10px] font-bold">
+                          <span className="s-badge-err px-2 py-0.5 rounded text-xs font-bold">
                             BAJA
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] text-ink-muted shrink-0 truncate max-w-[140px]">
+                      <span className="text-xs text-ink-muted shrink-0 truncate max-w-[150px]">
                         {asigActiva?.unidad?.nombre ?? asigActiva?.rol?.nombre ?? 'Sin unidad'}
                       </span>
                     </button>
                   );
                 })
               ) : (
-                <div className="px-3 py-2 text-xs text-ink-muted">
-                  Sin coincidencias en tu alcance actual.
+                <div className="px-3 py-2.5 text-sm text-ink-muted">
+                  Sin coincidencias para tu búsqueda.
                 </div>
               )}
             </div>
           )}
 
           <div className="space-y-1">
-            <div className="px-2.5 pt-1 text-[10px] uppercase font-bold tracking-wider text-ink-muted">
+            <div className="px-3 pt-1 text-xs uppercase font-bold tracking-wider text-ink-muted">
               Acciones Rápidas
             </div>
             {acciones.length > 0 ? (
@@ -332,20 +332,20 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
                   key={acc.id}
                   type="button"
                   onClick={acc.onSelect}
-                  className="w-full px-3 py-2.5 rounded-xl text-left text-xs flex items-center justify-between gap-2 hover:bg-brand-soft/45 transition-colors cursor-pointer group"
+                  className="w-full px-3 py-2.5 rounded-xl text-left text-sm flex items-center justify-between gap-2.5 hover:bg-brand-soft/45 transition-colors cursor-pointer group"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     {acc.icon}
                     <div className="min-w-0">
                       <div className="font-semibold text-ink truncate">{acc.label}</div>
-                      <div className="text-[11px] text-ink-muted truncate">{acc.hint}</div>
+                      <div className="text-xs text-ink-muted truncate">{acc.hint}</div>
                     </div>
                   </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-ink-muted group-hover:text-brand shrink-0" />
+                  <ArrowRight className="w-4 h-4 text-ink-muted group-hover:text-brand shrink-0" />
                 </button>
               ))
             ) : (
-              <div className="px-3 py-2 text-xs text-ink-muted">
+              <div className="px-3 py-2.5 text-sm text-ink-muted">
                 No se encontraron acciones para “{query}”.
               </div>
             )}

@@ -11,7 +11,11 @@ import {
   Users,
 } from 'lucide-react';
 import { api } from '../../api/client';
-import { useActiveUnitStore, useCapabilities } from '../../core/capabilities';
+import {
+  useActiveUnitStore,
+  useCapabilities,
+  obtenerNombreUnidadActiva,
+} from '../../core/capabilities';
 import { useToastStore } from '../../store/toastStore';
 import {
   calcularCamada,
@@ -90,44 +94,40 @@ export const PasesPage: React.FC = () => {
     };
   }, [candidatos]);
 
-  const unidadActivaNombre = useMemo(() => {
-    if (activeUnitId === 'ALL') return 'Todas las secciones';
-    return (
-      unidades.find((u) => u.id === activeUnitId)?.nombre ||
-      caps.unidadesAsignadas.find((u) => u.id === activeUnitId)?.nombre ||
-      `Unidad #${activeUnitId}`
-    );
-  }, [activeUnitId, unidades, caps.unidadesAsignadas]);
+  const unidadActivaNombre = useMemo(
+    () => obtenerNombreUnidadActiva(activeUnitId, caps, unidades, 'Todas tus secciones'),
+    [activeUnitId, caps, unidades],
+  );
 
   return (
     <div className="space-y-4 sm:space-y-5 s-anim-fade-up">
       {/* Cabecera de módulo + selector de fecha de corte 30/06 */}
-      <section className="s-card rounded-2xl p-4 sm:p-5 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-extrabold text-ink tracking-tight">
+      <section className="s-card rounded-2xl p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight">
                 Pases de Rama y Progresión
               </h1>
-              <span className="s-badge-brand px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+              <span className="s-badge-brand px-3 py-0.5 rounded-full text-xs font-bold">
                 {unidadActivaNombre}
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-ink-muted">
+            <p className="text-sm text-ink-muted">
               Cálculo reglamentario por camada al 30/06. Ajustá la fecha de corte, revisá destinos individuales o ejecutá pases en lote.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <label className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-paper-2 border border-rule text-xs font-semibold text-ink-2">
-              <Calendar className="w-3.5 h-3.5 text-brand shrink-0" />
+            <label className="min-h-[38px] flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-paper-2 border border-rule text-[13px] font-semibold text-ink-2">
+              <Calendar className="w-4 h-4 text-brand shrink-0" />
               <span className="whitespace-nowrap">Corte:</span>
               <input
                 type="date"
                 aria-label="Fecha de corte para cálculo de camada"
                 value={fechaReferencia}
                 onChange={(e) => setFechaReferencia(e.target.value || fechaCorteDefault)}
-                className="bg-transparent text-ink font-bold text-xs outline-none cursor-pointer"
+                className="bg-transparent text-ink font-bold text-[13px] outline-none cursor-pointer"
               />
             </label>
 
@@ -192,7 +192,7 @@ export const PasesPage: React.FC = () => {
 
       {error && (
         <div className="s-badge-warn rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+          <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>

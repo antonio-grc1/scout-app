@@ -66,11 +66,11 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
       requiereRama: true,
       esSistema: true,
       _count: { asignaciones: 3 },
-      permisos: [{ permiso: { clave: 'miembros.ver' } }],
+      permisos: [{ permiso: { clave: 'padron.ver' } }],
     };
 
     prisma.rol.findUnique.mockResolvedValueOnce(rolActual);
-    prisma.permiso.findMany.mockResolvedValueOnce([{ id: 10, clave: 'miembros.ver' }]);
+    prisma.permiso.findMany.mockResolvedValueOnce([{ id: 10, clave: 'padron.ver' }]);
     prisma.rol.update.mockResolvedValueOnce({
       ...rolActual,
       nombre: 'Dirigente de Sección',
@@ -79,7 +79,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
 
     const res = await service.editarRol({ tipo: 'GLOBAL' }, 2, {
       nombre: 'Dirigente de Sección',
-      permisos: ['miembros.ver'],
+      permisos: ['padron.ver'],
     });
 
     expect(res.nombre).toBe('Dirigente de Sección');
@@ -100,7 +100,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
       _count: { asignaciones: 1 },
       permisos: [
         { permiso: { clave: 'organizacion.ver' } },
-        { permiso: { clave: 'organizacion.gestionar' } },
+        { permiso: { clave: 'organizacion.editar' } },
       ],
     };
 
@@ -109,7 +109,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
 
     await expect(
       service.editarRol({ tipo: 'GLOBAL' }, 1, {
-        permisos: ['organizacion.ver'], // intenta quitar organizacion.gestionar
+        permisos: ['organizacion.ver'], // intenta quitar organizacion.editar
       }),
     ).rejects.toThrow(BadRequestException);
   });
@@ -126,7 +126,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
       requiereRama: false,
       esSistema: false,
       _count: { asignaciones: 2 },
-      permisos: [{ permiso: { clave: 'cuotas.cobrar' } }],
+      permisos: [{ permiso: { clave: 'cobranzas.editar' } }],
       asignaciones: [
         { usuario: { nombre: 'Ana', apellido: 'Gómez' } },
         { usuario: { nombre: 'Luis', apellido: 'Pérez' } },

@@ -43,14 +43,14 @@ export const OrganizacionPage: React.FC = () => {
     if (caps.canViewRoles) {
       items.push({
         id: 'roles',
-        label: 'Roles RBAC',
+        label: 'Roles y Permisos',
         icon: <ShieldCheck className="w-3.5 h-3.5" />,
       });
     }
     if (caps.canEditCorreo) {
       items.push({
         id: 'correo',
-        label: 'Correo SMTP',
+        label: 'Correo Institucional',
         icon: <Mail className="w-3.5 h-3.5" />,
       });
     }
@@ -152,7 +152,7 @@ export const OrganizacionPage: React.FC = () => {
 
   if (tabsDisponibles.length === 0) {
     return (
-      <div className="s-card rounded-2xl p-8 text-center text-sm text-ink-muted">
+      <div className="s-card rounded-2xl p-8 text-center text-base text-ink-muted">
         No tenés permisos habilitados para operar el módulo de Organización.
       </div>
     );
@@ -161,14 +161,14 @@ export const OrganizacionPage: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-5 s-anim-fade-up">
       {/* Cabecera + Sub-tabs */}
-      <section className="s-card rounded-2xl p-4 sm:p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-extrabold text-ink tracking-tight">
+      <section className="s-card rounded-2xl p-4 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+          <div className="space-y-1.5 min-w-0">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight">
               Organización y Gobierno
             </h1>
-            <p className="text-xs sm:text-sm text-ink-muted">
-              Administrá ramas pedagógicas, secciones e historial, roles RBAC y correo institucional SMTP.
+            <p className="text-sm text-ink-muted">
+              Administrá ramas pedagógicas, secciones e historial, roles y correo institucional.
             </p>
           </div>
 
@@ -214,7 +214,7 @@ export const OrganizacionPage: React.FC = () => {
         <KpiCard
           label="Roles configurados"
           value={cargando && roles.length === 0 ? '—' : metricas.totalRoles}
-          hint={caps.canEditCorreo ? 'RBAC + Correo SMTP' : 'Permisos granulares'}
+          hint={caps.canEditCorreo ? 'Roles y correo institucional' : 'Permisos por rol'}
           icon={<ShieldCheck className="w-4 h-4" />}
           tone="ok"
           className="col-span-2 lg:col-span-1"
@@ -223,7 +223,7 @@ export const OrganizacionPage: React.FC = () => {
 
       {error && (
         <div className="s-badge-warn rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+          <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>

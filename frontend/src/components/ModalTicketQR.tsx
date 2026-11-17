@@ -172,10 +172,10 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
             <div className="flex items-center gap-2 truncate pr-2">
               <QrCode className="w-5 h-5 text-emerald-400 shrink-0" />
               <div className="truncate">
-                <h4 className="text-xs sm:text-sm font-black truncate text-white">
+                <h4 className="text-sm sm:text-base font-black truncate text-white">
                   {ticket.pedido.evento.titulo}
                 </h4>
-                <span className="text-[10px] sm:text-xs text-white/70 block truncate">
+                <span className="text-xs sm:text-[13px] text-white/75 block truncate">
                   Pedido #{ticket.pedido.id} • Vale #{ticket.id} • {ticket.pedido.compradorNombre}
                 </span>
               </div>
@@ -184,7 +184,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
             <button
               type="button"
               onClick={salirPantallaCompleta}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 text-white text-xs font-bold transition cursor-pointer backdrop-blur-md border border-white/20 shrink-0"
+              className="flex items-center gap-1.5 min-h-[40px] px-4 py-1.5 rounded-full bg-white/15 hover:bg-white/25 active:bg-white/30 text-white text-sm font-bold transition cursor-pointer backdrop-blur-md border border-white/20 shrink-0"
               title="Salir de pantalla completa (Esc)"
             >
               <Minimize2 className="w-4 h-4" />
@@ -201,25 +201,25 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                 className="max-h-[72dvh] sm:max-h-[76dvh] w-auto max-w-[95vw] object-contain rounded-2xl shadow-2xl ring-1 ring-white/15"
               />
             ) : (
-              <div className="text-white text-xs">Cargando entrada...</div>
+              <div className="text-white text-sm">Cargando entrada...</div>
             )}
           </div>
 
           {/* Barra inferior */}
-          <div className="w-full max-w-md flex flex-col items-center gap-2 pb-1">
-            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-amber-300 bg-amber-950/70 border border-amber-600/50 px-3.5 py-1 rounded-full text-center">
-              <Sun className="w-3.5 h-3.5 shrink-0" />
+          <div className="w-full max-w-md flex flex-col items-center gap-2.5 pb-1">
+            <div className="flex items-center gap-1.5 text-xs sm:text-[13px] text-amber-300 bg-amber-950/70 border border-amber-600/50 px-3.5 py-1.5 rounded-full text-center">
+              <Sun className="w-4 h-4 shrink-0" />
               <span>Subí el brillo de tu pantalla para facilitar el escaneo</span>
             </div>
 
-            <div className="flex items-center gap-2 w-full justify-center">
+            <div className="flex items-center gap-2.5 w-full justify-center">
               <Button
                 variant="primary"
                 size="sm"
                 onClick={handleDescargarQR}
-                className="gap-1.5 text-xs flex-1 cursor-pointer"
+                className="gap-1.5 flex-1 cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-4 h-4" />
                 <span>Descargar</span>
               </Button>
 
@@ -227,9 +227,9 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                 variant="secondary"
                 size="sm"
                 onClick={salirPantallaCompleta}
-                className="gap-1.5 text-xs bg-white/10 hover:bg-white/20 text-white border-white/20 flex-1 cursor-pointer"
+                className="gap-1.5 bg-white/10 hover:bg-white/20 text-white border-white/20 flex-1 cursor-pointer"
               >
-                <Minimize2 className="w-3.5 h-3.5" />
+                <Minimize2 className="w-4 h-4" />
                 <span>Cerrar</span>
               </Button>
             </div>
@@ -249,12 +249,12 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
         {...modalBase.contentProps}
       >
         {/* Encabezado */}
-        <div className="p-4 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="p-5 bg-paper-2 border-b border-rule flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5">
             <QrCode className="w-5 h-5 text-brand" />
             <div>
-              <h3 className="text-sm font-black text-ink">Vale Digital / Entrada</h3>
-              <span className="text-[11px] text-ink-muted">
+              <h3 className="text-base sm:text-lg font-black text-ink">Vale Digital / Entrada</h3>
+              <span className="text-[13px] text-ink-muted">
                 Pedido #{ticket.pedido.id} • Vale #{ticket.id}
               </span>
             </div>
@@ -263,7 +263,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
             <button
               type="button"
               onClick={entrarPantallaCompleta}
-              className="p-1.5 rounded-xl text-ink-muted hover:text-brand hover:bg-paper-3 transition cursor-pointer"
+              className="p-2 rounded-xl text-ink-muted hover:text-brand hover:bg-paper-3 transition cursor-pointer"
               title="Ver entrada en pantalla completa"
             >
               <Maximize2 className="w-4 h-4" />
@@ -271,7 +271,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
             <button
               type="button"
               onClick={handleCerrar}
-              className="p-1 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+              className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -294,49 +294,49 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                   className="max-h-[350px] w-auto object-contain rounded-2xl shadow-md border border-rule group-hover:brightness-95 transition"
                 />
                 <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition rounded-2xl flex items-center justify-center pointer-events-none">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 text-white text-xs font-bold backdrop-blur-xs shadow-md">
-                    <Maximize2 className="w-3.5 h-3.5" />
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-black/80 text-white text-[13px] font-bold backdrop-blur-xs shadow-md">
+                    <Maximize2 className="w-4 h-4" />
                     <span>Pantalla Completa</span>
                   </span>
                 </div>
               </div>
             ) : (
-              <div className="w-64 h-80 flex items-center justify-center text-ink-muted text-xs bg-paper-2 rounded-2xl border border-rule">
+              <div className="w-64 h-80 flex items-center justify-center text-ink-muted text-sm bg-paper-2 rounded-2xl border border-rule">
                 Generando tarjeta de vale...
               </div>
             )}
           </div>
 
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted leading-relaxed">
             La imagen incluye el título del evento, los productos pedidos, nombre del titular y datos de retiro.
           </p>
 
           {mensajeAyuda && (
-            <div className="w-full p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs text-left animate-in fade-in duration-200">
+            <div className="w-full p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-sm text-left animate-in fade-in duration-200">
               {mensajeAyuda}
             </div>
           )}
 
           {/* Botones de acción */}
-          <div className="w-full pt-2 border-t border-rule flex flex-col gap-2">
+          <div className="w-full pt-2.5 border-t border-rule flex flex-col gap-2.5">
             {/* Botón principal de Descargar */}
             <Button
               variant="primary"
               size="sm"
               onClick={handleDescargarQR}
-              className="gap-2 text-xs w-full py-2.5 font-bold cursor-pointer"
+              className="gap-2 w-full py-2.5 font-bold cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>Descargar Vale (PNG)</span>
             </Button>
 
             {/* Acciones secundarias */}
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={entrarPantallaCompleta}
-                className="gap-1 text-[11px] px-1.5 py-1.5"
+                className="gap-1.5 text-xs px-2 py-2"
                 title="Ver entrada en pantalla completa"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
@@ -347,7 +347,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                 variant="secondary"
                 size="sm"
                 onClick={handleCopiarImagen}
-                className="gap-1 text-[11px] px-1.5 py-1.5"
+                className="gap-1.5 text-xs px-2 py-2"
                 title="Copiar imagen al portapapeles"
               >
                 {copiadaImagen ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <ImageIcon className="w-3.5 h-3.5" />}
@@ -358,7 +358,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                 variant="secondary"
                 size="sm"
                 onClick={handleCopiarToken}
-                className="gap-1 text-[11px] px-1.5 py-1.5"
+                className="gap-1.5 text-xs px-2 py-2"
                 title="Copiar código alfanumérico"
               >
                 {copiadoToken ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}

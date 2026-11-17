@@ -285,7 +285,7 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
             rolId: 1,
             rol: 'Educador',
             alcance: AlcanceRol.UNIDAD,
-            permisos: ['miembros.editar'],
+            permisos: ['padron.editar'],
             tipoMiembro: 'EDUCADOR',
             requiereRama: true,
           },

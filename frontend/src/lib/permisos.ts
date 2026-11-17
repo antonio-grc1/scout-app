@@ -7,63 +7,64 @@ import {
 } from './formatters';
 
 /**
- * Mapa central de qué permiso habilita ver/editar cada módulo y campo de la UI.
- * Debe mantenerse sincronizado con los @RequirePermission del backend.
+ * Mapa central de qué permiso de panel habilita ver/editar cada módulo de la UI.
+ * Basado en los 9 paneles con niveles Sin acceso | Solo lectura (.ver) | Edición (.editar).
  */
 const PERMISOS_EDICION: Record<string, Record<string, string[]>> = {
   miembro: {
-    identidad: ['miembros.editar_identidad'], // nombre, apellido, dni, fechaNacimiento
-    contacto: ['miembros.editar'], // teléfonos, email, familiares, domicilio, salud
-    estado: ['miembros.baja'], // activo / baja
-    familia: ['miembros.editar', 'cuotas.ajustar', 'tesoreria.gestionar'], // vincular / quitar hermanos
-    descuentoFamiliar: ['cuotas.ajustar', 'tesoreria.gestionar', 'tesoreria.conceptos_planes'],
-    disolverFamilia: ['tesoreria.gestionar'],
-    clave: ['auth.resetear_clave'],
-    pase: ['pases.ejecutar'],
+    identidad: ['padron.editar'],
+    contacto: ['padron.editar'],
+    estado: ['padron.editar'],
+    familia: ['padron.editar', 'cobranzas.editar', 'caja.editar'],
+    descuentoFamiliar: ['cobranzas.editar', 'planes.editar', 'caja.editar'],
+    disolverFamilia: ['cobranzas.editar', 'caja.editar'],
+    clave: ['padron.editar'],
+    pase: ['pases.editar'],
   },
   cuotas: {
-    cobrar: ['cuotas.cobrar'],
-    cargoIndividual: ['cuotas.cobrar', 'cuotas.ajustar', 'tesoreria.conceptos_planes'],
-    editarCargo: ['cuotas.ajustar', 'tesoreria.gestionar'],
-    anularCargo: ['cuotas.ajustar', 'tesoreria.gestionar'],
-    editarPago: ['cuotas.ajustar', 'tesoreria.gestionar'],
-    revertirPago: ['cuotas.ajustar', 'tesoreria.gestionar'],
-    ajustarSaldo: ['cuotas.ajustar', 'tesoreria.gestionar'],
+    cobrar: ['cobranzas.editar', 'caja.editar'],
+    cargoIndividual: ['cobranzas.editar', 'planes.editar', 'caja.editar'],
+    editarCargo: ['cobranzas.editar', 'caja.editar'],
+    anularCargo: ['cobranzas.editar', 'caja.editar'],
+    editarPago: ['cobranzas.editar', 'caja.editar'],
+    revertirPago: ['cobranzas.editar', 'caja.editar'],
+    ajustarSaldo: ['cobranzas.editar', 'caja.editar'],
   },
   ficha: {
-    completar: ['legajos.completar'],
-    validarFisico: ['legajos.validar_fisico'],
-    plantillas: ['legajos.plantillas_gestionar'],
+    completar: ['legajos.editar'],
+    validarFisico: ['legajos.editar'],
+    plantillas: ['plantillas.editar'],
   },
   organizacion: {
-    gestionar: ['organizacion.gestionar'],
+    gestionar: ['organizacion.editar'],
   },
   roles: {
-    gestionar: ['roles.gestionar', 'organizacion.gestionar'],
+    gestionar: ['organizacion.editar'],
   },
   tesoreria: {
-    gestionar: ['tesoreria.gestionar'],
-    caja: ['tesoreria.caja_ver', 'tesoreria.gestionar'],
-    gastos: ['tesoreria.gastos_registrar', 'tesoreria.gestionar'],
-    conceptos: ['tesoreria.conceptos_planes', 'tesoreria.gestionar'],
+    gestionar: ['caja.editar'],
+    caja: ['caja.ver', 'caja.editar'],
+    gastos: ['caja.editar'],
+    conceptos: ['planes.editar', 'caja.editar'],
   },
   eventos: {
-    ver: ['eventos.ver', 'eventos.vender', 'eventos.gestionar'],
-    vender: ['eventos.vender', 'eventos.gestionar'],
-    gestionar: ['eventos.gestionar'],
+    ver: ['eventos.ver', 'eventos.editar'],
+    vender: ['eventos.editar', 'caja.editar'],
+    gestionar: ['eventos.editar', 'caja.editar'],
   },
 };
 
 const PERMISOS_LECTURA: Record<string, string[]> = {
-  cuotas: ['cuotas.ver', 'cuotas.cobrar', 'cuotas.ajustar', 'tesoreria.gestionar'],
-  ficha: ['legajos.ver', 'legajos.completar', 'legajos.validar_fisico', 'legajos.plantillas_gestionar'],
-  plantillas: ['legajos.plantillas_gestionar', 'legajos.ver'],
-  pase: ['pases.ver', 'pases.ejecutar'],
-  clave: ['auth.resetear_clave'],
-  organizacion: ['organizacion.ver', 'organizacion.gestionar'],
-  roles: ['organizacion.ver', 'roles.gestionar', 'organizacion.gestionar'],
-  tesoreria: ['tesoreria.caja_ver', 'tesoreria.gastos_registrar', 'tesoreria.conceptos_planes', 'tesoreria.gestionar'],
-  eventos: ['eventos.ver', 'eventos.vender', 'eventos.gestionar'],
+  miembro: ['padron.ver', 'padron.editar'],
+  cuotas: ['cobranzas.ver', 'cobranzas.editar', 'caja.ver', 'caja.editar'],
+  ficha: ['legajos.ver', 'legajos.editar', 'plantillas.ver', 'plantillas.editar'],
+  plantillas: ['plantillas.ver', 'plantillas.editar'],
+  pase: ['pases.ver', 'pases.editar'],
+  clave: ['padron.editar'],
+  organizacion: ['organizacion.ver', 'organizacion.editar'],
+  roles: ['organizacion.ver', 'organizacion.editar'],
+  tesoreria: ['cobranzas.ver', 'cobranzas.editar', 'planes.ver', 'planes.editar', 'caja.ver', 'caja.editar'],
+  eventos: ['eventos.ver', 'eventos.editar', 'caja.editar'],
 };
 
 export function tienePermisoEdicion(
@@ -211,36 +212,30 @@ export function calcularPermisosPanelGlobal(opts: {
 
   // Caja, Gastos y Balance operan sobre cuentas financieras centrales -> requieren alcance GLOBAL en backend
   const puedeVerCaja =
-    esGlobal && (tienePermiso('tesoreria.caja_ver') || tienePermiso('tesoreria.gestionar'));
+    esGlobal && (tienePermiso('caja.ver') || tienePermiso('caja.editar'));
   const puedeVerGastos =
-    esGlobal &&
-    (tienePermiso('tesoreria.gastos_registrar') ||
-      tienePermiso('tesoreria.caja_ver') ||
-      tienePermiso('tesoreria.gestionar'));
+    esGlobal && (tienePermiso('caja.ver') || tienePermiso('caja.editar'));
   const puedeVerBalance =
-    esGlobal && (tienePermiso('tesoreria.caja_ver') || tienePermiso('tesoreria.gestionar'));
+    esGlobal && (tienePermiso('caja.ver') || tienePermiso('caja.editar'));
 
   const puedeVerEventos =
     tienePermiso('eventos.ver') ||
-    tienePermiso('eventos.vender') ||
-    tienePermiso('eventos.gestionar') ||
-    tienePermiso('tesoreria.gestionar');
+    tienePermiso('eventos.editar') ||
+    tienePermiso('caja.editar');
 
   const puedeVerPlanes =
-    tienePermiso('tesoreria.conceptos_planes') ||
-    tienePermiso('tesoreria.gestionar') ||
-    tienePermiso('cuotas.ver');
+    tienePermiso('planes.ver') ||
+    tienePermiso('planes.editar') ||
+    tienePermiso('cobranzas.ver') ||
+    tienePermiso('caja.editar');
 
-  const puedeVerCampamentos =
-    tienePermiso('tesoreria.conceptos_planes') ||
-    tienePermiso('tesoreria.gestionar') ||
-    tienePermiso('cuotas.ver');
+  const puedeVerCampamentos = puedeVerPlanes;
 
   const puedeVerFamilias =
-    tienePermiso('tesoreria.gestionar') ||
-    tienePermiso('cuotas.ajustar') ||
-    tienePermiso('cuotas.ver') ||
-    tienePermiso('miembros.editar');
+    tienePermiso('cobranzas.ver') ||
+    tienePermiso('cobranzas.editar') ||
+    tienePermiso('padron.editar') ||
+    tienePermiso('caja.editar');
 
   const puedeVerTesoreria =
     puedeVerCaja ||
@@ -251,19 +246,16 @@ export function calcularPermisosPanelGlobal(opts: {
     puedeVerCampamentos ||
     puedeVerFamilias;
 
-  const puedeVerColaboradores = tienePermiso('legajos.ver');
+  const puedeVerColaboradores = tienePermiso('legajos.ver') || tienePermiso('legajos.editar');
   const puedeVerOrganizacion =
-    tienePermiso('organizacion.ver') || tienePermiso('organizacion.gestionar');
+    tienePermiso('organizacion.ver') || tienePermiso('organizacion.editar');
   const puedeVerRoles =
-    tienePermiso('roles.gestionar') ||
-    tienePermiso('organizacion.gestionar') ||
-    tienePermiso('organizacion.ver');
-  const puedeVerPases = tienePermiso('pases.ver');
-  const puedeVerPlantillas = tienePermiso('legajos.ver');
+    tienePermiso('organizacion.ver') || tienePermiso('organizacion.editar');
+  const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.editar');
+  const puedeVerPlantillas =
+    esGlobal && (tienePermiso('plantillas.ver') || tienePermiso('plantillas.editar'));
   const puedeVerCorreo = asignaciones.some(
-    (a) =>
-      a.alcance === 'GLOBAL' &&
-      (a.permisos.includes('organizacion.gestionar') || a.permisos.includes('roles.gestionar')),
+    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('organizacion.editar'),
   );
 
   return {

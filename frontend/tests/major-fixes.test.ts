@@ -117,7 +117,7 @@ describe('A4: obtenerRutaInicialUsuario unifica inicio autenticado en /inicio y 
           unidadNombre: 'Manada',
           rol: 'Tesorero',
           alcance: 'UNIDAD',
-          permisos: ['cuotas.ver', 'cuotas.cobrar'],
+          permisos: ['cobranzas.ver', 'cobranzas.editar'],
         },
       ],
     });
@@ -284,6 +284,20 @@ describe('traducirErrorAmigable no confunde montos con códigos HTTP', () => {
       traducirErrorAmigable({ response: { status: 404, data: { message: 'Not Found' } } }),
       'No encontramos la información solicitada.',
     );
+
+    assert.equal(
+      traducirErrorAmigable({
+        response: { status: 403, data: { message: 'Solo usuarios con alcance global pueden crear eventos' } },
+      }),
+      'No tienes permisos para realizar esta acción.',
+    );
+
+    assert.equal(
+      traducirErrorAmigable({
+        response: { status: 404, data: { message: 'Miembro no encontrado en su alcance' } },
+      }),
+      'No encontramos la información solicitada o no tienes acceso a ella.',
+    );
   });
 });
 
@@ -293,28 +307,27 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
 
     const soloCajaUnidad = calcularPermisosPanelGlobal({
       esGlobal: false,
-      tienePermiso: (p: string) => ['tesoreria.caja_ver', 'tesoreria.gastos_registrar'].includes(p),
+      tienePermiso: (p: string) => ['caja.ver', 'caja.editar'].includes(p),
       asignaciones: [
         {
           alcance: 'UNIDAD',
           unidadId: 2,
-          permisos: ['tesoreria.caja_ver', 'tesoreria.gastos_registrar'],
+          permisos: ['caja.ver', 'caja.editar'],
         },
       ],
     });
     assert.equal(soloCajaUnidad.puedeVerCaja, false);
     assert.equal(soloCajaUnidad.puedeVerGastos, false);
     assert.equal(soloCajaUnidad.puedeVerBalance, false);
-    assert.equal(soloCajaUnidad.puedeVerTesoreria, false);
 
     const tesoreroRama = calcularPermisosPanelGlobal({
       esGlobal: false,
-      tienePermiso: (p: string) => ['cuotas.ver', 'tesoreria.conceptos_planes'].includes(p),
+      tienePermiso: (p: string) => ['cobranzas.ver', 'planes.editar'].includes(p),
       asignaciones: [
         {
           alcance: 'UNIDAD',
           unidadId: 2,
-          permisos: ['cuotas.ver', 'tesoreria.conceptos_planes'],
+          permisos: ['cobranzas.ver', 'planes.editar'],
         },
       ],
     });
@@ -326,8 +339,8 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
 
     const tesoreroGlobal = calcularPermisosPanelGlobal({
       esGlobal: true,
-      tienePermiso: (p: string) => p === 'tesoreria.caja_ver',
-      asignaciones: [{ alcance: 'GLOBAL', unidadId: 1, permisos: ['tesoreria.caja_ver'] }],
+      tienePermiso: (p: string) => p === 'caja.ver',
+      asignaciones: [{ alcance: 'GLOBAL', unidadId: 1, permisos: ['caja.ver'] }],
     });
     assert.equal(tesoreroGlobal.puedeVerCaja, true);
     assert.equal(tesoreroGlobal.puedeVerGastos, true);
@@ -401,7 +414,7 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
           unidadNombre: 'Manada',
           rol: 'Revisor Caja',
           alcance: 'UNIDAD',
-          permisos: ['tesoreria.caja_ver', 'tesoreria.gastos_registrar'],
+          permisos: ['caja.ver', 'caja.editar'],
         },
       ],
     });
@@ -417,7 +430,7 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
           unidadNombre: 'Manada',
           rol: 'Tesorero',
           alcance: 'UNIDAD',
-          permisos: ['cuotas.ver'],
+          permisos: ['cobranzas.ver'],
         },
       ],
     });
@@ -478,9 +491,9 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
       false,
     );
 
-    // Permiso de pases desacoplado de miembros.editar (Tesorero no puede gestionar pases)
-    assert.equal(tienePermisoEdicion('miembro', 'pase', ['miembros.editar']), false);
-    assert.equal(tienePermisoEdicion('miembro', 'pase', ['pases.ejecutar']), true);
+    // Permiso de pases desacoplado de padron.editar (Tesorero no puede gestionar pases)
+    assert.equal(tienePermisoEdicion('miembro', 'pase', ['padron.editar']), false);
+    assert.equal(tienePermisoEdicion('miembro', 'pase', ['pases.editar']), true);
 
     // Cerrar asignaciones: UNIDAD no puede cerrar globales, propias, de educadores ni de otra unidad
     assert.equal(

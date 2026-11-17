@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type ThemePreset = 'scout' | 'contrast';
+export type ThemePreset = 'scout';
 export type FontScale = '100%' | '110%' | '125%';
 
 export interface PresetTokens {
@@ -90,39 +90,6 @@ export const THEME_PRESETS: Record<ThemePreset, ThemePresetDefinition> = {
       logoScale: 1.0,
     },
   },
-  contrast: {
-    id: 'contrast',
-    label: 'Alto Contraste AAA',
-    description: 'Máxima legibilidad WCAG AAA con bordes nítidos de 2px y sin sombras',
-    light: {
-      brand: '#92400e',
-      contrast: '#ffffff',
-      paper: '#ffffff',
-      paper2: '#f4f4f5',
-      paper3: '#e4e4e7',
-      surface: '#ffffff',
-      nav: '#ffffff',
-      ink: '#000000',
-      muted: '#1f2937',
-      rule: '#000000',
-      fontScale: '110%',
-      logoScale: 1.0,
-    },
-    dark: {
-      brand: '#ffd60a',
-      contrast: '#000000',
-      paper: '#000000',
-      paper2: '#0a0a0c',
-      paper3: '#141418',
-      surface: '#000000',
-      nav: '#000000',
-      ink: '#ffffff',
-      muted: '#f4f4f5',
-      rule: '#fbbf24',
-      fontScale: '110%',
-      logoScale: 1.0,
-    },
-  },
 };
 
 export const DEFAULT_THEME_CUSTOMIZATION: ThemeCustomizationConfig = {
@@ -190,7 +157,6 @@ const getInitialCustomization = (): ThemeCustomizationConfig => {
     const raw = localStorage.getItem(STORAGE_CUSTOM_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      const validPreset: ThemePreset = parsed.preset === 'contrast' ? 'contrast' : 'scout';
       const validScale: FontScale =
         parsed.fontScale === '110%' || parsed.fontScale === '125%' ? parsed.fontScale : '100%';
       const validLogoScale =
@@ -199,7 +165,7 @@ const getInitialCustomization = (): ThemeCustomizationConfig => {
           : 1.0;
 
       return {
-        preset: validPreset,
+        preset: 'scout',
         fontScale: validScale,
         logoScale: validLogoScale,
         logoUrl: esLogoUrlSegura(parsed.logoUrl)
@@ -269,13 +235,9 @@ const applyDocumentCustomization = (
     s.removeProperty(prop);
   }
 
-  if (cfg.preset === 'contrast') {
-    root.setAttribute('data-contrast', 'aaa');
-  } else {
-    root.removeAttribute('data-contrast');
-  }
+  root.removeAttribute('data-contrast');
 
-  const fontScale = cfg.fontScale || (cfg.preset === 'contrast' ? '110%' : '100%');
+  const fontScale = cfg.fontScale || '100%';
   if (fontScale === '100%') {
     s.removeProperty('--font-scale');
   } else {
@@ -295,14 +257,7 @@ const applyDocumentCustomization = (
     s.removeProperty('--brand-logo-url');
   }
 
-  const metaColor =
-    cfg.preset === 'contrast'
-      ? resolvedTheme === 'dark'
-        ? '#000000'
-        : '#ffffff'
-      : resolvedTheme === 'dark'
-        ? '#171a24'
-        : '#ffffff';
+  const metaColor = resolvedTheme === 'dark' ? '#171a24' : '#ffffff';
   updateMetaThemeColor(metaColor);
 };
 
@@ -369,36 +324,19 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       set({ theme: nextTheme, resolvedTheme: resolved });
     },
 
-    setPreset: (preset: ThemePreset) => {
-      const normalized: ThemePreset = preset === 'contrast' ? 'contrast' : 'scout';
-      if (normalized === 'scout') {
-        persistAndApply({
-          ...DEFAULT_THEME_CUSTOMIZATION,
-          fontScale: get().customization.fontScale === '110%' && get().customization.preset === 'contrast'
-            ? '100%'
-            : get().customization.fontScale,
-        });
-        return;
-      }
-
+    setPreset: (_preset: ThemePreset) => {
       persistAndApply({
-        preset: 'contrast',
-        fontScale: get().customization.fontScale === '100%' ? '110%' : get().customization.fontScale,
-        logoScale: 1.0,
-        logoUrl: DEFAULT_THEME_CUSTOMIZATION.logoUrl,
+        ...DEFAULT_THEME_CUSTOMIZATION,
+        fontScale: get().customization.fontScale,
       });
     },
 
     setCustomization: (updates: Partial<ThemeCustomizationConfig>) => {
       const current = get().customization;
-      const nextPreset: ThemePreset =
-        updates.preset === 'contrast' || (updates.preset === undefined && current.preset === 'contrast')
-          ? 'contrast'
-          : 'scout';
       const nextCustom: ThemeCustomizationConfig = {
         ...current,
         ...updates,
-        preset: nextPreset,
+        preset: 'scout',
       };
       persistAndApply(nextCustom);
     },

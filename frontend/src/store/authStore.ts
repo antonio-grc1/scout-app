@@ -144,12 +144,19 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     tienePermiso: (permiso: string) => {
-      return get().asignaciones.some((a) => a.permisos.includes(permiso));
+      const equivalenteEditar = permiso.endsWith('.ver')
+        ? `${permiso.slice(0, -4)}.editar`
+        : null;
+      return get().asignaciones.some(
+        (a) =>
+          a.permisos.includes(permiso) ||
+          (equivalenteEditar !== null && a.permisos.includes(equivalenteEditar)),
+      );
     },
 
     puedeVerPadron: () => {
       const { tieneUnidad, tieneGlobal, tienePermiso } = get();
-      return (tieneUnidad() || tieneGlobal()) && tienePermiso('miembros.ver');
+      return (tieneUnidad() || tieneGlobal()) && tienePermiso('padron.ver');
     },
 
     puedeAccederPanelGestion: () => {
@@ -161,18 +168,13 @@ export const useAuthStore = create<AuthState>((set, get) => {
       if (!tieneAsignacionGestion) return false;
 
       const permisosPanelNoGlobal = [
-        'tesoreria.gestionar',
-        'tesoreria.conceptos_planes',
-        'cuotas.ver',
-        'cuotas.ajustar',
-        'eventos.ver',
-        'eventos.vender',
-        'eventos.gestionar',
-        'organizacion.ver',
-        'organizacion.gestionar',
-        'roles.gestionar',
-        'pases.ver',
+        'padron.ver',
         'legajos.ver',
+        'pases.ver',
+        'cobranzas.ver',
+        'planes.ver',
+        'eventos.ver',
+        'organizacion.ver',
       ];
       return tieneGlobal() || permisosPanelNoGlobal.some((p) => tienePermiso(p));
     },

@@ -61,12 +61,12 @@ export const ToastGlobal: React.FC = () => {
       <div
         className={`pointer-events-auto relative overflow-hidden rounded-xl bg-surface text-ink border shadow-xl ${borderToneClass}`}
       >
-        <div className="p-3 sm:p-3.5 flex items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <div className="w-7 h-7 rounded-lg bg-paper-2 flex items-center justify-center shrink-0">
+        <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded-lg bg-paper-2 flex items-center justify-center shrink-0">
               {getIcono()}
             </div>
-            <span className="text-xs sm:text-sm font-semibold leading-snug line-clamp-2">
+            <span className="text-sm font-semibold leading-snug line-clamp-2">
               {toast.texto}
             </span>
           </div>
@@ -77,7 +77,7 @@ export const ToastGlobal: React.FC = () => {
                 type="button"
                 onClick={handleAccion}
                 disabled={ejecutando}
-                className="s-btn-brand px-2.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+                className="s-btn-brand px-3 py-1.5 rounded-lg text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
               >
                 <RotateCcw className={`w-3.5 h-3.5 ${ejecutando ? 'animate-spin' : ''}`} />
                 <span>{ejecutando ? 'Deshaciendo…' : toast.accion.label || 'Deshacer'}</span>

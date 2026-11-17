@@ -17,9 +17,9 @@ export const BannerOffline: React.FC = () => {
       <div
         role="status"
         aria-live="polite"
-        className="s-badge-ok sticky top-0 z-50 min-h-[30px] text-xs font-semibold px-3 py-1 flex items-center justify-center gap-1.5 border-x-0 border-t-0"
+        className="s-badge-ok sticky top-0 z-50 min-h-[36px] text-[13px] font-semibold px-4 py-1.5 flex items-center justify-center gap-2 border-x-0 border-t-0"
       >
-        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+        <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span className="truncate">¡Conexión restablecida! El sistema está sincronizado.</span>
       </div>
     );
@@ -35,11 +35,11 @@ export const BannerOffline: React.FC = () => {
       <div
         role="status"
         aria-live="polite"
-        className="s-badge-warn sticky top-0 z-50 min-h-[30px] text-xs font-medium px-3 py-1 flex items-center justify-center gap-1.5 border-x-0 border-t-0"
+        className="s-badge-warn sticky top-0 z-50 min-h-[36px] text-[13px] font-medium px-4 py-1.5 flex items-center justify-center gap-2 border-x-0 border-t-0"
       >
-        <WifiOff className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+        <WifiOff className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span className="truncate">
-          <strong>Sin conexión:</strong> últimos datos ({textoFecha}). Lectura offline activa.
+          <strong>Sin conexión:</strong> mostrando los últimos datos guardados ({textoFecha}).
         </span>
       </div>
     );

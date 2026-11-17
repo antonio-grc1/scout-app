@@ -636,7 +636,7 @@ export const EventoWorkspacePage: React.FC = () => {
     return (
       <div className="s-card rounded-2xl p-8 text-center space-y-4">
         <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto" />
-        <h2 className="text-base font-black text-ink">
+        <h2 className="text-lg font-black text-ink">
           {error || 'No se encontró el evento solicitado'}
         </h2>
         <Button type="button" variant="secondary" onClick={() => navigate('/eventos')}>
@@ -649,26 +649,26 @@ export const EventoWorkspacePage: React.FC = () => {
 
   const tabsWorkspace = caps.canSellEventos
     ? [
-        { id: 'pos' as const, label: 'POS Venta Rápida', icon: <ShoppingCart className="w-3.5 h-3.5" /> },
+        { id: 'pos' as const, label: 'POS Venta Rápida', icon: <ShoppingCart className="w-4 h-4" /> },
         {
           id: 'pedidos' as const,
           label: 'Pedidos y Vales',
-          icon: <ShoppingBag className="w-3.5 h-3.5" />,
+          icon: <ShoppingBag className="w-4 h-4" />,
           badge: contadoresPedidos.todos,
         },
         {
           id: 'liquidacion' as const,
           label: 'Liquidación a Familias',
-          icon: <Award className="w-3.5 h-3.5" />,
+          icon: <Award className="w-4 h-4" />,
           badge: resumenLiquidacion.pedidosListos > 0 ? resumenLiquidacion.pedidosListos : undefined,
         },
       ]
     : [
-        { id: 'pos' as const, label: 'Cargar Mi Pedido', icon: <ShoppingCart className="w-3.5 h-3.5" /> },
+        { id: 'pos' as const, label: 'Cargar Mi Pedido', icon: <ShoppingCart className="w-4 h-4" /> },
         {
           id: 'pedidos' as const,
           label: 'Mis Pedidos y Vales',
-          icon: <QrCode className="w-3.5 h-3.5" />,
+          icon: <QrCode className="w-4 h-4" />,
           badge: contadoresPedidos.todos,
         },
       ];
@@ -685,13 +685,13 @@ export const EventoWorkspacePage: React.FC = () => {
   return (
     <div className="space-y-5 s-anim-view">
       {/* Cabecera Contextual Nivel 2 */}
-      <div className="s-card rounded-2xl p-4 sm:p-5 space-y-4">
+      <div className="s-card rounded-2xl p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <Link
             to="/eventos"
-            className="s-btn-sec min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+            className="s-btn-sec min-h-[40px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5"
           >
-            <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+            <ArrowLeft className="w-4 h-4 shrink-0" />
             <span>Volver a Eventos</span>
           </Link>
 
@@ -741,14 +741,14 @@ export const EventoWorkspacePage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 pt-1 border-t border-rule">
-          <div className="space-y-1.5 min-w-0">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 pt-2 border-t border-rule">
+          <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`${estadoClass} px-2.5 py-0.5 rounded-full text-[11px] font-bold inline-flex items-center gap-1`}>
-                {evento.estado === 'PUBLICADO' && <CheckCircle2 className="w-3 h-3" />}
-                {evento.estado === 'FINALIZADO' && <Clock className="w-3 h-3" />}
-                {evento.estado === 'BORRADOR' && <AlertTriangle className="w-3 h-3" />}
-                {evento.estado === 'CANCELADO' && <XCircle className="w-3 h-3" />}
+              <span className={`${estadoClass} px-2.5 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1.5`}>
+                {evento.estado === 'PUBLICADO' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                {evento.estado === 'FINALIZADO' && <Clock className="w-3.5 h-3.5" />}
+                {evento.estado === 'BORRADOR' && <AlertTriangle className="w-3.5 h-3.5" />}
+                {evento.estado === 'CANCELADO' && <XCircle className="w-3.5 h-3.5" />}
                 <span>
                   {evento.estado === 'PUBLICADO'
                     ? 'Publicado'
@@ -759,23 +759,23 @@ export const EventoWorkspacePage: React.FC = () => {
                         : 'Cancelado'}
                 </span>
               </span>
-              <span className="px-2 py-0.5 rounded-lg bg-paper-2 border border-rule text-[10px] font-bold text-ink-2">
+              <span className="px-2.5 py-0.5 rounded-lg bg-paper-2 border border-rule text-xs font-bold text-ink-2">
                 {evento.tipo === 'FESTIVAL_ENTRADAS' ? 'Festival / Entradas' : 'Recaudación por Pedidos'}
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-black text-ink tracking-tight">
+            <h1 className="text-2xl sm:text-[1.75rem] font-black text-ink tracking-tight">
               {evento.titulo}
             </h1>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-ink-2">
               <span className="inline-flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-brand" />
+                <Calendar className="w-4 h-4 text-brand" />
                 {formatearFecha(evento.fechaEvento)}
               </span>
               {evento.lugarEntrega && (
                 <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-ink-muted" />
+                  <MapPin className="w-4 h-4 text-ink-muted" />
                   {evento.lugarEntrega}
                 </span>
               )}
@@ -786,7 +786,7 @@ export const EventoWorkspacePage: React.FC = () => {
 
       {/* Banners de estado especial */}
       {evento.estado === 'FINALIZADO' && (
-        <div className="s-badge-info rounded-2xl p-3.5 text-xs flex items-center gap-2.5">
+        <div className="s-badge-info rounded-2xl p-4 text-[13px] flex items-center gap-2.5">
           <Clock className="w-4 h-4 shrink-0" />
           <span>
             <strong>Evento finalizado:</strong> no admite nuevos pedidos, pero podés cobrar saldos pendientes, validar vales QR en puerta y acreditar ganancias.
@@ -794,7 +794,7 @@ export const EventoWorkspacePage: React.FC = () => {
         </div>
       )}
       {evento.estado === 'BORRADOR' && (
-        <div className="s-badge-warn rounded-2xl p-3.5 text-xs flex items-center gap-2.5">
+        <div className="s-badge-warn rounded-2xl p-4 text-[13px] flex items-center gap-2.5">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>
             <strong>Borrador oculto:</strong> este evento todavía no es visible para las familias. Publicalo desde "Configurar Evento".
@@ -858,7 +858,7 @@ export const EventoWorkspacePage: React.FC = () => {
       {tab === 'pos' && (
         <form onSubmit={handleRegistrarPos} className="grid grid-cols-1 lg:grid-cols-12 gap-4 s-anim-tab">
           {evento.estado !== 'PUBLICADO' && (
-            <div className="lg:col-span-12 s-badge-warn rounded-2xl p-4 text-xs font-semibold flex items-center gap-2">
+            <div className="lg:col-span-12 s-badge-warn rounded-2xl p-4 text-[13px] font-semibold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>
                 El evento está en estado <strong>{evento.estado}</strong>. Para cargar nuevos pedidos debe estar publicado.
@@ -867,16 +867,16 @@ export const EventoWorkspacePage: React.FC = () => {
           )}
 
           {/* Catálogo de Productos con Stock en vivo */}
-          <div className="lg:col-span-7 s-card rounded-2xl p-4 sm:p-5 space-y-4">
+          <div className="lg:col-span-7 s-card rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-black text-ink">1. Productos y Stock en Vivo</h2>
-              <span className="text-xs font-bold text-ink-muted s-tabular">
+              <h2 className="text-base font-black text-ink">1. Productos y Stock en Vivo</h2>
+              <span className="text-[13px] font-bold text-ink-muted s-tabular">
                 {posTotals.unidades} unid. seleccionadas
               </span>
             </div>
 
             {itemsCatalogo.length === 0 ? (
-              <div className="s-panel rounded-xl p-6 text-center text-xs text-ink-muted">
+              <div className="s-panel rounded-xl p-6 text-center text-sm text-ink-muted">
                 No hay productos configurados en este evento.
               </div>
             ) : (
@@ -895,18 +895,18 @@ export const EventoWorkspacePage: React.FC = () => {
                   return (
                     <div
                       key={it.id}
-                      className={`p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                      className={`p-4 rounded-2xl border transition flex items-center justify-between gap-3 ${
                         cant > 0
                           ? 'bg-brand-soft/30 border-brand'
                           : 'bg-paper-2 border-rule'
                       }`}
                     >
-                      <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="min-w-0 flex-1 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-black text-ink">{it.nombre}</span>
+                          <span className="text-[15px] font-black text-ink">{it.nombre}</span>
                           {stockMax !== null && (
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold s-tabular ${
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold s-tabular ${
                                 sinStock
                                   ? 's-badge-err'
                                   : stockMax <= 5
@@ -919,9 +919,9 @@ export const EventoWorkspacePage: React.FC = () => {
                           )}
                         </div>
                         {it.descripcion && (
-                          <p className="text-[11px] text-ink-muted line-clamp-1">{it.descripcion}</p>
+                          <p className="text-xs text-ink-muted line-clamp-1">{it.descripcion}</p>
                         )}
-                        <div className="flex items-center gap-3 text-xs s-tabular">
+                        <div className="flex items-center gap-3 text-[13px] s-tabular">
                           <span className="font-black text-ink">
                             {formatearMoneda(Number(it.precioVenta))}
                           </span>
@@ -937,11 +937,11 @@ export const EventoWorkspacePage: React.FC = () => {
                           onClick={() => handlePosCantidad(it, -1)}
                           disabled={evento.estado !== 'PUBLICADO' || cant <= 0}
                           aria-label={`Quitar ${it.nombre}`}
-                          className="s-btn-sec w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-35 cursor-pointer"
+                          className="s-btn-sec w-11 h-11 rounded-xl flex items-center justify-center disabled:opacity-35 cursor-pointer"
                         >
                           <Minus className="w-4 h-4" />
                         </button>
-                        <span className="w-8 text-center text-sm font-black text-ink s-tabular">
+                        <span className="w-8 text-center text-[15px] font-black text-ink s-tabular">
                           {cant}
                         </span>
                         <button
@@ -953,7 +953,7 @@ export const EventoWorkspacePage: React.FC = () => {
                             (stockMax !== null && cant >= stockMax)
                           }
                           aria-label={`Agregar ${it.nombre}`}
-                          className="s-btn-brand w-10 h-10 rounded-xl flex items-center justify-center disabled:opacity-35 cursor-pointer"
+                          className="s-btn-brand w-11 h-11 rounded-xl flex items-center justify-center disabled:opacity-35 cursor-pointer"
                         >
                           <Plus className="w-4 h-4" />
                         </button>
@@ -966,8 +966,8 @@ export const EventoWorkspacePage: React.FC = () => {
           </div>
 
           {/* Datos del Comprador, Vendedor y Cobro */}
-          <div className="lg:col-span-5 s-card rounded-2xl p-4 sm:p-5 space-y-4">
-            <h2 className="text-sm font-black text-ink">2. Comprador y Cobro</h2>
+          <div className="lg:col-span-5 s-card rounded-2xl p-5 space-y-4">
+            <h2 className="text-base font-black text-ink">2. Comprador y Cobro</h2>
 
             <Input
               label="Nombre del comprador / cliente"
@@ -988,13 +988,13 @@ export const EventoWorkspacePage: React.FC = () => {
 
             {caps.canSellEventos ? (
               <div className="space-y-1.5 relative">
-                <label className="block text-xs font-bold text-ink-2">
+                <label className="block text-sm font-bold text-ink-2">
                   Vendedor Scout (acreditación a Saldo a Favor)
                 </label>
                 {vendedorSeleccionado ? (
-                  <div className="p-2.5 rounded-xl bg-brand-soft/30 border border-brand flex items-center justify-between gap-2 text-xs">
+                  <div className="p-3 rounded-xl bg-brand-soft/30 border border-brand flex items-center justify-between gap-2 text-[13px]">
                     <div className="flex items-center gap-2 min-w-0">
-                      <User className="w-3.5 h-3.5 text-brand shrink-0" />
+                      <User className="w-4 h-4 text-brand shrink-0" />
                       <span className="font-bold text-ink truncate">
                         {vendedorSeleccionado.nombre} {vendedorSeleccionado.apellido}
                       </span>
@@ -1005,12 +1005,12 @@ export const EventoWorkspacePage: React.FC = () => {
                       className="text-ink-muted hover:text-ink p-1 cursor-pointer"
                       aria-label="Quitar vendedor"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
                   <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                    <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                     <input
                       type="text"
                       value={posBusquedaVendedor}
@@ -1022,7 +1022,7 @@ export const EventoWorkspacePage: React.FC = () => {
                         setPosDropdownAbierto(true);
                       }}
                       placeholder="Buscar scout por nombre o DNI (o dejar Venta General)..."
-                      className="s-input w-full min-h-[42px] pl-8 pr-3 rounded-xl text-xs"
+                      className="s-input w-full min-h-[46px] pl-10 pr-3 rounded-xl text-base sm:text-[15px]"
                     />
                     {posDropdownAbierto && (
                       <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-xl bg-surface border border-rule z-20 py-1 divide-y divide-rule/40">
@@ -1034,7 +1034,7 @@ export const EventoWorkspacePage: React.FC = () => {
                             setPosBusquedaVendedor('');
                             setPosDropdownAbierto(false);
                           }}
-                          className="w-full px-3 py-2 text-left text-xs text-ink-muted hover:bg-paper-2 cursor-pointer"
+                          className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink-muted hover:bg-paper-2 cursor-pointer"
                         >
                           Venta general del grupo (sin vendedor)
                         </button>
@@ -1048,13 +1048,13 @@ export const EventoWorkspacePage: React.FC = () => {
                               setPosBusquedaVendedor('');
                               setPosDropdownAbierto(false);
                             }}
-                            className="w-full px-3 py-2 text-left text-xs text-ink hover:bg-paper-2 flex items-center justify-between gap-2 cursor-pointer"
+                            className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-2 flex items-center justify-between gap-2 cursor-pointer"
                           >
                             <span className="font-bold truncate">
                               {m.nombre} {m.apellido}
                             </span>
                             {m.dni && (
-                              <span className="text-[10px] text-ink-muted s-tabular shrink-0">
+                              <span className="text-xs text-ink-muted s-tabular shrink-0">
                                 DNI {m.dni}
                               </span>
                             )}
@@ -1066,8 +1066,8 @@ export const EventoWorkspacePage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="s-panel rounded-xl p-2.5 text-xs flex items-center gap-2 text-ink-2">
-                <User className="w-3.5 h-3.5 text-brand shrink-0" />
+              <div className="s-panel rounded-xl p-3 text-[13px] flex items-center gap-2 text-ink-2">
+                <User className="w-4 h-4 text-brand shrink-0" />
                 <span>
                   Vendedor asignado: <strong>{usuarioActual?.nombre} {usuarioActual?.apellido}</strong>
                 </span>
@@ -1084,7 +1084,7 @@ export const EventoWorkspacePage: React.FC = () => {
 
             {caps.canSellEventos && caps.esGlobal && (
               <div className="space-y-2 pt-2 border-t border-rule">
-                <label className="block text-xs font-bold text-ink-2">Estado de cobro</label>
+                <label className="block text-sm font-bold text-ink-2">Estado de cobro</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(
                     [
@@ -1100,7 +1100,7 @@ export const EventoWorkspacePage: React.FC = () => {
                         type="button"
                         disabled={evento.estado !== 'PUBLICADO'}
                         onClick={() => setPosMetodoPago(op.id)}
-                        className={`min-h-[40px] px-2 rounded-xl text-xs font-bold cursor-pointer border transition ${
+                        className={`min-h-[44px] px-2.5 rounded-xl text-[13px] font-bold cursor-pointer border transition ${
                           active ? 's-btn-brand border-brand' : 's-btn-sec text-ink-2'
                         }`}
                       >
@@ -1127,20 +1127,20 @@ export const EventoWorkspacePage: React.FC = () => {
               </div>
             )}
 
-            <div className="s-panel rounded-2xl p-3.5 flex items-center justify-between gap-2">
+            <div className="s-panel rounded-2xl p-4 flex items-center justify-between gap-2">
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted block">
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                   Total pedido
                 </span>
-                <span className="text-xl font-black text-ink s-tabular">
+                <span className="text-2xl font-black text-ink s-tabular">
                   {formatearMoneda(posTotals.total)}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted block">
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                   Ganancia Scout
                 </span>
-                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 s-tabular">
+                <span className="text-[15px] font-black text-emerald-600 dark:text-emerald-400 s-tabular">
                   +{formatearMoneda(posTotals.ganancia)}
                 </span>
               </div>
@@ -1188,7 +1188,7 @@ export const EventoWorkspacePage: React.FC = () => {
                     key={f.id}
                     type="button"
                     onClick={() => setFiltroPedidos(f.id)}
-                    className={`min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition border ${
+                    className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold cursor-pointer transition border ${
                       f.danger
                         ? active
                           ? 'bg-rose-600 text-white border-rose-600'
@@ -1205,29 +1205,29 @@ export const EventoWorkspacePage: React.FC = () => {
             </div>
 
             <div className="relative w-full lg:w-72">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
               <input
                 type="text"
                 value={busquedaPedidos}
                 onChange={(e) => setBusquedaPedidos(e.target.value)}
                 placeholder="Buscar comprador, scout, producto..."
-                className="s-input w-full min-h-[38px] pl-8 pr-8 rounded-xl text-xs"
+                className="s-input w-full min-h-[44px] pl-10 pr-9 rounded-xl text-base sm:text-[15px]"
               />
               {busquedaPedidos && (
                 <button
                   type="button"
                   onClick={() => setBusquedaPedidos('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
                   aria-label="Limpiar búsqueda"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
           </div>
 
           {pedidosFiltrados.length === 0 ? (
-            <div className="p-10 text-center text-xs text-ink-muted space-y-2">
+            <div className="p-10 text-center text-sm text-ink-muted space-y-2">
               <ShoppingBag className="w-8 h-8 mx-auto opacity-40" />
               <p className="font-semibold">
                 {pedidosSource.length === 0
@@ -1239,16 +1239,16 @@ export const EventoWorkspacePage: React.FC = () => {
             <>
               {/* Desktop Table */}
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full text-sm text-left">
                   <thead>
-                    <tr className="border-b border-rule bg-paper-2/70 text-ink-muted">
-                      <th className="py-3 px-4 font-bold">Comprador</th>
-                      <th className="py-3 px-4 font-bold">Vendedor Scout</th>
-                      <th className="py-3 px-4 font-bold">Productos</th>
-                      <th className="py-3 px-4 font-bold text-right">Total</th>
-                      <th className="py-3 px-4 font-bold text-center">Estado Pago</th>
-                      <th className="py-3 px-4 font-bold text-center">Vales QR</th>
-                      <th className="py-3 px-4 font-bold text-right">Acciones</th>
+                    <tr className="border-b border-rule bg-paper-2/70 text-xs uppercase tracking-wider text-ink-muted">
+                      <th className="py-3.5 px-4 font-bold">Comprador</th>
+                      <th className="py-3.5 px-4 font-bold">Vendedor Scout</th>
+                      <th className="py-3.5 px-4 font-bold">Productos</th>
+                      <th className="py-3.5 px-4 font-bold text-right">Total</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Estado Pago</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Vales QR</th>
+                      <th className="py-3.5 px-4 font-bold text-right">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rule">
@@ -1260,13 +1260,13 @@ export const EventoWorkspacePage: React.FC = () => {
 
                       return (
                         <tr key={p.id} className="s-table-row hover:bg-paper-2/40">
-                          <td className="py-3 px-4">
-                            <div className="font-bold text-ink">{p.compradorNombre}</div>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-ink text-[15px]">{p.compradorNombre}</div>
                             {p.compradorContacto && (
-                              <div className="text-[11px] text-ink-muted">{p.compradorContacto}</div>
+                              <div className="text-xs text-ink-muted">{p.compradorContacto}</div>
                             )}
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3.5 px-4">
                             {p.vendedorUsuario ? (
                               <span className="font-semibold text-ink">
                                 {p.vendedorUsuario.nombre} {p.vendedorUsuario.apellido}
@@ -1275,8 +1275,8 @@ export const EventoWorkspacePage: React.FC = () => {
                               <span className="text-ink-muted italic">Venta General</span>
                             )}
                           </td>
-                          <td className="py-3 px-4">
-                            <div className="space-y-0.5">
+                          <td className="py-3.5 px-4">
+                            <div className="space-y-0.5 text-[13px]">
                               {p.detalles?.map((d: any) => (
                                 <div key={d.id}>
                                   <strong className="text-brand">{d.cantidad}x</strong>{' '}
@@ -1285,18 +1285,18 @@ export const EventoWorkspacePage: React.FC = () => {
                               ))}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-right s-tabular">
+                          <td className="py-3.5 px-4 text-right s-tabular">
                             <div className="font-black text-ink">
                               {formatearMoneda(Number(p.total))}
                             </div>
-                            <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                            <div className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                               +{formatearMoneda(Number(p.totalGanancia || 0))}
                               {p.gananciaAcreditada && ' · Acred.'}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
                             <span
-                              className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black ${
                                 p.estado === 'PAGADO'
                                   ? 's-badge-ok'
                                   : esPendienteRetirado
@@ -1307,20 +1307,20 @@ export const EventoWorkspacePage: React.FC = () => {
                               {esPendienteRetirado ? 'PENDIENTE (RETIRADO)' : p.estado}
                             </span>
                           </td>
-                          <td className="py-3 px-4 text-center">
+                          <td className="py-3.5 px-4 text-center">
                             <div className="flex items-center justify-center gap-1.5 flex-wrap">
                               {p.tickets?.map((t: any, idx: number) => (
                                 <button
                                   key={t.id}
                                   type="button"
                                   onClick={() => handleVerTicket(t, p)}
-                                  className={`px-2 py-1 rounded-xl text-[11px] font-bold inline-flex items-center gap-1 border cursor-pointer whitespace-nowrap ${
+                                  className={`px-2.5 py-1 rounded-xl text-xs font-bold inline-flex items-center gap-1 border cursor-pointer whitespace-nowrap ${
                                     t.estado === 'UTILIZADO'
                                       ? 'bg-paper-2 text-ink-muted border-rule line-through'
                                       : 's-badge-brand hover:opacity-85'
                                   }`}
                                 >
-                                  <QrCode className="w-3 h-3 shrink-0" />
+                                  <QrCode className="w-3.5 h-3.5 shrink-0" />
                                   <span>Vale #{idx + 1}</span>
                                 </button>
                               ))}
@@ -1394,21 +1394,21 @@ export const EventoWorkspacePage: React.FC = () => {
                     <div key={p.id} className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <h3 className="text-sm font-black text-ink truncate">
+                          <h3 className="text-[15px] font-black text-ink truncate">
                             {p.compradorNombre}
                           </h3>
-                          <p className="text-[11px] text-ink-muted">
+                          <p className="text-xs text-ink-muted mt-0.5">
                             {p.vendedorUsuario
                               ? `Scout: ${p.vendedorUsuario.nombre} ${p.vendedorUsuario.apellido}`
                               : 'Venta General'}
                           </p>
                         </div>
                         <div className="text-right shrink-0 s-tabular">
-                          <span className="text-sm font-black text-ink block">
+                          <span className="text-[15px] font-black text-ink block">
                             {formatearMoneda(Number(p.total))}
                           </span>
                           <span
-                            className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-black mt-0.5 ${
+                            className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black mt-0.5 ${
                               p.estado === 'PAGADO'
                                 ? 's-badge-ok'
                                 : esPendienteRetirado
@@ -1421,7 +1421,7 @@ export const EventoWorkspacePage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="s-panel rounded-xl p-2.5 text-xs space-y-1">
+                      <div className="s-panel rounded-xl p-3 text-[13px] space-y-1">
                         {p.detalles?.map((d: any) => (
                           <div key={d.id} className="flex justify-between gap-2">
                             <span>
@@ -1441,13 +1441,13 @@ export const EventoWorkspacePage: React.FC = () => {
                               key={t.id}
                               type="button"
                               onClick={() => handleVerTicket(t, p)}
-                              className={`min-h-[34px] px-2.5 py-1 rounded-xl text-xs font-bold inline-flex items-center gap-1 border cursor-pointer ${
+                              className={`min-h-[38px] px-3 py-1.5 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 border cursor-pointer ${
                                 t.estado === 'UTILIZADO'
                                   ? 'bg-paper-2 text-ink-muted border-rule line-through'
                                   : 's-badge-brand'
                               }`}
                             >
-                              <QrCode className="w-3.5 h-3.5" />
+                              <QrCode className="w-4 h-4" />
                               <span>Vale #{idx + 1}</span>
                             </button>
                           ))}
@@ -1511,13 +1511,13 @@ export const EventoWorkspacePage: React.FC = () => {
       {/* SUB-TAB 3: LIQUIDACIÓN A FAMILIAS */}
       {tab === 'liquidacion' && caps.canSellEventos && (
         <div className="space-y-4 s-anim-tab">
-          <div className="s-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="s-card rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="space-y-1">
-              <h2 className="text-base font-black text-ink flex items-center gap-2">
+              <h2 className="text-lg font-black text-ink flex items-center gap-2">
                 <Award className="w-5 h-5 text-brand shrink-0" />
                 <span>Pre-flight de Liquidación a Saldo a Favor</span>
               </h2>
-              <p className="text-xs text-ink-muted leading-relaxed">
+              <p className="text-[13px] text-ink-muted leading-relaxed">
                 Revisá el detalle por vendedor scout antes de acreditar ganancias. Solo se liquidan pedidos cuyos vales QR ya fueron retirados.
               </p>
             </div>
@@ -1543,51 +1543,51 @@ export const EventoWorkspacePage: React.FC = () => {
           </div>
 
           {liquidacionPorScout.length === 0 ? (
-            <div className="s-card rounded-2xl p-10 text-center text-xs text-ink-muted">
+            <div className="s-card rounded-2xl p-10 text-center text-sm text-ink-muted">
               No hay ventas asignadas a vendedores scouts en este evento para liquidar a familias.
             </div>
           ) : (
             <div className="s-card rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left">
+                <table className="w-full text-sm text-left">
                   <thead>
-                    <tr className="border-b border-rule bg-paper-2 text-ink-muted">
-                      <th className="py-3 px-4 font-bold">Scout Vendedor</th>
-                      <th className="py-3 px-4 font-bold text-center">Pedidos Totales</th>
-                      <th className="py-3 px-4 font-bold text-center">Pend. Retiro QR</th>
-                      <th className="py-3 px-4 font-bold text-center">Listos p/ Liquidar</th>
-                      <th className="py-3 px-4 font-bold text-right">Ya Acreditado</th>
-                      <th className="py-3 px-4 font-bold text-right">A Acreditar Hoy</th>
+                    <tr className="border-b border-rule bg-paper-2 text-xs uppercase tracking-wider text-ink-muted">
+                      <th className="py-3.5 px-4 font-bold">Scout Vendedor</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Pedidos Totales</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Pend. Retiro QR</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Listos p/ Liquidar</th>
+                      <th className="py-3.5 px-4 font-bold text-right">Ya Acreditado</th>
+                      <th className="py-3.5 px-4 font-bold text-right">A Acreditar Hoy</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rule s-tabular">
                     {liquidacionPorScout.map((row) => (
                       <tr key={row.key} className="s-table-row hover:bg-paper-2/40">
-                        <td className="py-3 px-4 font-bold text-ink">
+                        <td className="py-3.5 px-4 font-bold text-ink">
                           {row.vendedorNombre}
                           {row.vendedorDni && (
-                            <span className="block text-[11px] font-normal text-ink-muted">
+                            <span className="block text-xs font-normal text-ink-muted">
                               DNI {row.vendedorDni}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-center font-semibold">{row.totalPedidos}</td>
-                        <td className="py-3 px-4 text-center text-ink-muted">
+                        <td className="py-3.5 px-4 text-center font-semibold">{row.totalPedidos}</td>
+                        <td className="py-3.5 px-4 text-center text-ink-muted">
                           {row.pedidosPendientesRetiro}
                         </td>
-                        <td className="py-3 px-4 text-center">
+                        <td className="py-3.5 px-4 text-center">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                               row.pedidosListosAcreditar > 0 ? 's-badge-ok' : 'bg-paper-2 text-ink-muted'
                             }`}
                           >
                             {row.pedidosListosAcreditar}
                           </span>
                         </td>
-                        <td className="py-3 px-4 text-right text-ink-muted">
+                        <td className="py-3.5 px-4 text-right text-ink-muted">
                           {formatearMoneda(row.gananciaAcreditada)}
                         </td>
-                        <td className="py-3 px-4 text-right font-black text-emerald-600 dark:text-emerald-400">
+                        <td className="py-3.5 px-4 text-right font-black text-emerald-600 dark:text-emerald-400">
                           +{formatearMoneda(row.gananciaListaParaAcreditar)}
                         </td>
                       </tr>

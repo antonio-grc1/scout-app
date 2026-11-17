@@ -55,7 +55,7 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
       >
         <Phone className="w-4 h-4" />
         {telefonos.length > 1 && (
-          <span className="text-[10px] font-extrabold">{telefonos.length}</span>
+          <span className="text-xs font-extrabold">{telefonos.length}</span>
         )}
       </button>
 
@@ -72,16 +72,16 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
               className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-2xl w-full max-w-md overflow-hidden text-ink"
               {...contentProps}
             >
-              <div className="p-4 border-b border-rule flex items-center justify-between bg-paper-2">
-                <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2">
+                <div className="flex items-center gap-3 min-w-0">
                   <div className="w-9 h-9 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
                     <Phone className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-sm font-extrabold text-ink truncate">
+                    <h4 className="text-base font-extrabold text-ink truncate">
                       ¿A quién querés llamar?
                     </h4>
-                    <p className="text-xs text-ink-muted truncate">
+                    <p className="text-[13px] text-ink-muted truncate">
                       Contactos de {miembro?.nombre} {miembro?.apellido}
                     </p>
                   </div>
@@ -89,13 +89,13 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
                 <button
                   type="button"
                   onClick={() => setAbierto(false)}
-                  className="min-w-[36px] min-h-[36px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                  className="min-w-[38px] min-h-[38px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="p-3.5 space-y-2.5 max-h-[70dvh] overflow-y-auto">
+              <div className="p-4 space-y-2.5 max-h-[70dvh] overflow-y-auto">
                 {telefonos.map((item, idx) => {
                   const badgeClase =
                     BADGE_POR_ETIQUETA[item.etiqueta] ||
@@ -106,26 +106,26 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
                       key={`${item.etiqueta}-${idx}`}
                       href={`tel:${item.telefono}`}
                       onClick={() => setAbierto(false)}
-                      className="w-full min-h-[58px] p-3.5 rounded-2xl border border-rule bg-paper-2 hover:border-brand hover:bg-brand/10 flex items-center justify-between gap-3 transition-colors"
+                      className="w-full min-h-[62px] p-3.5 rounded-2xl border border-rule bg-paper-2 hover:border-brand hover:bg-brand/10 flex items-center justify-between gap-3 transition-colors"
                     >
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${badgeClase}`}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold border ${badgeClase}`}
                           >
                             {item.etiqueta}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-sm font-extrabold text-ink truncate">
-                          <User className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                        <div className="flex items-center gap-1.5 text-[15px] font-extrabold text-ink truncate">
+                          <User className="w-4 h-4 text-ink-muted shrink-0" />
                           <span className="truncate">{item.nombre || `${miembro?.nombre} ${miembro?.apellido}`}</span>
                         </div>
-                        <span className="text-xs font-mono font-semibold text-ink-muted block">
+                        <span className="text-[13px] font-mono font-semibold text-ink-muted block">
                           {item.telefono}
                         </span>
                       </div>
-                      <div className="px-3.5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-xs font-bold flex items-center gap-1.5 shrink-0 transition-colors">
-                        <Phone className="w-3.5 h-3.5" />
+                      <div className="min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-[13px] font-bold flex items-center gap-1.5 shrink-0 transition-colors">
+                        <Phone className="w-4 h-4" />
                         <span>Llamar</span>
                       </div>
                     </a>

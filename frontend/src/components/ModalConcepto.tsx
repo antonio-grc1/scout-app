@@ -74,11 +74,10 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
     [unidades, esGlobal, asignaciones],
   );
   const puedeVerRubros =
-    tienePermiso('tesoreria.caja_ver') ||
-    tienePermiso('tesoreria.gastos_registrar') ||
-    tienePermiso('tesoreria.gestionar');
+    tienePermiso('caja.ver') ||
+    tienePermiso('planes.ver');
   const puedeGestionarRubros =
-    tienePermiso('tesoreria.gestionar') && (esGlobal || unidadesPermitidas.length > 0);
+    tienePermiso('caja.editar') && (esGlobal || unidadesPermitidas.length > 0);
 
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('CUOTA_MENSUAL');
@@ -287,12 +286,12 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
               <DollarSign className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-ink">
+              <h2 className="text-lg font-bold text-ink">
                 {esEdicion ? 'Editar Concepto de Cuota' : 'Nuevo Concepto de Cuota'}
               </h2>
-              <p className="text-xs text-ink-muted dark:text-ink-muted">
+              <p className="text-[13px] text-ink-muted dark:text-ink-muted">
                 {esEdicion
-                  ? 'Modifica los valores, tipo, alcance y descuentos por hermanos'
+                  ? 'Modifica los valores, tipo, destinatarios y descuentos por hermanos'
                   : 'Define un concepto de cuota institucional con sus reglas de descuento'}
               </p>
             </div>
@@ -307,9 +306,9 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[82dvh] overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[82dvh] overflow-y-auto">
           {error && (
-            <div className="p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-xs flex items-center gap-2">
+            <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -318,11 +317,11 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-ink-2">
+                <label className="block text-[13px] font-semibold text-ink-2">
                   Categoría / Tipo de Cobro *
                 </label>
                 {puedeGestionarRubros && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     {rubroId &&
                       puedeModificarPorAlcanceUnidad(
                         rubros.find((x) => x.id === rubroId)?.unidadId,
@@ -342,10 +341,10 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                             setModalNuevoRubro(true);
                           }
                         }}
-                        className="text-[11px] font-bold text-ink-muted hover:text-ink hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-bold text-ink-muted hover:text-ink hover:underline flex items-center gap-1 cursor-pointer"
                         title="Editar o eliminar esta categoría"
                       >
-                        <Pencil className="w-3 h-3" />
+                        <Pencil className="w-3.5 h-3.5" />
                         <span>Editar</span>
                       </button>
                     )}
@@ -355,9 +354,9 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                         setRubroAEditar(null);
                         setModalNuevoRubro(true);
                       }}
-                      className="text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                      className="text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
                     >
-                      <PlusCircle className="w-3.5 h-3.5" />
+                      <PlusCircle className="w-4 h-4" />
                       <span>+ Nueva Categoría</span>
                     </button>
                   </div>
@@ -384,7 +383,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                       handleTipoChange(val);
                     }
                   }}
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors font-medium"
+                  className="w-full min-h-[46px] pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-base sm:text-[15px] text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors font-medium"
                 >
                   {rubros.length > 0 && (
                     <optgroup label="Categorías Personalizadas">
@@ -407,15 +406,15 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink-2 mb-1.5">
-                Alcance / Destinatarios *
+              <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
+                Destinatarios *
               </label>
               <div className="relative">
                 <Layers className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                 <select
                   value={alcanceSeleccionado}
                   onChange={(e) => setAlcanceSeleccionado(e.target.value)}
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors font-medium"
+                  className="w-full min-h-[46px] pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-base sm:text-[15px] text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors font-medium"
                 >
                   {esGlobal && (
                     <>
@@ -438,7 +437,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink-2 mb-1.5">
+            <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
               Nombre del Concepto *
             </label>
             <input
@@ -447,17 +446,17 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
               placeholder={`ej. Campamento Anual ${new Date().getFullYear()}, Cuota Mensual Mayo...`}
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+              className="w-full min-h-[46px] px-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-ink-2 mb-1.5">
+              <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
                 Monto Base ($) *
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted font-semibold text-sm">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted font-semibold text-[15px]">
                   $
                 </span>
                 <input
@@ -468,13 +467,13 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                   placeholder="15000.00"
                   value={montoBase}
                   onChange={(e) => setMontoBase(e.target.value)}
-                  className="w-full pl-8 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  className="w-full min-h-[46px] pl-8 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-ink-2 mb-1.5">
+              <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
                 Ciclo / Año Lectivo *
               </label>
               <div className="relative">
@@ -486,21 +485,21 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                   required
                   value={cicloAnio}
                   onChange={(e) => setCicloAnio(parseInt(e.target.value, 10) || new Date().getFullYear())}
-                  className="w-full pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  className="w-full min-h-[46px] pl-10 pr-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-ink-2 mb-1.5">
+            <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
               Fecha de Vencimiento (opcional)
             </label>
             <input
               type="date"
               value={fechaVencimiento}
               onChange={(e) => setFechaVencimiento(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+              className="w-full min-h-[46px] px-3.5 py-2.5 bg-paper-2/70 border border-rule rounded-xl text-base sm:text-[15px] text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
             />
           </div>
 
@@ -509,7 +508,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users2 className="w-4 h-4 text-brand" />
-                <span className="text-xs font-bold text-ink">
+                <span className="text-sm font-bold text-ink">
                   Descuento por Hermanos
                 </span>
               </div>
@@ -521,21 +520,21 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                   className="sr-only peer"
                 />
                 <div className="w-9 h-5 bg-paper-3 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-brand-contrast after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-rule after:border after:rounded-full after:h-4 after:w-4 after:transition-transform peer-checked:bg-brand"></div>
-                <span className="ml-2 text-xs font-medium text-ink-2">
+                <span className="ml-2 text-[13px] font-medium text-ink-2">
                   {permiteDescuentoHermanos ? 'Habilitado' : 'Sin descuento'}
                 </span>
               </label>
             </div>
 
             {permiteDescuentoHermanos ? (
-              <div className="space-y-2 pt-2 border-t border-rule">
-                <p className="text-[11px] text-ink-muted">
+              <div className="space-y-2.5 pt-2.5 border-t border-rule">
+                <p className="text-xs text-ink-muted">
                   Define cómo se calculará la bonificación a los miembros que tengan hermanos en el grupo:
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[13px]">
                   <label
-                    className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition ${
+                    className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
                       modoDescuento === 'FAMILIA'
                         ? 'border-brand bg-brand/10 text-ink'
                         : 'border-rule hover:bg-paper-2 text-ink-2'
@@ -546,18 +545,18 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                       name="modoDescuento"
                       checked={modoDescuento === 'FAMILIA'}
                       onChange={() => setModoDescuento('FAMILIA')}
-                      className="mt-0.5 text-brand"
+                      className="mt-1 text-brand"
                     />
                     <div>
                       <span className="font-semibold block">Según Grupo Familiar</span>
-                      <span className="text-[10px] text-ink-muted">
+                      <span className="text-xs text-ink-muted block mt-0.5">
                         Usa el % individual registrado en la ficha de cada familia.
                       </span>
                     </div>
                   </label>
 
                   <label
-                    className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition ${
+                    className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${
                       modoDescuento === 'FIJO'
                         ? 'border-brand bg-brand/10 text-ink'
                         : 'border-rule hover:bg-paper-2 text-ink-2'
@@ -568,11 +567,11 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                       name="modoDescuento"
                       checked={modoDescuento === 'FIJO'}
                       onChange={() => setModoDescuento('FIJO')}
-                      className="mt-0.5 text-brand"
+                      className="mt-1 text-brand"
                     />
                     <div>
                       <span className="font-semibold block">Porcentaje Fijo</span>
-                      <span className="text-[10px] text-ink-muted">
+                      <span className="text-xs text-ink-muted block mt-0.5">
                         Aplica un % uniforme para este tipo de concepto.
                       </span>
                     </div>
@@ -581,7 +580,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
 
                 {modoDescuento === 'FIJO' && (
                   <div className="pt-2">
-                    <label className="block text-xs font-semibold text-ink-2 mb-1">
+                    <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
                       Porcentaje de Descuento para este Concepto (%) *
                     </label>
                     <div className="relative max-w-xs">
@@ -595,32 +594,32 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
                         placeholder="ej. 15.00"
                         value={porcentajeFijo}
                         onChange={(e) => setPorcentajeFijo(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-surface border border-rule rounded-xl text-sm text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                        className="w-full min-h-[44px] px-3.5 py-2 bg-surface border border-rule rounded-xl text-base sm:text-[15px] text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                       />
                     </div>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-[11px] text-ink-muted dark:text-ink-muted italic">
+              <p className="text-xs text-ink-muted dark:text-ink-muted italic">
                 Este concepto no aplicará bonificación por hermanos (útil para campamentos, comidas o gastos fijos por persona).
               </p>
             )}
           </div>
 
-          <div className="pt-3 border-t border-rule flex items-center justify-end gap-3">
+          <div className="pt-3.5 border-t border-rule flex items-center justify-end gap-3">
             <button
               type="button"
               disabled={guardando}
               onClick={onCerrar}
-              className="px-4 py-2 rounded-xl border border-rule hover:bg-paper-2 text-ink-2 font-semibold text-xs transition cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-rule hover:bg-paper-2 text-ink-2 font-semibold text-sm transition cursor-pointer disabled:opacity-50"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] flex items-center gap-1.5 px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-50"
             >
               {guardando && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{esEdicion ? 'Guardar Cambios' : 'Crear Concepto'}</span>

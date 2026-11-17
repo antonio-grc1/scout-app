@@ -59,7 +59,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
   useEffect(() => {
     onToastRef.current = onToast;
   }, [onToast]);
-  const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermiso('tesoreria.gestionar'));
+  const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermiso('caja.editar'));
   const [gastos, setGastos] = useState<GastoItem[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -196,10 +196,10 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       {/* Barra Superior de Acciones de Egresos */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-base font-extrabold text-ink leading-tight">
+          <h3 className="text-lg font-extrabold text-ink leading-tight">
             Gestión de Gastos y Egresos
           </h3>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Control de compras, facturas y salidas de fondos en tiempo real.
           </p>
         </div>
@@ -209,7 +209,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             <Button
               variant="secondary"
               onClick={() => setModalIngresoAbierto(true)}
-              className="gap-1.5 text-xs py-2 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 justify-center"
+              className="gap-1.5 text-[13px] sm:text-sm min-h-[42px] py-2 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 justify-center"
               title="Registrar ingreso manual de dinero"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
@@ -218,7 +218,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             <Button
               variant="secondary"
               onClick={() => setModalGestionRubrosAbierto(true)}
-              className="gap-1.5 text-xs py-2 justify-center"
+              className="gap-1.5 text-[13px] sm:text-sm min-h-[42px] py-2 justify-center"
               title="Administrar rubros contables"
             >
               <Tag className="w-4 h-4 shrink-0" />
@@ -230,7 +230,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                 setGastoAEditar(null);
                 setModalGastoAbierto(true);
               }}
-              className="col-span-2 sm:col-span-1 gap-1.5 text-xs py-2 justify-center"
+              className="col-span-2 sm:col-span-1 gap-1.5 text-[13px] sm:text-sm min-h-[42px] py-2 justify-center"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
               <span>Registrar Gasto</span>
@@ -240,10 +240,10 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       </div>
 
       {/* Tarjetas de Resumen de Egresos */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
-          <span className="text-xs font-semibold text-ink-muted">Total Gastos (Período)</span>
-          <div className="mt-2 flex items-baseline justify-between gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
+          <span className="text-[13px] font-semibold text-ink-muted">Total Gastos (Período)</span>
+          <div className="mt-2.5 flex items-baseline justify-between gap-2">
             {cargando ? (
               <>
                 <div className="h-8 w-32 rounded-lg bg-paper-3 animate-pulse" aria-label="Cargando total de gastos" />
@@ -251,10 +251,10 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               </>
             ) : (
               <>
-                <span className="text-2xl font-black text-rose-600 dark:text-rose-400">
+                <span className="text-2xl sm:text-[1.75rem] font-black text-rose-600 dark:text-rose-400">
                   {formatearMoneda(totalGastos)}
                 </span>
-                <span className="text-xs font-bold text-ink-muted">
+                <span className="text-[13px] font-bold text-ink-muted">
                   {gastosFiltrados.length} {gastosFiltrados.length === 1 ? 'gasto' : 'gastos'}
                   {busqueda && ` (de ${gastosActivos.length})`}
                 </span>
@@ -263,32 +263,32 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
-          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-            <Wallet className="w-3.5 h-3.5" />
+        <div className="p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
+          <span className="text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+            <Wallet className="w-4 h-4" />
             Pagado en Efectivo (Cajas)
           </span>
-          <div className="mt-2">
+          <div className="mt-2.5">
             {cargando ? (
               <div className="h-8 w-32 rounded-lg bg-paper-3 animate-pulse" aria-label="Cargando total en efectivo" />
             ) : (
-              <span className="text-2xl font-black text-ink">
+              <span className="text-2xl sm:text-[1.75rem] font-black text-ink">
                 {formatearMoneda(totalCaja)}
               </span>
             )}
           </div>
         </div>
 
-        <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
-          <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-            <Building2 className="w-3.5 h-3.5" />
+        <div className="p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
+          <span className="text-[13px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+            <Building2 className="w-4 h-4" />
             Pagado por Transferencia (Bancos)
           </span>
-          <div className="mt-2">
+          <div className="mt-2.5">
             {cargando ? (
               <div className="h-8 w-32 rounded-lg bg-paper-3 animate-pulse" aria-label="Cargando total por transferencia" />
             ) : (
-              <span className="text-2xl font-black text-ink">
+              <span className="text-2xl sm:text-[1.75rem] font-black text-ink">
                 {formatearMoneda(totalBanco)}
               </span>
             )}
@@ -297,27 +297,27 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       </div>
 
       {/* Barra de Filtros y Buscador */}
-      <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="p-4 rounded-2xl bg-paper-2 border border-rule flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1 flex-wrap">
           {/* Input de Búsqueda */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
             <input
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Buscar por descripción, comprobante, rubro..."
-              className="w-full pl-8 pr-7 py-2 rounded-xl bg-paper border border-rule text-xs font-medium text-ink placeholder:text-ink-muted focus:outline-brand"
+              className="w-full min-h-[44px] pl-10 pr-8 py-2 rounded-xl bg-paper border border-rule text-base sm:text-[15px] font-medium text-ink placeholder:text-ink-muted focus:outline-brand"
             />
             {busqueda && (
               <button
                 type="button"
                 onClick={() => setBusqueda('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-ink-muted hover:text-ink rounded cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink rounded cursor-pointer"
                 title="Limpiar búsqueda"
                 aria-label="Limpiar búsqueda"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -326,7 +326,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             <select
               value={filtroCuentaId}
               onChange={(e) => setFiltroCuentaId(e.target.value)}
-              className="h-9 px-2.5 rounded-xl bg-paper border border-rule text-xs font-semibold text-ink focus:outline-none w-full sm:w-auto"
+              className="min-h-[42px] px-3 rounded-xl bg-paper border border-rule text-[13px] font-semibold text-ink focus:outline-none w-full sm:w-auto"
             >
               <option value="TODAS">Todas las Cuentas</option>
               {cuentas.map((c) => (
@@ -339,7 +339,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             <select
               value={filtroRubroId}
               onChange={(e) => setFiltroRubroId(e.target.value)}
-              className="h-9 px-2.5 rounded-xl bg-paper border border-rule text-xs font-semibold text-ink focus:outline-none w-full sm:w-auto"
+              className="min-h-[42px] px-3 rounded-xl bg-paper border border-rule text-[13px] font-semibold text-ink focus:outline-none w-full sm:w-auto"
             >
               <option value="TODOS">Todos los Rubros</option>
               {rubros.map((r) => (
@@ -349,12 +349,12 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               ))}
             </select>
 
-            <label className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-paper border border-rule text-xs font-semibold text-ink cursor-pointer shrink-0">
+            <label className="flex items-center gap-2 min-h-[42px] px-3 py-1.5 rounded-xl bg-paper border border-rule text-[13px] font-semibold text-ink cursor-pointer shrink-0">
               <input
                 type="checkbox"
                 checked={incluirAnulados}
                 onChange={(e) => setIncluirAnulados(e.target.checked)}
-                className="rounded text-brand"
+                className="w-4 h-4 rounded text-brand"
               />
               <span>Ver anulados</span>
             </label>
@@ -365,15 +365,15 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
           type="button"
           onClick={cargarDatos}
           disabled={cargando}
-          className="text-xs font-bold text-ink-muted hover:text-ink flex items-center justify-center sm:justify-start gap-1 cursor-pointer transition shrink-0 py-1"
+          className="text-[13px] font-bold text-ink-muted hover:text-ink flex items-center justify-center sm:justify-start gap-1.5 cursor-pointer transition shrink-0 py-1.5 px-2"
         >
-          <RotateCcw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />
+          <RotateCcw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />
           <span>Actualizar</span>
         </button>
       </div>
 
       {error && (
-        <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -383,17 +383,17 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       <div className="rounded-2xl border border-rule bg-paper overflow-hidden shadow-xs">
         {/* Desktop Table View */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-rule bg-paper-2 font-bold text-ink-muted">
-                <th className="py-3 px-4">Fecha</th>
-                <th className="py-3 px-4">Descripción</th>
-                <th className="py-3 px-4">Rubro</th>
-                <th className="py-3 px-4">Cuenta de Pago</th>
-                <th className="py-3 px-4">Comprobante</th>
-                <th className="py-3 px-4 text-right">Monto</th>
-                <th className="py-3 px-4">Registrado por</th>
-                <th className="py-3 px-4 text-center">Acciones</th>
+              <tr className="border-b border-rule bg-paper-2 text-xs font-bold text-ink-muted">
+                <th className="py-3.5 px-4">Fecha</th>
+                <th className="py-3.5 px-4">Descripción</th>
+                <th className="py-3.5 px-4">Rubro</th>
+                <th className="py-3.5 px-4">Cuenta de Pago</th>
+                <th className="py-3.5 px-4">Comprobante</th>
+                <th className="py-3.5 px-4 text-right">Monto</th>
+                <th className="py-3.5 px-4">Registrado por</th>
+                <th className="py-3.5 px-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-rule font-medium">
@@ -414,18 +414,18 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                 </>
               ) : gastos.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-ink-muted">
+                  <td colSpan={8} className="py-12 text-center text-sm text-ink-muted">
                     No hay gastos registrados para los filtros seleccionados.
                   </td>
                 </tr>
               ) : gastosFiltrados.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-ink-muted">
+                  <td colSpan={8} className="py-12 text-center text-sm text-ink-muted">
                     <p>No se encontraron gastos que coincidan con "{busqueda}".</p>
                     <button
                       type="button"
                       onClick={() => setBusqueda('')}
-                      className="mt-1 text-xs text-brand font-bold hover:underline cursor-pointer"
+                      className="mt-1.5 text-[13px] text-brand font-bold hover:underline cursor-pointer"
                     >
                       Limpiar búsqueda
                     </button>
@@ -439,53 +439,53 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                       gasto.anulado ? 'opacity-50 line-through' : ''
                     }`}
                   >
-                    <td className="py-3 px-4 whitespace-nowrap text-ink">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-ink">
                       {formatearFechaHora(gasto.fecha)}
                     </td>
 
-                    <td className="py-3 px-4 text-ink font-bold">
+                    <td className="py-3.5 px-4 text-ink font-bold">
                       {gasto.descripcion}
                     </td>
 
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                        <Tag className="w-3 h-3" />
+                    <td className="py-3.5 px-4 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                        <Tag className="w-3.5 h-3.5" />
                         {gasto.rubro?.nombre || 'Sin rubro'}
                       </span>
                     </td>
 
-                    <td className="py-3 px-4 whitespace-nowrap">
+                    <td className="py-3.5 px-4 whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold border ${
                           gasto.cuenta?.tipo === 'CAJA_EFECTIVO'
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                             : 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
                         }`}
                       >
                         {gasto.cuenta?.tipo === 'CAJA_EFECTIVO' ? (
-                          <Wallet className="w-3 h-3" />
+                          <Wallet className="w-3.5 h-3.5" />
                         ) : (
-                          <Building2 className="w-3 h-3" />
+                          <Building2 className="w-3.5 h-3.5" />
                         )}
                         {gasto.cuenta?.nombre || 'Cuenta'}
                       </span>
                     </td>
 
-                    <td className="py-3 px-4 whitespace-nowrap text-ink-muted font-mono text-[11px]">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-ink-muted font-mono text-xs">
                       {gasto.comprobanteNro || '-'}
                     </td>
 
-                    <td className="py-3 px-4 whitespace-nowrap text-right font-black text-rose-600 dark:text-rose-400">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-right font-black text-rose-600 dark:text-rose-400">
                       {formatearMoneda(Number(gasto.monto))}
                     </td>
 
-                    <td className="py-3 px-4 whitespace-nowrap text-ink-muted text-[11px]">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-ink-muted text-xs">
                       {gasto.registradoPor
                         ? `${gasto.registradoPor.nombre} ${gasto.registradoPor.apellido}`
                         : '-'}
                     </td>
 
-                    <td className="py-3 px-4 whitespace-nowrap text-center">
+                    <td className="py-3.5 px-4 whitespace-nowrap text-center">
                       {!gasto.anulado ? (
                         puedeGestionarTesoreria ? (
                           <div className="flex items-center justify-center gap-1">
@@ -495,7 +495,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                                 setGastoAEditar(gasto);
                                 setModalGastoAbierto(true);
                               }}
-                              className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                              className="p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
                               title="Modificar gasto"
                             >
                               <Pencil className="w-4 h-4" />
@@ -504,17 +504,17 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                               type="button"
                               onClick={() => handleAnular(gasto)}
                               disabled={anulandoId === gasto.id}
-                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                              className="p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
                               title="Anular gasto y restituir saldo a la cuenta"
                             >
                               <Ban className="w-4 h-4" />
                             </button>
                           </div>
                         ) : (
-                          <span className="text-[11px] font-bold text-ink-muted">-</span>
+                          <span className="text-xs font-bold text-ink-muted">-</span>
                         )
                       ) : (
-                        <span className="text-[11px] font-bold text-rose-500">Anulado</span>
+                        <span className="text-xs font-bold text-rose-500">Anulado</span>
                       )}
                     </td>
                   </tr>
@@ -541,16 +541,16 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               ))}
             </div>
           ) : gastos.length === 0 ? (
-            <div className="p-8 text-center text-xs text-ink-muted">
+            <div className="p-8 text-center text-sm text-ink-muted">
               No hay gastos registrados para los filtros seleccionados.
             </div>
           ) : gastosFiltrados.length === 0 ? (
-            <div className="p-8 text-center text-xs text-ink-muted">
+            <div className="p-8 text-center text-sm text-ink-muted">
               <p>No se encontraron gastos que coincidan con "{busqueda}".</p>
               <button
                 type="button"
                 onClick={() => setBusqueda('')}
-                className="mt-1 text-xs text-brand font-bold hover:underline cursor-pointer"
+                className="mt-1.5 text-[13px] text-brand font-bold hover:underline cursor-pointer"
               >
                 Limpiar búsqueda
               </button>
@@ -559,30 +559,30 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             gastosFiltrados.map((gasto) => (
               <div
                 key={gasto.id}
-                className={`p-3.5 space-y-2 hover:bg-paper-2/40 transition ${
+                className={`p-4 space-y-2.5 hover:bg-paper-2/40 transition ${
                   gasto.anulado ? 'opacity-50 line-through' : ''
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <h5 className="font-bold text-ink text-sm leading-snug">
+                    <h5 className="font-bold text-ink text-[15px] leading-snug">
                       {gasto.descripcion}
                     </h5>
-                    <span className="text-[11px] text-ink-muted flex items-center gap-1 mt-0.5">
-                      <Calendar className="w-3 h-3 shrink-0" />
+                    <span className="text-xs text-ink-muted flex items-center gap-1 mt-0.5">
+                      <Calendar className="w-3.5 h-3.5 shrink-0" />
                       <span>{formatearFechaHora(gasto.fecha)}</span>
                     </span>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="font-black text-sm text-rose-600 dark:text-rose-400 block">
+                    <span className="font-black text-[15px] text-rose-600 dark:text-rose-400 block">
                       {formatearMoneda(Number(gasto.monto))}
                     </span>
                     {gasto.anulado ? (
-                      <span className="text-[10px] font-bold text-rose-500">Anulado</span>
+                      <span className="text-xs font-bold text-rose-500">Anulado</span>
                     ) : (
                       gasto.comprobanteNro && (
-                        <span className="text-[10px] text-ink-muted font-mono block">
+                        <span className="text-xs text-ink-muted font-mono block">
                           #{gasto.comprobanteNro}
                         </span>
                       )
@@ -590,24 +590,24 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 pt-1 border-t border-rule/50">
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-rule/50">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                      <Tag className="w-2.5 h-2.5" />
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                      <Tag className="w-3 h-3" />
                       <span>{gasto.rubro?.nombre || 'Sin rubro'}</span>
                     </span>
 
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold border ${
                         gasto.cuenta?.tipo === 'CAJA_EFECTIVO'
                           ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                           : 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
                       }`}
                     >
                       {gasto.cuenta?.tipo === 'CAJA_EFECTIVO' ? (
-                        <Wallet className="w-2.5 h-2.5" />
+                        <Wallet className="w-3 h-3" />
                       ) : (
-                        <Building2 className="w-2.5 h-2.5" />
+                        <Building2 className="w-3 h-3" />
                       )}
                       <span>{gasto.cuenta?.nombre || 'Cuenta'}</span>
                     </span>
@@ -621,21 +621,21 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                           setGastoAEditar(gasto);
                           setModalGastoAbierto(true);
                         }}
-                        className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                        className="min-h-[38px] min-w-[38px] flex items-center justify-center p-2 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
                         title="Modificar gasto"
                         aria-label="Modificar gasto"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
                         onClick={() => handleAnular(gasto)}
                         disabled={anulandoId === gasto.id}
-                        className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                        className="min-h-[38px] min-w-[38px] flex items-center justify-center p-2 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
                         title="Anular gasto"
                         aria-label="Anular gasto"
                       >
-                        <Ban className="w-3.5 h-3.5" />
+                        <Ban className="w-4 h-4" />
                       </button>
                     </div>
                   )}

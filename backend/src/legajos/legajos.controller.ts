@@ -32,9 +32,9 @@ import {
 import { LegajosService } from './legajos.service.js';
 
 const VER = 'legajos.ver';
-const COMPLETAR = 'legajos.completar';
-const VALIDAR_FISICO = 'legajos.validar_fisico';
-const PLANTILLAS_GESTIONAR = 'legajos.plantillas_gestionar';
+const COMPLETAR = 'legajos.editar';
+const VALIDAR_FISICO = 'legajos.editar';
+const PLANTILLAS_GESTIONAR = 'plantillas.editar';
 
 @Controller('legajos')
 export class LegajosController {

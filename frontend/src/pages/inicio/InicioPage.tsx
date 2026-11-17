@@ -29,7 +29,11 @@ import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
-import { useCapabilities, useActiveUnitStore } from '../../core/capabilities';
+import {
+  useCapabilities,
+  useActiveUnitStore,
+  obtenerNombreUnidadActiva,
+} from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
 import {
   listarBorradoresLegajoLocales,
@@ -291,15 +295,10 @@ export const InicioPage: React.FC = () => {
     return () => window.removeEventListener('focus', onFocus);
   }, [cargarDatosInicio]);
 
-  const activeUnitLabel = useMemo(() => {
-    if (activeUnitId === 'ALL') {
-      return caps.esGlobal ? 'Todo el grupo' : 'Todas tus unidades asignadas';
-    }
-    const enOrg = unidadesOrg.find((u: any) => Number(u.id) === activeUnitId);
-    if (enOrg?.nombre) return enOrg.nombre;
-    const enAsignadas = caps.unidadesAsignadas.find((u) => u.id === activeUnitId);
-    return enAsignadas?.nombre || `Unidad #${activeUnitId}`;
-  }, [activeUnitId, caps.esGlobal, caps.unidadesAsignadas, unidadesOrg]);
+  const activeUnitLabel = useMemo(
+    () => obtenerNombreUnidadActiva(activeUnitId, caps, unidadesOrg),
+    [activeUnitId, caps, unidadesOrg],
+  );
 
   const miembrosEnFoco = useMemo(() => {
     const activos = miembros.filter((m) => m.activo !== false);
@@ -409,7 +408,7 @@ export const InicioPage: React.FC = () => {
   const handleSincronizarCampamento = async () => {
     if (!isOnline) {
       mostrarToast(
-        'Necesitás conexión a internet para preparar los datos offline antes del campamento.',
+        'Necesitás conexión a internet para descargar los datos antes del campamento.',
         'advertencia',
       );
       return;
@@ -428,7 +427,7 @@ export const InicioPage: React.FC = () => {
         'exito',
       );
     } catch (err) {
-      mostrarToast(traducirErrorAmigable(err, 'No se pudo completar la sincronización offline.'), 'error');
+      mostrarToast(traducirErrorAmigable(err, 'No se pudieron descargar los datos para campamento.'), 'error');
     } finally {
       setSincronizando(false);
     }
@@ -447,7 +446,7 @@ export const InicioPage: React.FC = () => {
       setBorradoresPendientesCount(restantes.length);
       if (sincronizados > 0 && fallidos === 0) {
         mostrarToast(
-          `${sincronizados} borrador(es) de legajo sincronizado(s) con el servidor.`,
+          `${sincronizados} borrador(es) de legajo guardado(s).`,
           'exito',
         );
         void cargarDatosInicio(true);
@@ -509,7 +508,7 @@ export const InicioPage: React.FC = () => {
     },
     {
       to: '/organizacion',
-      title: 'Organización y RBAC',
+      title: 'Organización y Roles',
       desc: 'Ramas, unidades, roles y correo institucional.',
       icon: <Shield className="w-5 h-5 text-brand" />,
       show: caps.canViewOrganizacion,
@@ -517,31 +516,31 @@ export const InicioPage: React.FC = () => {
   ].filter((a) => a.show);
 
   return (
-    <div className="s-anim-view space-y-5">
+    <div className="s-anim-view space-y-6">
       {/* Barra compacta superior "Mi Estado Personal" para perfiles con gestión */}
       {!caps.esPropio && (
         <div className="s-panel rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap min-w-0">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-ink-muted shrink-0">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-ink-muted shrink-0">
               Mi Estado Personal:
             </span>
             {cargandoPersonal ? (
-              <span className="text-xs text-ink-muted">Consultando…</span>
+              <span className="text-sm text-ink-muted">Consultando…</span>
             ) : (
               <>
                 <span
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap shrink-0 ${miFichaCfg.badgeClass}`}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border whitespace-nowrap shrink-0 ${miFichaCfg.badgeClass}`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${miFichaCfg.dotClass}`} />
                   <span>Legajo {ciclo}: {miFichaCfg.shortLabel}</span>
                 </span>
 
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 ${
                     miSaldoPendiente > 0 ? 's-badge-err' : 's-badge-ok'
                   }`}
                 >
-                  <CreditCard className="w-3 h-3" />
+                  <CreditCard className="w-3.5 h-3.5" />
                   <span>
                     {miSaldoPendiente > 0
                       ? `Deuda: ${formatearMoneda(miSaldoPendiente)}`
@@ -550,8 +549,8 @@ export const InicioPage: React.FC = () => {
                 </span>
 
                 {miSaldoAFavor > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold s-badge-brand whitespace-nowrap shrink-0">
-                    <Sparkles className="w-3 h-3" />
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-brand whitespace-nowrap shrink-0">
+                    <Sparkles className="w-3.5 h-3.5" />
                     <span>A favor: {formatearMoneda(miSaldoAFavor)}</span>
                   </span>
                 )}
@@ -561,10 +560,10 @@ export const InicioPage: React.FC = () => {
 
           <Link
             to="/mi-espacio"
-            className="text-xs font-extrabold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
+            className="text-sm font-extrabold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
           >
             <span>Mi Espacio</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       )}
@@ -573,32 +572,32 @@ export const InicioPage: React.FC = () => {
       <section className="s-card rounded-2xl p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 min-w-0">
         <div className="space-y-1.5 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-brand whitespace-nowrap shrink-0">
-              <Compass className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand whitespace-nowrap shrink-0">
+              <Compass className="w-4 h-4" />
               <span>Ciclo Operativo {ciclo}</span>
             </span>
             {!caps.esPropio && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-info whitespace-nowrap shrink-0">
-                Foco: {activeUnitLabel}
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info whitespace-nowrap shrink-0">
+                {activeUnitLabel}
               </span>
             )}
           </div>
 
-          <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight truncate">
+          <h1 className="text-2xl sm:text-[1.75rem] font-extrabold text-ink tracking-tight truncate">
             Hola, {usuario?.nombre} {usuario?.apellido}
           </h1>
 
-          <p className="text-xs sm:text-sm text-ink-muted truncate">{caps.rolPrincipalLabel}</p>
+          <p className="text-sm sm:text-[15px] text-ink-muted truncate">{caps.rolPrincipalLabel}</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {caps.canUseQrScanner && (
             <button
               type="button"
               onClick={() => useQrModalStore.getState().abrirQr('auto')}
-              className="s-btn-sec s-touch px-3.5 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer"
+              className="s-btn-sec s-touch px-4 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 cursor-pointer"
             >
-              <QrCode className="w-4 h-4 text-brand" />
+              <QrCode className="w-[18px] h-[18px] text-brand" />
               <span>Escanear QR</span>
             </button>
           )}
@@ -608,14 +607,14 @@ export const InicioPage: React.FC = () => {
               type="button"
               onClick={handleSincronizarCampamento}
               disabled={sincronizando}
-              className="s-btn-brand s-touch px-4 py-2 rounded-xl text-xs inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              className="s-btn-brand s-touch px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
               {sincronizando ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-[18px] h-[18px] animate-spin" />
               ) : !isOnline ? (
-                <WifiOff className="w-4 h-4" />
+                <WifiOff className="w-[18px] h-[18px]" />
               ) : (
-                <DownloadCloud className="w-4 h-4" />
+                <DownloadCloud className="w-[18px] h-[18px]" />
               )}
               <span>{sincronizando ? 'Sincronizando…' : 'Preparar para Campamento'}</span>
             </button>
@@ -624,7 +623,7 @@ export const InicioPage: React.FC = () => {
           {caps.esPropio && (
             <Link
               to="/mi-espacio"
-              className="s-btn-brand s-touch px-4 py-2.5 rounded-xl text-xs inline-flex items-center justify-center gap-2"
+              className="s-btn-brand s-touch px-5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2"
             >
               <span>Ir a Mi Espacio</span>
               <ArrowRight className="w-4 h-4" />
@@ -635,8 +634,8 @@ export const InicioPage: React.FC = () => {
 
       {/* Progreso o estado de sincronización offline */}
       {!caps.esPropio && (progresoSync || ultimoSync) && (
-        <div className="s-panel rounded-2xl px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="s-panel rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
             <DownloadCloud className="w-4 h-4 text-brand shrink-0" />
             {sincronizando && progresoSync ? (
               <span className="font-bold text-ink truncate">
@@ -644,7 +643,7 @@ export const InicioPage: React.FC = () => {
               </span>
             ) : ultimoSync ? (
               <span className="text-ink-muted truncate">
-                <strong className="text-ink">Modo Campamento listo:</strong>{' '}
+                <strong className="text-ink">Datos de campamento listos:</strong>{' '}
                 {ultimoSync.totalMiembros} miembros y {ultimoSync.totalEntregas} fichas guardadas (
                 {formatearSyncFecha(ultimoSync.sincronizadoEn)}).
               </span>
@@ -664,17 +663,17 @@ export const InicioPage: React.FC = () => {
 
       {/* Borradores locales de legajo pendientes de sincronizar */}
       {borradoresPendientesCount > 0 && (
-        <div className="s-badge-warn rounded-2xl px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+        <div className="s-badge-warn rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm">
           <div className="flex items-center gap-2 min-w-0">
             <WifiOff className="w-4 h-4 shrink-0" />
             <span className="truncate">
               <strong>
                 {borradoresPendientesCount}{' '}
                 {borradoresPendientesCount === 1
-                  ? 'borrador de legajo guardado offline'
-                  : 'borradores de legajo guardados offline'}
+                  ? 'ficha guardada sin conexión'
+                  : 'fichas guardadas sin conexión'}
               </strong>{' '}
-              (pendiente de sincronizar).
+              (pendiente de enviar).
             </span>
           </div>
           {isOnline && (
@@ -682,12 +681,12 @@ export const InicioPage: React.FC = () => {
               type="button"
               onClick={handleSincronizarBorradores}
               disabled={sincronizandoBorradores}
-              className="s-btn-brand min-h-[32px] px-3 py-1 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-60"
+              className="s-btn-brand min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-60"
             >
               {sincronizandoBorradores ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <UploadCloud className="w-3.5 h-3.5" />
+                <UploadCloud className="w-4 h-4" />
               )}
               <span>{sincronizandoBorradores ? 'Sincronizando…' : 'Sincronizar ahora'}</span>
             </button>
@@ -698,30 +697,30 @@ export const InicioPage: React.FC = () => {
       {/* Checklist personal destacado para perfiles PROPIO */}
       {caps.esPropio && (
         <section className="space-y-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-0.5">
+          <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted px-0.5">
             Mi Checklist del Ciclo {ciclo}
           </h2>
 
-          <div className="s-stagger grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="s-stagger grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* 1. Legajo anual */}
             <Link
               to="/mi-espacio?tab=legajo"
-              className="s-card s-card-hover rounded-2xl p-4 flex flex-col justify-between gap-3 min-w-0"
+              className="s-card s-card-hover rounded-2xl p-5 flex flex-col justify-between gap-3.5 min-w-0"
             >
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4 text-brand" />
+                  <div className="w-10 h-10 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-brand" />
                   </div>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap shrink-0 ${miFichaCfg.badgeClass}`}
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold border whitespace-nowrap shrink-0 ${miFichaCfg.badgeClass}`}
                   >
                     {miFichaCfg.shortLabel}
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-ink">1. Mi Legajo Anual</h3>
-                  <p className="text-xs text-ink-muted mt-0.5">
+                  <h3 className="text-base font-extrabold text-ink">1. Mi Legajo Anual</h3>
+                  <p className="text-sm text-ink-muted mt-1 leading-snug">
                     {miEstadoFichaKey === 'VALIDADO_FISICAMENTE'
                       ? 'Tu ficha física fue recibida y validada para este ciclo.'
                       : miEstadoFichaKey === 'PENDIENTE_FIRMA_FISICA'
@@ -730,26 +729,26 @@ export const InicioPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-brand inline-flex items-center gap-1">
+              <span className="text-sm font-bold text-brand inline-flex items-center gap-1.5">
                 <span>
                   {miEstadoFichaKey === 'VALIDADO_FISICAMENTE' ? 'Ver ficha PDF' : 'Completar ahora'}
                 </span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </span>
             </Link>
 
             {/* 2. Estado de cuotas */}
             <Link
               to="/mi-espacio?tab=cuotas"
-              className="s-card s-card-hover rounded-2xl p-4 flex flex-col justify-between gap-3 min-w-0"
+              className="s-card s-card-hover rounded-2xl p-5 flex flex-col justify-between gap-3.5 min-w-0"
             >
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
-                    <CreditCard className="w-4 h-4 text-brand" />
+                  <div className="w-10 h-10 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5 text-brand" />
                   </div>
                   <span
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 ${
+                    className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 ${
                       miSaldoPendiente > 0 ? 's-badge-err' : 's-badge-ok'
                     }`}
                   >
@@ -757,8 +756,8 @@ export const InicioPage: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-ink">2. Mis Cuotas y Recibos</h3>
-                  <p className="text-xs text-ink-muted mt-0.5">
+                  <h3 className="text-base font-extrabold text-ink">2. Mis Cuotas y Recibos</h3>
+                  <p className="text-sm text-ink-muted mt-1 leading-snug">
                     {miSaldoPendiente > 0
                       ? `Saldo pendiente actual: ${formatearMoneda(miSaldoPendiente)}.`
                       : 'No registrás cuotas pendientes.'}
@@ -768,36 +767,36 @@ export const InicioPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-brand inline-flex items-center gap-1">
+              <span className="text-sm font-bold text-brand inline-flex items-center gap-1.5">
                 <span>Ver estado de cuenta</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </span>
             </Link>
 
             {/* 3. Eventos y Vales */}
             <Link
               to="/mi-espacio?tab=pedidos"
-              className="s-card s-card-hover rounded-2xl p-4 flex flex-col justify-between gap-3 min-w-0"
+              className="s-card s-card-hover rounded-2xl p-5 flex flex-col justify-between gap-3.5 min-w-0"
             >
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
-                    <Ticket className="w-4 h-4 text-brand" />
+                  <div className="w-10 h-10 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
+                    <Ticket className="w-5 h-5 text-brand" />
                   </div>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold s-badge-brand whitespace-nowrap shrink-0">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-brand whitespace-nowrap shrink-0">
                     Vales QR
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-sm font-extrabold text-ink">3. Mis Eventos y Vales</h3>
-                  <p className="text-xs text-ink-muted mt-0.5">
+                  <h3 className="text-base font-extrabold text-ink">3. Mis Eventos y Vales</h3>
+                  <p className="text-sm text-ink-muted mt-1 leading-snug">
                     Consultá campañas habilitadas, cargá pedidos para sumar a tu saldo y descargá tus QR.
                   </p>
                 </div>
               </div>
-              <span className="text-xs font-bold text-brand inline-flex items-center gap-1">
+              <span className="text-sm font-bold text-brand inline-flex items-center gap-1.5">
                 <span>Abrir eventos y vales</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </span>
             </Link>
           </div>
@@ -808,33 +807,33 @@ export const InicioPage: React.FC = () => {
       {!caps.esPropio && caps.canViewMiembros && (
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2 px-0.5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-              Pulso Operativo ({statsGestion.totalActivos} activos en foco)
+            <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted">
+              Resumen actual ({statsGestion.totalActivos} activos)
             </h2>
             {cargandoGestion && (
-              <span className="text-[11px] font-semibold text-ink-muted inline-flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" />
+              <span className="text-xs font-semibold text-ink-muted inline-flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Actualizando…
               </span>
             )}
           </div>
 
-          <div className="s-stagger grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="s-stagger grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
             {caps.canViewLegajosModule && (
               <Link
                 to="/miembros?filtro=FALTA_FICHA"
-                className="s-card s-card-hover rounded-2xl p-4 flex flex-col justify-between gap-2 min-w-0"
+                className="s-card s-card-hover rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-2.5 min-w-0"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted truncate">
+                  <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
                     Legajos Pendientes
                   </span>
-                  <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                  <Clock className="w-[18px] h-[18px] text-amber-500 shrink-0" />
                 </div>
-                <div className="text-2xl font-extrabold s-tabular text-ink">
+                <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular text-ink">
                   {statsGestion.legajosPendientes}
                 </div>
-                <div className="text-[11px] text-ink-muted flex items-center justify-between gap-2">
+                <div className="text-xs sm:text-[13px] text-ink-muted flex items-center justify-between gap-2">
                   <span className="truncate">Sin validación física {ciclo}</span>
                   <span className="font-bold text-brand shrink-0">Revisar →</span>
                 </div>
@@ -844,18 +843,18 @@ export const InicioPage: React.FC = () => {
             {caps.canViewCuotas && (
               <Link
                 to="/miembros?filtro=CON_DEUDA"
-                className="s-card s-card-hover rounded-2xl p-4 flex flex-col justify-between gap-2 min-w-0"
+                className="s-card s-card-hover rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-2.5 min-w-0"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted truncate">
+                  <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
                     Cuotas con Deuda
                   </span>
-                  <CreditCard className="w-4 h-4 text-rose-500 shrink-0" />
+                  <CreditCard className="w-[18px] h-[18px] text-rose-500 shrink-0" />
                 </div>
-                <div className="text-2xl font-extrabold s-tabular text-ink">
+                <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular text-ink">
                   {statsGestion.miembrosConDeuda}
                 </div>
-                <div className="text-[11px] text-ink-muted flex items-center justify-between gap-2">
+                <div className="text-xs sm:text-[13px] text-ink-muted flex items-center justify-between gap-2">
                   <span className="truncate">
                     Total: {formatearMoneda(statsGestion.deudaAcumulada)}
                   </span>
@@ -871,18 +870,18 @@ export const InicioPage: React.FC = () => {
                     ? '/pases'
                     : '/miembros?filtro=PASE_SUGERIDO'
                 }
-                className="s-card s-card-hover rounded-2xl p-4 flex flex-col justify-between gap-2 min-w-0"
+                className="s-card s-card-hover rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-2.5 min-w-0"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted truncate">
+                  <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
                     Pases Sugeridos
                   </span>
-                  <Repeat className="w-4 h-4 text-brand shrink-0" />
+                  <Repeat className="w-[18px] h-[18px] text-brand shrink-0" />
                 </div>
-                <div className="text-2xl font-extrabold s-tabular text-ink">
+                <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular text-ink">
                   {statsGestion.pasesSugeridos}
                 </div>
-                <div className="text-[11px] text-ink-muted flex items-center justify-between gap-2">
+                <div className="text-xs sm:text-[13px] text-ink-muted flex items-center justify-between gap-2">
                   <span className="truncate">
                     {statsGestion.solicitudesPendientes > 0
                       ? `${statsGestion.solicitudesPendientes} solicitud(es) pendiente(s)`
@@ -900,25 +899,25 @@ export const InicioPage: React.FC = () => {
                 setTelefonosEmergencia(null);
                 setDrawerAlertasAbierto(true);
               }}
-              className="s-card s-card-hover rounded-2xl p-4 flex flex-col justify-between gap-2 text-left min-w-0"
+              className="s-card s-card-hover rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-2.5 text-left min-w-0"
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted truncate">
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
                   Alertas Médicas
                 </span>
-                <HeartPulse className="w-4 h-4 text-rose-500 shrink-0" />
+                <HeartPulse className="w-[18px] h-[18px] text-rose-500 shrink-0" />
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-extrabold s-tabular text-ink">
+                <span className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular text-ink">
                   {miembrosConAlertaMedica.length}
                 </span>
                 {criticasMedicasTotal > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-err whitespace-nowrap shrink-0">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-err whitespace-nowrap shrink-0">
                     {criticasMedicasTotal} crítica{criticasMedicasTotal === 1 ? '' : 's'}
                   </span>
                 )}
               </div>
-              <div className="text-[11px] text-ink-muted flex items-center justify-between gap-2 w-full">
+              <div className="text-xs sm:text-[13px] text-ink-muted flex items-center justify-between gap-2 w-full">
                 <span className="truncate">Alergias, medicación y emergencias</span>
                 <span className="font-bold text-brand shrink-0">Abrir guía →</span>
               </div>
@@ -931,34 +930,34 @@ export const InicioPage: React.FC = () => {
       {!caps.esPropio && caps.canSeeBalance && balanceData?.resumen && (
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2 px-0.5">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-brand" />
+            <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-brand" />
               <span>Resumen Ejecutivo Financiero {ciclo}</span>
             </h2>
             {caps.canSeeTesoreriaGestion && (
               <Link
                 to="/tesoreria?sub=cuadro-resultados"
-                className="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
+                className="text-sm font-bold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
               >
                 <span>Ver cuadro completo</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </Link>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
             <KpiCard
               label="Ingresos Totales"
               value={formatearMoneda(Number(balanceData.resumen.totalIngresos || 0))}
               tone="ok"
-              icon={<TrendingUp className="w-4 h-4" />}
+              icon={<TrendingUp className="w-[18px] h-[18px]" />}
               hint={`Ciclo anual ${ciclo}`}
             />
             <KpiCard
               label="Egresos y Gastos"
               value={formatearMoneda(Number(balanceData.resumen.totalEgresos || 0))}
               tone="err"
-              icon={<Wallet className="w-4 h-4" />}
+              icon={<Wallet className="w-[18px] h-[18px]" />}
               hint="Comprobantes vigentes"
             />
             <KpiCard
@@ -979,26 +978,26 @@ export const InicioPage: React.FC = () => {
 
       {/* Módulos Habilitados */}
       <section className="space-y-3">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted px-0.5">
+        <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted px-0.5">
           Módulos Habilitados en tu Perfil
         </h2>
 
-        <div className="s-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="s-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
           {accesosRapidos.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className="s-card s-card-hover rounded-2xl p-4 flex items-start gap-3.5 min-w-0"
+              className="s-card s-card-hover rounded-2xl p-4 sm:p-5 flex items-start gap-4 min-w-0"
             >
-              <div className="w-10 h-10 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-brand-soft flex items-center justify-center shrink-0">
                 {item.icon}
               </div>
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-extrabold text-ink truncate">{item.title}</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                  <span className="text-base font-extrabold text-ink truncate">{item.title}</span>
+                  <ArrowRight className="w-4 h-4 text-ink-muted shrink-0" />
                 </div>
-                <p className="text-xs text-ink-muted leading-snug">{item.desc}</p>
+                <p className="text-sm text-ink-muted leading-snug">{item.desc}</p>
               </div>
             </Link>
           ))}
@@ -1029,17 +1028,17 @@ export const InicioPage: React.FC = () => {
             <button
               type="button"
               onClick={() => setTelefonosEmergencia(null)}
-              className="s-btn-sec s-touch w-full px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+              className="s-btn-sec s-touch w-full px-4 py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Volver al listado médico</span>
             </button>
           ) : (
-            <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center justify-between gap-2.5 flex-wrap">
               <Link
                 to="/miembros?filtro=ALERTA_MEDICA"
                 onClick={() => setDrawerAlertasAbierto(false)}
-                className="s-btn-brand s-touch px-4 py-2 rounded-xl text-xs inline-flex items-center gap-1.5"
+                className="s-btn-brand s-touch px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-1.5"
               >
                 <span>Ver en Padrón</span>
                 <ArrowRight className="w-4 h-4" />
@@ -1047,7 +1046,7 @@ export const InicioPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDrawerAlertasAbierto(false)}
-                className="s-btn-sec s-touch px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                className="s-btn-sec s-touch px-4 py-2.5 rounded-xl text-sm font-bold cursor-pointer"
               >
                 Cerrar
               </button>
@@ -1056,53 +1055,53 @@ export const InicioPage: React.FC = () => {
         }
       >
         {telefonosEmergencia ? (
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {telefonosEmergencia.telefonos.map((tel, idx) => (
               <a
                 key={`${tel.etiqueta}-${idx}`}
                 href={`tel:${tel.telefono}`}
-                className="s-card s-card-hover p-3.5 rounded-2xl flex items-center justify-between gap-3"
+                className="s-card s-card-hover p-4 rounded-2xl flex items-center justify-between gap-3"
               >
-                <div className="min-w-0 space-y-0.5">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-info inline-block">
+                <div className="min-w-0 space-y-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info inline-block">
                     {tel.etiqueta}
                   </span>
-                  <div className="text-sm font-extrabold text-ink truncate">
+                  <div className="text-base font-extrabold text-ink truncate">
                     {tel.nombre ||
                       `${telefonosEmergencia.miembro.nombre} ${telefonosEmergencia.miembro.apellido}`}
                   </div>
-                  <div className="text-xs font-mono text-ink-muted">{tel.telefono}</div>
+                  <div className="text-sm font-mono text-ink-muted">{tel.telefono}</div>
                 </div>
-                <span className="s-btn-brand px-3 py-2 rounded-xl text-xs inline-flex items-center gap-1.5 shrink-0">
-                  <Phone className="w-3.5 h-3.5" />
+                <span className="s-btn-brand px-3.5 py-2.5 rounded-xl text-sm inline-flex items-center gap-1.5 shrink-0">
+                  <Phone className="w-4 h-4" />
                   <span>Llamar</span>
                 </span>
               </a>
             ))}
           </div>
         ) : miembrosConAlertaMedica.length === 0 ? (
-          <div className="py-10 text-center space-y-2">
-            <CheckCircle2 className="w-10 h-10 text-brand mx-auto opacity-80" />
-            <p className="text-sm font-bold text-ink">Sin alertas médicas declaradas</p>
-            <p className="text-xs text-ink-muted max-w-sm mx-auto">
+          <div className="py-10 text-center space-y-2.5">
+            <CheckCircle2 className="w-11 h-11 text-brand mx-auto opacity-80" />
+            <p className="text-base font-bold text-ink">Sin alertas médicas declaradas</p>
+            <p className="text-sm text-ink-muted max-w-sm mx-auto">
               Ningún miembro activo en {activeUnitLabel} declaró alergias, medicación o condiciones de seguimiento en su ficha.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
             {miembrosConAlertaMedica.map(({ miembro, entrega, info, ramaNombre }) => (
-              <div key={miembro.id} className="s-panel rounded-2xl p-3.5 space-y-2.5">
-                <div className="flex items-start justify-between gap-2">
+              <div key={miembro.id} className="s-panel rounded-2xl p-4 space-y-2.5">
+                <div className="flex items-start justify-between gap-2.5">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-extrabold text-ink truncate">
+                      <span className="text-base font-extrabold text-ink truncate">
                         {miembro.apellido}, {miembro.nombre}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-brand whitespace-nowrap shrink-0">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-brand whitespace-nowrap shrink-0">
                         {ramaNombre}
                       </span>
                     </div>
-                    <div className="text-[11px] text-ink-muted mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    <div className="text-xs sm:text-[13px] text-ink-muted mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
                       {info.grupoSanguineo && (
                         <span>
                           Grupo: <strong className="text-ink">{info.grupoSanguineo}</strong>
@@ -1124,15 +1123,15 @@ export const InicioPage: React.FC = () => {
                       onAbrirCustom={(telefonos) =>
                         setTelefonosEmergencia({ miembro, telefonos })
                       }
-                      className="s-btn-sec min-h-[38px] px-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                      className="s-btn-sec min-h-[40px] px-3 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
                     />
                     <Link
                       to={`/miembros/${miembro.id}?tab=ficha`}
                       onClick={() => setDrawerAlertasAbierto(false)}
-                      className="s-btn-sec min-h-[38px] px-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-1"
+                      className="s-btn-sec min-h-[40px] px-3 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5"
                     >
                       <span>Ficha</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>
@@ -1141,11 +1140,11 @@ export const InicioPage: React.FC = () => {
                   {info.alertas.map((al) => (
                     <span
                       key={al.id}
-                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold ${
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${
                         al.critico ? 's-badge-err' : 's-badge-warn'
                       }`}
                     >
-                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
                       <span>
                         {al.titulo}
                         {al.detalle && al.detalle !== 'Sí' ? `: ${al.detalle}` : ''}

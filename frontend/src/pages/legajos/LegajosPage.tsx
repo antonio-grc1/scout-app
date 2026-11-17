@@ -27,7 +27,11 @@ import {
   X,
 } from 'lucide-react';
 import { api } from '../../api/client';
-import { useActiveUnitStore, useCapabilities } from '../../core/capabilities';
+import {
+  useActiveUnitStore,
+  useCapabilities,
+  obtenerNombreUnidadActiva,
+} from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
 import { useToastStore } from '../../store/toastStore';
 import {
@@ -92,9 +96,11 @@ export const LegajosPage: React.FC = () => {
   const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
 
+  const puedeVerPlantillasTab =
+    caps.esGlobal && caps.hasAnyPermiso('plantillas.ver', 'plantillas.editar');
   const tabUrl = searchParams.get('tab') as TabLegajos | null;
   const tabInicial: TabLegajos =
-    tabUrl === 'plantillas' && caps.canManagePlantillas
+    tabUrl === 'plantillas' && puedeVerPlantillasTab
       ? 'plantillas'
       : tabUrl === 'colaboradores'
         ? 'colaboradores'
@@ -102,10 +108,10 @@ export const LegajosPage: React.FC = () => {
   const [tab, setTab] = useState<TabLegajos>(tabInicial);
 
   useEffect(() => {
-    if (tabUrl === 'plantillas' && caps.canManagePlantillas) setTab('plantillas');
+    if (tabUrl === 'plantillas' && puedeVerPlantillasTab) setTab('plantillas');
     else if (tabUrl === 'colaboradores') setTab('colaboradores');
     else if (tabUrl === 'cumplimiento') setTab('cumplimiento');
-  }, [tabUrl, caps.canManagePlantillas]);
+  }, [tabUrl, puedeVerPlantillasTab]);
 
   const cambiarTab = (next: TabLegajos) => {
     setTab(next);
@@ -158,13 +164,34 @@ export const LegajosPage: React.FC = () => {
     setCargandoCumplimiento(true);
     try {
       const ciclo = obtenerCicloAnioActual();
-      const [resM, resE, resP] = await Promise.all([
-        api.get('/miembros?porPagina=2000'),
+      const cargarMiembrosPaginados = async (): Promise<any[]> => {
+        const porPagina = 200;
+        const primera = await api.get(`/miembros?pagina=1&porPagina=${porPagina}`);
+        const rawPrimera = primera.data;
+        if (Array.isArray(rawPrimera)) return rawPrimera;
+        const primerosItems: any[] = Array.isArray(rawPrimera?.items) ? rawPrimera.items : [];
+        const total = Number(rawPrimera?.total ?? primerosItems.length);
+        const totalPaginas = Math.ceil(total / porPagina);
+        if (totalPaginas <= 1) return primerosItems;
+
+        const resto = await Promise.all(
+          Array.from({ length: totalPaginas - 1 }, (_, i) =>
+            api.get(`/miembros?pagina=${i + 2}&porPagina=${porPagina}`),
+          ),
+        );
+        const acumulados = [...primerosItems];
+        for (const r of resto) {
+          if (Array.isArray(r.data?.items)) acumulados.push(...r.data.items);
+        }
+        return acumulados;
+      };
+
+      const [listaMiembros, resE, resP] = await Promise.all([
+        cargarMiembrosPaginados(),
         api.get(`/legajos/entregas?cicloAnio=${ciclo}`),
         api.get(`/legajos/plantillas?cicloAnio=${ciclo}`).catch(() => ({ data: [] })),
       ]);
-      const rawM = resM.data;
-      setMiembros(Array.isArray(rawM) ? rawM : Array.isArray(rawM?.items) ? rawM.items : []);
+      setMiembros(listaMiembros);
       setEntregas(Array.isArray(resE.data) ? resE.data : []);
       let pList = Array.isArray(resP.data) ? resP.data : [];
       if (pList.length === 0) {
@@ -540,7 +567,7 @@ export const LegajosPage: React.FC = () => {
         icon: <HeartHandshake className="w-3.5 h-3.5" />,
       },
     ];
-    if (caps.canManagePlantillas || caps.esGlobal) {
+    if (puedeVerPlantillasTab) {
       items.push({
         id: 'plantillas',
         label: 'Plantillas y Editor PDF',
@@ -548,7 +575,7 @@ export const LegajosPage: React.FC = () => {
       });
     }
     return items;
-  }, [caps.canManagePlantillas, caps.esGlobal, kpisCumplimiento.total]);
+  }, [puedeVerPlantillasTab, kpisCumplimiento.total]);
 
   return (
     <div className="space-y-5 s-anim-view">
@@ -573,15 +600,15 @@ export const LegajosPage: React.FC = () => {
       )}
 
       {/* Cabecera */}
-      <div className="s-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <FileCheck2 className="w-5 h-5 text-brand shrink-0" />
-            <h1 className="text-lg sm:text-xl font-black text-ink tracking-tight">
+      <div className="s-card rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1.5 min-w-0">
+          <div className="flex items-center gap-2.5">
+            <FileCheck2 className="w-6 h-6 text-brand shrink-0" />
+            <h1 className="text-xl sm:text-2xl font-black text-ink tracking-tight">
               Legajos, Salud y Colaboración Familiar
             </h1>
           </div>
-          <p className="text-xs text-ink-muted">
+          <p className="text-sm text-ink-muted">
             Control de fichas del ciclo {obtenerCicloAnioActual()}, validación QR en mano, voluntariado adulto y editor visual de plantillas PDF.
           </p>
         </div>
@@ -623,9 +650,9 @@ export const LegajosPage: React.FC = () => {
         <div className="space-y-4 s-anim-tab">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <KpiCard
-              label="Miembros en alcance"
+              label="Miembros"
               value={kpisCumplimiento.total}
-              hint={activeUnitId === 'ALL' ? 'Todas las unidades' : 'Filtrado por Unidad Activa'}
+              hint={obtenerNombreUnidadActiva(activeUnitId, caps)}
               tone="neutral"
               onClick={() => setFiltroEstado('TODOS')}
               active={filtroEstado === 'TODOS'}
@@ -660,8 +687,8 @@ export const LegajosPage: React.FC = () => {
           </div>
 
           <div className="s-card rounded-2xl overflow-hidden">
-            <div className="p-4 bg-paper-2 border-b border-rule flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex flex-wrap gap-1.5">
+            <div className="p-4 sm:p-5 bg-paper-2 border-b border-rule flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-2">
                 {(
                   [
                     { id: 'TODOS', label: 'Todos' },
@@ -675,7 +702,7 @@ export const LegajosPage: React.FC = () => {
                     key={f.id}
                     type="button"
                     onClick={() => setFiltroEstado(f.id)}
-                    className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold border cursor-pointer transition ${
+                    className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold border cursor-pointer transition ${
                       filtroEstado === f.id ? 's-btn-brand border-brand' : 's-btn-sec text-ink-2'
                     }`}
                   >
@@ -685,22 +712,22 @@ export const LegajosPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:w-64">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                <div className="relative flex-1 sm:w-72">
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                   <input
                     type="text"
                     value={busquedaCumplimiento}
                     onChange={(e) => setBusquedaCumplimiento(e.target.value)}
                     placeholder="Buscar miembro, DNI o sección..."
-                    className="s-input w-full min-h-[38px] pl-8 pr-8 rounded-xl text-xs"
+                    className="s-input w-full min-h-[44px] pl-10 pr-9 rounded-xl text-base sm:text-[15px]"
                   />
                   {busquedaCumplimiento && (
                     <button
                       type="button"
                       onClick={() => setBusquedaCumplimiento('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -711,18 +738,18 @@ export const LegajosPage: React.FC = () => {
                   onClick={() => void cargarCumplimiento()}
                   aria-label="Refrescar cumplimiento"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${cargandoCumplimiento ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-4 h-4 ${cargandoCumplimiento ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
             </div>
 
             {cargandoCumplimiento && miembros.length === 0 ? (
-              <div className="p-10 text-center text-xs text-ink-muted flex flex-col items-center gap-2">
+              <div className="p-10 text-center text-sm text-ink-muted flex flex-col items-center gap-2.5">
                 <Loader2 className="w-6 h-6 animate-spin text-brand" />
                 <span>Cargando estado de legajos…</span>
               </div>
             ) : registrosCumplimiento.length === 0 ? (
-              <div className="p-10 text-center text-xs text-ink-muted">
+              <div className="p-10 text-center text-sm text-ink-muted">
                 No se encontraron miembros con los filtros actuales.
               </div>
             ) : (
@@ -740,28 +767,28 @@ export const LegajosPage: React.FC = () => {
                   return (
                     <div
                       key={miembro.id}
-                      className="p-3.5 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-paper-2/40 transition"
+                      className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-paper-2/40 transition"
                     >
                       <div className="min-w-0 space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Link
                             to={`/miembros/${miembro.id}?tab=legajos`}
-                            className="text-sm font-black text-ink hover:text-brand transition-colors"
+                            className="text-[15px] font-black text-ink hover:text-brand transition-colors"
                           >
                             {miembro.apellido}, {miembro.nombre}
                           </Link>
-                          <span className={`${badge.cls} px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap`}>
+                          <span className={`${badge.cls} px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap`}>
                             {badge.label}
                           </span>
                         </div>
-                        <div className="text-[11px] text-ink-muted flex items-center gap-2 flex-wrap s-tabular">
+                        <div className="text-[13px] text-ink-muted flex items-center gap-2 flex-wrap s-tabular">
                           <span>DNI {miembro.dni}</span>
                           <span>·</span>
                           <span className="font-semibold text-ink-2">{unidadNombre}</span>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
                         {caps.canValidateQr &&
                           estado === 'LISTO_PARA_FIRMA' &&
                           entrega?.hashVerificacion && (
@@ -771,7 +798,7 @@ export const LegajosPage: React.FC = () => {
                               size="sm"
                               loading={validandoHash === entrega.hashVerificacion}
                               onClick={() => void handleValidarFisico(entrega, miembro)}
-                              leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                              leftIcon={<CheckCircle2 className="w-4 h-4" />}
                             >
                               Validar Físico
                             </Button>
@@ -783,7 +810,7 @@ export const LegajosPage: React.FC = () => {
                             variant="secondary"
                             size="sm"
                             onClick={() => void handleVerPdfMiembro(miembro, entrega)}
-                            leftIcon={<Eye className="w-3.5 h-3.5" />}
+                            leftIcon={<Eye className="w-4 h-4" />}
                           >
                             Ver PDF
                           </Button>
@@ -794,7 +821,7 @@ export const LegajosPage: React.FC = () => {
                           variant="secondary"
                           size="sm"
                           onClick={() => navigate(`/legajos/completar?usuarioId=${miembro.id}`)}
-                          leftIcon={<Edit2 className="w-3.5 h-3.5" />}
+                          leftIcon={<Edit2 className="w-4 h-4" />}
                         >
                           {entrega ? 'Editar' : 'Completar'}
                         </Button>
@@ -815,13 +842,13 @@ export const LegajosPage: React.FC = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 flex-1">
                 <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                  <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                   <input
                     type="text"
                     value={busquedaColab}
                     onChange={(e) => setBusquedaColab(e.target.value)}
                     placeholder="Buscar adulto, profesión, scout..."
-                    className="s-input w-full min-h-[40px] pl-8 pr-3 rounded-xl text-xs"
+                    className="s-input w-full min-h-[46px] pl-10 pr-3 rounded-xl text-base sm:text-[15px]"
                   />
                 </div>
 
@@ -883,12 +910,12 @@ export const LegajosPage: React.FC = () => {
                   key={col.entregaId || idx}
                   className="s-card rounded-2xl p-4 sm:p-5 space-y-3"
                 >
-                  <div className="flex justify-between items-start gap-2">
+                  <div className="flex justify-between items-start gap-2.5">
                     <div className="min-w-0">
-                      <h3 className="font-black text-sm text-ink truncate">
+                      <h3 className="font-black text-[15px] text-ink truncate">
                         {col.adulto.nombre}
                       </h3>
-                      <p className="text-xs text-ink-muted">
+                      <p className="text-[13px] text-ink-muted mt-0.5">
                         {col.adulto.profesion} · Familia de{' '}
                         <strong className="text-brand">
                           {col.protagonista.nombre} {col.protagonista.apellido}
@@ -899,9 +926,9 @@ export const LegajosPage: React.FC = () => {
                     {col.adulto.telefono && col.adulto.telefono !== '-' && (
                       <a
                         href={`tel:${col.adulto.telefono}`}
-                        className="s-badge-brand min-h-[36px] px-3 py-1.5 rounded-xl font-bold text-xs inline-flex items-center gap-1.5 shrink-0"
+                        className="s-badge-brand min-h-[40px] px-3.5 py-1.5 rounded-xl font-bold text-[13px] inline-flex items-center gap-1.5 shrink-0"
                       >
-                        <Phone className="w-3.5 h-3.5" />
+                        <Phone className="w-4 h-4" />
                         <span>Llamar</span>
                       </a>
                     )}
@@ -909,40 +936,40 @@ export const LegajosPage: React.FC = () => {
 
                   <div className="flex flex-wrap gap-1.5">
                     {col.areas?.cocinaCampamento && (
-                      <span className="s-badge-brand text-[11px] px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
-                        <Utensils className="w-3 h-3" /> Cocina
+                      <span className="s-badge-brand text-xs px-2.5 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
+                        <Utensils className="w-3.5 h-3.5" /> Cocina
                       </span>
                     )}
                     {col.areas?.campamento && (
-                      <span className="s-badge-info text-[11px] px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
-                        <Tent className="w-3 h-3" /> Campamento
+                      <span className="s-badge-info text-xs px-2.5 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
+                        <Tent className="w-3.5 h-3.5" /> Campamento
                       </span>
                     )}
                     {(col.areas?.transporte ||
                       col.areas?.camion ||
                       col.areas?.camioneta ||
                       col.areas?.colectivo) && (
-                      <span className="s-badge-info text-[11px] px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
-                        <Truck className="w-3 h-3" /> Transporte
+                      <span className="s-badge-info text-xs px-2.5 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
+                        <Truck className="w-3.5 h-3.5" /> Transporte
                       </span>
                     )}
                     {col.areas?.manoObra && (
-                      <span className="bg-paper-2 border border-rule text-ink text-[11px] px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
-                        <Wrench className="w-3 h-3" /> Mantenimiento
+                      <span className="bg-paper-2 border border-rule text-ink text-xs px-2.5 py-0.5 rounded-md inline-flex items-center gap-1 font-semibold">
+                        <Wrench className="w-3.5 h-3.5" /> Mantenimiento
                       </span>
                     )}
                     {col.areas?.ensenando && (
-                      <span className="s-badge-ok text-[11px] px-2 py-0.5 rounded-md font-semibold">
+                      <span className="s-badge-ok text-xs px-2.5 py-0.5 rounded-md font-semibold">
                         Talleres
                       </span>
                     )}
                     {col.areas?.administrativo && (
-                      <span className="bg-paper-2 border border-rule text-ink-2 text-[11px] px-2 py-0.5 rounded-md font-semibold">
+                      <span className="bg-paper-2 border border-rule text-ink-2 text-xs px-2.5 py-0.5 rounded-md font-semibold">
                         Admin.
                       </span>
                     )}
                     {col.areas?.servicioComunitario && (
-                      <span className="bg-paper-2 border border-rule text-ink-2 text-[11px] px-2 py-0.5 rounded-md font-semibold">
+                      <span className="bg-paper-2 border border-rule text-ink-2 text-xs px-2.5 py-0.5 rounded-md font-semibold">
                         Servicio
                       </span>
                     )}
@@ -952,10 +979,10 @@ export const LegajosPage: React.FC = () => {
                     col.materiales?.campamentoDonacion ||
                     col.materiales?.construccionPrestamo ||
                     col.materiales?.construccionDonacion) && (
-                    <div className="s-panel rounded-xl p-2.5 text-[11px] text-ink-2 space-y-1">
+                    <div className="s-panel rounded-xl p-3 text-xs text-ink-2 space-y-1.5">
                       {(col.materiales?.campamentoPrestamo || col.materiales?.campamentoDonacion) && (
                         <div className="flex items-center gap-1.5">
-                          <Tent className="w-3 h-3 text-brand shrink-0" />
+                          <Tent className="w-3.5 h-3.5 text-brand shrink-0" />
                           <span>
                             Campamento:{' '}
                             {[col.materiales.campamentoPrestamo, col.materiales.campamentoDonacion]
@@ -967,7 +994,7 @@ export const LegajosPage: React.FC = () => {
                       {(col.materiales?.construccionPrestamo ||
                         col.materiales?.construccionDonacion) && (
                         <div className="flex items-center gap-1.5">
-                          <Hammer className="w-3 h-3 text-brand shrink-0" />
+                          <Hammer className="w-3.5 h-3.5 text-brand shrink-0" />
                           <span>
                             Construcción:{' '}
                             {[
@@ -991,13 +1018,13 @@ export const LegajosPage: React.FC = () => {
       {/* TAB 3: PLANTILLAS Y EDITOR VISUAL PDF */}
       {tab === 'plantillas' && (
         <div className="space-y-4 s-anim-tab">
-          <div className="s-card rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="s-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-black text-ink flex items-center gap-2">
+              <h2 className="text-lg font-black text-ink flex items-center gap-2">
                 <Layers className="w-5 h-5 text-brand shrink-0" />
                 <span>Plantillas Oficiales y Editor Visual PDF</span>
               </h2>
-              <p className="text-xs text-ink-muted mt-0.5">
+              <p className="text-[13px] text-ink-muted mt-0.5">
                 Administrá las plantillas del ciclo, descargá el molde en blanco o editá coordenadas y campos visualmente.
               </p>
             </div>
@@ -1008,7 +1035,7 @@ export const LegajosPage: React.FC = () => {
                 variant="secondary"
                 size="sm"
                 onClick={() => void handleDescargarMoldeBlanco()}
-                leftIcon={<Download className="w-3.5 h-3.5" />}
+                leftIcon={<Download className="w-4 h-4" />}
               >
                 Molde en Blanco
               </Button>
@@ -1029,10 +1056,10 @@ export const LegajosPage: React.FC = () => {
           {cargandoPlantillas && plantillasAdmin.length === 0 ? (
             <div className="p-12 flex flex-col items-center justify-center text-ink-muted gap-2">
               <Loader2 className="w-6 h-6 animate-spin text-brand" />
-              <span className="text-xs">Cargando plantillas…</span>
+              <span className="text-sm">Cargando plantillas…</span>
             </div>
           ) : plantillasAdmin.length === 0 ? (
-            <div className="s-card rounded-2xl p-10 text-center text-xs text-ink-muted">
+            <div className="s-card rounded-2xl p-10 text-center text-sm text-ink-muted">
               No hay plantillas cargadas en el sistema.
             </div>
           ) : (
@@ -1051,31 +1078,31 @@ export const LegajosPage: React.FC = () => {
                 return (
                   <div
                     key={p.id}
-                    className="s-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
+                    className="s-card rounded-2xl p-5 flex flex-col justify-between gap-4"
                   >
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             p.activa ? 's-badge-ok' : 'bg-paper-3 text-ink-muted border border-rule'
                           }`}
                         >
                           {p.activa ? 'Activa' : 'Pausada'}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-paper-2 border border-rule text-[10px] font-bold s-tabular">
+                        <span className="px-2.5 py-0.5 rounded-md bg-paper-2 border border-rule text-xs font-bold s-tabular">
                           Ciclo {p.cicloAnio}
                         </span>
-                        <span className="text-[11px] font-semibold text-ink-muted">
+                        <span className="text-xs font-semibold text-ink-muted">
                           v{p.version}
                         </span>
                       </div>
 
                       <div>
-                        <h3 className="text-base font-black text-ink">{p.titulo}</h3>
-                        <p className="text-xs text-ink-muted font-mono">{p.codigo}</p>
+                        <h3 className="text-[17px] font-black text-ink">{p.titulo}</h3>
+                        <p className="text-[13px] text-ink-muted font-mono">{p.codigo}</p>
                       </div>
 
-                      <div className="s-panel rounded-xl p-3 text-xs flex items-center justify-between gap-2">
+                      <div className="s-panel rounded-xl p-3.5 text-[13px] flex items-center justify-between gap-2">
                         <span className="text-ink-2 font-semibold">
                           {secciones.length} secciones · {cantCampos} campos
                         </span>
@@ -1197,11 +1224,12 @@ export const LegajosPage: React.FC = () => {
             />
           </div>
 
-          <label className="flex items-center gap-2 text-xs font-bold text-ink cursor-pointer">
+          <label className="flex items-center gap-2.5 text-sm font-bold text-ink cursor-pointer">
             <input
               type="checkbox"
               checked={metaForm.activa}
               onChange={(e) => setMetaForm({ ...metaForm, activa: e.target.checked })}
+              className="w-4 h-4 accent-brand"
             />
             <span>Plantilla activa para completar en este ciclo</span>
           </label>

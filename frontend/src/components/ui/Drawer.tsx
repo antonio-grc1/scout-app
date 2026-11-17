@@ -87,16 +87,16 @@ export const Drawer: React.FC<DrawerProps> = ({
         )}
         {...contentProps}
       >
-        <div className="s-glass-bar px-4 py-3 border-b border-rule flex items-center justify-between gap-2.5 shrink-0">
+        <div className="s-glass-bar px-5 py-3.5 border-b border-rule flex items-center justify-between gap-3 shrink-0">
           <div className="min-w-0 flex-1">
             <h2
               id={titleId}
-              className="text-sm sm:text-base font-extrabold text-ink leading-snug truncate"
+              className="text-base sm:text-lg font-extrabold text-ink leading-snug truncate"
             >
               {titulo}
             </h2>
             {subtitulo && (
-              <div className="text-[11px] sm:text-xs text-ink-muted leading-tight mt-0.5 truncate">
+              <div className="text-xs sm:text-sm text-ink-muted leading-snug mt-0.5 truncate">
                 {subtitulo}
               </div>
             )}
@@ -110,7 +110,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                 onClick={() => setFullscreen((prev) => !prev)}
                 aria-label={fullscreen ? 'Salir de pantalla completa' : 'Expandir a pantalla completa'}
                 title={fullscreen ? 'Salir de pantalla completa' : 'Expandir'}
-                className="s-btn-sec min-w-[36px] min-h-[36px] p-1.5 rounded-xl flex items-center justify-center cursor-pointer"
+                className="s-btn-sec min-w-[38px] min-h-[38px] p-2 rounded-xl flex items-center justify-center cursor-pointer"
               >
                 {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
@@ -120,7 +120,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                 type="button"
                 onClick={onCerrar}
                 aria-label="Cerrar panel"
-                className="s-btn-sec min-w-[36px] min-h-[36px] p-1.5 rounded-xl flex items-center justify-center cursor-pointer"
+                className="s-btn-sec min-w-[38px] min-h-[38px] p-2 rounded-xl flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -128,12 +128,12 @@ export const Drawer: React.FC<DrawerProps> = ({
           </div>
         </div>
 
-        <div className={cn('flex-1 overflow-y-auto p-4 sm:p-5 space-y-4', bodyClassName)}>
+        <div className={cn('flex-1 overflow-y-auto p-5 sm:p-6 space-y-5', bodyClassName)}>
           {children}
         </div>
 
         {footer && (
-          <div className="px-4 py-3 border-t border-rule bg-paper-2 flex flex-wrap items-center justify-end gap-2 shrink-0">
+          <div className="px-5 py-3.5 border-t border-rule bg-paper-2 flex flex-wrap items-center justify-end gap-2.5 shrink-0">
             {footer}
           </div>
         )}

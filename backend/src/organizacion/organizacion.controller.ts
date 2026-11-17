@@ -34,9 +34,9 @@ import {
 import { OrganizacionService } from './organizacion.service.js';
 
 const VER = 'organizacion.ver';
-const GESTIONAR = 'organizacion.gestionar';
-const GESTIONAR_ROLES = ['roles.gestionar', 'organizacion.gestionar'];
-const VER_ROLES = ['organizacion.ver', 'roles.gestionar', 'organizacion.gestionar'];
+const GESTIONAR = 'organizacion.editar';
+const GESTIONAR_ROLES = ['organizacion.editar'];
+const VER_ROLES = ['organizacion.ver'];
 const incluirInactivas = new ParseBoolPipe({ optional: true });
 
 @Controller('organizacion')

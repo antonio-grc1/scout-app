@@ -41,7 +41,7 @@ export function SegmentedTabs<T extends string = string>({
             disabled={item.disabled}
             onClick={() => onChange(item.id)}
             className={cn(
-              'min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer select-none transition-colors shrink-0 disabled:opacity-45 disabled:cursor-not-allowed',
+              'min-h-[42px] px-4 py-2 rounded-xl text-sm font-bold inline-flex items-center gap-2 whitespace-nowrap cursor-pointer select-none transition-colors shrink-0 disabled:opacity-45 disabled:cursor-not-allowed',
               active
                 ? 's-btn-brand'
                 : 's-btn-sec text-ink-2 hover:text-ink',
@@ -52,7 +52,7 @@ export function SegmentedTabs<T extends string = string>({
             {item.badge !== undefined && item.badge !== null && (
               <span
                 className={cn(
-                  'px-1.5 py-0.5 rounded-full text-[10px] font-extrabold s-tabular leading-none',
+                  'px-2 py-0.5 rounded-full text-xs font-extrabold s-tabular leading-none',
                   active ? 'bg-black/15 text-inherit' : 'bg-paper-2 text-ink-muted',
                 )}
               >

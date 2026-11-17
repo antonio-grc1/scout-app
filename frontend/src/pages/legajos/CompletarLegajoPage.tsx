@@ -443,13 +443,13 @@ export const CompletarLegajoPage: React.FC = () => {
       )}
 
       {/* Cabecera Contextual */}
-      <div className="s-card rounded-2xl p-4 sm:p-5 space-y-3">
+      <div className="s-card rounded-2xl p-4 sm:p-6 space-y-3.5">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <Link
             to={rutaVolver}
-            className="s-btn-sec min-h-[36px] px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+            className="s-btn-sec min-h-[40px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5"
           >
-            <ArrowLeft className="w-3.5 h-3.5 shrink-0" />
+            <ArrowLeft className="w-4 h-4 shrink-0" />
             <span>{esOtroMiembro ? 'Volver a Legajos' : 'Volver a Mi Espacio'}</span>
           </Link>
 
@@ -460,7 +460,7 @@ export const CompletarLegajoPage: React.FC = () => {
               size="sm"
               onClick={() => void cargarDatos()}
               disabled={cargando}
-              leftIcon={<RefreshCw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />}
+              leftIcon={<RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />}
             >
               Refrescar
             </Button>
@@ -472,7 +472,7 @@ export const CompletarLegajoPage: React.FC = () => {
                   size="sm"
                   loading={generandoPreview}
                   onClick={() => void handleVistaPreviaPdf()}
-                  leftIcon={<Eye className="w-3.5 h-3.5 text-brand" />}
+                  leftIcon={<Eye className="w-4 h-4 text-brand" />}
                 >
                   Vista Previa PDF
                 </Button>
@@ -482,7 +482,7 @@ export const CompletarLegajoPage: React.FC = () => {
                     variant="secondary"
                     size="sm"
                     onClick={() => void handleDescargarPdf()}
-                    leftIcon={<Download className="w-3.5 h-3.5" />}
+                    leftIcon={<Download className="w-4 h-4" />}
                   >
                     Descargar
                   </Button>
@@ -492,24 +492,24 @@ export const CompletarLegajoPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-rule">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2.5 border-t border-rule">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <FileCheck2 className="w-5 h-5 text-brand shrink-0" />
-              <h1 className="text-lg sm:text-xl font-black text-ink">
+              <h1 className="text-xl sm:text-2xl font-black text-ink">
                 {nombreVisible} {apellidoVisible}
               </h1>
-              <span className={`${badge.cls} px-2.5 py-0.5 rounded-full text-[11px] font-bold`}>
+              <span className={`${badge.cls} px-3 py-0.5 rounded-full text-xs font-bold`}>
                 {badge.label}
               </span>
               {borradorLocal && (
-                <span className="s-badge-warn px-2.5 py-0.5 rounded-full text-[11px] font-bold inline-flex items-center gap-1">
-                  <WifiOff className="w-3 h-3 shrink-0" />
+                <span className="s-badge-warn px-3 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1">
+                  <WifiOff className="w-3.5 h-3.5 shrink-0" />
                   <span>Pendiente de sincronizar</span>
                 </span>
               )}
             </div>
-            <p className="text-xs text-ink-muted mt-0.5 s-tabular">
+            <p className="text-[13px] text-ink-muted mt-1 s-tabular">
               DNI {dniVisible}
               {plantillaSeleccionada && (
                 <>
@@ -525,14 +525,14 @@ export const CompletarLegajoPage: React.FC = () => {
 
       {/* Borrador local offline pendiente de sincronizar */}
       {borradorLocal && (
-        <div className="s-badge-warn rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-2.5 text-xs leading-relaxed">
+        <div className="s-badge-warn rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5 text-[13px] leading-relaxed">
             <WifiOff className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
               <strong className="block">Borrador local pendiente de sincronizar</strong>
               <span>
                 {isOnline
-                  ? 'Tenés cambios guardados en este dispositivo sin conexión. Sincronizalos para subirlos al servidor.'
+                  ? 'Tenés cambios guardados en este dispositivo sin conexión. Sincronizalos para enviarlos.'
                   : 'Guardado en este dispositivo sin señal. Apenas recuperes conexión vas a poder sincronizarlo.'}
               </span>
             </div>
@@ -545,7 +545,7 @@ export const CompletarLegajoPage: React.FC = () => {
                 size="sm"
                 loading={sincronizandoBorrador}
                 onClick={() => void handleSincronizarBorradorLocal()}
-                leftIcon={<UploadCloud className="w-3.5 h-3.5" />}
+                leftIcon={<UploadCloud className="w-4 h-4" />}
               >
                 Sincronizar ahora
               </Button>
@@ -556,7 +556,7 @@ export const CompletarLegajoPage: React.FC = () => {
               size="sm"
               disabled={sincronizandoBorrador}
               onClick={() => void handleDescartarBorradorLocal()}
-              leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+              leftIcon={<Trash2 className="w-4 h-4" />}
             >
               Descartar
             </Button>
@@ -566,8 +566,8 @@ export const CompletarLegajoPage: React.FC = () => {
 
       {/* Auto-copia de hermano */}
       {tieneSugeridosHermano && (
-        <div className="s-badge-info rounded-2xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-2.5 text-xs leading-relaxed">
+        <div className="s-badge-info rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start gap-2.5 text-[13px] leading-relaxed">
             <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
               <strong className="block">Datos familiares compartidos detectados</strong>
@@ -581,7 +581,7 @@ export const CompletarLegajoPage: React.FC = () => {
             variant="secondary"
             size="sm"
             onClick={handleCopiarHermano}
-            leftIcon={<Copy className="w-3.5 h-3.5" />}
+            leftIcon={<Copy className="w-4 h-4" />}
           >
             Copiar datos de hermano
           </Button>
@@ -591,12 +591,12 @@ export const CompletarLegajoPage: React.FC = () => {
       {cargando ? (
         <div className="s-card rounded-2xl p-12 flex flex-col items-center justify-center gap-3 text-ink-muted">
           <Loader2 className="w-6 h-6 animate-spin text-brand" />
-          <span className="text-xs font-semibold">Cargando plantilla oficial y precarga…</span>
+          <span className="text-sm font-semibold">Cargando plantilla oficial y precarga…</span>
         </div>
       ) : errorCarga ? (
         <div className="s-badge-err rounded-2xl p-6 text-center space-y-3">
           <AlertCircle className="w-8 h-8 mx-auto" />
-          <p className="text-sm font-bold">{errorCarga}</p>
+          <p className="text-base font-bold">{errorCarga}</p>
           <Button type="button" variant="secondary" size="sm" onClick={() => void cargarDatos()}>
             Reintentar
           </Button>
@@ -604,8 +604,8 @@ export const CompletarLegajoPage: React.FC = () => {
       ) : !plantillaSeleccionada ? (
         <div className="s-card rounded-2xl p-10 text-center space-y-2 text-ink-muted">
           <AlertCircle className="w-8 h-8 mx-auto opacity-50" />
-          <p className="text-sm font-bold text-ink">No hay plantillas oficiales activas.</p>
-          <p className="text-xs">
+          <p className="text-base font-bold text-ink">No hay plantillas oficiales activas.</p>
+          <p className="text-sm">
             Un administrador debe activar o crear la plantilla del ciclo actual en Legajos.
           </p>
         </div>

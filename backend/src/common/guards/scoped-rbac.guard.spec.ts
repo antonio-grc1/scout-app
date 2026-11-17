@@ -25,17 +25,17 @@ const user = (...asignaciones: AsignacionToken[]): AuthUser => ({
 
 describe('resolverAlcance', () => {
   it('null si ninguna asignación otorga el permiso', () => {
-    expect(resolverAlcance(user(asig(2, AlcanceRol.UNIDAD, ['miembros.ver'])), 'cuotas.cobrar')).toBeNull();
+    expect(resolverAlcance(user(asig(2, AlcanceRol.UNIDAD, ['padron.ver'])), 'cobranzas.editar')).toBeNull();
   });
 
   it('GLOBAL prevalece sobre UNIDAD', () => {
-    const u = user(asig(2, AlcanceRol.UNIDAD, ['miembros.ver']), asig(7, AlcanceRol.GLOBAL, ['miembros.ver']));
-    expect(resolverAlcance(u, 'miembros.ver')).toEqual({ tipo: 'GLOBAL' });
+    const u = user(asig(2, AlcanceRol.UNIDAD, ['padron.ver']), asig(7, AlcanceRol.GLOBAL, ['padron.ver']));
+    expect(resolverAlcance(u, 'padron.ver')).toEqual({ tipo: 'GLOBAL' });
   });
 
   it('GLOBAL sin el permiso no habilita (Educador Sin Rama acotado)', () => {
-    const u = user(asig(7, AlcanceRol.GLOBAL, ['miembros.ver']), asig(2, AlcanceRol.UNIDAD, ['cuotas.cobrar']));
-    expect(resolverAlcance(u, 'cuotas.cobrar')).toEqual({
+    const u = user(asig(7, AlcanceRol.GLOBAL, ['padron.ver']), asig(2, AlcanceRol.UNIDAD, ['cobranzas.editar']));
+    expect(resolverAlcance(u, 'cobranzas.editar')).toEqual({
       tipo: 'UNIDAD',
       unidadIds: [2],
       usuarioIdPropio: 104,
@@ -44,11 +44,11 @@ describe('resolverAlcance', () => {
 
   it('UNIDAD junta las unidades sin duplicar', () => {
     const u = user(
-      asig(2, AlcanceRol.UNIDAD, ['miembros.ver']),
-      asig(3, AlcanceRol.UNIDAD, ['miembros.ver']),
-      asig(2, AlcanceRol.UNIDAD, ['miembros.ver']),
+      asig(2, AlcanceRol.UNIDAD, ['padron.ver']),
+      asig(3, AlcanceRol.UNIDAD, ['padron.ver']),
+      asig(2, AlcanceRol.UNIDAD, ['padron.ver']),
     );
-    expect(resolverAlcance(u, 'miembros.ver')).toEqual({
+    expect(resolverAlcance(u, 'padron.ver')).toEqual({
       tipo: 'UNIDAD',
       unidadIds: [2, 3],
       usuarioIdPropio: 104,
@@ -64,6 +64,14 @@ describe('resolverAlcance', () => {
     expect(resolverAlcance(user(asig(5, AlcanceRol.PROPIO, ['legajos.ver'])), 'legajos.ver')).toEqual({
       tipo: 'PROPIO',
       usuarioId: 104,
+    });
+  });
+
+  it('implica <panel>.ver cuando la asignación posee <panel>.editar', () => {
+    expect(resolverAlcance(user(asig(2, AlcanceRol.UNIDAD, ['padron.editar'])), 'padron.ver')).toEqual({
+      tipo: 'UNIDAD',
+      unidadIds: [2],
+      usuarioIdPropio: 104,
     });
   });
 });
@@ -99,33 +107,33 @@ describe('ScopedRbacGuard', () => {
   });
 
   it('rechaza sin el permiso', () => {
-    const req = { user: user(asig(2, AlcanceRol.UNIDAD, ['miembros.ver'])) };
-    expect(() => guard.canActivate(ctxCon(req, 'pases.ejecutar'))).toThrow(ForbiddenException);
+    const req = { user: user(asig(2, AlcanceRol.UNIDAD, ['padron.ver'])) };
+    expect(() => guard.canActivate(ctxCon(req, 'pases.editar'))).toThrow(ForbiddenException);
   });
 
   it('carga req.alcance cuando tiene el permiso', () => {
-    const req: Partial<AuthenticatedRequest> = { user: user(asig(2, AlcanceRol.UNIDAD, ['miembros.ver'])) };
-    expect(guard.canActivate(ctxCon(req, 'miembros.ver'))).toBe(true);
+    const req: Partial<AuthenticatedRequest> = { user: user(asig(2, AlcanceRol.UNIDAD, ['padron.ver'])) };
+    expect(guard.canActivate(ctxCon(req, 'padron.ver'))).toBe(true);
     expect(req.alcance).toEqual({ tipo: 'UNIDAD', unidadIds: [2], usuarioIdPropio: 104 });
   });
 
   it('permite acceso si tiene al menos uno de los permisos requeridos (alternativos)', () => {
-    const req: Partial<AuthenticatedRequest> = { user: user(asig(3, AlcanceRol.UNIDAD, ['miembros.baja'])) };
-    expect(guard.canActivate(ctxCon(req, ['miembros.editar', 'miembros.editar_identidad', 'miembros.baja']))).toBe(true);
+    const req: Partial<AuthenticatedRequest> = { user: user(asig(3, AlcanceRol.UNIDAD, ['cobranzas.editar'])) };
+    expect(guard.canActivate(ctxCon(req, ['padron.editar', 'cobranzas.editar']))).toBe(true);
     expect(req.alcance).toEqual({ tipo: 'UNIDAD', unidadIds: [3], usuarioIdPropio: 104 });
   });
 
   it('rechaza si no tiene ninguno de los permisos alternativos', () => {
-    const req = { user: user(asig(3, AlcanceRol.UNIDAD, ['miembros.ver'])) };
+    const req = { user: user(asig(3, AlcanceRol.UNIDAD, ['padron.ver'])) };
     expect(() =>
-      guard.canActivate(ctxCon(req, ['miembros.editar', 'miembros.editar_identidad', 'miembros.baja'])),
+      guard.canActivate(ctxCon(req, ['padron.editar', 'cobranzas.editar'])),
     ).toThrow(ForbiddenException);
   });
 
   it('P1-1: resolverAlcance no habilita PROPIO en arrays alternativos ni sin asignaciones activas', () => {
     expect(resolverAlcance(user(), 'legajos.ver')).toBeNull();
     expect(
-      resolverAlcance(user(asig(1, AlcanceRol.UNIDAD, ['eventos.vender'])), ['cuotas.ver', 'tesoreria.gestionar']),
+      resolverAlcance(user(asig(1, AlcanceRol.UNIDAD, ['eventos.editar'])), ['cobranzas.ver', 'caja.editar']),
     ).toBeNull();
   });
 });
@@ -177,7 +185,7 @@ describe('JwtAuthGuard (P2)', () => {
             tipoMiembro: 'EDUCADOR',
             requiereRama: true,
             alcancePorDefecto: AlcanceRol.UNIDAD,
-            permisos: [{ permiso: { clave: 'miembros.ver' } }],
+            permisos: [{ permiso: { clave: 'padron.ver' } }],
           },
         },
       ],
@@ -198,7 +206,7 @@ describe('JwtAuthGuard (P2)', () => {
     const arg = findUnique.mock.calls[0][0];
     expect(arg.select).toBeDefined();
     expect(arg.include).toBeUndefined();
-    expect(req.user.asignaciones[0].permisos).toEqual(['miembros.ver']);
+    expect(req.user.asignaciones[0].permisos).toEqual(['padron.ver']);
   });
 
   it('P1-6: rechaza tokens con tokenVersion desactualizado o ausente frente a usuarioDb.tokenVersion', async () => {

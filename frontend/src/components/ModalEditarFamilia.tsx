@@ -26,7 +26,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
   embedded = false,
 }) => {
   const { tienePermiso } = useAuthStore();
-  const puedeDisolverGrupo = tienePermiso('tesoreria.gestionar');
+  const puedeDisolverGrupo = tienePermiso('cobranzas.editar') || tienePermiso('caja.editar');
   const [nombreFamilia, setNombreFamilia] = useState('');
   const [porcentajeDescuento, setPorcentajeDescuento] = useState<number>(0);
   const [miembrosLocal, setMiembrosLocal] = useState<any[]>([]);
@@ -131,10 +131,10 @@ export const ModalEditarFamilia: React.FC<Props> = ({
             <Users className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-ink text-base">
+            <h3 className="font-extrabold text-ink text-lg">
               Grupo Familiar y Descuento por Hermanos
             </h3>
-            <p className="text-[11px] text-ink-muted">
+            <p className="text-[13px] text-ink-muted">
               Al guardar, se recalculan automáticamente las cuotas pendientes de los hermanos
             </p>
           </div>
@@ -151,9 +151,9 @@ export const ModalEditarFamilia: React.FC<Props> = ({
       </div>
 
       {/* Formulario */}
-      <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+      <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
         {error && (
-          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300 text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300 text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -161,7 +161,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
 
         {/* Nombre de la Familia */}
         <div>
-          <label className="block text-xs font-semibold text-ink-2 mb-1.5">
+          <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
             Nombre del Grupo Familiar *
           </label>
           <input
@@ -170,25 +170,25 @@ export const ModalEditarFamilia: React.FC<Props> = ({
             value={nombreFamilia}
             onChange={(e) => setNombreFamilia(e.target.value)}
             placeholder="Ej: Familia Gómez, Hermanos Pérez"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none text-xs"
+            className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none text-base sm:text-[15px]"
           />
         </div>
 
         {/* Configuración de Porcentaje de Descuento */}
         <div className="p-4 rounded-2xl bg-brand/10 border border-brand/30 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Percent className="w-4 h-4 text-brand" />
-              <span className="text-xs font-bold text-ink">
+              <span className="text-sm font-bold text-ink">
                 Porcentaje de Descuento por Hermanos
               </span>
             </div>
-            <span className="text-lg font-black text-brand">
+            <span className="text-xl font-black text-brand">
               {porcentajeDescuento}%
             </span>
           </div>
 
-          <p className="text-[11px] text-ink-muted leading-relaxed">
+          <p className="text-xs text-ink-muted leading-relaxed">
             Este porcentaje se aplica a todas las cuotas pendientes y futuras de los integrantes de la familia.
           </p>
 
@@ -208,14 +208,14 @@ export const ModalEditarFamilia: React.FC<Props> = ({
               max="100"
               value={porcentajeDescuento}
               onChange={(e) => setPorcentajeDescuento(Math.min(100, Math.max(0, Number(e.target.value))))}
-              className="w-16 px-2.5 py-1 text-center font-bold text-xs rounded-lg border border-brand/40 bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="w-20 min-h-[40px] px-2.5 py-1.5 text-center font-bold text-sm rounded-lg border border-brand/40 bg-surface text-ink focus:border-brand focus:ring-2 focus:ring-brand/20"
             />
-            <span className="font-bold text-xs text-ink-muted">%</span>
+            <span className="font-bold text-sm text-ink-muted">%</span>
           </div>
 
           {/* Accesos rápidos a porcentajes comunes */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <span className="text-[10px] text-ink-muted font-semibold mr-1">
+            <span className="text-xs text-ink-muted font-semibold mr-1">
               Rápido:
             </span>
             {[0, 10, 15, 20, 25, 50].map((val) => (
@@ -223,7 +223,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
                 key={val}
                 type="button"
                 onClick={() => aplicarPredefinido(val)}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition cursor-pointer border ${
+                className={`min-h-[32px] px-2.5 py-1 rounded-md text-xs font-bold transition cursor-pointer border ${
                   porcentajeDescuento === val
                     ? 'bg-brand text-brand-contrast border-brand font-extrabold'
                     : 'bg-surface text-ink-2 border-rule hover:border-brand'
@@ -237,23 +237,23 @@ export const ModalEditarFamilia: React.FC<Props> = ({
 
         {/* Miembros / Hermanos integrantes de esta familia */}
         {miembrosLocal.length > 0 && (
-          <div className="space-y-2 pt-2 border-t border-rule">
-            <span className="text-xs font-bold text-ink-2 block">
+          <div className="space-y-2.5 pt-2.5 border-t border-rule">
+            <span className="text-[13px] font-bold text-ink-2 block">
               Integrantes vinculados ({miembrosLocal.length}):
             </span>
-            <div className="space-y-1.5 max-h-40 overflow-y-auto">
+            <div className="space-y-2 max-h-44 overflow-y-auto">
               {miembrosLocal.map((m: any) => {
                 const unidadNombre = obtenerRolPrincipal(m)?.unidad?.nombre || 'Sin sección';
                 return (
                   <div
                     key={m.id}
-                    className="p-2.5 rounded-xl bg-paper-2 border border-rule flex items-center justify-between gap-2 text-xs"
+                    className="p-3 rounded-xl bg-paper-2 border border-rule flex items-center justify-between gap-2.5 text-[13px]"
                   >
                     <div className="min-w-0">
                       <span className="font-bold text-ink block truncate">
                         {m.nombre} {m.apellido}
                       </span>
-                      <span className="text-ink-muted dark:text-ink-muted text-[10px]">
+                      <span className="text-ink-muted dark:text-ink-muted text-xs">
                         DNI {m.dni} • {unidadNombre}
                       </span>
                     </div>
@@ -262,7 +262,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
                       disabled={desvinculandoId === m.id}
                       onClick={() => handleDesvincularMiembro(m.id)}
                       title="Desvincular de la familia"
-                      className="px-2.5 py-1 rounded-lg bg-surface border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[11px] font-bold flex items-center gap-1 cursor-pointer shrink-0 disabled:opacity-50"
+                      className="min-h-[36px] px-3 py-1 rounded-lg bg-surface border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
                     >
                       <UserMinus className="w-3.5 h-3.5" />
                       <span>{desvinculandoId === m.id ? 'Quitando...' : 'Desvincular'}</span>
@@ -275,33 +275,33 @@ export const ModalEditarFamilia: React.FC<Props> = ({
         )}
 
         {/* Botones de acción */}
-        <div className="flex flex-wrap justify-between items-center gap-2 pt-4 border-t border-rule">
+        <div className="flex flex-wrap justify-between items-center gap-2.5 pt-4 border-t border-rule">
           {puedeDisolverGrupo ? (
             <button
               type="button"
               disabled={eliminandoGrupo}
               onClick={handleDisolverGrupo}
-              className="px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              className="min-h-[42px] px-3.5 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-[13px] flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-4 h-4" />
               <span>{eliminandoGrupo ? 'Disolviendo...' : 'Disolver grupo'}</span>
             </button>
           ) : (
             <span />
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onCerrar}
-              className="px-4 py-2 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-xs transition cursor-pointer"
+              className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 hover:bg-paper-2 font-semibold text-sm transition cursor-pointer"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={guardando}
-              className="px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
               <span>{guardando ? 'Guardando...' : 'Guardar Descuento'}</span>

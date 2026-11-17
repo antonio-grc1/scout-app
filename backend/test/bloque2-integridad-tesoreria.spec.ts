@@ -19,8 +19,8 @@ describe('BLOQUE 2 - Integridad Transaccional, Saldos, Stock, Fechas y Rendimien
     dni: '12345678',
     email: 'admin@scout.org',
     roles: ['ADMINISTRADOR'],
-    permisos: ['tesoreria.gestionar', 'cuotas.cobrar', 'cuotas.ver', 'eventos.gestionar', 'eventos.vender'],
-    asignaciones: [{ unidadId: null, rolNombre: 'ADMINISTRADOR', permisos: ['tesoreria.gestionar', 'cuotas.cobrar', 'cuotas.ver', 'eventos.gestionar', 'eventos.vender'] }],
+    permisos: ['caja.editar', 'cobranzas.editar', 'cobranzas.ver', 'eventos.editar', 'eventos.ver'],
+    asignaciones: [{ unidadId: null, rolNombre: 'ADMINISTRADOR', permisos: ['caja.editar', 'cobranzas.editar', 'cobranzas.ver', 'eventos.editar', 'eventos.ver'] }],
   };
 
   describe('ITEM-08: Preservación de cargos históricos PAGADO al sincronizar conceptos', () => {

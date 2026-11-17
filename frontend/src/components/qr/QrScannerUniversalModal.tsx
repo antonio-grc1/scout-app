@@ -571,7 +571,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           </>
         ) : (
           <div className="w-full flex items-center justify-between gap-2 flex-wrap">
-            <label className="inline-flex items-center gap-2 text-xs font-bold text-ink-2 cursor-pointer select-none min-h-[38px]">
+            <label className="inline-flex items-center gap-2 text-[13px] font-bold text-ink-2 cursor-pointer select-none min-h-[40px]">
               <input
                 type="checkbox"
                 checked={continuo}
@@ -583,11 +583,11 @@ export const QrScannerUniversalModal: React.FC = () => {
                 }}
                 className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer"
               />
-              <Repeat className="w-3.5 h-3.5 text-brand shrink-0" />
+              <Repeat className="w-4 h-4 text-brand shrink-0" />
               <span>Modo Puerta Continuo</span>
             </label>
 
-            <Button type="button" variant="secondary" size="sm" onClick={cerrarQr}>
+            <Button type="button" variant="secondary" size="md" onClick={cerrarQr}>
               Cerrar
             </Button>
           </div>
@@ -602,7 +602,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           {iniciandoCamara && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white gap-2">
               <Loader2 className="w-6 h-6 animate-spin text-brand" />
-              <span className="text-xs font-bold">Encendiendo cámara…</span>
+              <span className="text-[13px] font-bold">Encendiendo cámara…</span>
             </div>
           )}
 
@@ -616,8 +616,8 @@ export const QrScannerUniversalModal: React.FC = () => {
         </div>
 
         {continuo && (
-          <div className="flex items-center justify-center gap-1.5 text-[11px] font-bold text-ink-muted">
-            <Volume2 className="w-3.5 h-3.5 text-brand" />
+          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-ink-muted">
+            <Volume2 className="w-4 h-4 text-brand" />
             <span>Lectura continua activa · Pausa 2,5 s entre lecturas</span>
           </div>
         )}
@@ -629,36 +629,36 @@ export const QrScannerUniversalModal: React.FC = () => {
             type="button"
             disabled={guardandoCobro}
             onClick={() => setSubVistaCobro(null)}
-            className="s-btn-sec px-3 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+            className="s-btn-sec min-h-[38px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-4 h-4" />
             <span>Volver al vale escaneado</span>
           </button>
 
-          <div className="s-badge-warn rounded-2xl p-3.5 space-y-2">
+          <div className="s-badge-warn rounded-2xl p-4 space-y-2">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="text-[11px] font-bold uppercase tracking-wider">
+                <div className="text-xs font-bold uppercase tracking-wider">
                   Total Pendiente de Cobro
                 </div>
-                <div className="text-2xl font-extrabold s-tabular">
+                <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular">
                   {formatearMoneda(subVistaCobro.monto)}
                 </div>
               </div>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface border border-rule text-ink">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-surface border border-rule text-ink">
                 <Clock className="w-3.5 h-3.5" />
                 <span>Pendiente</span>
               </span>
             </div>
 
-            <div className="pt-2 border-t border-rule/40 space-y-1 text-xs">
+            <div className="pt-2 border-t border-rule/40 space-y-1 text-[13px]">
               <div className="flex items-center gap-1.5 font-semibold">
-                <User className="w-3.5 h-3.5 shrink-0" />
+                <User className="w-4 h-4 shrink-0" />
                 <span>Comprador: {subVistaCobro.comprador}</span>
               </div>
               {subVistaCobro.producto && (
                 <div className="flex items-center gap-1.5">
-                  <ShoppingBag className="w-3.5 h-3.5 shrink-0" />
+                  <ShoppingBag className="w-4 h-4 shrink-0" />
                   <span>
                     Entrega:{' '}
                     <strong>
@@ -669,7 +669,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                 </div>
               )}
               {subVistaCobro.evento && (
-                <div className="text-[11px] opacity-85">
+                <div className="text-xs opacity-85">
                   {subVistaCobro.evento}
                   {subVistaCobro.vendedor ? ` · Vendido por: ${subVistaCobro.vendedor}` : ''}
                 </div>
@@ -679,10 +679,10 @@ export const QrScannerUniversalModal: React.FC = () => {
 
           <form id="qr-cobro-puerta-form" onSubmit={handleConfirmarCobroPuerta} className="space-y-3.5">
             <div>
-              <div className="text-xs font-extrabold text-ink mb-2">
+              <div className="text-[13px] font-extrabold text-ink mb-2">
                 ¿El comprador abona el pedido en este momento?
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2.5">
                 <button
                   type="button"
                   onClick={() => setEstaAbonado(true)}
@@ -690,11 +690,11 @@ export const QrScannerUniversalModal: React.FC = () => {
                     estaAbonado ? 's-badge-ok' : 's-panel text-ink-muted'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1 text-xs font-extrabold">
+                  <div className="flex items-center justify-between gap-1 text-[13px] font-extrabold">
                     <span>Sí, abona ahora</span>
                     <CheckCircle2 className="w-4 h-4 shrink-0" />
                   </div>
-                  <div className="text-[11px] opacity-85">Registrar ingreso y marcar pagado</div>
+                  <div className="text-xs opacity-85">Registrar ingreso y marcar pagado</div>
                 </button>
 
                 <button
@@ -704,32 +704,32 @@ export const QrScannerUniversalModal: React.FC = () => {
                     !estaAbonado ? 's-badge-warn' : 's-panel text-ink-muted'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1 text-xs font-extrabold">
+                  <div className="flex items-center justify-between gap-1 text-[13px] font-extrabold">
                     <span>No abonado</span>
                     <Clock className="w-4 h-4 shrink-0" />
                   </div>
-                  <div className="text-[11px] opacity-85">Dejar pendiente para luego</div>
+                  <div className="text-xs opacity-85">Dejar pendiente para luego</div>
                 </button>
               </div>
             </div>
 
             {estaAbonado ? (
-              <div className="s-panel rounded-2xl p-3.5 space-y-3">
+              <div className="s-panel rounded-2xl p-4 space-y-3">
                 <div>
-                  <div className="text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-brand" />
+                  <div className="text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-brand" />
                     <span>Método de pago</span>
                   </div>
                   <div className="grid grid-cols-3 gap-1.5">
                     {(
                       [
-                        { id: 'EFECTIVO', label: 'Efectivo', icon: <Banknote className="w-3.5 h-3.5" /> },
+                        { id: 'EFECTIVO', label: 'Efectivo', icon: <Banknote className="w-4 h-4" /> },
                         {
                           id: 'TRANSFERENCIA',
                           label: 'Transfer.',
-                          icon: <Landmark className="w-3.5 h-3.5" />,
+                          icon: <Landmark className="w-4 h-4" />,
                         },
-                        { id: 'OTRO', label: 'Otro', icon: <CreditCard className="w-3.5 h-3.5" /> },
+                        { id: 'OTRO', label: 'Otro', icon: <CreditCard className="w-4 h-4" /> },
                       ] as const
                     ).map((m) => (
                       <button
@@ -739,7 +739,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                           setMetodoPago(m.id);
                           seleccionarCuentaPorMetodo(cuentas, m.id);
                         }}
-                        className={`min-h-[40px] px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                        className={`min-h-[42px] px-2.5 rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
                           metodoPago === m.id ? 's-btn-brand' : 's-btn-sec'
                         }`}
                       >
@@ -752,12 +752,12 @@ export const QrScannerUniversalModal: React.FC = () => {
 
                 {caps.esGlobal && (
                   <div>
-                    <label htmlFor="qr-cuenta-destino" className="block text-xs font-bold text-ink mb-1">
+                    <label htmlFor="qr-cuenta-destino" className="block text-[13px] font-bold text-ink mb-1.5">
                       Cuenta de destino
                     </label>
                     {cargandoCuentas ? (
-                      <div className="text-xs text-ink-muted flex items-center gap-1.5 py-1">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <div className="text-[13px] text-ink-muted flex items-center gap-1.5 py-1">
+                        <Loader2 className="w-4 h-4 animate-spin" />
                         <span>Cargando cuentas…</span>
                       </div>
                     ) : cuentas.length > 0 ? (
@@ -765,7 +765,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                         id="qr-cuenta-destino"
                         value={cuentaId}
                         onChange={(e) => setCuentaId(e.target.value)}
-                        className="s-input w-full px-3 py-2 rounded-xl text-xs"
+                        className="s-input w-full min-h-[44px] px-3 py-2 rounded-xl text-sm"
                         required
                       >
                         {cuentas.map((c) => (
@@ -775,7 +775,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                         ))}
                       </select>
                     ) : (
-                      <p className="text-[11px] text-ink-muted">
+                      <p className="text-xs text-ink-muted">
                         Sin cuentas activas: se asentará sin cuenta asociada.
                       </p>
                     )}
@@ -783,7 +783,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                 )}
 
                 <div>
-                  <label htmlFor="qr-cobro-obs" className="block text-xs font-bold text-ink mb-1">
+                  <label htmlFor="qr-cobro-obs" className="block text-[13px] font-bold text-ink mb-1.5">
                     Nota o comprobante (opcional)
                   </label>
                   <input
@@ -793,19 +793,19 @@ export const QrScannerUniversalModal: React.FC = () => {
                     onChange={(e) => setObservaciones(e.target.value)}
                     placeholder="Ej: Cobrado en puerta"
                     maxLength={200}
-                    className="s-input w-full px-3 py-2 rounded-xl text-xs"
+                    className="s-input w-full min-h-[44px] px-3 py-2 rounded-xl text-base sm:text-[15px]"
                   />
                 </div>
               </div>
             ) : (
-              <div className="s-panel rounded-2xl p-3.5 text-xs text-ink-muted leading-relaxed">
+              <div className="s-panel rounded-2xl p-3.5 text-[13px] text-ink-muted leading-relaxed">
                 El vale ya quedó marcado como retirado, pero el importe de{' '}
                 <strong className="text-ink">{formatearMoneda(subVistaCobro.monto)}</strong> seguirá pendiente de cobro.
               </div>
             )}
 
             {errorCobro && (
-              <div className="s-badge-err rounded-xl p-3 text-xs font-bold flex items-center gap-2">
+              <div className="s-badge-err rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{errorCobro}</span>
               </div>
@@ -819,9 +819,9 @@ export const QrScannerUniversalModal: React.FC = () => {
             <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl s-panel">
               {(
                 [
-                  { id: 'auto', label: 'Auto-detectar', icon: <QrCode className="w-3.5 h-3.5" /> },
-                  { id: 'legajo', label: 'Legajo', icon: <FileText className="w-3.5 h-3.5" /> },
-                  { id: 'evento', label: 'Evento', icon: <Ticket className="w-3.5 h-3.5" /> },
+                  { id: 'auto', label: 'Auto-detectar', icon: <QrCode className="w-4 h-4" /> },
+                  { id: 'legajo', label: 'Legajo', icon: <FileText className="w-4 h-4" /> },
+                  { id: 'evento', label: 'Evento', icon: <Ticket className="w-4 h-4" /> },
                 ] as const
               ).map((item) => (
                 <button
@@ -831,7 +831,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                     setScope(item.id);
                     setError(null);
                   }}
-                  className={`min-h-[38px] px-2 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer ${
+                  className={`min-h-[40px] px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
                     scope === item.id ? 's-btn-brand' : 'text-ink-2 hover:text-ink'
                   }`}
                 >
@@ -851,7 +851,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                   setModo('camara');
                   setError(null);
                 }}
-                className={`min-h-[40px] rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`min-h-[42px] rounded-lg text-[13px] font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
                   modo === 'camara' ? 's-btn-brand' : 'text-ink-2 hover:text-ink'
                 }`}
               >
@@ -864,7 +864,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                   setModo('manual');
                   setError(null);
                 }}
-                className={`min-h-[40px] rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`min-h-[42px] rounded-lg text-[13px] font-bold flex items-center justify-center gap-1.5 cursor-pointer ${
                   modo === 'manual' ? 's-btn-brand' : 'text-ink-2 hover:text-ink'
                 }`}
               >
@@ -875,7 +875,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           ) : null}
 
           {errorCamara && modo === 'manual' && (
-            <div className="s-badge-warn rounded-xl p-3 text-xs flex items-center gap-2">
+            <div className="s-badge-warn rounded-xl p-3 text-[13px] flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{errorCamara}</span>
             </div>
@@ -888,9 +888,9 @@ export const QrScannerUniversalModal: React.FC = () => {
                 e.preventDefault();
                 void procesarCodigo(codigoManual);
               }}
-              className="s-panel rounded-2xl p-3.5 space-y-3"
+              className="s-panel rounded-2xl p-4 space-y-3"
             >
-              <label htmlFor="qr-codigo-manual" className="block text-xs font-bold text-ink">
+              <label htmlFor="qr-codigo-manual" className="block text-[13px] font-bold text-ink">
                 {scope === 'legajo'
                   ? 'DNI o hash al pie de la ficha impresa'
                   : scope === 'evento'
@@ -908,7 +908,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                     : 'Ej: 45123456 o código al pie…'
                 }
                 autoFocus
-                className="s-input w-full min-h-[44px] px-3 py-2 rounded-xl text-sm font-mono"
+                className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px] font-mono"
               />
               <Button
                 type="submit"
@@ -924,7 +924,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           )}
 
           {cargando && modo === 'camara' && (
-            <div className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-brand">
+            <div className="flex items-center justify-center gap-2 py-2 text-[13px] font-bold text-brand">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Consultando código…</span>
             </div>
@@ -939,10 +939,10 @@ export const QrScannerUniversalModal: React.FC = () => {
                     <User className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <h4 className="font-extrabold text-ink text-sm truncate">
+                    <h4 className="font-extrabold text-ink text-[15px] truncate">
                       {resultadoLegajo.usuario?.apellido}, {resultadoLegajo.usuario?.nombre}
                     </h4>
-                    <p className="text-xs text-ink-muted truncate">
+                    <p className="text-[13px] text-ink-muted truncate">
                       DNI {resultadoLegajo.usuario?.dni} ·{' '}
                       {obtenerRolPrincipal(resultadoLegajo.usuario)?.unidad?.nombre || 'Sin Sección'}
                     </p>
@@ -950,7 +950,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                 </div>
                 {cfgEstadoLegajo && (
                   <span
-                    className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-bold border ${cfgEstadoLegajo.badgeClass}`}
+                    className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-bold border ${cfgEstadoLegajo.badgeClass}`}
                   >
                     {cfgEstadoLegajo.shortLabel}
                   </span>
@@ -958,14 +958,14 @@ export const QrScannerUniversalModal: React.FC = () => {
               </div>
 
               {resultadoLegajo.estado === 'VALIDADO_FISICAMENTE' && (
-                <div className="s-badge-ok rounded-xl p-3 text-xs font-bold flex items-center gap-2">
+                <div className="s-badge-ok rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 shrink-0" />
                   <span>Esta ficha figura recibida y validada físicamente.</span>
                 </div>
               )}
 
               {resultadoLegajo.estado === 'DESACTUALIZADO_REQUIERE_REIMPRESION' && (
-                <div className="s-badge-err rounded-xl p-3 text-xs font-bold flex items-center gap-2">
+                <div className="s-badge-err rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span>Se editaron datos después de imprimir. Pedir la copia nueva.</span>
                 </div>
@@ -1022,12 +1022,12 @@ export const QrScannerUniversalModal: React.FC = () => {
                   <XCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 )}
                 <div className="min-w-0 flex-1 space-y-2">
-                  <h4 className="text-sm font-extrabold">{resultadoEvento.mensaje}</h4>
+                  <h4 className="text-[15px] font-extrabold">{resultadoEvento.mensaje}</h4>
 
                   {resultadoEvento.ok &&
                     (resultadoEvento.alertaPagoPendiente ||
                       resultadoEvento.ticket?.pedidoEstado === 'PENDIENTE') && (
-                      <div className="s-badge-warn rounded-xl p-2.5 text-xs font-bold flex items-center justify-between gap-2 flex-wrap">
+                      <div className="s-badge-warn rounded-xl p-3 text-[13px] font-bold flex items-center justify-between gap-2 flex-wrap">
                         <span>
                           Pago PENDIENTE (
                           {formatearMoneda(
@@ -1065,22 +1065,22 @@ export const QrScannerUniversalModal: React.FC = () => {
                     )}
 
                   {resultadoEvento.ticket && (
-                    <div className="pt-2 border-t border-rule/40 space-y-1 text-xs text-ink">
+                    <div className="pt-2 border-t border-rule/40 space-y-1 text-[13px] text-ink">
                       <div className="flex items-center gap-1.5 font-extrabold">
-                        <ShoppingBag className="w-3.5 h-3.5 text-brand shrink-0" />
+                        <ShoppingBag className="w-4 h-4 text-brand shrink-0" />
                         <span>
                           {resultadoEvento.ticket.cantidad}x {resultadoEvento.ticket.producto}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-ink-2">
-                        <User className="w-3.5 h-3.5 shrink-0" />
+                        <User className="w-4 h-4 shrink-0" />
                         <span>
                           Comprador: <strong>{resultadoEvento.ticket.comprador}</strong>
                         </span>
                       </div>
                       {resultadoEvento.ticket.vendedor && (
                         <div className="flex items-center gap-1.5 text-ink-2">
-                          <ShieldCheck className="w-3.5 h-3.5 text-brand shrink-0" />
+                          <ShieldCheck className="w-4 h-4 text-brand shrink-0" />
                           <span>
                             Vendido por: <strong>{resultadoEvento.ticket.vendedor}</strong>
                           </span>
@@ -1095,9 +1095,9 @@ export const QrScannerUniversalModal: React.FC = () => {
                 <Button
                   type="button"
                   variant="secondary"
-                  size="sm"
+                  size="md"
                   onClick={handleReintentar}
-                  leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
+                  leftIcon={<RotateCcw className="w-4 h-4" />}
                   className="w-full"
                 >
                   Escanear otro código
@@ -1107,14 +1107,14 @@ export const QrScannerUniversalModal: React.FC = () => {
           )}
 
           {exito && (
-            <div className="s-badge-ok rounded-xl p-3 text-xs font-bold flex items-center gap-2">
+            <div className="s-badge-ok rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{exito}</span>
             </div>
           )}
 
           {error && (
-            <div className="s-badge-err rounded-xl p-3 text-xs font-bold flex items-center gap-2">
+            <div className="s-badge-err rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>

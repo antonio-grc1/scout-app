@@ -34,7 +34,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
 
   const alcanceGlobal: AlcanceAcceso = { tipo: 'GLOBAL' };
 
-  it('rechaza modificación de identidad (nombre, dni, fecha) si no tiene miembros.editar_identidad', async () => {
+  it('rechaza modificación de datos si solo tiene padron.ver (sin padron.editar)', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValue(usuarioObjetivo);
 
@@ -43,14 +43,14 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
       sub: 99,
       dni: '99999999',
       nombre: 'Educador',
-      apellido: 'Sin Identidad',
+      apellido: 'Solo Lectura',
       asignaciones: [
         {
           unidadId: 1,
           unidadNombre: 'Scout',
           rol: 'Educador',
           alcance: 'GLOBAL',
-          permisos: ['miembros.ver', 'miembros.editar'], // carece de miembros.editar_identidad
+          permisos: ['padron.ver'], // carece de padron.editar
         },
       ],
     };
@@ -62,7 +62,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     ).rejects.toThrow(/No tiene permiso para modificar: nombre/);
   });
 
-  it('permite modificar identidad si el actor tiene miembros.editar_identidad', async () => {
+  it('permite modificar identidad si el actor tiene padron.editar', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
     prisma.usuario.update.mockResolvedValueOnce({ ...usuarioObjetivo, nombre: 'Juan Carlos' });
@@ -79,7 +79,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadNombre: 'Jefatura',
           rol: 'Jefe',
           alcance: 'GLOBAL',
-          permisos: ['miembros.ver', 'miembros.editar', 'miembros.editar_identidad'],
+          permisos: ['padron.ver', 'padron.editar'],
         },
       ],
     };
@@ -92,7 +92,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     expect(res.nombre).toBe('Juan Carlos');
   });
 
-  it('permite a un usuario con permiso miembros.editar_identidad cambiar el nombre de un miembro de su unidad sin error 403', async () => {
+  it('permite a un usuario con permiso padron.editar cambiar el nombre de un miembro de su unidad sin error 403', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
     prisma.usuario.update.mockResolvedValueOnce({ ...usuarioObjetivo, nombre: 'Juan Modificado' });
@@ -109,7 +109,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadNombre: 'Manada',
           rol: 'Dirigente',
           alcance: 'UNIDAD',
-          permisos: ['miembros.ver', 'miembros.editar', 'miembros.editar_identidad'],
+          permisos: ['padron.ver', 'padron.editar'],
         },
       ],
     };
@@ -128,7 +128,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     expect(res.nombre).toBe('Juan Modificado');
   });
 
-  it('no exige miembros.editar_identidad si el DNI o nombre enviado es idéntico al actual', async () => {
+  it('no exige permiso de edición sobre un campo si el valor enviado es idéntico al actual', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
     prisma.usuario.update.mockResolvedValueOnce({ ...usuarioObjetivo, telefonoContacto: '99887766' });
@@ -145,7 +145,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadNombre: 'Scout',
           rol: 'Educador',
           alcance: 'GLOBAL',
-          permisos: ['miembros.ver', 'miembros.editar'], // no tiene miembros.editar_identidad
+          permisos: ['padron.ver', 'padron.editar'],
         },
       ],
     };
@@ -160,7 +160,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     expect(res.telefonoContacto).toBe('99887766');
   });
 
-  it('rechaza cambio de activo (baja) si no tiene miembros.baja', async () => {
+  it('rechaza cambio de activo (baja) si no tiene padron.editar', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValue(usuarioObjetivo);
 
@@ -176,7 +176,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadNombre: 'Scout',
           rol: 'Educador',
           alcance: 'GLOBAL',
-          permisos: ['miembros.ver', 'miembros.editar'], // carece de miembros.baja
+          permisos: ['padron.ver'], // carece de padron.editar
         },
       ],
     };
@@ -188,7 +188,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     ).rejects.toThrow(/No tiene permiso para modificar: activo/);
   });
 
-  it('permite cambio de estado activo (baja o reactivación) con miembros.baja', async () => {
+  it('permite cambio de estado activo (baja o reactivación) con padron.editar', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
     prisma.usuario.update.mockResolvedValueOnce({ ...usuarioObjetivo, activo: false });
@@ -205,7 +205,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadNombre: 'Jefatura',
           rol: 'Secretario',
           alcance: 'GLOBAL',
-          permisos: ['miembros.ver', 'miembros.baja'],
+          permisos: ['padron.ver', 'padron.editar'],
         },
       ],
     };
@@ -232,7 +232,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           alcanceOverride: null,
           rol: {
             alcancePorDefecto: 'GLOBAL',
-            permisos: [{ permiso: { clave: 'organizacion.gestionar' } }],
+            permisos: [{ permiso: { clave: 'organizacion.editar' } }],
           },
         },
       ],
@@ -254,7 +254,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadNombre: 'Jefatura',
           rol: 'Admin',
           alcance: 'GLOBAL',
-          permisos: ['miembros.ver', 'miembros.baja', 'organizacion.gestionar'],
+          permisos: ['padron.ver', 'padron.editar', 'organizacion.editar'],
         },
       ],
     };
@@ -277,7 +277,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
         alcanceOverride: null,
         rol: {
           alcancePorDefecto: 'GLOBAL',
-          permisos: [{ permiso: { clave: 'organizacion.gestionar' } }],
+          permisos: [{ permiso: { clave: 'organizacion.editar' } }],
         },
       }),
       findMany: vi.fn().mockResolvedValue([]),
@@ -295,7 +295,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadNombre: 'Jefatura',
           rol: 'Admin',
           alcance: 'GLOBAL',
-          permisos: ['miembros.ver', 'miembros.editar', 'organizacion.gestionar'],
+          permisos: ['padron.ver', 'padron.editar', 'organizacion.editar'],
         },
       ],
     };
@@ -438,7 +438,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       sub: 50,
       dni: '33000111',
       asignaciones: [
-        { unidadId: 1, unidadNombre: 'U1', rol: 'Educador', alcance: 'UNIDAD', permisos: ['miembros.editar_identidad', 'miembros.baja'] },
+        { unidadId: 1, unidadNombre: 'U1', rol: 'Educador', alcance: 'UNIDAD', permisos: ['padron.editar'] },
       ],
     };
     const alcanceUnidad: AlcanceAcceso = { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 50 };
@@ -813,7 +813,7 @@ describe('MiembrosService - Eliminación definitiva de miembros dados de baja', 
         unidadNombre: 'Jefatura',
         rol: 'Jefe de Grupo',
         alcance: 'GLOBAL',
-        permisos: ['miembros.ver', 'miembros.baja'],
+        permisos: ['padron.ver', 'padron.editar'],
       },
     ],
   };

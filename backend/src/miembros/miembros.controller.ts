@@ -20,7 +20,7 @@ import { MiembrosService } from './miembros.service.js';
 export class MiembrosController {
   constructor(private readonly miembros: MiembrosService) {}
 
-  @RequirePermission('miembros.ver')
+  @RequirePermission('padron.ver')
   @Get()
   listar(@Alcance() a: AlcanceAcceso, @Query(new ZodValidationPipe(ListarMiembrosSchema)) q: ListarMiembrosDto) {
     return this.miembros.listar(a, q);
@@ -42,32 +42,32 @@ export class MiembrosController {
   }
 
   /** Búsqueda flexible de hermanos por DNI, Apellido o Nombre en todo el padrón activo. */
-  @RequireAnyPermission('miembros.editar', 'cuotas.ajustar', 'tesoreria.gestionar')
+  @RequireAnyPermission('padron.editar', 'cobranzas.editar')
   @Get('hermanos/buscar')
   buscarHermanosPorCriterio(@Alcance() a: AlcanceAcceso, @Query('q') q?: string) {
     return this.miembros.buscarHermanosPorCriterio(a, q ?? '');
   }
 
   /** Autocompletado de datos familiares a partir del DNI de un hermano. */
-  @RequirePermission('miembros.crear')
+  @RequirePermission('padron.editar')
   @Get('hermano/:dni')
   buscarHermano(@Alcance() a: AlcanceAcceso, @Param('dni') dni: string) {
     return this.miembros.buscarHermano(a, dni.trim());
   }
 
-  @RequirePermission('miembros.ver')
+  @RequirePermission('padron.ver')
   @Get(':id')
   obtener(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
     return this.miembros.obtener(a, id);
   }
 
-  @RequirePermission('miembros.crear')
+  @RequirePermission('padron.editar')
   @Post()
   crear(@Alcance() a: AlcanceAcceso, @Body(new ZodValidationPipe(CrearMiembroSchema)) dto: CrearMiembroDto) {
     return this.miembros.crear(a, dto);
   }
 
-  @RequirePermission(['miembros.editar', 'miembros.editar_identidad', 'miembros.baja'])
+  @RequirePermission('padron.editar')
   @Patch(':id')
   editar(
     @CurrentUser() u: AuthUser,
@@ -79,7 +79,7 @@ export class MiembrosController {
   }
 
   /** Elimina definitivamente un miembro dado de baja sin historial asociado (solo alcance GLOBAL). */
-  @RequirePermission('miembros.baja')
+  @RequirePermission('padron.editar')
   @Delete(':id')
   eliminarDefinitivo(
     @CurrentUser() u: AuthUser,
@@ -90,7 +90,7 @@ export class MiembrosController {
     return this.miembros.eliminarDefinitivo(u, a, id, Boolean(forzarFichas));
   }
 
-  @RequirePermission('pases.ejecutar')
+  @RequirePermission('pases.editar')
   @Post(':id/asignaciones')
   agregarAsignacion(
     @Alcance() a: AlcanceAcceso,
@@ -101,7 +101,7 @@ export class MiembrosController {
   }
 
   /** Cierra la asignación (activo=false, fechaFin=hoy). Nunca borra el registro. */
-  @RequirePermission('pases.ejecutar')
+  @RequirePermission('pases.editar')
   @Delete(':id/asignaciones/:asignacionId')
   cerrarAsignacion(
     @CurrentUser() u: AuthUser,

@@ -568,7 +568,7 @@ export class TesoreriaEventosService {
       this.assertActorTienePermisoEvento(
         actor,
         alcance,
-        ['eventos.vender', 'eventos.gestionar', 'tesoreria.gestionar'],
+        ['eventos.editar', 'caja.editar'],
         'No tienes permisos para registrar ventas en este alcance',
       );
       if (alcance.tipo === 'UNIDAD' && dto.vendedorUsuarioId) {
@@ -743,14 +743,14 @@ export class TesoreriaEventosService {
         this.assertActorTienePermisoEvento(
           actor,
           alcance,
-          ['eventos.vender', 'eventos.gestionar', 'tesoreria.gestionar'],
+          ['eventos.editar', 'caja.editar'],
           'No tienes permisos para modificar pedidos en este alcance',
         );
         if (pedido.estado === EstadoPedidoEvento.PAGADO) {
           this.assertActorTienePermisoEvento(
             actor,
             alcance,
-            ['eventos.gestionar', 'tesoreria.gestionar'],
+            ['eventos.editar', 'caja.editar'],
             'No tienes permisos para modificar un pedido ya cobrado',
           );
         }
@@ -1012,14 +1012,14 @@ export class TesoreriaEventosService {
         this.assertActorTienePermisoEvento(
           actor,
           alcance,
-          ['eventos.vender', 'eventos.gestionar', 'tesoreria.gestionar'],
+          ['eventos.editar', 'caja.editar'],
           'No tienes permisos para eliminar pedidos en este alcance',
         );
         if (pedido.estado === EstadoPedidoEvento.PAGADO) {
           this.assertActorTienePermisoEvento(
             actor,
             alcance,
-            ['eventos.gestionar', 'tesoreria.gestionar'],
+            ['eventos.editar', 'caja.editar'],
             'No tienes permisos para eliminar un pedido ya cobrado',
           );
         }
@@ -1111,7 +1111,7 @@ export class TesoreriaEventosService {
     this.assertActorTienePermisoEvento(
       actor,
       alcance,
-      ['eventos.vender', 'eventos.gestionar', 'tesoreria.gestionar'],
+      ['eventos.editar', 'caja.editar'],
       'No tienes permisos para validar entradas QR en este alcance',
     );
 

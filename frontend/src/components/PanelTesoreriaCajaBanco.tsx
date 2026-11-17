@@ -195,7 +195,7 @@ export function debeMostrarErrorOfflineLibro(
 
 export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = ({ onToast }) => {
   const { tienePermiso } = useAuthStore();
-  const puedeGestionarTesoreria = tienePermiso('tesoreria.gestionar');
+  const puedeGestionarTesoreria = tienePermiso('caja.editar');
 
   const onToastRef = useRef(onToast);
   useEffect(() => {
@@ -622,7 +622,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   onClick={() => {
                     setCuentaSeleccionadaId(c.id);
                   }}
-                  className={`min-h-[42px] px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border ${
+                  className={`min-h-[44px] px-4 py-2 rounded-xl text-[13px] font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-2 border ${
                     estaSeleccionada
                       ? 'bg-brand text-brand-contrast border-brand shadow-2xs font-extrabold'
                       : 'bg-surface text-ink hover:bg-paper-2 border-rule'
@@ -635,7 +635,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   )}
                   <span>{c.nombre}</span>
                   <span
-                    className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
+                    className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
                       estaSeleccionada
                         ? 'bg-black/15 text-white dark:bg-black/30'
                         : 'bg-paper-2 text-ink-2'
@@ -668,10 +668,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
       {/* 2. Top Summary Hero Strip */}
       {cuentaActiva ? (
-        <div className="p-4 sm:p-5 rounded-2xl border border-rule bg-paper-2 shadow-2xs transition-colors space-y-4">
+        <div className="p-5 rounded-2xl border border-rule bg-paper-2 shadow-2xs transition-colors space-y-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
+              <div className="w-11 h-11 rounded-xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
                 {cuentaActiva.tipo === 'BANCO' ? (
                   <Landmark className="w-5 h-5" />
                 ) : (
@@ -679,25 +679,25 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 )}
               </div>
               <div>
-                <h3 className="font-extrabold text-ink text-lg leading-tight">
+                <h3 className="font-extrabold text-ink text-xl leading-tight">
                   {cuentaActiva.nombre}
                 </h3>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[11px] px-2 py-0.5 rounded-md font-semibold bg-paper-3 text-ink-2">
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-paper-3 text-ink-2">
                     {cuentaActiva.tipo === 'CAJA_EFECTIVO'
                       ? 'Caja Chica / Efectivo'
                       : 'Cuenta Bancaria'}
                   </span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
+                  <span className="text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>Activa</span>
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="p-3 sm:p-0 rounded-xl bg-surface sm:bg-transparent border sm:border-0 border-rule flex flex-col md:items-end">
-              <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+            <div className="p-3.5 sm:p-0 rounded-xl bg-surface sm:bg-transparent border sm:border-0 border-rule flex flex-col md:items-end">
+              <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
                 Saldo Disponible en Tiempo Real
               </span>
               {estaCargando && cuentaActiva.saldoActual === undefined ? (
@@ -724,7 +724,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   setModalIngresoAbierto(true);
                 }}
                 leftIcon={<PlusCircle className="w-4 h-4 shrink-0" />}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white justify-center text-xs sm:text-sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white justify-center text-[13px] sm:text-sm"
                 title="Registrar ingreso de dinero a esta cuenta"
               >
                 + Ingreso
@@ -738,7 +738,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   setModalGastoAbierto(true);
                 }}
                 leftIcon={<Receipt className="w-4 h-4 shrink-0" />}
-                className="text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 justify-center text-xs sm:text-sm"
+                className="text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/40 justify-center text-[13px] sm:text-sm"
                 title="Registrar gasto o egreso desde esta cuenta"
               >
                 - Gasto
@@ -749,7 +749,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 size="md"
                 onClick={() => setModalTraspasoAbierto(true)}
                 leftIcon={<ArrowLeftRight className="w-4 h-4 shrink-0" />}
-                className="justify-center text-xs sm:text-sm"
+                className="justify-center text-[13px] sm:text-sm"
               >
                 Traspaso
               </Button>
@@ -762,7 +762,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   setModalCrearAbierto(true);
                 }}
                 leftIcon={<Pencil className="w-4 h-4 shrink-0" />}
-                className="justify-center text-xs sm:text-sm"
+                className="justify-center text-[13px] sm:text-sm"
               >
                 Editar
               </Button>
@@ -786,7 +786,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       ) : null}
 
       {/* 3. Date Filter / Arqueo Bar & Search */}
-      <div className="p-3.5 sm:p-4 rounded-2xl border border-rule bg-surface shadow-2xs space-y-3">
+      <div className="p-4 sm:p-5 rounded-2xl border border-rule bg-surface shadow-2xs space-y-3.5">
         {/* Buscador en vivo del Libro Diario */}
         <div className="relative w-full">
           <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -796,32 +796,32 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             placeholder="Buscar por concepto, miembro, rubro, tipo o monto..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            className="w-full min-h-[42px] pl-10 pr-10 py-2 rounded-xl border border-rule text-xs sm:text-sm focus:border-brand outline-none bg-paper-2 text-ink placeholder:text-ink-muted transition-colors [&::-webkit-search-cancel-button]:hidden"
+            className="w-full min-h-[46px] pl-10 pr-10 py-2.5 rounded-xl border border-rule text-base sm:text-[15px] focus:border-brand outline-none bg-paper-2 text-ink placeholder:text-ink-muted transition-colors [&::-webkit-search-cancel-button]:hidden"
           />
           {busqueda && (
             <button
               type="button"
               onClick={() => setBusqueda('')}
               aria-label="Limpiar búsqueda"
-              className="min-w-[36px] min-h-[36px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+              className="min-w-[38px] min-h-[38px] flex items-center justify-center absolute right-1 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1 border-t border-rule/50">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1.5 border-t border-rule/50">
           {/* Quick 1-tap arqueo buttons */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-            <span className="text-xs font-bold text-ink-muted mr-1 hidden sm:inline flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5" />
+            <span className="text-[13px] font-bold text-ink-muted mr-1 hidden sm:inline flex items-center gap-1">
+              <Calendar className="w-4 h-4" />
               <span>Período:</span>
             </span>
 
             <button
               type="button"
               onClick={() => aplicarFiltroRapido('hoy')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border ${
+              className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${
                 filtroRapido === 'hoy'
                   ? 'bg-brand/15 text-brand border-brand/40 shadow-2xs'
                   : 'bg-paper-2 text-ink-2 hover:text-ink border-rule'
@@ -833,7 +833,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             <button
               type="button"
               onClick={() => aplicarFiltroRapido('semana')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border ${
+              className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${
                 filtroRapido === 'semana'
                   ? 'bg-brand/15 text-brand border-brand/40 shadow-2xs'
                   : 'bg-paper-2 text-ink-2 hover:text-ink border-rule'
@@ -845,7 +845,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             <button
               type="button"
               onClick={() => aplicarFiltroRapido('mes')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border ${
+              className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${
                 filtroRapido === 'mes'
                   ? 'bg-brand/15 text-brand border-brand/40 shadow-2xs'
                   : 'bg-paper-2 text-ink-2 hover:text-ink border-rule'
@@ -857,7 +857,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             <button
               type="button"
               onClick={() => aplicarFiltroRapido('todo')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 border ${
+              className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${
                 filtroRapido === 'todo'
                   ? 'bg-brand/15 text-brand border-brand/40 shadow-2xs'
                   : 'bg-paper-2 text-ink-2 hover:text-ink border-rule'
@@ -869,7 +869,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
           {/* Date Range Inputs */}
           <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full lg:w-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs text-ink-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-[13px] text-ink-2">
               <label htmlFor="fecha-desde-input" className="font-semibold text-ink-muted">
                 Desde:
               </label>
@@ -881,11 +881,11 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   setFechaDesde(e.target.value);
                   setFiltroRapido('todo');
                 }}
-                className="w-full sm:w-auto min-h-[36px] rounded-xl border border-rule bg-paper-2 px-2.5 py-1 text-xs text-ink focus:border-brand outline-none"
+                className="w-full sm:w-auto min-h-[42px] rounded-xl border border-rule bg-paper-2 px-3 py-1.5 text-[13px] text-ink focus:border-brand outline-none"
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-xs text-ink-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 text-[13px] text-ink-2">
               <label htmlFor="fecha-hasta-input" className="font-semibold text-ink-muted">
                 Hasta:
               </label>
@@ -898,18 +898,18 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                     setFechaHasta(e.target.value);
                     setFiltroRapido('todo');
                   }}
-                  className="flex-1 sm:w-auto min-h-[36px] rounded-xl border border-rule bg-paper-2 px-2.5 py-1 text-xs text-ink focus:border-brand outline-none"
+                  className="flex-1 sm:w-auto min-h-[42px] rounded-xl border border-rule bg-paper-2 px-3 py-1.5 text-[13px] text-ink focus:border-brand outline-none"
                 />
 
                 {hayFiltroFecha && (
                   <button
                     type="button"
                     onClick={() => aplicarFiltroRapido('todo')}
-                    className="min-h-[36px] min-w-[36px] flex items-center justify-center p-2 text-ink-muted hover:text-ink rounded-xl border border-rule hover:bg-paper-2 transition cursor-pointer shrink-0"
+                    className="min-h-[42px] min-w-[42px] flex items-center justify-center p-2 text-ink-muted hover:text-ink rounded-xl border border-rule hover:bg-paper-2 transition cursor-pointer shrink-0"
                     title="Limpiar fechas"
                     aria-label="Limpiar fechas"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-4 h-4" />
                   </button>
                 )}
               </div>
@@ -923,7 +923,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         <div className="p-4 sm:p-5 border-b border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-brand" />
-            <h4 className="font-extrabold text-ink text-base">
+            <h4 className="font-extrabold text-ink text-lg">
               Libro Diario de Movimientos
             </h4>
           </div>
@@ -934,7 +934,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 aria-label="Cargando cantidad de operaciones"
               />
             ) : (
-              <span className="text-xs font-semibold text-ink-muted">
+              <span className="text-[13px] font-semibold text-ink-muted">
                 {expandido && totalMovimientos > TAMANIO_BLOQUE
                   ? `Mostrando ${movimientosVisibles.length} de ${totalMovimientos} operaciones`
                   : `${totalMovimientos} ${totalMovimientos === 1 ? 'operación' : 'operaciones'}`}
@@ -962,7 +962,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         {/* Error state */}
         {!estaCargando && errorLibro && (
           <div className="p-8 text-center space-y-3">
-            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">
+            <p className="text-[15px] font-semibold text-rose-600 dark:text-rose-400">
               {errorLibro}
             </p>
             <Button
@@ -985,10 +985,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           totalMovimientos === 0 && (
             <div className="p-10 text-center space-y-3">
               <Search className="w-8 h-8 text-ink-muted opacity-40 mx-auto" />
-              <p className="text-sm font-bold text-ink">
+              <p className="text-[15px] font-bold text-ink">
                 No se encontraron movimientos que coincidan con &ldquo;{busqueda}&rdquo;
               </p>
-              <p className="text-xs text-ink-muted">
+              <p className="text-[13px] text-ink-muted">
                 Intentá con otro término o limpiá la búsqueda.
               </p>
               <Button
@@ -996,7 +996,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 variant="secondary"
                 size="sm"
                 onClick={() => setBusqueda('')}
-                leftIcon={<X className="w-3.5 h-3.5" />}
+                leftIcon={<X className="w-4 h-4" />}
                 className="mx-auto"
               >
                 Limpiar búsqueda
@@ -1010,10 +1010,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           cuentaSeleccionadaId &&
           movimientosInvertidos.length === 0 && (
             <div className="p-10 text-center space-y-2">
-              <p className="text-sm font-bold text-ink">
+              <p className="text-[15px] font-bold text-ink">
                 No hay movimientos registrados en este período
               </p>
-              <p className="text-xs text-ink-muted max-w-md mx-auto">
+              <p className="text-[13px] text-ink-muted max-w-md mx-auto">
                 Los cobros de cuotas, campamentos o traspasos asignados a esta cuenta se
                 reflejarán cronológicamente aquí.
               </p>
@@ -1023,10 +1023,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         {/* Empty state: sin cuentas creadas */}
         {!estaCargando && !errorLibro && cuentas.length === 0 && (
           <div className="p-10 text-center space-y-2">
-            <p className="text-sm font-bold text-ink">
+            <p className="text-[15px] font-bold text-ink">
               No hay cuentas financieras creadas
             </p>
-            <p className="text-xs text-ink-muted max-w-md mx-auto">
+            <p className="text-[13px] text-ink-muted max-w-md mx-auto">
               Crea una caja chica o cuenta bancaria para comenzar a registrar movimientos.
             </p>
           </div>
@@ -1035,17 +1035,17 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         {/* Desktop Ledger Table */}
         {!estaCargando && !errorLibro && cuentaSeleccionadaId && (totalMovimientos > 0 || hayFiltroFecha) && (
           <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-paper-2 border-b border-rule text-ink font-bold">
+            <table className="w-full text-left text-sm border-collapse">
+              <thead className="bg-paper-2 border-b border-rule text-xs uppercase tracking-wider text-ink-muted font-bold">
                 <tr>
-                  <th scope="col" className="py-3 px-4">Fecha / Hora</th>
-                  <th scope="col" className="py-3 px-4">Concepto y Tipo</th>
-                  <th scope="col" className="py-3 px-4 text-right">Ingreso (+)</th>
-                  <th scope="col" className="py-3 px-4 text-right">Salida (-)</th>
-                  <th scope="col" className="py-3 px-4 text-right">Saldo Acumulado</th>
-                  <th scope="col" className="py-3 px-4">Registrado Por</th>
+                  <th scope="col" className="py-3.5 px-4">Fecha / Hora</th>
+                  <th scope="col" className="py-3.5 px-4">Concepto y Tipo</th>
+                  <th scope="col" className="py-3.5 px-4 text-right">Ingreso (+)</th>
+                  <th scope="col" className="py-3.5 px-4 text-right">Salida (-)</th>
+                  <th scope="col" className="py-3.5 px-4 text-right">Saldo Acumulado</th>
+                  <th scope="col" className="py-3.5 px-4">Registrado Por</th>
                   {puedeGestionarTesoreria && (
-                    <th scope="col" className="py-3 px-4 text-center">Acciones</th>
+                    <th scope="col" className="py-3.5 px-4 text-center">Acciones</th>
                   )}
                 </tr>
               </thead>
@@ -1062,27 +1062,27 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                       key={m.id}
                       className="hover:bg-paper-2/50 transition-colors"
                     >
-                      <td className="py-3 px-4 whitespace-nowrap text-ink-2">
+                      <td className="py-3.5 px-4 whitespace-nowrap text-ink-2">
                         <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-ink-muted" />
+                          <Clock className="w-4 h-4 text-ink-muted" />
                           <span>{formatearFechaHora(m.fecha)}</span>
                         </div>
                       </td>
 
-                      <td className="py-3 px-4">
-                        <div className="space-y-1">
-                          <div className="font-bold text-ink leading-snug">
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1.5">
+                          <div className="font-bold text-ink text-[15px] leading-snug">
                             {m.conceptoTexto}
                           </div>
                           <div className="flex flex-wrap items-center gap-1.5">
                             <span
-                              className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${tipoConfig.badgeClass}`}
+                              className={`inline-block text-xs font-semibold px-2.5 py-0.5 rounded-full border ${tipoConfig.badgeClass}`}
                             >
                               {tipoConfig.texto}
                             </span>
                             {m.rubro?.nombre && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                                <Tag className="w-2.5 h-2.5" />
+                              <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-md bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                <Tag className="w-3 h-3" />
                                 <span>{m.rubro.nombre}</span>
                               </span>
                             )}
@@ -1090,8 +1090,8 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                               !m.conceptoTexto
                                 .toLowerCase()
                                 .includes(m.miembroNombre.toLowerCase()) && (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-paper-2 border border-rule text-ink-2">
-                                  <User className="w-3 h-3 text-ink-muted" />
+                                <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-paper-2 border border-rule text-ink-2">
+                                  <User className="w-3.5 h-3.5 text-ink-muted" />
                                   <span>{m.miembroNombre}</span>
                                 </span>
                               )}
@@ -1099,10 +1099,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                         </div>
                       </td>
 
-                      <td className="py-3 px-4 text-right whitespace-nowrap font-bold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap font-bold text-emerald-600 dark:text-emerald-400">
                         {m.montoIngreso > 0 ? (
                           <span className="inline-flex items-center gap-0.5">
-                            <ArrowDownRight className="w-3.5 h-3.5" />
+                            <ArrowDownRight className="w-4 h-4" />
                             <span>+{formatearMoneda(m.montoIngreso)}</span>
                           </span>
                         ) : (
@@ -1110,10 +1110,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                         )}
                       </td>
 
-                      <td className="py-3 px-4 text-right whitespace-nowrap font-bold text-rose-600 dark:text-rose-400">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap font-bold text-rose-600 dark:text-rose-400">
                         {m.montoEgreso > 0 ? (
                           <span className="inline-flex items-center gap-0.5">
-                            <ArrowUpRight className="w-3.5 h-3.5" />
+                            <ArrowUpRight className="w-4 h-4" />
                             <span>-{formatearMoneda(m.montoEgreso)}</span>
                           </span>
                         ) : (
@@ -1121,13 +1121,13 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                         )}
                       </td>
 
-                      <td className="py-3 px-4 text-right whitespace-nowrap font-black text-ink text-sm">
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap font-black text-ink text-[15px]">
                         {formatearMoneda(m.saldoAcumulado)}
                       </td>
 
-                      <td className="py-3 px-4 whitespace-nowrap text-ink-muted text-xs">
+                      <td className="py-3.5 px-4 whitespace-nowrap text-ink-muted text-[13px]">
                         <div className="flex items-center gap-1.5">
-                          <User className="w-3 h-3 text-ink-muted shrink-0" />
+                          <User className="w-3.5 h-3.5 text-ink-muted shrink-0" />
                           <span className="truncate max-w-[130px]">{usuarioNombre}</span>
                         </div>
                       </td>
@@ -1200,24 +1200,24 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 {/* Fila final de Saldo Anterior cuando hay filtro de fecha (al final del historial invertido) */}
                 {hayFiltroFecha && (!hayMasMovimientos || !expandido) && (
                   <tr className="bg-paper-2/60 font-semibold text-ink-2">
-                    <td className="py-2.5 px-4 text-ink-muted italic">
+                    <td className="py-3 px-4 text-ink-muted italic">
                       Al inicio del período
                     </td>
-                    <td className="py-2.5 px-4">
+                    <td className="py-3 px-4">
                       <span className="font-bold text-ink">
                         Saldo Anterior / Arrastre
                       </span>
                     </td>
-                    <td className="py-2.5 px-4 text-right text-ink-muted">-</td>
-                    <td className="py-2.5 px-4 text-right text-ink-muted">-</td>
-                    <td className="py-2.5 px-4 text-right font-extrabold text-ink">
+                    <td className="py-3 px-4 text-right text-ink-muted">-</td>
+                    <td className="py-3 px-4 text-right text-ink-muted">-</td>
+                    <td className="py-3 px-4 text-right font-extrabold text-ink">
                       {formatearMoneda(saldoAnterior)}
                     </td>
-                    <td className="py-2.5 px-4 text-ink-muted text-[11px]">
+                    <td className="py-3 px-4 text-ink-muted text-xs">
                       Sistema
                     </td>
                     {puedeGestionarTesoreria && (
-                      <td className="py-2.5 px-4 text-center text-ink-muted">-</td>
+                      <td className="py-3 px-4 text-center text-ink-muted">-</td>
                     )}
                   </tr>
                 )}
@@ -1236,22 +1236,22 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 : `Usuario #${m.creadoPorUsuarioId}`;
 
               return (
-                <div key={m.id} className="p-3.5 space-y-2 hover:bg-paper-2/40 transition">
+                <div key={m.id} className="p-4 space-y-2.5 hover:bg-paper-2/40 transition">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h5 className="font-bold text-ink text-xs leading-snug">
+                      <h5 className="font-bold text-ink text-sm leading-snug">
                         {m.conceptoTexto}
                       </h5>
-                      <span className="text-[11px] text-ink-muted flex items-center gap-1 mt-0.5">
-                        <Clock className="w-3 h-3" />
+                      <span className="text-xs text-ink-muted flex items-center gap-1 mt-0.5">
+                        <Clock className="w-3.5 h-3.5" />
                         <span>{formatearFechaHora(m.fecha)}</span>
                       </span>
                       {m.miembroNombre &&
                         !m.conceptoTexto
                           .toLowerCase()
                           .includes(m.miembroNombre.toLowerCase()) && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-paper-2 border border-rule text-ink-2 mt-1">
-                            <User className="w-3 h-3 text-ink-muted" />
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-0.5 rounded-full bg-paper-2 border border-rule text-ink-2 mt-1.5">
+                            <User className="w-3.5 h-3.5 text-ink-muted" />
                             <span>{m.miembroNombre}</span>
                           </span>
                         )}
@@ -1259,31 +1259,31 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
                     <div className="text-right shrink-0">
                       {m.montoIngreso > 0 && (
-                        <span className="font-extrabold text-xs text-emerald-600 dark:text-emerald-400 block">
+                        <span className="font-extrabold text-sm text-emerald-600 dark:text-emerald-400 block">
                           +{formatearMoneda(m.montoIngreso)}
                         </span>
                       )}
                       {m.montoEgreso > 0 && (
-                        <span className="font-extrabold text-xs text-rose-600 dark:text-rose-400 block">
+                        <span className="font-extrabold text-sm text-rose-600 dark:text-rose-400 block">
                           -{formatearMoneda(m.montoEgreso)}
                         </span>
                       )}
-                      <span className="text-[11px] font-bold text-ink-muted block mt-0.5">
+                      <span className="text-xs font-bold text-ink-muted block mt-0.5">
                         Saldo: {formatearMoneda(m.saldoAcumulado)}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-rule/50 text-[10px]">
+                  <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-rule/50 text-xs">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span
-                        className={`font-semibold px-2 py-0.5 rounded-full border ${tipoConfig.badgeClass}`}
+                        className={`font-semibold px-2.5 py-0.5 rounded-full border ${tipoConfig.badgeClass}`}
                       >
                         {tipoConfig.texto}
                       </span>
                       {m.rubro?.nombre && (
-                        <span className="inline-flex items-center gap-1 font-bold px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                          <Tag className="w-2.5 h-2.5" />
+                        <span className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          <Tag className="w-3 h-3" />
                           <span>{m.rubro.nombre}</span>
                         </span>
                       )}
@@ -1356,14 +1356,14 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             })}
 
             {hayFiltroFecha && (!hayMasMovimientos || !expandido) && (
-              <div className="p-3.5 bg-paper-2/60 space-y-1 text-xs">
+              <div className="p-4 bg-paper-2/60 space-y-1 text-[13px]">
                 <div className="flex justify-between items-center">
                   <span className="font-bold text-ink">Saldo Anterior</span>
                   <span className="font-black text-ink">
                     {formatearMoneda(saldoAnterior)}
                   </span>
                 </div>
-                <span className="text-[11px] text-ink-muted block">
+                <span className="text-xs text-ink-muted block">
                   Arrastre acumulado antes del período
                 </span>
               </div>
@@ -1383,12 +1383,12 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 setExpandido(true);
                 setCantidadVisible(Math.min(TAMANIO_BLOQUE * 2, totalMovimientos));
               }}
-              className="min-h-[42px] px-5 py-2.5 rounded-xl bg-brand text-brand-contrast font-extrabold text-xs hover:opacity-90 active:scale-98 transition flex items-center gap-2 cursor-pointer shadow-2xs"
+              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand text-brand-contrast font-extrabold text-[13px] hover:opacity-90 active:scale-98 transition flex items-center gap-2 cursor-pointer shadow-2xs"
             >
               <ChevronDown className="w-4 h-4" />
               <span>Ver movimientos anteriores ({totalMovimientos - TAMANIO_BLOQUE} más)</span>
             </button>
-            <span className="text-[11px] text-ink-muted">
+            <span className="text-xs text-ink-muted">
               Mostrando los {TAMANIO_BLOQUE} movimientos más recientes de {totalMovimientos}
             </span>
           </div>
@@ -1397,8 +1397,8 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         {/* 2. Estado expandido con más bloques pendientes */}
         {expandido && hayMasMovimientos && (
           <div className="p-4 text-center border-t border-rule flex flex-col sm:flex-row items-center justify-center gap-3 bg-paper-2/30">
-            <div className="flex items-center gap-2 text-xs font-semibold text-ink-muted">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-brand" />
+            <div className="flex items-center gap-2 text-[13px] font-semibold text-ink-muted">
+              <Loader2 className="w-4 h-4 animate-spin text-brand" />
               <span>
                 Cargando movimientos anteriores ({movimientosVisibles.length} de {totalMovimientos})...
               </span>
@@ -1406,7 +1406,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             <button
               type="button"
               onClick={cargarMasBloque}
-              className="text-[11px] font-bold text-brand hover:underline cursor-pointer"
+              className="text-xs font-bold text-brand hover:underline cursor-pointer"
             >
               Cargar siguientes {Math.min(TAMANIO_BLOQUE, totalMovimientos - cantidadVisible)} ahora
             </button>
@@ -1415,7 +1415,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
         {/* 3. Estado expandido: todos los movimientos cargados */}
         {expandido && !hayMasMovimientos && totalMovimientos > TAMANIO_BLOQUE && (
-          <div className="p-3 bg-paper-2/40 border-t border-rule text-center text-[11px] text-ink-muted flex items-center justify-center gap-3 flex-wrap">
+          <div className="p-3.5 bg-paper-2/40 border-t border-rule text-center text-xs text-ink-muted flex items-center justify-center gap-3 flex-wrap">
             <span>✓ Se mostraron todos los movimientos ({totalMovimientos})</span>
             <button
               type="button"
@@ -1424,7 +1424,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
               }}
               className="font-bold text-brand hover:underline cursor-pointer flex items-center gap-1"
             >
-              <ArrowUp className="w-3 h-3" />
+              <ArrowUp className="w-3.5 h-3.5" />
               Volver arriba
             </button>
           </div>
@@ -1434,26 +1434,26 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         {!estaCargando && datosLibroListos && libroDiario && (
           <div className="p-4 sm:p-5 bg-paper-2 border-t border-rule">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-left">
-              <div className="p-3 rounded-xl bg-surface border border-rule">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <div className="p-3.5 rounded-xl bg-surface border border-rule">
+                <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
                   Total Ingresos Período
                 </span>
-                <span className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400">
+                <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">
                   +{formatearMoneda(libroDiario.totalIngresosPeriodo)}
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-surface border border-rule">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <div className="p-3.5 rounded-xl bg-surface border border-rule">
+                <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
                   Total Salidas Período
                 </span>
-                <span className="text-base sm:text-lg font-black text-rose-600 dark:text-rose-400">
+                <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400">
                   -{formatearMoneda(libroDiario.totalEgresosPeriodo)}
                 </span>
               </div>
 
-              <div className="p-3 rounded-xl bg-surface border border-rule">
-                <span className="block text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+              <div className="p-3.5 rounded-xl bg-surface border border-rule">
+                <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
                   Saldo Final del Período
                 </span>
                 <span className="text-base sm:text-lg font-black text-ink">

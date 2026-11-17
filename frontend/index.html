@@ -25,16 +25,10 @@
             root.style.colorScheme = 'light';
           }
 
-          var isContrast = false;
           var customRaw = localStorage.getItem('scout-theme-customization');
           if (customRaw) {
             var cfg = JSON.parse(customRaw);
-            if (cfg.preset === 'contrast') {
-              isContrast = true;
-              root.setAttribute('data-contrast', 'aaa');
-            } else {
-              root.removeAttribute('data-contrast');
-            }
+            root.removeAttribute('data-contrast');
 
             if (cfg.fontScale === '110%' || cfg.fontScale === '125%') {
               root.style.setProperty('--font-scale', cfg.fontScale);
@@ -49,8 +43,7 @@
 
           var metaEl = document.querySelector('meta[name="theme-color"]');
           if (metaEl) {
-            var metaHex = isContrast ? (isDark ? '#000000' : '#ffffff') : (isDark ? '#171a24' : '#ffffff');
-            metaEl.setAttribute('content', metaHex);
+            metaEl.setAttribute('content', isDark ? '#171a24' : '#ffffff');
           }
         } catch (e) {
           // Captura silenciosa para prevenir interrupción si localStorage está bloqueado

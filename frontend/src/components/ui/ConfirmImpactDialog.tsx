@@ -70,10 +70,10 @@ export const ConfirmImpactDialog: React.FC<ConfirmImpactDialogProps> = ({
         </>
       }
     >
-      <div className="space-y-3 text-sm text-ink-2 leading-relaxed">
+      <div className="space-y-3.5 text-[15px] text-ink-2 leading-relaxed">
         <div>{mensaje}</div>
         {impacto && (
-          <div className={`${badgeClass} rounded-xl p-3 text-xs font-medium flex items-start gap-2`}>
+          <div className={`${badgeClass} rounded-xl p-3.5 text-sm font-medium flex items-start gap-2.5`}>
             {tone === 'info' ? (
               <Info className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
             ) : (

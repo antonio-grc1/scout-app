@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sun, Moon, Monitor, Check, Contrast, Type } from 'lucide-react';
+import { Sun, Moon, Monitor, Check, Type } from 'lucide-react';
 import { useThemeStore, ThemeMode } from '../store/themeStore';
 
 interface ThemeToggleProps {
@@ -16,14 +16,11 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     resolvedTheme,
     customization,
     setTheme,
-    setPreset,
     toggleTheme,
     openCustomizer,
   } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  const isContrast = customization.preset === 'contrast';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,24 +43,20 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     };
   }, [isOpen]);
 
-  // Modo Segmented: [ Claro | Oscuro | AAA | Auto ]
+  // Modo Segmented: [ Claro | Oscuro | Auto ]
   if (variant === 'segmented') {
-    const activeTab = isContrast ? 'aaa' : theme;
     return (
       <div
-        className={`inline-flex items-center p-1 bg-paper-2 border border-rule rounded-xl text-xs font-medium ${className}`}
+        className={`inline-flex items-center p-1 bg-paper-2 border border-rule rounded-xl text-sm font-medium ${className}`}
         role="group"
         aria-label="Selector de apariencia"
       >
         <button
           type="button"
-          onClick={() => {
-            setPreset('scout');
-            setTheme('light');
-          }}
-          aria-pressed={activeTab === 'light'}
+          onClick={() => setTheme('light')}
+          aria-pressed={theme === 'light'}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
-            activeTab === 'light'
+            theme === 'light'
               ? 'bg-surface text-brand font-bold border border-rule'
               : 'text-ink-muted hover:text-ink border border-transparent'
           }`}
@@ -75,13 +68,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 
         <button
           type="button"
-          onClick={() => {
-            setPreset('scout');
-            setTheme('dark');
-          }}
-          aria-pressed={activeTab === 'dark'}
+          onClick={() => setTheme('dark')}
+          aria-pressed={theme === 'dark'}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
-            activeTab === 'dark'
+            theme === 'dark'
               ? 'bg-surface text-brand font-bold border border-rule'
               : 'text-ink-muted hover:text-ink border border-transparent'
           }`}
@@ -93,31 +83,10 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 
         <button
           type="button"
-          onClick={() => {
-            setPreset('contrast');
-            setTheme('dark');
-          }}
-          aria-pressed={activeTab === 'aaa'}
+          onClick={() => setTheme('system')}
+          aria-pressed={theme === 'system'}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
-            activeTab === 'aaa'
-              ? 'bg-brand text-brand-contrast font-extrabold border border-rule'
-              : 'text-ink-muted hover:text-ink border border-transparent'
-          }`}
-          title="Alto Contraste WCAG AAA"
-        >
-          <Contrast className="w-3.5 h-3.5" />
-          <span>AAA</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setPreset('scout');
-            setTheme('system');
-          }}
-          aria-pressed={activeTab === 'system'}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
-            activeTab === 'system'
+            theme === 'system'
               ? 'bg-surface text-brand font-bold border border-rule'
               : 'text-ink-muted hover:text-ink border border-transparent'
           }`}
@@ -140,9 +109,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         title={`Cambiar a modo ${resolvedTheme === 'dark' ? 'claro' : 'oscuro'}`}
         aria-label="Alternar modo oscuro"
       >
-        {isContrast ? (
-          <Contrast className="w-4 h-4 text-brand" />
-        ) : resolvedTheme === 'dark' ? (
+        {resolvedTheme === 'dark' ? (
           <Sun className="w-4 h-4 text-brand" />
         ) : (
           <Moon className="w-4 h-4 text-ink" />
@@ -151,7 +118,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     );
   }
 
-  // Modo Dropdown: Claro / Oscuro / Sistema / Alto Contraste AAA + Escala de texto
+  // Modo Dropdown: Claro / Oscuro / Sistema + Escala de texto
   const modeOptions: { value: ThemeMode; label: string; icon: React.ReactNode }[] = [
     { value: 'light', label: 'Claro', icon: <Sun className="w-4 h-4 text-amber-500" /> },
     { value: 'dark', label: 'Oscuro', icon: <Moon className="w-4 h-4 text-indigo-400" /> },
@@ -163,21 +130,19 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="s-btn-sec flex items-center justify-center min-w-[40px] min-h-[40px] px-2.5 rounded-xl gap-1.5 text-xs font-semibold cursor-pointer"
-        title="Apariencia y accesibilidad (Claro / Oscuro / AAA)"
-        aria-label="Cambiar apariencia y accesibilidad"
+        className="s-btn-sec flex items-center justify-center min-w-[42px] min-h-[42px] px-3 rounded-xl gap-2 text-sm font-semibold cursor-pointer"
+        title="Apariencia (Claro / Oscuro)"
+        aria-label="Cambiar apariencia"
         aria-expanded={isOpen}
         aria-haspopup="menu"
       >
-        {isContrast ? (
-          <Contrast className="w-4 h-4 text-brand shrink-0" />
-        ) : resolvedTheme === 'dark' ? (
-          <Moon className="w-4 h-4 text-brand shrink-0" />
+        {resolvedTheme === 'dark' ? (
+          <Moon className="w-[18px] h-[18px] text-brand shrink-0" />
         ) : (
-          <Sun className="w-4 h-4 text-brand shrink-0" />
+          <Sun className="w-[18px] h-[18px] text-brand shrink-0" />
         )}
         <span className="hidden lg:inline">
-          {isContrast ? 'AAA' : theme === 'light' ? 'Claro' : theme === 'dark' ? 'Oscuro' : 'Sistema'}
+          {theme === 'light' ? 'Claro' : theme === 'dark' ? 'Oscuro' : 'Sistema'}
         </span>
       </button>
 
@@ -185,14 +150,14 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         <div
           role="menu"
           aria-label="Apariencia"
-          className="s-anim-modal-pop absolute right-0 mt-2 w-56 bg-surface border border-rule rounded-xl shadow-lg py-1.5 z-50"
+          className="s-anim-modal-pop absolute right-0 mt-2 w-60 bg-surface border border-rule rounded-xl shadow-lg py-1.5 z-50"
         >
-          <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink-muted border-b border-rule">
-            Apariencia WCAG
+          <div className="px-3.5 py-2 text-xs font-bold uppercase tracking-wider text-ink-muted border-b border-rule">
+            Apariencia
           </div>
 
           {modeOptions.map((opt) => {
-            const active = !isContrast && theme === opt.value;
+            const active = theme === opt.value;
             return (
               <button
                 key={opt.value}
@@ -200,42 +165,21 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                 role="menuitemradio"
                 aria-checked={active}
                 onClick={() => {
-                  setPreset('scout');
                   setTheme(opt.value);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 text-sm font-medium transition-colors cursor-pointer ${
                   active ? 'bg-brand-soft text-ink font-bold' : 'text-ink hover:bg-paper-2'
                 }`}
               >
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   {opt.icon}
                   <span>{opt.label}</span>
                 </div>
-                {active && <Check className="w-3.5 h-3.5 text-brand" />}
+                {active && <Check className="w-4 h-4 text-brand" />}
               </button>
             );
           })}
-
-          <button
-            type="button"
-            role="menuitemradio"
-            aria-checked={isContrast}
-            onClick={() => {
-              setPreset('contrast');
-              setTheme('dark');
-              setIsOpen(false);
-            }}
-            className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium transition-colors cursor-pointer ${
-              isContrast ? 'bg-brand-soft text-ink font-bold' : 'text-ink hover:bg-paper-2'
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Contrast className="w-4 h-4 text-brand" />
-              <span>Alto Contraste AAA</span>
-            </div>
-            {isContrast && <Check className="w-3.5 h-3.5 text-brand" />}
-          </button>
 
           <div className="border-t border-rule my-1" />
           <button
@@ -245,9 +189,9 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
               openCustomizer();
               setIsOpen(false);
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-brand hover:bg-paper-2 transition-colors cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm font-semibold text-brand hover:bg-paper-2 transition-colors cursor-pointer"
           >
-            <Type className="w-3.5 h-3.5 text-brand shrink-0" />
+            <Type className="w-4 h-4 text-brand shrink-0" />
             <span>Escala de texto ({customization.fontScale})…</span>
           </button>
         </div>

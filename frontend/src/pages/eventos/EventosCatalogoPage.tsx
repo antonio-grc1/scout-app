@@ -81,7 +81,7 @@ export const EventosCatalogoPage: React.FC = () => {
       if (esErrorOffline(err, msg)) {
         setEventos((prev) => {
           if (prev.length === 0) {
-            setError('Sin conexión y sin eventos cacheados en este dispositivo.');
+            setError('Sin conexión y sin eventos guardados en este dispositivo.');
           }
           return prev;
         });
@@ -179,15 +179,15 @@ export const EventosCatalogoPage: React.FC = () => {
   return (
     <div className="space-y-5 s-anim-view">
       {/* Cabecera del Módulo */}
-      <div className="s-card rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1 min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+      <div className="s-card rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1.5 min-w-0 flex-1">
+          <div className="flex items-center gap-2.5">
             <Sparkles className="w-5 h-5 text-brand shrink-0" />
-            <h1 className="text-lg sm:text-xl font-black text-ink tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-ink tracking-tight">
               Eventos Económicos y Vales QR
             </h1>
           </div>
-          <p className="text-xs text-ink-muted leading-relaxed">
+          <p className="text-sm text-ink-muted leading-relaxed">
             {caps.canSellEventos
               ? 'Elegí un evento para abrir su mesa operativa: POS de venta rápida, control de pedidos y liquidación de ganancias.'
               : 'Consultá los eventos publicados del grupo, cargá tus pedidos y descargá tus vales QR para retirar.'}
@@ -275,7 +275,7 @@ export const EventosCatalogoPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="s-badge-err rounded-2xl p-4 text-xs font-semibold">
+        <div className="s-badge-err rounded-2xl p-4 text-sm font-semibold">
           {error}
         </div>
       )}
@@ -297,12 +297,12 @@ export const EventosCatalogoPage: React.FC = () => {
           <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto">
             <Sparkles className="w-6 h-6" />
           </div>
-          <h2 className="text-base font-extrabold text-ink">
+          <h2 className="text-lg font-extrabold text-ink">
             {eventos.length === 0
               ? 'No hay eventos económicos creados aún'
               : 'No hay eventos en esta categoría'}
           </h2>
-          <p className="text-xs text-ink-muted max-w-md mx-auto leading-relaxed">
+          <p className="text-sm text-ink-muted max-w-md mx-auto leading-relaxed">
             {eventos.length === 0
               ? 'Organizá ventas de recaudación, festivales con entradas QR y acreditá las ganancias directamente en el Saldo a Favor de cada familia.'
               : 'Probá seleccionando otro filtro para ver el resto de los eventos registrados.'}
@@ -332,38 +332,38 @@ export const EventosCatalogoPage: React.FC = () => {
                 key={ev.id}
                 type="button"
                 onClick={() => navigate(`/eventos/${ev.id}`)}
-                className="s-card s-card-hover s-event-card rounded-2xl p-4 sm:p-5 text-left flex flex-col justify-between gap-4 cursor-pointer min-w-0"
+                className="s-card s-card-hover s-event-card rounded-2xl p-5 text-left flex flex-col justify-between gap-4 cursor-pointer min-w-0"
               >
                 <div className="space-y-3 min-w-0">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className={`${st.cls} px-2.5 py-0.5 rounded-full text-[11px] font-bold inline-flex items-center gap-1`}>
+                    <span className={`${st.cls} px-3 py-0.5 rounded-full text-xs font-bold inline-flex items-center gap-1`}>
                       {st.icon}
                       <span>{st.label}</span>
                     </span>
-                    <span className="px-2 py-0.5 rounded-lg bg-paper-2 border border-rule text-[10px] font-bold text-ink-2">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-paper-2 border border-rule text-xs font-bold text-ink-2">
                       {ev.tipo === 'FESTIVAL_ENTRADAS' ? 'Entradas / Festival' : 'Recaudación'}
                     </span>
                   </div>
 
                   <div className="min-w-0">
-                    <h2 className="text-base font-black text-ink leading-snug line-clamp-2">
+                    <h2 className="text-[17px] font-black text-ink leading-snug line-clamp-2">
                       {ev.titulo}
                     </h2>
                     {ev.descripcion && (
-                      <p className="text-xs text-ink-muted mt-1 line-clamp-2 leading-relaxed">
+                      <p className="text-[13px] text-ink-muted mt-1 line-clamp-2 leading-relaxed">
                         {ev.descripcion}
                       </p>
                     )}
                   </div>
 
-                  <div className="space-y-1 text-xs text-ink-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Calendar className="w-3.5 h-3.5 text-brand shrink-0" />
+                  <div className="space-y-1.5 text-[13px] text-ink-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Calendar className="w-4 h-4 text-brand shrink-0" />
                       <span className="truncate">{formatearFecha(ev.fechaEvento)}</span>
                     </div>
                     {ev.lugarEntrega && (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <MapPin className="w-3.5 h-3.5 text-ink-muted shrink-0" />
+                      <div className="flex items-center gap-2 min-w-0">
+                        <MapPin className="w-4 h-4 text-ink-muted shrink-0" />
                         <span className="truncate">{ev.lugarEntrega}</span>
                       </div>
                     )}
@@ -375,13 +375,13 @@ export const EventosCatalogoPage: React.FC = () => {
                       {ev.items.slice(0, 3).map((it) => (
                         <span
                           key={it.id}
-                          className="px-2 py-0.5 rounded-lg bg-paper-2 border border-rule text-[11px] font-semibold text-ink-2 s-tabular"
+                          className="px-2.5 py-0.5 rounded-lg bg-paper-2 border border-rule text-xs font-semibold text-ink-2 s-tabular"
                         >
                           {it.nombre} · {formatearMoneda(Number(it.precioVenta))}
                         </span>
                       ))}
                       {ev.items.length > 3 && (
-                        <span className="px-2 py-0.5 rounded-lg bg-paper-2 text-[11px] font-bold text-ink-muted">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-paper-2 text-xs font-bold text-ink-muted">
                           +{ev.items.length - 3} más
                         </span>
                       )}
@@ -389,23 +389,23 @@ export const EventosCatalogoPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="space-y-3 pt-3 border-t border-rule">
+                <div className="space-y-3 pt-3.5 border-t border-rule">
                   {caps.canSellEventos ? (
                     <>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted block">
+                          <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                             Recaudado
                           </span>
-                          <span className="text-sm font-black text-ink s-tabular">
+                          <span className="text-base font-black text-ink s-tabular">
                             {formatearMoneda(ev.metricas?.totalVenta || 0)}
                           </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-ink-muted block">
+                          <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
                             Pedidos / Vales
                           </span>
-                          <span className="text-sm font-black text-brand s-tabular">
+                          <span className="text-base font-black text-brand s-tabular">
                             {ev.metricas?.cantidadPedidos || 0} · {ev.metricas?.ticketsRetirados || 0}/{ev.metricas?.totalTickets || 0}
                           </span>
                         </div>
@@ -420,7 +420,7 @@ export const EventosCatalogoPage: React.FC = () => {
                     </>
                   ) : null}
 
-                  <div className="flex items-center justify-between text-xs font-extrabold text-brand">
+                  <div className="flex items-center justify-between text-[13px] font-extrabold text-brand">
                     <span>{caps.canSellEventos ? 'Abrir mesa operativa' : 'Ver productos y pedir'}</span>
                     <ChevronRight className="w-4 h-4 shrink-0" />
                   </div>

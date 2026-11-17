@@ -277,31 +277,31 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
         {/* CABECERA DEL MODAL */}
         <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
               <History className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2
                   id="modal-historial-seccion-titulo"
-                  className="text-base sm:text-lg font-black text-ink tracking-tight truncate"
+                  className="text-lg sm:text-xl font-black text-ink tracking-tight truncate"
                 >
                   Historial: {seccionInfo.nombre}
                 </h2>
-                <span className="px-2 py-0.5 rounded-md bg-paper-3 text-ink-2 text-xs font-bold border border-rule">
+                <span className="px-2.5 py-0.5 rounded-md bg-paper-3 text-ink-2 text-xs font-bold border border-rule">
                   {seccionInfo.rama?.nombre || 'Adultos'}
                 </span>
                 {seccionInfo.activa ? (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800/60">
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800/60">
                     Activa
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-xs border border-rose-200 dark:border-rose-800/60">
+                  <span className="px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-xs border border-rose-200 dark:border-rose-800/60">
                     Sección Inactiva
                   </span>
                 )}
               </div>
-              <p className="text-xs text-ink-muted mt-0.5 truncate">
+              <p className="text-[13px] text-ink-muted mt-0.5 truncate">
                 {TIPO_UNIDAD_LABELS[seccionInfo.tipo] || 'Sección del Grupo'} • Registros históricos de educadores y protagonistas
               </p>
             </div>
@@ -311,7 +311,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
             type="button"
             onClick={onCerrar}
             aria-label="Cerrar modal"
-            className="min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+            className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -319,7 +319,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
 
         {/* AVISO INFORMATIVO SI LA SECCIÓN ESTÁ INACTIVA */}
         {!seccionInfo.activa && (
-          <div className="mx-4 sm:mx-6 mt-4 p-3 rounded-xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-xs flex items-center gap-2.5 shrink-0 shadow-2xs">
+          <div className="mx-4 sm:mx-6 mt-4 p-3.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 text-[13px] flex items-center gap-2.5 shrink-0 shadow-2xs">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />
             <p className="font-semibold">
               Esta sección se encuentra actualmente desactivada. Se visualizan sus registros históricos.
@@ -349,18 +349,18 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
 
           {/* BANNER DE ERROR */}
           {!cargando && error && (
-            <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 space-y-3">
+            <div className="p-4 sm:p-5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-200 space-y-3">
               <div className="flex items-center gap-2.5">
                 <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
-                <span className="font-bold text-sm">No se pudo cargar el historial</span>
+                <span className="font-bold text-[15px]">No se pudo cargar el historial</span>
               </div>
-              <p className="text-xs text-rose-700 dark:text-rose-300">{error}</p>
+              <p className="text-[13px] text-rose-700 dark:text-rose-300">{error}</p>
               <button
                 type="button"
                 onClick={reintentar}
-                className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold text-xs flex items-center gap-2 cursor-pointer transition shadow-2xs"
+                className="min-h-[42px] px-4 py-2 rounded-xl bg-surface hover:bg-paper-2 text-ink-2 border border-rule font-bold text-[13px] flex items-center gap-2 cursor-pointer transition shadow-2xs"
               >
-                <RotateCcw className="w-3.5 h-3.5" />
+                <RotateCcw className="w-4 h-4" />
                 <span>Reintentar</span>
               </button>
             </div>
@@ -372,14 +372,14 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
               {/* RESUMEN ESTADÍSTICO (4 TARJETAS) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {/* 1. Ciclos Lectivos */}
-                <div className="bg-paper-2 border border-rule rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
+                <div className="bg-paper-2 border border-rule rounded-2xl p-4 flex flex-col justify-between shadow-2xs">
                   <div className="flex items-center justify-between text-ink-muted mb-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Ciclos</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Ciclos</span>
                     <Calendar className="w-4 h-4 text-brand" />
                   </div>
                   <div>
                     <span className="text-2xl font-black text-ink">{resumen.totalCiclos}</span>
-                    <span className="text-[11px] text-ink-muted block font-medium">
+                    <span className="text-xs text-ink-muted block font-medium mt-0.5">
                       {resumen.ciclosOperativos.length > 0
                         ? `${resumen.ciclosOperativos[resumen.ciclosOperativos.length - 1]} - ${resumen.ciclosOperativos[0]}`
                         : 'registrados'}
@@ -388,42 +388,42 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                 </div>
 
                 {/* 2. Educadores Históricos */}
-                <div className="bg-paper-2 border border-rule rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
+                <div className="bg-paper-2 border border-rule rounded-2xl p-4 flex flex-col justify-between shadow-2xs">
                   <div className="flex items-center justify-between text-ink-muted mb-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Educadores</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Educadores</span>
                     <GraduationCap className="w-4 h-4 text-indigo-500" />
                   </div>
                   <div>
                     <span className="text-2xl font-black text-ink">{resumen.totalEducadoresUnicos}</span>
-                    <span className="text-[11px] text-ink-muted block font-medium">
+                    <span className="text-xs text-ink-muted block font-medium mt-0.5">
                       históricos únicos
                     </span>
                   </div>
                 </div>
 
                 {/* 3. Protagonistas */}
-                <div className="bg-paper-2 border border-rule rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
+                <div className="bg-paper-2 border border-rule rounded-2xl p-4 flex flex-col justify-between shadow-2xs">
                   <div className="flex items-center justify-between text-ink-muted mb-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Protagonistas</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Protagonistas</span>
                     <Users className="w-4 h-4 text-emerald-500" />
                   </div>
                   <div>
                     <span className="text-2xl font-black text-ink">{resumen.totalProtagonistasUnicos}</span>
-                    <span className="text-[11px] text-ink-muted block font-medium">
+                    <span className="text-xs text-ink-muted block font-medium mt-0.5">
                       miembros históricos
                     </span>
                   </div>
                 </div>
 
                 {/* 4. Total Asignaciones */}
-                <div className="bg-paper-2 border border-rule rounded-2xl p-3.5 flex flex-col justify-between shadow-2xs">
+                <div className="bg-paper-2 border border-rule rounded-2xl p-4 flex flex-col justify-between shadow-2xs">
                   <div className="flex items-center justify-between text-ink-muted mb-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider">Asignaciones</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">Asignaciones</span>
                     <Clock className="w-4 h-4 text-amber-500" />
                   </div>
                   <div>
                     <span className="text-2xl font-black text-ink">{resumen.totalAsignaciones}</span>
-                    <span className="text-[11px] text-ink-muted block font-medium">
+                    <span className="text-xs text-ink-muted block font-medium mt-0.5">
                       registros totales
                     </span>
                   </div>
@@ -431,7 +431,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
               </div>
 
               {/* BARRA DE HERRAMIENTAS: BÚSQUEDA + SELECTOR DE CICLO + VISTA */}
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
                   {/* Buscador */}
                   <div className="relative flex-1">
@@ -441,16 +441,16 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                       value={busqueda}
                       onChange={(e) => setBusqueda(e.target.value)}
                       placeholder="Buscar por nombre, apellido, DNI, rol..."
-                      className="w-full min-h-[40px] pl-9.5 pr-8 py-2 rounded-xl border border-rule bg-surface text-ink text-xs font-semibold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition"
+                      className="w-full min-h-[46px] pl-10 pr-9 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-semibold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition"
                     />
                     {busqueda && (
                       <button
                         type="button"
                         onClick={() => setBusqueda('')}
                         aria-label="Limpiar búsqueda"
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer p-0.5"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer p-0.5"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -461,7 +461,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                       <select
                         value={filtroCiclo}
                         onChange={(e) => setFiltroCiclo(e.target.value)}
-                        className="min-h-[40px] pl-3 pr-8 py-1.5 rounded-xl border border-rule bg-surface text-ink text-xs font-bold cursor-pointer outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
+                        className="min-h-[46px] pl-3.5 pr-9 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-bold cursor-pointer outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 transition"
                       >
                         <option value="TODOS">Todos los ciclos</option>
                         {resumen.ciclosOperativos.map((c) => (
@@ -470,7 +470,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                           </option>
                         ))}
                       </select>
-                      <Filter className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                      <Filter className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                     </div>
 
                     {/* Alternador de Vista (Por Ciclo vs Por Categoría) */}
@@ -478,26 +478,26 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                       <button
                         type="button"
                         onClick={() => setModoVista('ciclo')}
-                        className={`min-h-[32px] px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition ${
+                        className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-[13px] font-bold flex items-center gap-1.5 cursor-pointer transition ${
                           modoVista === 'ciclo'
                             ? 'bg-brand text-brand-contrast shadow-xs'
                             : 'text-ink-2 hover:text-ink'
                         }`}
                       >
-                        <Calendar className="w-3.5 h-3.5" />
+                        <Calendar className="w-4 h-4" />
                         <span className="hidden sm:inline">Por Ciclo</span>
                         <span className="sm:hidden">Ciclos</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setModoVista('categoria')}
-                        className={`min-h-[32px] px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition ${
+                        className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-[13px] font-bold flex items-center gap-1.5 cursor-pointer transition ${
                           modoVista === 'categoria'
                             ? 'bg-brand text-brand-contrast shadow-xs'
                             : 'text-ink-2 hover:text-ink'
                         }`}
                       >
-                        <Users className="w-3.5 h-3.5" />
+                        <Users className="w-4 h-4" />
                         <span className="hidden sm:inline">Por Categoría</span>
                         <span className="sm:hidden">Categorías</span>
                       </button>
@@ -507,7 +507,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
 
                 {/* Acciones auxiliares en modo ciclo (Expandir / Colapsar todos) */}
                 {modoVista === 'ciclo' && gruposPorCiclo.length > 1 && (
-                  <div className="flex items-center justify-between text-[11px] text-ink-muted px-1">
+                  <div className="flex items-center justify-between text-xs text-ink-muted px-1">
                     <span>
                       Mostrando {asignacionesFiltradas.length}{' '}
                       {asignacionesFiltradas.length === 1 ? 'asignación' : 'asignaciones'} en{' '}
@@ -538,8 +538,8 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
               {(data?.asignaciones || []).length === 0 && (
                 <div className="p-8 text-center bg-paper-2 rounded-2xl border border-rule space-y-2">
                   <Inbox className="w-10 h-10 text-ink-muted mx-auto" />
-                  <h3 className="font-bold text-sm text-ink">Sin asignaciones registradas</h3>
-                  <p className="text-xs text-ink-muted max-w-md mx-auto">
+                  <h3 className="font-bold text-base text-ink">Sin asignaciones registradas</h3>
+                  <p className="text-[13px] text-ink-muted max-w-md mx-auto">
                     Esta sección no registra miembros ni educadores asignados en el historial del sistema.
                   </p>
                 </div>
@@ -549,8 +549,8 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
               {(data?.asignaciones || []).length > 0 && asignacionesFiltradas.length === 0 && (
                 <div className="p-8 text-center bg-paper-2 rounded-2xl border border-rule space-y-3">
                   <Search className="w-8 h-8 text-ink-muted mx-auto" />
-                  <h3 className="font-bold text-sm text-ink">Sin resultados</h3>
-                  <p className="text-xs text-ink-muted">
+                  <h3 className="font-bold text-base text-ink">Sin resultados</h3>
+                  <p className="text-[13px] text-ink-muted">
                     No encontramos asignaciones que coincidan con &ldquo;{busqueda}&rdquo;
                     {filtroCiclo !== 'TODOS' ? ` en el ciclo ${filtroCiclo}` : ''}.
                   </p>
@@ -560,9 +560,9 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                       setBusqueda('');
                       setFiltroCiclo('TODOS');
                     }}
-                    className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-surface hover:bg-paper-3 text-ink-2 border border-rule font-bold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
+                    className="min-h-[40px] px-4 py-2 rounded-xl bg-surface hover:bg-paper-3 text-ink-2 border border-rule font-bold text-[13px] cursor-pointer inline-flex items-center gap-1.5 shadow-2xs"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-4 h-4" />
                     <span>Limpiar filtros</span>
                   </button>
                 </div>
@@ -585,16 +585,16 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                           className="w-full p-4 flex items-center justify-between text-left hover:bg-paper-3/60 transition cursor-pointer"
                         >
                           <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="w-7 h-7 rounded-lg bg-brand/10 text-brand font-black text-xs flex items-center justify-center">
+                            <span className="w-8 h-8 rounded-lg bg-brand/10 text-brand font-black text-xs flex items-center justify-center">
                               {ciclo}
                             </span>
-                            <span className="font-black text-sm text-ink">
+                            <span className="font-black text-[15px] text-ink">
                               Ciclo Lectivo {ciclo}
                             </span>
-                            <span className="px-2 py-0.5 rounded-full bg-paper-3 text-ink-2 font-bold text-[11px] border border-rule">
+                            <span className="px-2.5 py-0.5 rounded-full bg-paper-3 text-ink-2 font-bold text-xs border border-rule">
                               {total} {total === 1 ? 'miembro' : 'miembros'}
                             </span>
-                            <span className="text-[11px] text-ink-muted">
+                            <span className="text-xs text-ink-muted">
                               ({educadores.length} {educadores.length === 1 ? 'educador' : 'educadores'} • {protagonistas.length} {protagonistas.length === 1 ? 'protagonista' : 'protagonistas'})
                             </span>
                           </div>
@@ -613,17 +613,17 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                           <div className="p-4 pt-0 space-y-4 border-t border-rule/60 mt-1">
                             {/* Subsección: Educadores a cargo */}
                             <div className="space-y-2 mt-3">
-                              <div className="flex items-center gap-1.5 text-xs font-bold text-ink-2">
+                              <div className="flex items-center gap-1.5 text-[13px] font-bold text-ink-2">
                                 <GraduationCap className="w-4 h-4 text-indigo-500" />
                                 <span>Educadores a cargo ({educadores.length})</span>
                               </div>
 
                               {educadores.length === 0 ? (
-                                <p className="text-xs text-ink-muted italic pl-5 py-1">
+                                <p className="text-[13px] text-ink-muted italic pl-5 py-1">
                                   No hay educadores registrados en este ciclo.
                                 </p>
                               ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                   {educadores.map((a) => (
                                     <FilaMiembroHistorial key={a.id} asig={a} esEducador={true} />
                                   ))}
@@ -633,17 +633,17 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
 
                             {/* Subsección: Protagonistas */}
                             <div className="space-y-2 pt-2 border-t border-rule/40">
-                              <div className="flex items-center gap-1.5 text-xs font-bold text-ink-2">
+                              <div className="flex items-center gap-1.5 text-[13px] font-bold text-ink-2">
                                 <Users className="w-4 h-4 text-emerald-500" />
                                 <span>Protagonistas ({protagonistas.length})</span>
                               </div>
 
                               {protagonistas.length === 0 ? (
-                                <p className="text-xs text-ink-muted italic pl-5 py-1">
+                                <p className="text-[13px] text-ink-muted italic pl-5 py-1">
                                   No hay protagonistas registrados en este ciclo.
                                 </p>
                               ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                   {protagonistas.map((a) => (
                                     <FilaMiembroHistorial key={a.id} asig={a} esEducador={false} />
                                   ))}
@@ -666,7 +666,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                     <button
                       type="button"
                       onClick={() => setSubCategoria('EDUCADORES')}
-                      className={`min-h-[40px] px-4 py-2 font-bold text-xs flex items-center gap-2 border-b-2 cursor-pointer transition ${
+                      className={`min-h-[44px] px-4 py-2 font-bold text-sm flex items-center gap-2 border-b-2 cursor-pointer transition ${
                         subCategoria === 'EDUCADORES'
                           ? 'border-brand text-brand font-black'
                           : 'border-transparent text-ink-muted hover:text-ink'
@@ -678,7 +678,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                     <button
                       type="button"
                       onClick={() => setSubCategoria('PROTAGONISTAS')}
-                      className={`min-h-[40px] px-4 py-2 font-bold text-xs flex items-center gap-2 border-b-2 cursor-pointer transition ${
+                      className={`min-h-[44px] px-4 py-2 font-bold text-sm flex items-center gap-2 border-b-2 cursor-pointer transition ${
                         subCategoria === 'PROTAGONISTAS'
                           ? 'border-brand text-brand font-black'
                           : 'border-transparent text-ink-muted hover:text-ink'
@@ -692,7 +692,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                   {/* Lista de asignaciones según la categoría activa */}
                   {subCategoria === 'EDUCADORES' ? (
                     listaPorCategoria.educadores.length === 0 ? (
-                      <p className="text-xs text-ink-muted italic py-4 text-center">
+                      <p className="text-[13px] text-ink-muted italic py-4 text-center">
                         No hay educadores que coincidan con los filtros seleccionados.
                       </p>
                     ) : (
@@ -708,7 +708,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                       </div>
                     )
                   ) : listaPorCategoria.protagonistas.length === 0 ? (
-                    <p className="text-xs text-ink-muted italic py-4 text-center">
+                    <p className="text-[13px] text-ink-muted italic py-4 text-center">
                       No hay protagonistas que coincidan con los filtros seleccionados.
                     </p>
                   ) : (
@@ -731,14 +731,14 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
 
         {/* PIE DEL MODAL */}
         <div className="p-4 sm:p-5 border-t border-rule bg-paper-2 flex items-center justify-between shrink-0">
-          <span className="text-xs text-ink-muted font-medium flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-brand" />
+          <span className="text-[13px] text-ink-muted font-medium flex items-center gap-1.5">
+            <Sparkles className="w-4 h-4 text-brand" />
             <span>Visualización histórica de grupo</span>
           </span>
           <button
             type="button"
             onClick={onCerrar}
-            className="min-h-[40px] px-5 py-2 rounded-xl bg-surface hover:bg-paper-3 text-ink-2 hover:text-ink border border-rule font-bold text-xs cursor-pointer transition shadow-2xs"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl bg-surface hover:bg-paper-3 text-ink-2 hover:text-ink border border-rule font-bold text-sm cursor-pointer transition shadow-2xs"
           >
             Cerrar
           </button>
@@ -768,11 +768,11 @@ const FilaMiembroHistorial: React.FC<FilaMiembroProps> = ({
   const asignacionActiva = asig.activo && !asig.fechaFin;
 
   return (
-    <div className="flex items-center justify-between gap-2.5 p-3 rounded-xl bg-surface border border-rule hover:border-brand/30 transition shadow-2xs">
-      <div className="flex items-center gap-2.5 min-w-0">
+    <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-surface border border-rule hover:border-brand/30 transition shadow-2xs">
+      <div className="flex items-center gap-3 min-w-0">
         {/* Avatar de Iniciales */}
         <div
-          className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+          className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-[13px] shrink-0 ${
             esEducador
               ? 'bg-indigo-600 text-white'
               : 'bg-paper-3 text-ink-2 border border-rule'
@@ -783,28 +783,28 @@ const FilaMiembroHistorial: React.FC<FilaMiembroProps> = ({
 
         <div className="min-w-0 space-y-0.5">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-bold text-ink text-xs truncate max-w-[160px] sm:max-w-[200px]">
+            <span className="font-bold text-ink text-sm truncate max-w-[170px] sm:max-w-[220px]">
               {nombreCompleto}
             </span>
             {mostrarCicloBadge && (
-              <span className="px-1.5 py-0.5 rounded-md bg-brand/10 text-brand font-black text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-brand/10 text-brand font-black text-xs">
                 {asig.cicloAnio}
               </span>
             )}
             {!persona.activo && (
-              <span className="px-1.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-xs">
                 Baja
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 text-[11px] text-ink-muted flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-ink-muted flex-wrap">
             <span>DNI {persona.dni || '—'}</span>
             <span>•</span>
             <span className="text-ink-2 font-medium">{asig.rol?.nombre || 'Miembro'}</span>
           </div>
 
-          <div className="text-[10px] text-ink-muted">
+          <div className="text-xs text-ink-muted">
             {inicio ? `${inicio} — ${fin}` : `Ciclo ${asig.cicloAnio}`}
           </div>
         </div>
@@ -813,11 +813,11 @@ const FilaMiembroHistorial: React.FC<FilaMiembroProps> = ({
       {/* Insignia de Estado de Asignación */}
       <div className="shrink-0">
         {asignacionActiva ? (
-          <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800/60">
+          <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-200 dark:border-emerald-800/60">
             Actual
           </span>
         ) : (
-          <span className="px-2 py-0.5 rounded-full bg-paper-3 text-ink-muted font-semibold text-[10px] border border-rule">
+          <span className="px-2.5 py-0.5 rounded-full bg-paper-3 text-ink-muted font-semibold text-xs border border-rule">
             Finalizada
           </span>
         )}

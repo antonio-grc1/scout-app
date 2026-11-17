@@ -122,11 +122,11 @@ export const CambiarClave: React.FC = () => {
 
   const cardContenido = (
     <div className="sm:mx-auto sm:w-full sm:max-w-md w-full s-anim-view">
-      <div className="s-card py-7 px-5 sm:px-8 rounded-2xl">
+      <div className="s-card py-7 px-6 sm:px-8 rounded-2xl">
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <KeyRound className="w-5 h-5 text-brand shrink-0" />
-            <h1 className="text-lg sm:text-xl font-extrabold text-ink truncate">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-ink truncate">
               {requiereCambioClave ? 'Cambio Obligatorio de Clave' : 'Cambiar Contraseña'}
             </h1>
           </div>
@@ -136,7 +136,7 @@ export const CambiarClave: React.FC = () => {
               type="button"
               variant="secondary"
               size="sm"
-              leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+              leftIcon={<ArrowLeft className="w-4 h-4" />}
               onClick={() => navigate(-1)}
             >
               Volver
@@ -146,7 +146,7 @@ export const CambiarClave: React.FC = () => {
 
         <div
           className={`${
-            requiereCambioClave ? 's-badge-warn rounded-xl p-3 text-xs font-medium' : 'text-xs text-ink-muted'
+            requiereCambioClave ? 's-badge-warn rounded-xl p-3.5 text-sm font-medium' : 'text-sm text-ink-muted'
           } mb-5 leading-relaxed`}
         >
           {requiereCambioClave
@@ -158,7 +158,7 @@ export const CambiarClave: React.FC = () => {
           {error && (
             <div
               role="alert"
-              className="s-badge-err p-3 rounded-xl text-xs font-semibold flex items-center gap-2"
+              className="s-badge-err p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2"
             >
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
@@ -168,7 +168,7 @@ export const CambiarClave: React.FC = () => {
           {exito && (
             <div
               role="status"
-              className="s-badge-ok p-3 rounded-xl text-xs font-bold flex items-center gap-2"
+              className="s-badge-ok p-3.5 rounded-xl text-sm font-bold flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{exito}</span>
@@ -177,10 +177,10 @@ export const CambiarClave: React.FC = () => {
 
           {!requiereCambioClave && (
             <div>
-              <label htmlFor="clave-actual" className="block text-xs font-semibold text-ink">
+              <label htmlFor="clave-actual" className="block text-sm font-semibold text-ink">
                 Contraseña Actual
               </label>
-              <div className="mt-1 relative">
+              <div className="mt-1.5 relative">
                 <input
                   id="clave-actual"
                   type={mostrarActual ? 'text' : 'password'}
@@ -189,25 +189,25 @@ export const CambiarClave: React.FC = () => {
                   value={claveActual}
                   onChange={(e) => setClaveActual(e.target.value)}
                   placeholder="••••••••"
-                  className="s-input w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl text-sm"
+                  className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
                 />
                 <button
                   type="button"
                   onClick={() => setMostrarActual((v) => !v)}
                   aria-label={mostrarActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
-                  className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                  className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
                 >
-                  {mostrarActual ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {mostrarActual ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
           )}
 
           <div>
-            <label htmlFor="clave-nueva" className="block text-xs font-semibold text-ink">
+            <label htmlFor="clave-nueva" className="block text-sm font-semibold text-ink">
               Nueva Contraseña
             </label>
-            <div className="mt-1 relative">
+            <div className="mt-1.5 relative">
               <input
                 id="clave-nueva"
                 type={mostrarNueva ? 'text' : 'password'}
@@ -216,24 +216,24 @@ export const CambiarClave: React.FC = () => {
                 value={claveNueva}
                 onChange={(e) => setClaveNueva(e.target.value)}
                 placeholder="••••••••"
-                className="s-input w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl text-sm"
+                className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
               />
               <button
                 type="button"
                 onClick={() => setMostrarNueva((v) => !v)}
                 aria-label={mostrarNueva ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
-                className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
               >
-                {mostrarNueva ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {mostrarNueva ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
           </div>
 
           <div>
-            <label htmlFor="clave-repetir" className="block text-xs font-semibold text-ink">
+            <label htmlFor="clave-repetir" className="block text-sm font-semibold text-ink">
               Repetir Nueva Contraseña
             </label>
-            <div className="mt-1 relative">
+            <div className="mt-1.5 relative">
               <input
                 id="clave-repetir"
                 type={mostrarRepetir ? 'text' : 'password'}
@@ -242,7 +242,7 @@ export const CambiarClave: React.FC = () => {
                 value={claveRepetir}
                 onChange={(e) => setClaveRepetir(e.target.value)}
                 placeholder="••••••••"
-                className="s-input w-full min-h-[44px] pl-3.5 pr-11 py-2 rounded-xl text-sm"
+                className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
               />
               <button
                 type="button"
@@ -252,15 +252,15 @@ export const CambiarClave: React.FC = () => {
                     ? 'Ocultar repetición de contraseña'
                     : 'Ver repetición de contraseña'
                 }
-                className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
               >
-                {mostrarRepetir ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {mostrarRepetir ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
           </div>
 
           {/* Lista de verificación en vivo */}
-          <div className="s-panel rounded-xl p-3 space-y-1.5 text-xs">
+          <div className="s-panel rounded-xl p-3.5 space-y-2 text-[13px]">
             <div
               className={`flex items-center gap-2 ${
                 reglaLargoOk ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-ink-muted'

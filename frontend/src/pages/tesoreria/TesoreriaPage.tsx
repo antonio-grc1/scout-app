@@ -78,14 +78,15 @@ export const TesoreriaPage: React.FC = () => {
 
   const puedeVerCobranzas =
     caps.canViewFamiliasTesoreria || caps.canViewCuotas || caps.canCobrar;
-  const puedeVerPlanesYConceptos = caps.canGestionarPlanes || caps.canViewCuotas;
+  const puedeVerPlanesYConceptos =
+    caps.canGestionarPlanes || caps.hasAnyPermiso('planes.ver', 'planes.editar', 'cobranzas.ver', 'caja.editar');
   const puedeVerCajaOGastos = caps.canSeeCajaContabilidad || caps.canRegistrarGastos;
   const puedeVerBalance = caps.canSeeBalance;
 
   const puedeCrearConceptosYPlanes =
     caps.canGestionarPlanes && (caps.esGlobal || caps.unidadesAsignadasIds.length > 0);
   const puedeEditarDescuentoFamilia =
-    caps.canAjustarCuotas || caps.canGestionarPlanes || caps.hasPermiso('tesoreria.gestionar');
+    caps.canAjustarCuotas || caps.canGestionarPlanes || caps.hasPermiso('caja.editar');
 
   const tabsDisponibles = useMemo<SegmentedTabItem<SubTabTesoreria>[]>(() => {
     const items: SegmentedTabItem<SubTabTesoreria>[] = [];
@@ -250,7 +251,7 @@ export const TesoreriaPage: React.FC = () => {
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudieron cargar los datos de tesorería.');
       if (esErrorOffline(err)) {
-        setError('Modo offline: mostrando información almacenada en este dispositivo.');
+        setError('Sin conexión: mostrando información guardada en este dispositivo.');
       } else {
         setError(msg);
       }
@@ -613,18 +614,15 @@ export const TesoreriaPage: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-5 s-anim-fade-up">
       {/* Cabecera de módulo + SegmentedTabs por capacidades */}
-      <section className="s-card rounded-2xl p-4 sm:p-5 space-y-4">
+      <section className="s-card rounded-2xl p-5 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-extrabold text-ink tracking-tight">
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight">
                 Tesorería y Finanzas
               </h1>
-              <span className="s-badge-brand px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-                Alcance {caps.scope}
-              </span>
             </div>
-            <p className="text-xs sm:text-sm text-ink-muted">
+            <p className="text-sm text-ink-muted">
               Cobranzas familiares, planes mensuales, campamentos, libro diario y balance del grupo.
             </p>
           </div>
@@ -637,7 +635,7 @@ export const TesoreriaPage: React.FC = () => {
                 size="sm"
                 onClick={() => setModalGestionRubrosAbierto(true)}
               >
-                <Tag className="w-3.5 h-3.5 text-brand" />
+                <Tag className="w-4 h-4 text-brand" />
                 <span>Rubros Contables</span>
               </Button>
             )}
@@ -648,7 +646,7 @@ export const TesoreriaPage: React.FC = () => {
               loading={cargando}
               onClick={() => void cargarDatos()}
             >
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-4 h-4" />
               <span>Actualizar</span>
             </Button>
           </div>
@@ -707,7 +705,7 @@ export const TesoreriaPage: React.FC = () => {
 
       {error && (
         <div className="s-badge-warn rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold">
+          <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -720,7 +718,7 @@ export const TesoreriaPage: React.FC = () => {
       {/* SUB-TAB 1: COBRANZAS Y FAMILIAS */}
       {subTab === 'cobranzas' && puedeVerCobranzas && (
         <div key="cobranzas" className="space-y-4 s-anim-tab">
-          <div className="s-card rounded-2xl p-4 space-y-3">
+          <div className="s-card rounded-2xl p-4 sm:p-5 space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
@@ -728,14 +726,14 @@ export const TesoreriaPage: React.FC = () => {
                 value={busquedaCobranzas}
                 onChange={(e) => setBusquedaCobranzas(e.target.value)}
                 placeholder="Buscar familia, hermano o miembro por nombre, apellido o DNI..."
-                className="w-full min-h-[42px] pl-10 pr-9 py-2 rounded-xl border border-rule bg-paper-2 text-sm text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                className="w-full min-h-[46px] pl-10 pr-10 py-2.5 rounded-xl border border-rule bg-paper-2 text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
               {busquedaCobranzas && (
                 <button
                   type="button"
                   onClick={() => setBusquedaCobranzas('')}
                   aria-label="Limpiar búsqueda"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -744,35 +742,35 @@ export const TesoreriaPage: React.FC = () => {
 
             {/* Resultado de búsqueda rápida individual de miembros para cobro directo */}
             {busquedaCobranzas.trim().length >= 2 && caps.canViewMiembros && (
-              <div className="pt-2 border-t border-rule space-y-2">
-                <div className="flex items-center justify-between text-xs">
+              <div className="pt-2.5 border-t border-rule space-y-2.5">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="font-bold text-ink-2">
                     Cobro rápido a integrante ({miembrosBuscados.length})
                   </span>
-                  {buscandoMiembros && <Loader2 className="w-3.5 h-3.5 animate-spin text-brand" />}
+                  {buscandoMiembros && <Loader2 className="w-4 h-4 animate-spin text-brand" />}
                 </div>
                 {miembrosBuscados.length === 0 && !buscandoMiembros ? (
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-[13px] text-ink-muted">
                     No encontramos integrantes que coincidan con &ldquo;{busquedaCobranzas.trim()}&rdquo;.
                   </p>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     {miembrosBuscados.map((m) => {
                       const uNombre = obtenerRolPrincipal(m)?.unidad?.nombre || 'Sin sección';
                       return (
                         <div
                           key={m.id}
-                          className="p-2.5 rounded-xl bg-paper-2 border border-rule flex items-center justify-between gap-2"
+                          className="p-3 rounded-xl bg-paper-2 border border-rule flex items-center justify-between gap-2.5"
                         >
                           <button
                             type="button"
                             onClick={() => navigate(`/miembros/${m.id}?tab=cuotas`)}
                             className="min-w-0 text-left cursor-pointer group"
                           >
-                            <span className="text-xs font-bold text-ink group-hover:text-brand group-hover:underline block truncate">
+                            <span className="text-sm font-bold text-ink group-hover:text-brand group-hover:underline block truncate">
                               {m.apellido}, {m.nombre}
                             </span>
-                            <span className="text-[11px] text-ink-muted block truncate">
+                            <span className="text-xs text-ink-muted block truncate">
                               DNI {m.dni} • {uNombre}
                             </span>
                           </button>
@@ -784,7 +782,7 @@ export const TesoreriaPage: React.FC = () => {
                               size="sm"
                               onClick={() => void abrirCobroMiembro(m)}
                             >
-                              <CreditCard className="w-3.5 h-3.5" />
+                              <CreditCard className="w-4 h-4" />
                               <span>Cobrar</span>
                             </Button>
                           )}
@@ -823,15 +821,15 @@ export const TesoreriaPage: React.FC = () => {
               return (
                 <article
                   key={fam.id}
-                  className="s-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4"
+                  className="s-card rounded-2xl p-5 flex flex-col justify-between gap-4"
                 >
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="font-extrabold text-ink text-sm sm:text-base truncate">
+                        <h3 className="font-extrabold text-ink text-base truncate">
                           {fam.nombreFamilia}
                         </h3>
-                        <span className="text-xs text-ink-muted">
+                        <span className="text-[13px] text-ink-muted">
                           {miembros.length} {miembros.length === 1 ? 'integrante' : 'hermanos'}
                         </span>
                       </div>
@@ -845,7 +843,7 @@ export const TesoreriaPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       {miembros.map((m) => {
                         const asig = obtenerRolPrincipal(m);
                         const uId = asig?.unidadId ?? asig?.unidad?.id ?? null;
@@ -857,7 +855,7 @@ export const TesoreriaPage: React.FC = () => {
                         return (
                           <div
                             key={m.id}
-                            className="p-2 rounded-xl bg-paper-2 border border-rule/80 flex items-center justify-between gap-2"
+                            className="p-2.5 rounded-xl bg-paper-2 border border-rule/80 flex items-center justify-between gap-2"
                           >
                             <button
                               type="button"
@@ -865,10 +863,10 @@ export const TesoreriaPage: React.FC = () => {
                               className="min-w-0 text-left flex-1 cursor-pointer group"
                               title="Ver cuenta corriente en ficha 360°"
                             >
-                              <span className="text-xs font-bold text-ink group-hover:text-brand group-hover:underline block truncate">
+                              <span className="text-[13px] font-bold text-ink group-hover:text-brand group-hover:underline block truncate">
                                 {m.nombre} {m.apellido}
                               </span>
-                              <span className="text-[10px] text-ink-muted font-semibold block truncate">
+                              <span className="text-xs text-ink-muted font-semibold block truncate">
                                 {uNombre}
                               </span>
                             </button>
@@ -882,15 +880,15 @@ export const TesoreriaPage: React.FC = () => {
                                   onClick={() => void abrirCobroMiembro(m)}
                                   className="shrink-0"
                                 >
-                                  <CreditCard className="w-3.5 h-3.5 text-brand" />
+                                  <CreditCard className="w-4 h-4 text-brand" />
                                   <span>Cobrar</span>
                                 </Button>
                               ) : (
                                 <span
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-paper-3 text-ink-muted text-[10px] font-semibold shrink-0"
-                                  title="Este integrante pertenece a otra sección fuera de tu alcance"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-paper-3 text-ink-muted text-xs font-semibold shrink-0"
+                                  title="Este integrante pertenece a otra sección"
                                 >
-                                  <Lock className="w-3 h-3" />
+                                  <Lock className="w-3.5 h-3.5" />
                                   <span>Otra rama</span>
                                 </span>
                               ))}
@@ -900,7 +898,7 @@ export const TesoreriaPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-rule space-y-2">
+                  <div className="pt-2.5 border-t border-rule space-y-2">
                     {puedeEditarFamilia ? (
                       <Button
                         type="button"
@@ -912,16 +910,16 @@ export const TesoreriaPage: React.FC = () => {
                           setFamiliaDrawerAbierta(true);
                         }}
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-4 h-4" />
                         <span>Editar Grupo / Descuento</span>
                       </Button>
                     ) : (
                       puedeEditarDescuentoFamilia &&
                       caps.esUnidad && (
-                        <div className="p-2.5 rounded-xl bg-paper-2 border border-rule text-[11px] text-ink-muted flex items-start gap-2">
-                          <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                        <div className="p-3 rounded-xl bg-paper-2 border border-rule text-xs text-ink-muted flex items-start gap-2">
+                          <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                           <span>
-                            Edición de grupo bloqueada en alcance Unidad porque hay hermanos en otras secciones.
+                            No podés editar este grupo familiar porque hay hermanos en otras secciones.
                           </span>
                         </div>
                       )
@@ -946,14 +944,14 @@ export const TesoreriaPage: React.FC = () => {
       {subTab === 'planes' && puedeVerPlanesYConceptos && (
         <div key="planes" className="space-y-6 s-anim-tab">
           {/* Bloque A: Planes de Cuota Mensual */}
-          <section className="s-card rounded-2xl p-4 sm:p-5 space-y-4">
+          <section className="s-card rounded-2xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-brand" />
+                <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-brand" />
                   <span>Planes de Cuota Mensual</span>
                 </h2>
-                <p className="text-xs text-ink-muted mt-0.5">
+                <p className="text-[13px] text-ink-muted mt-0.5">
                   Tocá cualquier mes para habilitar o desactivar su cobro en el ciclo.
                 </p>
               </div>
@@ -992,15 +990,15 @@ export const TesoreriaPage: React.FC = () => {
                 return (
                   <div
                     key={plan.id}
-                    className="p-4 rounded-2xl border border-rule bg-paper-2 flex flex-col justify-between gap-4"
+                    className="p-5 rounded-2xl border border-rule bg-paper-2 flex flex-col justify-between gap-4"
                   >
                     <div className="space-y-3">
                       <div className="flex justify-between items-start gap-3">
                         <div className="min-w-0">
-                          <h3 className="font-extrabold text-ink text-sm sm:text-base leading-snug truncate">
+                          <h3 className="font-extrabold text-ink text-base leading-snug truncate">
                             {plan.nombre}
                           </h3>
-                          <p className="text-xs text-ink-muted mt-0.5">
+                          <p className="text-[13px] text-ink-muted mt-0.5">
                             {plan.unidad ? plan.unidad.nombre : 'Todo el Grupo Scout'} •{' '}
                             {plan.destinatarioTipo === 'EDUCADORES'
                               ? 'Educadores'
@@ -1010,15 +1008,15 @@ export const TesoreriaPage: React.FC = () => {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="text-lg font-black text-ink s-tabular block">
+                          <span className="text-xl font-black text-ink s-tabular block">
                             {formatearMoneda(plan.montoMensual)}
                           </span>
-                          <span className="text-[10px] text-ink-muted font-medium">por mes</span>
+                          <span className="text-xs text-ink-muted font-medium">por mes</span>
                         </div>
                       </div>
 
                       {/* Matriz 12 meses 1-tap */}
-                      <div className="grid grid-cols-6 sm:grid-cols-12 gap-1 sm:gap-1.5">
+                      <div className="grid grid-cols-6 sm:grid-cols-12 gap-1.5">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
                           const activo = mesesHabilitados.includes(num);
                           const cargandoMes = sincronizandoPlanKey === `${plan.id}-${num}`;
@@ -1028,7 +1026,7 @@ export const TesoreriaPage: React.FC = () => {
                               type="button"
                               disabled={!puedeEditarPlan || cargandoMes}
                               onClick={() => puedeEditarPlan && handleToggleMesPlan(plan, num)}
-                              className={`min-h-[38px] py-1 px-0.5 rounded-xl text-center font-bold text-[10px] transition flex flex-col items-center justify-center gap-0.5 border ${
+                              className={`min-h-[42px] py-1 px-0.5 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-0.5 border ${
                                 !puedeEditarPlan ? 'cursor-default' : 'cursor-pointer'
                               } ${
                                 activo
@@ -1038,11 +1036,11 @@ export const TesoreriaPage: React.FC = () => {
                             >
                               <span>{NOMBRES_MESES_CORTOS[num]}</span>
                               {cargandoMes ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : activo ? (
-                                <Check className="w-3 h-3 stroke-[3]" />
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
                               ) : (
-                                <span className="text-[9px] opacity-40">·</span>
+                                <span className="text-xs opacity-40">·</span>
                               )}
                             </button>
                           );
@@ -1050,7 +1048,7 @@ export const TesoreriaPage: React.FC = () => {
                       </div>
 
                       {rec && rec.totalCargos > 0 && (
-                        <div className="p-3 rounded-xl bg-surface border border-rule space-y-1.5 text-xs">
+                        <div className="p-3.5 rounded-xl bg-surface border border-rule space-y-2 text-[13px]">
                           <div className="flex items-center justify-between">
                             <span className="text-ink-muted">
                               Cobrado:{' '}
@@ -1071,7 +1069,7 @@ export const TesoreriaPage: React.FC = () => {
                               style={{ width: `${Math.min(100, rec.porcentajeCobrado || 0)}%` }}
                             />
                           </div>
-                          <div className="flex items-center justify-between text-[11px] text-ink-muted">
+                          <div className="flex items-center justify-between text-xs text-ink-muted">
                             <span>
                               {rec.cargosPagados} de {rec.totalCargos} cuotas al día
                             </span>
@@ -1082,7 +1080,7 @@ export const TesoreriaPage: React.FC = () => {
                     </div>
 
                     <div className="pt-3 border-t border-rule flex items-center justify-between gap-2">
-                      <span className="text-xs font-semibold text-ink-muted">
+                      <span className="text-[13px] font-semibold text-ink-muted">
                         {mesesHabilitados.length} de 12 meses activos
                         {excepciones.length > 0 && ` • ${excepciones.length} becados`}
                       </span>
@@ -1098,7 +1096,7 @@ export const TesoreriaPage: React.FC = () => {
                               setModalPlanAbierto(true);
                             }}
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <Pencil className="w-4 h-4" />
                             <span>Editar</span>
                           </Button>
                           <Button
@@ -1108,7 +1106,7 @@ export const TesoreriaPage: React.FC = () => {
                             aria-label={`Eliminar plan ${plan.nombre}`}
                             onClick={() => solicitarEliminarPlan(plan)}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       )}
@@ -1126,14 +1124,14 @@ export const TesoreriaPage: React.FC = () => {
           </section>
 
           {/* Bloque B: Campamentos y Conceptos Puntuales */}
-          <section className="s-card rounded-2xl p-4 sm:p-5 space-y-4">
+          <section className="s-card rounded-2xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
-                  <Tent className="w-4 h-4 text-brand" />
+                <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
+                  <Tent className="w-5 h-5 text-brand" />
                   <span>Campamentos, Salidas y Conceptos Puntuales</span>
                 </h2>
-                <p className="text-xs text-ink-muted mt-0.5">
+                <p className="text-[13px] text-ink-muted mt-0.5">
                   Cobros especiales con destinatarios configurables y exenciones individuales.
                 </p>
               </div>
@@ -1169,13 +1167,13 @@ export const TesoreriaPage: React.FC = () => {
                 return (
                   <div
                     key={con.id}
-                    className="p-4 rounded-2xl border border-rule bg-paper-2 flex flex-col justify-between gap-4"
+                    className="p-5 rounded-2xl border border-rule bg-paper-2 flex flex-col justify-between gap-4"
                   >
                     <div className="space-y-3">
                       <div className="flex justify-between items-start gap-2">
                         <div className="min-w-0">
-                          <h3 className="font-bold text-ink text-sm truncate">{con.nombre}</h3>
-                          <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-muted mt-0.5">
+                          <h3 className="font-bold text-ink text-base truncate">{con.nombre}</h3>
+                          <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted mt-1">
                             <span className="font-semibold text-ink-2">
                               {con.unidad ? con.unidad.nombre : 'Todo el Grupo'}
                             </span>
@@ -1195,14 +1193,14 @@ export const TesoreriaPage: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        <span className="text-base font-extrabold text-brand s-tabular shrink-0">
+                        <span className="text-[17px] font-extrabold text-brand s-tabular shrink-0">
                           {formatearMoneda(con.montoBase)}
                         </span>
                       </div>
 
                       {con.fechaVencimiento && (
-                        <div className="flex items-center gap-1 text-[11px] text-brand font-semibold">
-                          <Calendar className="w-3 h-3" />
+                        <div className="flex items-center gap-1.5 text-xs text-brand font-semibold">
+                          <Calendar className="w-3.5 h-3.5" />
                           <span>
                             Vence: {new Date(con.fechaVencimiento).toLocaleDateString('es-AR')}
                           </span>
@@ -1210,7 +1208,7 @@ export const TesoreriaPage: React.FC = () => {
                       )}
 
                       {rec && (
-                        <div className="p-3 rounded-xl bg-surface border border-rule space-y-1.5 text-xs">
+                        <div className="p-3.5 rounded-xl bg-surface border border-rule space-y-2 text-[13px]">
                           <div className="flex items-center justify-between">
                             <span className="text-ink-muted">
                               Cobrado:{' '}
@@ -1231,7 +1229,7 @@ export const TesoreriaPage: React.FC = () => {
                               style={{ width: `${Math.min(100, rec.porcentajeCobrado || 0)}%` }}
                             />
                           </div>
-                          <div className="flex items-center justify-between text-[11px] text-ink-muted">
+                          <div className="flex items-center justify-between text-xs text-ink-muted">
                             <span>
                               {rec.cargosPagados} de {rec.totalCargos} pagados
                             </span>
@@ -1253,7 +1251,7 @@ export const TesoreriaPage: React.FC = () => {
                             setModalCampamentoAbierto(true);
                           }}
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-4 h-4" />
                           <span>Editar / Exentos</span>
                         </Button>
 
@@ -1264,7 +1262,7 @@ export const TesoreriaPage: React.FC = () => {
                           aria-label={`Eliminar concepto ${con.nombre}`}
                           onClick={() => solicitarEliminarConcepto(con)}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     )}
@@ -1292,12 +1290,12 @@ export const TesoreriaPage: React.FC = () => {
                   {
                     id: 'caja',
                     label: 'Libro Diario (Caja y Bancos)',
-                    icon: <Landmark className="w-3.5 h-3.5" />,
+                    icon: <Landmark className="w-4 h-4" />,
                   },
                   {
                     id: 'gastos',
                     label: 'Gastos y Egresos',
-                    icon: <Receipt className="w-3.5 h-3.5" />,
+                    icon: <Receipt className="w-4 h-4" />,
                   },
                 ]}
                 activeId={vistaCajaGastos}

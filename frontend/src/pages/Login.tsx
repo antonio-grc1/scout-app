@@ -101,7 +101,11 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-paper flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-32 top-1/4 size-72 rounded-full bg-brand/10 blur-3xl"
+      />
       <div className="absolute top-4 right-4 flex items-center gap-2 z-20">
         <BotonInstalarPwa variante="navbar" />
         <ThemeToggle variant="segmented" />
@@ -121,27 +125,27 @@ export const Login: React.FC = () => {
         </div>
 
         <div className="w-full max-w-md mx-auto">
-          <div className="flex items-center gap-3.5 text-left px-1">
+          <div className="flex items-center gap-4 text-left px-1">
             <BrandLogo variant="icon" size="lg" className="shrink-0 m-0" />
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight leading-tight">
+              <h1 className="text-2xl sm:text-[1.75rem] font-extrabold text-ink tracking-tight leading-tight">
                 Grupo Scout Juan XXIII
               </h1>
-              <p className="mt-1 text-xs sm:text-sm text-ink-muted leading-snug">
+              <p className="mt-1 text-sm sm:text-[15px] text-ink-muted leading-snug">
                 Ingreso exclusivo para Protagonistas, Familias y Educadores
               </p>
             </div>
           </div>
 
-          <div className="s-card mt-6 text-left py-7 px-5 rounded-3xl sm:px-8">
+          <div className="s-card mt-6 text-left py-7 px-6 rounded-3xl sm:px-8">
             {modoRecuperar ? (
               <form className="space-y-5" onSubmit={handleRecuperarClave}>
-                <div className="space-y-1">
-                  <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-brand shrink-0" />
+                <div className="space-y-1.5">
+                  <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
+                    <Mail className="w-5 h-5 text-brand shrink-0" />
                     <span>Recuperar contraseña</span>
                   </h2>
-                  <p className="text-xs text-ink-muted leading-relaxed">
+                  <p className="text-sm text-ink-muted leading-relaxed">
                     Ingresá tu DNI. Si tenés un correo electrónico registrado en tu perfil, te enviaremos una nueva contraseña temporal.
                   </p>
                 </div>
@@ -149,7 +153,7 @@ export const Login: React.FC = () => {
                 {error && (
                   <div
                     role="alert"
-                    className="s-badge-err p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2"
+                    className="s-badge-err p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2"
                   >
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{error}</span>
@@ -159,7 +163,7 @@ export const Login: React.FC = () => {
                 {mensajeRecupero && (
                   <div
                     role="status"
-                    className="s-badge-ok p-3.5 rounded-xl text-xs font-medium flex items-start gap-2"
+                    className="s-badge-ok p-3.5 rounded-xl text-sm font-medium flex items-start gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{mensajeRecupero}</span>
@@ -179,7 +183,7 @@ export const Login: React.FC = () => {
                       value={dni}
                       onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
                       placeholder="Sin puntos ni espacios"
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base s-tabular"
+                      className="s-input w-full min-h-[48px] px-4 py-2.5 rounded-xl text-base s-tabular"
                     />
                   </div>
                 </div>
@@ -202,7 +206,7 @@ export const Login: React.FC = () => {
                       setError(null);
                       setMensajeRecupero(null);
                     }}
-                    className="w-full min-h-[40px] text-xs font-bold text-ink-muted hover:text-ink cursor-pointer transition-colors"
+                    className="w-full min-h-[42px] text-sm font-bold text-ink-muted hover:text-ink cursor-pointer transition-colors"
                   >
                     ← Volver al inicio de sesión
                   </button>
@@ -213,7 +217,7 @@ export const Login: React.FC = () => {
                 {rateLimitSecs > 0 && (
                   <div
                     role="alert"
-                    className="s-badge-warn p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2"
+                    className="s-badge-warn p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2"
                   >
                     <Clock className="w-4 h-4 shrink-0" />
                     <span>Demasiados intentos. Podrás reintentar en {rateLimitSecs}s.</span>
@@ -223,7 +227,7 @@ export const Login: React.FC = () => {
                 {error && (
                   <div
                     role="alert"
-                    className="s-badge-err p-3.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2"
+                    className="s-badge-err p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2"
                   >
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span>{error}</span>
@@ -244,7 +248,7 @@ export const Login: React.FC = () => {
                       value={dni}
                       onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
                       placeholder="Sin puntos ni espacios"
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base s-tabular"
+                      className="s-input w-full min-h-[48px] px-4 py-2.5 rounded-xl text-base s-tabular"
                     />
                   </div>
                 </div>
@@ -261,7 +265,7 @@ export const Login: React.FC = () => {
                         setError(null);
                         setMensajeRecupero(null);
                       }}
-                      className="text-xs font-bold text-brand hover:underline cursor-pointer"
+                      className="text-sm font-bold text-brand hover:underline cursor-pointer"
                     >
                       ¿Olvidaste tu contraseña?
                     </button>
@@ -275,18 +279,18 @@ export const Login: React.FC = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base"
+                      className="s-input w-full min-h-[48px] pl-4 pr-12 py-2.5 rounded-xl text-base"
                     />
                     <button
                       type="button"
                       onClick={() => setMostrarPassword((prev) => !prev)}
                       aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                      className="absolute inset-y-0 right-0 px-3 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
+                      className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
                     >
                       {mostrarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                     </button>
                   </div>
-                  <p className="text-xs text-ink-muted mt-1.5 leading-snug">
+                  <p className="text-[13px] text-ink-muted mt-2 leading-snug">
                     Si ingresás por primera vez o te restablecieron el acceso, usá tu DNI inicial o la clave temporal recibida.
                   </p>
                 </div>

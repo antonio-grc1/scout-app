@@ -121,10 +121,10 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
             <PlusCircle className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-ink text-base">
+            <h3 className="font-bold text-ink text-lg">
               Generar Nueva Deuda Individual
             </h3>
-            <p className="text-xs text-ink-muted">
+            <p className="text-[13px] text-ink-muted">
               Para: <strong>{miembro.nombre} {miembro.apellido}</strong> (DNI {miembro.dni})
             </p>
           </div>
@@ -141,17 +141,17 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
       </div>
 
       {/* Formulario */}
-      <form onSubmit={handleSubmit} className="p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4">
         {error && (
-          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold">
             {error}
           </div>
         )}
 
         {/* Motivo y Tipo */}
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <div>
-            <label className="block text-xs font-bold text-ink-2 mb-1">
+            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
               Motivo / Nombre del Concepto *
             </label>
             <input
@@ -160,18 +160,18 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
               value={nombreConcepto}
               onChange={(e) => setNombreConcepto(e.target.value)}
               placeholder="Ej. Pañuelo y Camisa Scout, Campamento Verano, Ajuste..."
-              className="w-full rounded-xl border border-rule bg-surface px-3.5 py-2 text-xs font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-ink-2 mb-1">
+            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
               Categoría
             </label>
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value as any)}
-              className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
             >
               <option value="CAMPAMENTO">Campamento</option>
               <option value="CUOTA_MENSUAL">Cuota Mensual</option>
@@ -184,13 +184,13 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
         </div>
 
         {/* Montos */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <label className="block text-xs font-bold text-ink-2 mb-1">
+            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
               Monto Original ($) *
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2 text-xs font-bold text-ink-muted pointer-events-none">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
                 $
               </span>
               <input
@@ -201,17 +201,17 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
                 value={monto}
                 onChange={(e) => setMonto(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="5000.00"
-                className="w-full rounded-xl border border-rule bg-surface pl-7 pr-3 py-2 text-xs font-bold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-ink-2 mb-1">
+            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
               Descuento ($ opcional)
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-2 text-xs font-bold text-ink-muted pointer-events-none">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
                 $
               </span>
               <input
@@ -221,36 +221,36 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
                 value={montoDescuento}
                 onChange={(e) => setMontoDescuento(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0.00"
-                className="w-full rounded-xl border border-rule bg-surface pl-7 pr-3 py-2 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
               />
             </div>
           </div>
         </div>
 
         {/* Resumen Monto Final */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-paper-2 border border-rule text-xs">
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-paper-2 border border-rule text-sm">
           <span className="font-bold text-ink-2">Deuda final a cobrar:</span>
-          <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">
+          <span className="text-base font-extrabold text-blue-600 dark:text-blue-400">
             ${montoFinal.toFixed(2)}
           </span>
         </div>
 
         {/* Vencimiento y Observaciones */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
-            <label className="block text-xs font-bold text-ink-2 mb-1">
+            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
               Fecha de Vencimiento (opcional)
             </label>
             <input
               type="date"
               value={fechaVencimiento}
               onChange={(e) => setFechaVencimiento(e.target.value)}
-              className="w-full rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs text-ink"
+              className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-ink-2 mb-1">
+            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
               Observaciones (opcional)
             </label>
             <input
@@ -258,24 +258,24 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
               value={observaciones}
               onChange={(e) => setObservaciones(e.target.value)}
               placeholder="Detalle o nota interna..."
-              className="w-full rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs text-ink"
+              className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
             />
           </div>
         </div>
 
         {/* Footer del Form */}
-        <div className="pt-3 border-t border-rule flex items-center justify-end gap-3">
+        <div className="pt-3.5 border-t border-rule flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onCerrar}
-            className="px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-xs hover:bg-paper-2 transition cursor-pointer"
+            className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-sm hover:bg-paper-2 transition cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={guardando || montoFinal <= 0}
-            className="px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>{guardando ? 'Generando...' : `Generar Deuda de $${montoFinal.toFixed(2)}`}</span>

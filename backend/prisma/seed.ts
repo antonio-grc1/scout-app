@@ -39,34 +39,27 @@ const UNIDADES: { nombre: string; tipo: TipoUnidad; rama: string | null }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 3. Catálogo de permisos (claves usadas por @RequirePermission)
+// 3. Catálogo de permisos (claves por panel/pestaña usadas por @RequirePermission)
 // ---------------------------------------------------------------------------
 const PERMISOS: { clave: string; descripcion: string }[] = [
-  { clave: 'organizacion.ver', descripcion: 'Ver ramas, unidades y parámetros' },
-  { clave: 'organizacion.gestionar', descripcion: 'Crear/editar ramas, unidades y parámetros' },
-  { clave: 'roles.gestionar', descripcion: 'Crear, editar roles y configurar sus permisos' },
-  { clave: 'miembros.ver', descripcion: 'Ver padrón y datos de miembros' },
-  { clave: 'miembros.crear', descripcion: 'Dar de alta miembros' },
-  { clave: 'miembros.editar', descripcion: 'Editar datos de contacto, familiares, salud y vincular hermanos' },
-  { clave: 'miembros.editar_identidad', descripcion: 'Editar nombre, apellido, DNI y fecha de nacimiento' },
-  { clave: 'miembros.baja', descripcion: 'Dar de baja o reactivar miembros' },
-  { clave: 'auth.resetear_clave', descripcion: 'Resetear la clave de un miembro a su DNI' },
-  { clave: 'pases.ver', descripcion: 'Ver candidatos sugeridos para pase' },
-  { clave: 'pases.ejecutar', descripcion: 'Ejecutar pases de rama y gestionar asignaciones' },
-  { clave: 'legajos.ver', descripcion: 'Ver legajos y fichas' },
-  { clave: 'legajos.completar', descripcion: 'Completar formularios y generar snapshot/PDF' },
-  { clave: 'legajos.validar_fisico', descripcion: 'Validar firma física escaneando el QR' },
-  { clave: 'legajos.plantillas_gestionar', descripcion: 'Administrar plantillas de formularios' },
-  { clave: 'cuotas.ver', descripcion: 'Ver cargos y estado de cuenta' },
-  { clave: 'cuotas.cobrar', descripcion: 'Registrar cobros e imputar pagos a cargos' },
-  { clave: 'cuotas.ajustar', descripcion: 'Anular cargos, revertir pagos y ajustar saldos de cuenta corriente' },
-  { clave: 'tesoreria.conceptos_planes', descripcion: 'Crear y editar conceptos cobrables y planes de cuotas anuales o campamentos' },
-  { clave: 'tesoreria.caja_ver', descripcion: 'Ver movimientos de caja física, cuentas bancarias y cuadro de resultados' },
-  { clave: 'tesoreria.gastos_registrar', descripcion: 'Registrar y editar egresos/gastos de caja o banco' },
-  { clave: 'tesoreria.gestionar', descripcion: 'Configuración completa de tesorería, cuentas bancarias y cierre de caja' },
-  { clave: 'eventos.ver', descripcion: 'Ver eventos económicos y órdenes de compra' },
-  { clave: 'eventos.vender', descripcion: 'Registrar ventas de eventos económicos y cobrar o validar pedidos' },
-  { clave: 'eventos.gestionar', descripcion: 'Crear, configurar, abrir y cerrar eventos económicos' },
+  { clave: 'padron.ver', descripcion: 'Padrón y Ficha de Miembro: Solo lectura' },
+  { clave: 'padron.editar', descripcion: 'Padrón y Ficha de Miembro: Alta, edición de datos, baja y reseteo de clave' },
+  { clave: 'legajos.ver', descripcion: 'Legajos y Colaboradores: Solo lectura y descarga PDF' },
+  { clave: 'legajos.editar', descripcion: 'Legajos y Colaboradores: Completar fichas y validar entrega física QR' },
+  { clave: 'plantillas.ver', descripcion: 'Plantillas de Formularios: Solo lectura' },
+  { clave: 'plantillas.editar', descripcion: 'Plantillas de Formularios: Diseñar y editar moldes PDF' },
+  { clave: 'pases.ver', descripcion: 'Pases y Progresión: Solo lectura de candidatos y trayectoria' },
+  { clave: 'pases.editar', descripcion: 'Pases y Progresión: Ejecutar pases y gestionar asignaciones de rol' },
+  { clave: 'cobranzas.ver', descripcion: 'Cobranzas y Cuotas: Solo lectura de estado de cuenta y familias' },
+  { clave: 'cobranzas.editar', descripcion: 'Cobranzas y Cuotas: Cobrar, generar/ajustar cargos y descuentos familiares' },
+  { clave: 'planes.ver', descripcion: 'Planes y Conceptos: Solo lectura de planes anuales y campamentos' },
+  { clave: 'planes.editar', descripcion: 'Planes y Conceptos: Crear y editar planes de cuota y campamentos' },
+  { clave: 'caja.ver', descripcion: 'Caja, Bancos y Balance: Solo lectura de saldos, movimientos y cuadro de resultados' },
+  { clave: 'caja.editar', descripcion: 'Caja, Bancos y Balance: Registrar ingresos/gastos, traspasos, cuentas y rubros' },
+  { clave: 'eventos.ver', descripcion: 'Eventos Económicos: Solo lectura de eventos y pedidos' },
+  { clave: 'eventos.editar', descripcion: 'Eventos Económicos: Vender en POS, cobrar pedidos, validar QR y configurar eventos' },
+  { clave: 'organizacion.ver', descripcion: 'Organización y Sistema: Solo lectura de ramas, unidades y roles' },
+  { clave: 'organizacion.editar', descripcion: 'Organización y Sistema: Administrar ramas, unidades, roles y correo institucional' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -84,7 +77,7 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.PROPIO,
     tipoMiembro: 'PROTAGONISTA',
     requiereRama: true,
-    permisos: ['miembros.ver', 'miembros.editar', 'legajos.ver', 'legajos.completar', 'cuotas.ver', 'eventos.ver'],
+    permisos: ['padron.ver', 'padron.editar', 'legajos.ver', 'legajos.editar', 'cobranzas.ver', 'eventos.ver'],
   },
   {
     nombre: 'Educador de Rama',
@@ -93,25 +86,18 @@ const ROLES: {
     requiereRama: true,
     permisos: [
       'organizacion.ver',
-      'miembros.ver',
-      'miembros.crear',
-      'miembros.editar',
-      'miembros.editar_identidad',
-      'miembros.baja',
-      'auth.resetear_clave',
+      'padron.ver',
+      'padron.editar',
       'pases.ver',
-      'pases.ejecutar',
+      'pases.editar',
       'legajos.ver',
-      'legajos.completar',
-      'legajos.validar_fisico',
-      'cuotas.ver',
-      'cuotas.cobrar',
-      'cuotas.ajustar',
-      'tesoreria.conceptos_planes',
-      'tesoreria.caja_ver',
-      'tesoreria.gastos_registrar',
+      'legajos.editar',
+      'cobranzas.ver',
+      'cobranzas.editar',
+      'planes.ver',
+      'planes.editar',
       'eventos.ver',
-      'eventos.vender',
+      'eventos.editar',
     ],
   },
   {
@@ -122,18 +108,17 @@ const ROLES: {
     permisos: 'TODOS',
   },
   {
-    // GLOBAL pero con permisos acotados (solo lectura + validación física + completar su propio legajo)
+    // GLOBAL pero con permisos acotados (solo lectura + edición de legajos)
     nombre: 'Educador Sin Rama',
     alcancePorDefecto: AlcanceRol.GLOBAL,
     tipoMiembro: 'EDUCADOR',
     requiereRama: false,
     permisos: [
       'organizacion.ver',
-      'miembros.ver',
+      'padron.ver',
       'legajos.ver',
-      'legajos.completar',
-      'legajos.validar_fisico',
-      'cuotas.ver',
+      'legajos.editar',
+      'cobranzas.ver',
       'eventos.ver',
     ],
   },
@@ -144,18 +129,16 @@ const ROLES: {
     requiereRama: false,
     permisos: [
       'organizacion.ver',
-      'miembros.ver',
-      'miembros.editar',
-      'cuotas.ver',
-      'cuotas.cobrar',
-      'cuotas.ajustar',
-      'tesoreria.conceptos_planes',
-      'tesoreria.caja_ver',
-      'tesoreria.gastos_registrar',
-      'tesoreria.gestionar',
+      'padron.ver',
+      'padron.editar',
+      'cobranzas.ver',
+      'cobranzas.editar',
+      'planes.ver',
+      'planes.editar',
+      'caja.ver',
+      'caja.editar',
       'eventos.ver',
-      'eventos.vender',
-      'eventos.gestionar',
+      'eventos.editar',
     ],
   },
   {
@@ -165,19 +148,15 @@ const ROLES: {
     requiereRama: false,
     permisos: [
       'organizacion.ver',
-      'miembros.ver',
-      'miembros.crear',
-      'miembros.editar',
-      'miembros.editar_identidad',
-      'miembros.baja',
-      'auth.resetear_clave',
+      'organizacion.editar',
+      'padron.ver',
+      'padron.editar',
       'pases.ver',
-      'pases.ejecutar',
+      'pases.editar',
       'legajos.ver',
-      'legajos.completar',
-      'legajos.validar_fisico',
-      'legajos.plantillas_gestionar',
-      'roles.gestionar',
+      'legajos.editar',
+      'plantillas.ver',
+      'plantillas.editar',
     ],
   },
   {
@@ -187,12 +166,11 @@ const ROLES: {
     requiereRama: false,
     permisos: [
       'organizacion.ver',
-      'miembros.ver',
+      'padron.ver',
       'eventos.ver',
-      'eventos.vender',
-      'eventos.gestionar',
-      'cuotas.ver',
-      'cuotas.cobrar',
+      'eventos.editar',
+      'cobranzas.ver',
+      'cobranzas.editar',
     ],
   },
 ];
@@ -295,7 +273,13 @@ async function seedRoles(permisoIds: Map<string, number>): Promise<Map<string, n
         });
     ids.set(rol.nombre, rol.id);
 
-    if (!existente) {
+    const permisosActualesCount = existente
+      ? await prisma.rolPermiso.count({
+          where: { rolId: rol.id, permisoId: { in: [...permisoIds.values()] } },
+        })
+      : 0;
+
+    if (!existente || permisosActualesCount === 0 || r.permisos === 'TODOS' || r.nombre === 'Protagonista') {
       const claves = r.permisos === 'TODOS' ? [...permisoIds.keys()] : r.permisos;
       await prisma.rolPermiso.createMany({
         data: claves.map((clave) => {
@@ -307,6 +291,11 @@ async function seedRoles(permisoIds: Map<string, number>): Promise<Map<string, n
       });
     }
   }
+
+  await prisma.permiso.deleteMany({
+    where: { clave: { notIn: PERMISOS.map((p) => p.clave) } },
+  });
+
   return ids;
 }
 

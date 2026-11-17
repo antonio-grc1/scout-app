@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowLeft,
@@ -81,6 +81,8 @@ export const MiEspacioPage: React.FC = () => {
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const cicloActual = obtenerCicloAnioActual();
 
@@ -102,6 +104,9 @@ export const MiEspacioPage: React.FC = () => {
       const next = new URLSearchParams(prev);
       next.set('tab', nuevoTab);
       next.delete('vista');
+      if (nuevoTab !== 'pedidos') {
+        next.delete('evento');
+      }
       return next;
     });
   };
@@ -116,17 +121,67 @@ export const MiEspacioPage: React.FC = () => {
   const [generandoVistaPrevia, setGenerandoVistaPrevia] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
 
-  // Estados de Eventos y Pedidos (SIN auto-selección)
+  // Estados de Eventos y Pedidos (SIN auto-selección; sincronizado con ?evento= para soportar botón Atrás)
   const [misPedidos, setMisPedidos] = useState<any[]>([]);
   const [eventosActivos, setEventosActivos] = useState<any[]>([]);
   const [cargandoEventos, setCargandoEventos] = useState(true);
-  const [eventoSeleccionado, setEventoSeleccionado] = useState<any | null>(null);
   const [modalCargarPedidoAbierto, setModalCargarPedidoAbierto] = useState(false);
   const [pedidoAEditar, setPedidoAEditar] = useState<any | null>(null);
   const [modalTicketQR, setModalTicketQR] = useState<{ abierto: boolean; ticket: any | null }>({
     abierto: false,
     ticket: null,
   });
+
+  const eventoIdUrl = useMemo(() => {
+    const raw = searchParams.get('evento');
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+
+  const eventoSeleccionado = useMemo(() => {
+    if (tabActiva !== 'pedidos' || eventoIdUrl === null) return null;
+    return eventosActivos.find((e) => Number(e.id) === eventoIdUrl) ?? null;
+  }, [tabActiva, eventoIdUrl, eventosActivos]);
+
+  useEffect(() => {
+    if (!eventoSeleccionado) {
+      setModalCargarPedidoAbierto(false);
+      setPedidoAEditar(null);
+      setModalTicketQR({ abierto: false, ticket: null });
+    }
+  }, [eventoSeleccionado]);
+
+  const seleccionarEvento = (ev: any) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', 'pedidos');
+        next.set('evento', String(ev.id));
+        next.delete('vista');
+        return next;
+      },
+      { state: { fromEventosSelector: true } },
+    );
+  };
+
+  const volverASeleccionEventos = () => {
+    setModalCargarPedidoAbierto(false);
+    setPedidoAEditar(null);
+    setModalTicketQR({ abierto: false, ticket: null });
+    if ((location.state as { fromEventosSelector?: boolean } | null)?.fromEventosSelector) {
+      navigate(-1);
+      return;
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('evento');
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   // Estados de Mi Perfil
   const [perfil, setPerfil] = useState<any | null>(null);
@@ -270,9 +325,6 @@ export const MiEspacioPage: React.FC = () => {
       const evList = Array.isArray(resEventos.data) ? resEventos.data : [];
       setMisPedidos(pedList);
       setEventosActivos(evList);
-      setEventoSeleccionado((prev: any) =>
-        prev ? evList.find((e: any) => e.id === prev.id) || prev : null,
-      );
     } finally {
       setCargandoEventos(false);
     }
@@ -410,7 +462,7 @@ export const MiEspacioPage: React.FC = () => {
   ) => {
     if (!isOnline) {
       mostrarToast(
-        'Estás sin conexión. Conectate a internet para enviar tu legajo al servidor.',
+        'Estás sin conexión. Conectate a internet para enviar tu legajo.',
         'advertencia',
       );
       return;
@@ -624,23 +676,23 @@ export const MiEspacioPage: React.FC = () => {
   const asignacionesActivasPerfil = (perfil?.asignaciones || []).filter((a: any) => a.activo);
 
   return (
-    <div className="s-anim-view max-w-4xl mx-auto space-y-4">
+    <div className="s-anim-view max-w-5xl mx-auto space-y-5">
       {/* Cabecera Compacta + Navegación 4 tabs */}
-      <section className="s-card rounded-2xl p-4 sm:p-5 space-y-3.5 min-w-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-xl font-extrabold text-ink truncate">
+      <section className="s-card rounded-2xl p-5 sm:p-6 space-y-4 min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 min-w-0">
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-ink truncate">
                 {nombreVisible} {apellidoVisible}
               </h1>
               <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap shrink-0 ${fichaConfig.badgeClass}`}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold border whitespace-nowrap shrink-0 ${fichaConfig.badgeClass}`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${fichaConfig.dotClass}`} />
                 <span>{fichaConfig.label}</span>
               </span>
             </div>
-            <p className="text-xs text-ink-muted truncate">
+            <p className="text-sm text-ink-muted truncate">
               DNI {dniVisible}
               {unidadPrincipalNombre ? ` · ${unidadPrincipalNombre}` : ''}
               {` · Ciclo ${cicloActual}`}
@@ -648,12 +700,12 @@ export const MiEspacioPage: React.FC = () => {
           </div>
 
           {tabActiva === 'legajo' && plantillaSeleccionada && (
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={handleVerCopiaPdf}
                 disabled={generandoVistaPrevia}
-                className="s-btn-sec s-touch flex-1 sm:flex-initial px-3.5 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="s-btn-sec s-touch flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {generandoVistaPrevia ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -667,7 +719,7 @@ export const MiEspacioPage: React.FC = () => {
                 type="button"
                 onClick={handleDescargarCopiaPdf}
                 disabled={guardandoLegajo}
-                className="s-btn-brand s-touch flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="s-btn-brand s-touch flex-1 sm:flex-initial px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {guardandoLegajo ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -680,7 +732,7 @@ export const MiEspacioPage: React.FC = () => {
           )}
         </div>
 
-        <div className="pt-2 border-t border-rule">
+        <div className="pt-2.5 border-t border-rule">
           <SegmentedTabs
             items={tabsItems}
             activeId={tabActiva}
@@ -698,16 +750,16 @@ export const MiEspacioPage: React.FC = () => {
           {cargandoInicial ? (
             <div className="s-card rounded-2xl p-8 flex flex-col items-center justify-center gap-3 text-ink-muted">
               <Loader2 className="w-6 h-6 animate-spin text-brand" />
-              <span className="text-xs font-bold">Cargando formulario…</span>
+              <span className="text-sm font-bold">Cargando formulario…</span>
             </div>
           ) : errorCarga ? (
             <div className="s-card rounded-2xl p-6 border-rose-300 dark:border-rose-900 flex flex-col items-center text-center gap-3">
               <AlertCircle className="w-8 h-8 text-rose-500" />
-              <p className="text-sm font-bold text-ink">{errorCarga}</p>
+              <p className="text-base font-bold text-ink">{errorCarga}</p>
               <button
                 type="button"
                 onClick={inicializarMiEspacio}
-                className="s-btn-brand s-touch px-4 py-2 rounded-xl text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                className="s-btn-brand s-touch px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Reintentar</span>
@@ -728,21 +780,21 @@ export const MiEspacioPage: React.FC = () => {
       {/* TAB 2: MIS CUOTAS Y RECIBOS                                       */}
       {/* ================================================================= */}
       {tabActiva === 'cuotas' && (
-        <div className="s-anim-tab s-card rounded-2xl p-4 sm:p-5 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule pb-3">
-            <span className="text-sm font-extrabold text-ink">Estado de Cuenta Personal</span>
+        <div className="s-anim-tab s-card rounded-2xl p-5 sm:p-6 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-rule pb-3.5">
+            <span className="text-base font-extrabold text-ink">Estado de Cuenta Personal</span>
             <div className="flex items-center gap-2 flex-wrap">
               {cargandoInicial ? (
                 <div className="h-6 w-28 rounded-lg bg-paper-3 animate-pulse" />
               ) : (
                 <>
                   {saldoAFavor > 0 && (
-                    <span className="px-2.5 py-1 rounded-xl text-xs font-extrabold s-badge-brand whitespace-nowrap shrink-0">
+                    <span className="px-3 py-1 rounded-xl text-[13px] font-extrabold s-badge-brand whitespace-nowrap shrink-0">
                       Saldo a favor: {formatearMoneda(saldoAFavor)}
                     </span>
                   )}
                   <span
-                    className={`px-2.5 py-1 rounded-xl text-xs font-extrabold whitespace-nowrap shrink-0 ${
+                    className={`px-3 py-1 rounded-xl text-[13px] font-extrabold whitespace-nowrap shrink-0 ${
                       saldoPendiente > 0 ? 's-badge-err' : 's-badge-ok'
                     }`}
                   >
@@ -755,12 +807,12 @@ export const MiEspacioPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {cargandoInicial ? (
               Array.from({ length: 2 }).map((_, idx) => (
                 <div
                   key={`skel-cuota-${idx}`}
-                  className="p-3.5 rounded-xl border border-rule bg-paper-2 animate-pulse space-y-2"
+                  className="p-4 rounded-xl border border-rule bg-paper-2 animate-pulse space-y-2"
                 >
                   <div className="h-4 w-36 rounded bg-paper-3" />
                   <div className="h-3 w-24 rounded bg-paper-3" />
@@ -774,19 +826,19 @@ export const MiEspacioPage: React.FC = () => {
                   return (
                     <div
                       key={cargo.id}
-                      className="s-panel p-3.5 rounded-xl space-y-1.5 min-w-0"
+                      className="s-panel p-4 rounded-xl space-y-2 min-w-0"
                     >
                       <div className="flex justify-between items-start gap-2">
-                        <span className="font-bold text-xs text-ink truncate">
+                        <span className="font-bold text-sm text-ink truncate">
                           {cargo.concepto?.nombre}
                         </span>
                         <span
-                          className={`text-[10px] px-2 py-0.5 rounded-md font-bold border whitespace-nowrap shrink-0 ${cConf.badgeClass}`}
+                          className={`text-xs px-2.5 py-0.5 rounded-md font-bold border whitespace-nowrap shrink-0 ${cConf.badgeClass}`}
                         >
                           {cConf.label}
                         </span>
                       </div>
-                      <div className="text-xs text-ink-muted flex justify-between s-tabular">
+                      <div className="text-[13px] text-ink-muted flex justify-between s-tabular">
                         <span>Total: {formatearMoneda(cargo.montoFinal)}</span>
                         <span className="font-bold text-ink">
                           Pagado: {formatearMoneda(cargo.montoPagado)}
@@ -797,7 +849,7 @@ export const MiEspacioPage: React.FC = () => {
                 })}
 
                 {(!estadoCuenta?.cargos || estadoCuenta.cargos.length === 0) && (
-                  <div className="col-span-full py-6 text-center text-xs text-ink-muted">
+                  <div className="col-span-full py-6 text-center text-sm text-ink-muted">
                     No tenés cuotas pendientes este año.
                   </div>
                 )}
@@ -806,15 +858,15 @@ export const MiEspacioPage: React.FC = () => {
           </div>
 
           {estadoCuenta?.pagos?.length > 0 && (
-            <div className="space-y-2 pt-2 border-t border-rule">
-              <div className="flex items-center gap-1.5">
+            <div className="space-y-3 pt-3 border-t border-rule">
+              <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-brand" />
-                <h2 className="text-xs font-bold text-ink-muted uppercase tracking-wider">
+                <h2 className="text-xs sm:text-[13px] font-bold text-ink-muted uppercase tracking-wider">
                   Pagos y Recibos Realizados
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 {estadoCuenta.pagos.map((pago: any) => {
                   const conceptosTexto =
                     pago.imputaciones
@@ -825,11 +877,11 @@ export const MiEspacioPage: React.FC = () => {
                   return (
                     <div
                       key={pago.id}
-                      className="s-panel p-3 rounded-xl flex items-center justify-between gap-2 text-xs min-w-0"
+                      className="s-panel p-3.5 rounded-xl flex items-center justify-between gap-2.5 text-sm min-w-0"
                     >
                       <div className="min-w-0">
                         <span className="font-bold text-ink block truncate">{conceptosTexto}</span>
-                        <span className="text-[11px] text-ink-muted">
+                        <span className="text-xs text-ink-muted">
                           {new Date(pago.fechaPago).toLocaleDateString('es-AR')} ·{' '}
                           {METODO_PAGO_LABELS[pago.metodoPago] || 'Efectivo'}
                         </span>
@@ -850,84 +902,84 @@ export const MiEspacioPage: React.FC = () => {
       {/* TAB 3: MIS PEDIDOS Y VALES (Tarjetas de Evento SIN auto-select)   */}
       {/* ================================================================= */}
       {tabActiva === 'pedidos' && (
-        <div className="s-anim-tab space-y-4">
+        <div className="s-anim-tab space-y-5">
           {cargandoEventos ? (
-            <div className="s-card rounded-2xl p-8 flex flex-col items-center justify-center gap-2 text-ink-muted">
+            <div className="s-card rounded-2xl p-8 flex flex-col items-center justify-center gap-2.5 text-ink-muted">
               <Loader2 className="w-6 h-6 animate-spin text-brand" />
-              <span className="text-xs font-bold">Cargando campañas y pedidos…</span>
+              <span className="text-sm font-bold">Cargando campañas y pedidos…</span>
             </div>
           ) : !eventoSeleccionado ? (
             /* NIVEL 1: Catálogo de Tarjetas Tocables de Eventos */
-            <div className="s-card rounded-2xl p-4 sm:p-5 space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rule pb-3">
+            <div className="s-card rounded-2xl p-5 sm:p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-rule pb-3.5">
                 <div>
-                  <h2 className="text-sm font-extrabold text-ink flex items-center gap-1.5">
-                    <Ticket className="w-4 h-4 text-brand" />
+                  <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
+                    <Ticket className="w-[18px] h-[18px] text-brand" />
                     <span>Elegí un Evento para ver tus Pedidos y Vales QR</span>
                   </h2>
-                  <p className="text-xs text-ink-muted mt-0.5">
+                  <p className="text-sm text-ink-muted mt-0.5">
                     Tocá una tarjeta para cargar nuevas ventas a tu saldo o descargar tus vales QR.
                   </p>
                 </div>
-                <span className="px-2.5 py-1 rounded-xl text-xs font-bold s-badge-brand whitespace-nowrap shrink-0">
+                <span className="px-3 py-1 rounded-xl text-[13px] font-bold s-badge-brand whitespace-nowrap shrink-0">
                   Saldo a favor: {formatearMoneda(saldoAFavor)}
                 </span>
               </div>
 
               {eventosActivos.length === 0 ? (
-                <div className="py-10 text-center space-y-2 text-ink-muted">
-                  <ShoppingBag className="w-9 h-9 mx-auto opacity-50" />
-                  <p className="text-xs font-semibold">
+                <div className="py-10 text-center space-y-2.5 text-ink-muted">
+                  <ShoppingBag className="w-10 h-10 mx-auto opacity-50" />
+                  <p className="text-sm font-semibold">
                     No hay eventos publicados en este momento.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-5">
                   {eventosHabilitados.length > 0 && (
-                    <div className="space-y-2.5">
-                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
                         Habilitados para Venta ({eventosHabilitados.length})
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {eventosHabilitados.map((ev) => {
                           const cantPedidos = conteoPedidosPorEvento.get(ev.id) || 0;
                           return (
                             <button
                               key={ev.id}
                               type="button"
-                              onClick={() => setEventoSeleccionado(ev)}
-                              className="s-card s-card-hover s-event-card rounded-2xl p-4 text-left flex flex-col justify-between gap-3 cursor-pointer min-w-0"
+                              onClick={() => seleccionarEvento(ev)}
+                              className="s-card s-card-hover s-event-card rounded-2xl p-4 sm:p-5 text-left flex flex-col justify-between gap-3 cursor-pointer min-w-0"
                             >
-                              <div className="space-y-1.5 min-w-0 w-full">
+                              <div className="space-y-2 min-w-0 w-full">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-ok whitespace-nowrap shrink-0">
+                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-ok whitespace-nowrap shrink-0">
                                     Habilitado
                                   </span>
                                   {cantPedidos > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-brand whitespace-nowrap shrink-0">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-brand whitespace-nowrap shrink-0">
                                       {cantPedidos} pedido{cantPedidos === 1 ? '' : 's'}
                                     </span>
                                   )}
                                 </div>
-                                <h4 className="text-sm font-extrabold text-ink truncate">
+                                <h4 className="text-base font-extrabold text-ink truncate">
                                   {ev.titulo}
                                 </h4>
-                                <div className="text-[11px] text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <div className="text-xs sm:text-[13px] text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
                                   {ev.fechaEvento && (
-                                    <span className="inline-flex items-center gap-1">
-                                      <Calendar className="w-3 h-3 shrink-0" />
+                                    <span className="inline-flex items-center gap-1.5">
+                                      <Calendar className="w-3.5 h-3.5 shrink-0" />
                                       {formatearFechaLargaUTC(ev.fechaEvento)}
                                     </span>
                                   )}
                                   {ev.lugarEntrega && (
-                                    <span className="inline-flex items-center gap-1 truncate">
-                                      <MapPin className="w-3 h-3 shrink-0" />
+                                    <span className="inline-flex items-center gap-1.5 truncate">
+                                      <MapPin className="w-3.5 h-3.5 shrink-0" />
                                       <span className="truncate">{ev.lugarEntrega}</span>
                                     </span>
                                   )}
                                 </div>
                               </div>
-                              <div className="pt-2 border-t border-rule w-full flex items-center justify-between text-xs font-bold text-brand">
+                              <div className="pt-2.5 border-t border-rule w-full flex items-center justify-between text-sm font-bold text-brand">
                                 <span>Ingresar al evento</span>
                                 <span>→</span>
                               </div>
@@ -939,42 +991,42 @@ export const MiEspacioPage: React.FC = () => {
                   )}
 
                   {eventosFinalizados.length > 0 && (
-                    <div className="space-y-2.5">
-                      <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
                         Finalizados ({eventosFinalizados.length})
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {eventosFinalizados.map((ev) => {
                           const cantPedidos = conteoPedidosPorEvento.get(ev.id) || 0;
                           return (
                             <button
                               key={ev.id}
                               type="button"
-                              onClick={() => setEventoSeleccionado(ev)}
-                              className="s-card s-card-hover s-event-card rounded-2xl p-4 text-left flex flex-col justify-between gap-3 cursor-pointer opacity-90 min-w-0"
+                              onClick={() => seleccionarEvento(ev)}
+                              className="s-card s-card-hover s-event-card rounded-2xl p-4 sm:p-5 text-left flex flex-col justify-between gap-3 cursor-pointer opacity-90 min-w-0"
                             >
-                              <div className="space-y-1.5 min-w-0 w-full">
+                              <div className="space-y-2 min-w-0 w-full">
                                 <div className="flex items-center justify-between gap-2">
-                                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-info whitespace-nowrap shrink-0">
+                                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info whitespace-nowrap shrink-0">
                                     Finalizado
                                   </span>
                                   {cantPedidos > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold s-badge-brand whitespace-nowrap shrink-0">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-brand whitespace-nowrap shrink-0">
                                       {cantPedidos} pedido{cantPedidos === 1 ? '' : 's'}
                                     </span>
                                   )}
                                 </div>
-                                <h4 className="text-sm font-extrabold text-ink truncate">
+                                <h4 className="text-base font-extrabold text-ink truncate">
                                   {ev.titulo}
                                 </h4>
                                 {ev.fechaEvento && (
-                                  <div className="text-[11px] text-ink-muted inline-flex items-center gap-1">
-                                    <Calendar className="w-3 h-3 shrink-0" />
+                                  <div className="text-xs sm:text-[13px] text-ink-muted inline-flex items-center gap-1.5">
+                                    <Calendar className="w-3.5 h-3.5 shrink-0" />
                                     {formatearFechaLargaUTC(ev.fechaEvento)}
                                   </div>
                                 )}
                               </div>
-                              <div className="pt-2 border-t border-rule w-full flex items-center justify-between text-xs font-bold text-ink-2">
+                              <div className="pt-2.5 border-t border-rule w-full flex items-center justify-between text-sm font-bold text-ink-2">
                                 <span>Ver historial y vales</span>
                                 <span>→</span>
                               </div>
@@ -989,25 +1041,21 @@ export const MiEspacioPage: React.FC = () => {
             </div>
           ) : (
             /* NIVEL 2: Evento Seleccionado Inequívoco */
-            <div className="s-card rounded-2xl p-4 sm:p-5 space-y-4">
+            <div className="s-card rounded-2xl p-5 sm:p-6 space-y-5">
               {/* Banner "Evento seleccionado" + Cambiar */}
-              <div className="s-panel rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1 min-w-0">
+              <div className="s-panel rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1.5 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
-                      onClick={() => {
-                        setEventoSeleccionado(null);
-                        setModalCargarPedidoAbierto(false);
-                        setModalTicketQR({ abierto: false, ticket: null });
-                      }}
-                      className="s-btn-sec min-h-[34px] px-2.5 py-1 rounded-xl text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                      onClick={volverASeleccionEventos}
+                      className="s-btn-sec min-h-[38px] px-3 py-1.5 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
                     >
-                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <ArrowLeft className="w-4 h-4" />
                       <span>Cambiar evento</span>
                     </button>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 ${
+                      className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 ${
                         eventoSeleccionado.estado === 'PUBLICADO' ? 's-badge-ok' : 's-badge-info'
                       }`}
                     >
@@ -1017,7 +1065,7 @@ export const MiEspacioPage: React.FC = () => {
                   <div className="text-xs font-bold uppercase tracking-wider text-brand">
                     Evento seleccionado
                   </div>
-                  <h2 className="text-base sm:text-lg font-extrabold text-ink truncate">
+                  <h2 className="text-lg sm:text-xl font-extrabold text-ink truncate">
                     {eventoSeleccionado.titulo}
                   </h2>
                 </div>
@@ -1037,21 +1085,21 @@ export const MiEspacioPage: React.FC = () => {
                       setPedidoAEditar(null);
                       setModalCargarPedidoAbierto(true);
                     }}
-                    className="s-btn-brand s-touch px-4 py-2 rounded-xl text-xs inline-flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                    className="s-btn-brand s-touch px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2 cursor-pointer shrink-0"
                   >
                     <PlusCircle className="w-4 h-4" />
                     <span>Cargar Nueva Venta</span>
                   </button>
                 ) : (
-                  <span className="px-3 py-1.5 rounded-xl s-badge-info text-xs font-bold inline-flex items-center gap-1.5 shrink-0">
-                    <Clock className="w-3.5 h-3.5" />
+                  <span className="px-3 py-1.5 rounded-xl s-badge-info text-[13px] font-bold inline-flex items-center gap-1.5 shrink-0">
+                    <Clock className="w-4 h-4" />
                     <span>Cerrado a nuevas ventas</span>
                   </span>
                 )}
               </div>
 
               {/* Resumen KPI del Evento */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <KpiCard
                   label="Pedidos en Evento"
                   value={pedidosEventoSeleccionado.length}
@@ -1066,7 +1114,7 @@ export const MiEspacioPage: React.FC = () => {
                     ),
                   )}`}
                   tone="ok"
-                  icon={<Sparkles className="w-4 h-4" />}
+                  icon={<Sparkles className="w-[18px] h-[18px]" />}
                 />
                 <KpiCard
                   label="Saldo a Favor en Grupo"
@@ -1078,8 +1126,8 @@ export const MiEspacioPage: React.FC = () => {
               {/* Lista de pedidos del evento seleccionado */}
               {pedidosEventoSeleccionado.length === 0 ? (
                 <div className="s-panel rounded-2xl p-8 text-center space-y-3">
-                  <ShoppingBag className="w-8 h-8 text-ink-muted mx-auto" />
-                  <p className="text-xs font-medium text-ink-muted max-w-sm mx-auto">
+                  <ShoppingBag className="w-9 h-9 text-ink-muted mx-auto" />
+                  <p className="text-sm font-medium text-ink-muted max-w-sm mx-auto">
                     {eventoSeleccionado.estado === 'PUBLICADO'
                       ? 'Aún no registraste ventas para este evento. Hacé clic en "Cargar Nueva Venta" para sumar ganancia a tu saldo.'
                       : 'No tenés pedidos registrados en este evento finalizado.'}
@@ -1092,13 +1140,13 @@ export const MiEspacioPage: React.FC = () => {
                     return (
                       <div
                         key={p.id}
-                        className="s-panel rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                        className="s-panel rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                       >
                         <div className="space-y-1.5 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-extrabold text-ink">Pedido #{p.id}</span>
+                            <span className="text-sm font-extrabold text-ink">Pedido #{p.id}</span>
                             <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap shrink-0 ${
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 ${
                                 p.estado === 'PAGADO' ? 's-badge-ok' : 's-badge-warn'
                               }`}
                             >
@@ -1106,7 +1154,7 @@ export const MiEspacioPage: React.FC = () => {
                             </span>
                           </div>
 
-                          <p className="text-xs font-bold text-ink">
+                          <p className="text-sm font-bold text-ink">
                             Cliente: {p.compradorNombre}
                             {p.compradorContacto && (
                               <span className="text-ink-muted font-normal ml-1">
@@ -1115,7 +1163,7 @@ export const MiEspacioPage: React.FC = () => {
                             )}
                           </p>
 
-                          <div className="text-xs text-ink-muted flex flex-wrap gap-x-2 gap-y-0.5">
+                          <div className="text-[13px] text-ink-muted flex flex-wrap gap-x-2.5 gap-y-0.5">
                             {p.detalles?.map((d: any) => (
                               <span key={d.id}>
                                 <strong className="text-ink">{d.cantidad}x</strong> {d.item?.nombre}
@@ -1123,7 +1171,7 @@ export const MiEspacioPage: React.FC = () => {
                             ))}
                           </div>
 
-                          <div className="flex items-center gap-3 flex-wrap pt-1 text-xs s-tabular">
+                          <div className="flex items-center gap-3.5 flex-wrap pt-1 text-sm s-tabular">
                             <span className="font-extrabold text-ink">
                               Total: {formatearMoneda(Number(p.total))}
                             </span>
@@ -1135,7 +1183,7 @@ export const MiEspacioPage: React.FC = () => {
                         </div>
 
                         <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {p.tickets?.map((t: any, idx: number) => (
                               <button
                                 key={t.id}
@@ -1161,13 +1209,13 @@ export const MiEspacioPage: React.FC = () => {
                                     },
                                   });
                                 }}
-                                className={`min-h-[36px] px-2.5 py-1.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer ${
+                                className={`min-h-[40px] px-3 py-1.5 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer ${
                                   t.estado === 'UTILIZADO'
                                     ? 's-btn-sec line-through opacity-70'
                                     : 's-btn-brand'
                                 }`}
                               >
-                                <QrCode className="w-3.5 h-3.5" />
+                                <QrCode className="w-4 h-4" />
                                 <span>
                                   {t.estado === 'UTILIZADO'
                                     ? `Retirado #${idx + 1}`
@@ -1192,9 +1240,9 @@ export const MiEspacioPage: React.FC = () => {
                                 setPedidoAEditar(p);
                                 setModalCargarPedidoAbierto(true);
                               }}
-                              className="s-btn-sec px-2.5 py-1 rounded-lg text-xs font-bold inline-flex items-center gap-1 cursor-pointer"
+                              className="s-btn-sec px-3 py-1.5 rounded-lg text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
                             >
-                              <Edit2 className="w-3 h-3" />
+                              <Edit2 className="w-3.5 h-3.5" />
                               <span>Editar Pedido</span>
                             </button>
                           )}
@@ -1244,20 +1292,20 @@ export const MiEspacioPage: React.FC = () => {
       {/* TAB 4: MI PERFIL                                                  */}
       {/* ================================================================= */}
       {tabActiva === 'perfil' && (
-        <div className="s-anim-tab space-y-4">
+        <div className="s-anim-tab space-y-5">
           {cargandoPerfil ? (
-            <div className="s-card rounded-2xl p-6 flex items-center justify-center gap-2 text-ink-muted">
+            <div className="s-card rounded-2xl p-6 flex items-center justify-center gap-2.5 text-ink-muted">
               <Loader2 className="w-5 h-5 animate-spin text-brand" />
-              <span className="text-xs font-bold">Cargando tu perfil…</span>
+              <span className="text-sm font-bold">Cargando tu perfil…</span>
             </div>
           ) : (
             <>
               {/* Identidad y asignaciones activas */}
-              <div className="s-card rounded-2xl p-5 space-y-4">
+              <div className="s-card rounded-2xl p-5 sm:p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="flex items-center gap-4 min-w-0">
                     <div
-                      className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-lg shrink-0 ${
+                      className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${
                         cfgRamaPerfil?.avatarClases || 'bg-brand text-brand-contrast'
                       }`}
                     >
@@ -1265,28 +1313,28 @@ export const MiEspacioPage: React.FC = () => {
                       {perfil?.apellido?.[0] || usuario?.apellido?.[0] || ''}
                     </div>
                     <div className="min-w-0">
-                      <h2 className="text-lg font-extrabold text-ink truncate">
+                      <h2 className="text-xl font-extrabold text-ink truncate">
                         {perfil?.nombre || usuario?.nombre}{' '}
                         {perfil?.apellido || usuario?.apellido}
                       </h2>
-                      <p className="text-xs text-ink-muted">
+                      <p className="text-sm text-ink-muted">
                         DNI {perfil?.dni || usuario?.dni} ·{' '}
                         {calcularEdad(perfil?.fechaNacimiento) ?? '—'} años
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-2">
                     {asignacionesActivasPerfil.map((a: any) => {
                       const c = obtenerConfigRama({ asignaciones: [a] });
                       return (
                         <span
                           key={a.id}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold border whitespace-nowrap shrink-0 ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-bold border whitespace-nowrap shrink-0 ${
                             c?.badgeClases || 's-badge-brand'
                           }`}
                         >
-                          <ShieldCheck className="w-3.5 h-3.5" />
+                          <ShieldCheck className="w-4 h-4" />
                           <span>
                             {a.rol?.nombre} · {a.unidad?.nombre}
                           </span>
@@ -1297,15 +1345,15 @@ export const MiEspacioPage: React.FC = () => {
                 </div>
 
                 {hermanos.length > 0 && (
-                  <div className="pt-3 border-t border-rule flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-bold text-ink-muted">
-                      <Users className="w-3.5 h-3.5 text-brand" />
+                  <div className="pt-3.5 border-t border-rule flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted">
+                      <Users className="w-4 h-4 text-brand" />
                       Grupo Familiar:
                     </span>
                     {hermanos.map((h: any) => (
                       <span
                         key={h.id}
-                        className="px-2.5 py-1 rounded-lg bg-paper-2 text-xs font-bold text-ink"
+                        className="px-3 py-1 rounded-lg bg-paper-2 text-[13px] font-bold text-ink"
                       >
                         {h.nombre} {h.apellido} (DNI {h.dni})
                       </span>
@@ -1317,14 +1365,14 @@ export const MiEspacioPage: React.FC = () => {
               <BotonInstalarPwa variante="card" />
 
               {/* Formulario de Contacto y Teléfonos (11 campos) */}
-              <form onSubmit={handleGuardarContacto} className="s-card rounded-2xl p-5 space-y-4">
-                <div className="flex items-center gap-2 border-b border-rule pb-3">
-                  <Phone className="w-4 h-4 text-brand" />
+              <form onSubmit={handleGuardarContacto} className="s-card rounded-2xl p-5 sm:p-6 space-y-5">
+                <div className="flex items-center gap-2.5 border-b border-rule pb-3.5">
+                  <Phone className="w-5 h-5 text-brand" />
                   <div>
-                    <h2 className="text-sm font-extrabold text-ink">
+                    <h2 className="text-base font-extrabold text-ink">
                       Datos de Contacto y Teléfonos
                     </h2>
-                    <p className="text-[11px] text-ink-muted">
+                    <p className="text-xs sm:text-[13px] text-ink-muted">
                       Información vital ante emergencias y salidas de grupo.
                     </p>
                   </div>
@@ -1333,7 +1381,7 @@ export const MiEspacioPage: React.FC = () => {
                 {alertaContacto && (
                   <div
                     role={alertaContacto.tipo === 'error' ? 'alert' : 'status'}
-                    className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                    className={`p-3.5 rounded-xl text-sm font-bold flex items-center gap-2 ${
                       alertaContacto.tipo === 'exito' ? 's-badge-ok' : 's-badge-err'
                     }`}
                   >
@@ -1346,11 +1394,11 @@ export const MiEspacioPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-sm">
                   <div>
-                    <label className="block text-ink font-bold mb-1">Email de Contacto</label>
+                    <label className="block text-ink font-bold mb-1.5">Email de Contacto</label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Mail className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="email"
                         placeholder="correo@ejemplo.com"
@@ -1358,15 +1406,15 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormContacto({ ...formContacto, emailContacto: e.target.value })
                         }
-                        className="s-input w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl"
+                        className="s-input w-full min-h-[46px] pl-10 pr-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Teléfono del Miembro</label>
+                    <label className="block text-ink font-bold mb-1.5">Teléfono del Miembro</label>
                     <div className="relative">
-                      <Phone className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <Phone className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="tel"
                         placeholder="Ej: 3511234567"
@@ -1374,85 +1422,85 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormContacto({ ...formContacto, telefonoContacto: e.target.value })
                         }
-                        className="s-input w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl"
+                        className="s-input w-full min-h-[46px] pl-10 pr-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Madre: Nombre Completo</label>
+                    <label className="block text-ink font-bold mb-1.5">Madre: Nombre Completo</label>
                     <input
                       type="text"
                       value={formContacto.madreNombres}
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, madreNombres: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Madre: Teléfono</label>
+                    <label className="block text-ink font-bold mb-1.5">Madre: Teléfono</label>
                     <input
                       type="tel"
                       value={formContacto.madreTelefono}
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, madreTelefono: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Padre: Nombre Completo</label>
+                    <label className="block text-ink font-bold mb-1.5">Padre: Nombre Completo</label>
                     <input
                       type="text"
                       value={formContacto.padreNombres}
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, padreNombres: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Padre: Teléfono</label>
+                    <label className="block text-ink font-bold mb-1.5">Padre: Teléfono</label>
                     <input
                       type="tel"
                       value={formContacto.padreTelefono}
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, padreTelefono: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Tutor/a Legal: Nombre</label>
+                    <label className="block text-ink font-bold mb-1.5">Tutor/a Legal: Nombre</label>
                     <input
                       type="text"
                       value={formContacto.tutorNombres}
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, tutorNombres: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Tutor/a Legal: Teléfono</label>
+                    <label className="block text-ink font-bold mb-1.5">Tutor/a Legal: Teléfono</label>
                     <input
                       type="tel"
                       value={formContacto.tutorTelefono}
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, tutorTelefono: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Teléfono de Urgencias</label>
+                    <label className="block text-ink font-bold mb-1.5">Teléfono de Urgencias</label>
                     <input
                       type="tel"
                       placeholder="Teléfono fijo o pariente cercano"
@@ -1460,33 +1508,33 @@ export const MiEspacioPage: React.FC = () => {
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, telefonoUrgencias: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Obra Social / Prepaga</label>
+                    <label className="block text-ink font-bold mb-1.5">Obra Social / Prepaga</label>
                     <input
                       type="text"
                       value={formContacto.obraSocial}
                       onChange={(e) =>
                         setFormContacto({ ...formContacto, obraSocial: e.target.value })
                       }
-                      className="s-input w-full min-h-[42px] px-3 py-2 rounded-xl"
+                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-ink font-bold mb-1">Domicilio</label>
+                    <label className="block text-ink font-bold mb-1.5">Domicilio</label>
                     <div className="relative">
-                      <MapPin className="w-4 h-4 text-ink-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <MapPin className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
                         type="text"
                         value={formContacto.domicilio}
                         onChange={(e) =>
                           setFormContacto({ ...formContacto, domicilio: e.target.value })
                         }
-                        className="s-input w-full min-h-[42px] pl-9 pr-3 py-2 rounded-xl"
+                        className="s-input w-full min-h-[46px] pl-10 pr-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
                     </div>
                   </div>
@@ -1496,7 +1544,7 @@ export const MiEspacioPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={guardandoContacto}
-                    className="s-btn-brand s-touch px-5 py-2.5 rounded-xl text-xs inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="s-btn-brand s-touch px-5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {guardandoContacto ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1509,12 +1557,12 @@ export const MiEspacioPage: React.FC = () => {
               </form>
 
               {/* Cambio Voluntario de Clave */}
-              <form onSubmit={handleCambiarClave} className="s-card rounded-2xl p-5 space-y-4">
-                <div className="flex items-center gap-2 border-b border-rule pb-3">
-                  <KeyRound className="w-4 h-4 text-brand" />
+              <form onSubmit={handleCambiarClave} className="s-card rounded-2xl p-5 sm:p-6 space-y-5">
+                <div className="flex items-center gap-2.5 border-b border-rule pb-3.5">
+                  <KeyRound className="w-5 h-5 text-brand" />
                   <div>
-                    <h2 className="text-sm font-extrabold text-ink">Cambiar Contraseña</h2>
-                    <p className="text-[11px] text-ink-muted">
+                    <h2 className="text-base font-extrabold text-ink">Cambiar Contraseña</h2>
+                    <p className="text-xs sm:text-[13px] text-ink-muted">
                       Mínimo 8 caracteres. Tu sesión actual seguirá activa al actualizarla.
                     </p>
                   </div>
@@ -1523,7 +1571,7 @@ export const MiEspacioPage: React.FC = () => {
                 {alertaClave && (
                   <div
                     role={alertaClave.tipo === 'error' ? 'alert' : 'status'}
-                    className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
+                    className={`p-3.5 rounded-xl text-sm font-bold flex items-center gap-2 ${
                       alertaClave.tipo === 'exito' ? 's-badge-ok' : 's-badge-err'
                     }`}
                   >
@@ -1536,9 +1584,9 @@ export const MiEspacioPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-sm">
                   <div>
-                    <label className="block text-ink font-bold mb-1">Contraseña Actual</label>
+                    <label className="block text-ink font-bold mb-1.5">Contraseña Actual</label>
                     <div className="relative">
                       <input
                         type={verActual ? 'text' : 'password'}
@@ -1547,13 +1595,13 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormClave({ ...formClave, passwordActual: e.target.value })
                         }
-                        className="s-input w-full min-h-[42px] pl-3 pr-10 py-2 rounded-xl"
+                        className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
                       <button
                         type="button"
                         onClick={() => setVerActual((v) => !v)}
                         aria-label="Mostrar u ocultar clave actual"
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -1561,7 +1609,7 @@ export const MiEspacioPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Nueva Contraseña</label>
+                    <label className="block text-ink font-bold mb-1.5">Nueva Contraseña</label>
                     <div className="relative">
                       <input
                         type={verNueva ? 'text' : 'password'}
@@ -1570,13 +1618,13 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormClave({ ...formClave, passwordNueva: e.target.value })
                         }
-                        className="s-input w-full min-h-[42px] pl-3 pr-10 py-2 rounded-xl"
+                        className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
                       <button
                         type="button"
                         onClick={() => setVerNueva((v) => !v)}
                         aria-label="Mostrar u ocultar clave nueva"
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -1584,7 +1632,7 @@ export const MiEspacioPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1">Confirmar Nueva</label>
+                    <label className="block text-ink font-bold mb-1.5">Confirmar Nueva</label>
                     <div className="relative">
                       <input
                         type={verConfirmar ? 'text' : 'password'}
@@ -1593,13 +1641,13 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormClave({ ...formClave, confirmar: e.target.value })
                         }
-                        className="s-input w-full min-h-[42px] pl-3 pr-10 py-2 rounded-xl"
+                        className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
                       <button
                         type="button"
                         onClick={() => setVerConfirmar((v) => !v)}
                         aria-label="Mostrar u ocultar confirmación"
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -1611,7 +1659,7 @@ export const MiEspacioPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={guardandoClave}
-                    className="s-btn-sec s-touch px-5 py-2.5 rounded-xl text-xs font-bold inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    className="s-btn-sec s-touch px-5 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {guardandoClave ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -1640,9 +1688,9 @@ export const MiEspacioPage: React.FC = () => {
         {pdfPreviewUrl && (
           <Suspense
             fallback={
-              <div className="py-12 flex items-center justify-center gap-2 text-ink-muted">
+              <div className="py-12 flex items-center justify-center gap-2.5 text-ink-muted">
                 <Loader2 className="w-5 h-5 animate-spin text-brand" />
-                <span className="text-xs font-bold">Preparando visor PDF…</span>
+                <span className="text-sm font-bold">Preparando visor PDF…</span>
               </div>
             }
           >

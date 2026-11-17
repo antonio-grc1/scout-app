@@ -164,10 +164,10 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                   {esModoEdicion ? <Pencil className="w-5 h-5" /> : <PlusCircle className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h3 id="modal-cuenta-title" className="text-base sm:text-lg font-bold text-ink leading-snug">
+                  <h3 id="modal-cuenta-title" className="text-lg font-bold text-ink leading-snug">
                     {esModoEdicion ? 'Editar Cuenta Financiera' : 'Nueva Cuenta Financiera'}
                   </h3>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-[13px] text-ink-muted">
                     {esModoEdicion
                       ? 'Modifica los datos de la cuenta o gestiona su estado.'
                       : 'Crea una cuenta para registrar movimientos de caja o banco.'}
@@ -235,7 +235,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
               )}
 
               {esModoEdicion && cuentaAEditar && (
-                <div className="p-3 rounded-xl bg-paper-2 border border-rule text-xs flex justify-between items-center text-ink-2">
+                <div className="p-3.5 rounded-xl bg-paper-2 border border-rule text-sm flex justify-between items-center text-ink-2">
                   <span>Saldo Actual:</span>
                   <span className="font-bold text-ink">{formatearMoneda(cuentaAEditar.saldoActual)}</span>
                 </div>
@@ -244,7 +244,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
               {error && (
                 <div
                   role="alert"
-                  className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 font-medium"
+                  className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-sm text-rose-700 dark:text-rose-300 font-medium"
                 >
                   {error}
                 </div>
@@ -258,9 +258,9 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                     size="sm"
                     onClick={() => setModalConfirmarEliminar(true)}
                     disabled={guardando || eliminando}
-                    className="gap-1.5 text-xs"
+                    className="gap-1.5"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-4 h-4" />
                     <span>Eliminar</span>
                   </Button>
                 ) : (

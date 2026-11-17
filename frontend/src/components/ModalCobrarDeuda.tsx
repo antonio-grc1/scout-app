@@ -371,10 +371,10 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
             <CreditCard className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-ink text-base">
+            <h3 className="font-bold text-ink text-lg">
               Registrar Pago / Cobrar Cuotas
             </h3>
-            <p className="text-xs text-ink-muted">
+            <p className="text-[13px] text-ink-muted">
               Miembro: <strong>{miembro.nombre} {miembro.apellido}</strong> (DNI {miembro.dni})
             </p>
           </div>
@@ -393,19 +393,19 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       {/* Formulario */}
       <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
         {error && (
-          <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold">
             {error}
           </div>
         )}
 
         {/* Lista de deudas / cargos pendientes con checkbox */}
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-ink-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="text-[13px] font-bold text-ink-2">
               Cuotas a cancelar (podés ajustar el monto si es un pago parcial):
             </label>
             {cargosPendientesValidos.length > 0 && (
-              <div className="flex items-center gap-2 text-[11px]">
+              <div className="flex items-center gap-2 text-xs">
                 <button
                   type="button"
                   onClick={seleccionarTodos}
@@ -426,7 +426,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           </div>
 
           {cargosPendientesValidos.length > 0 ? (
-            <div className="border border-rule rounded-2xl overflow-hidden divide-y divide-rule max-h-52 overflow-y-auto">
+            <div className="border border-rule rounded-2xl overflow-hidden divide-y divide-rule max-h-56 overflow-y-auto">
               {cargosPendientesValidos.map((c) => {
                 const seleccionado = imputaciones[c.id] !== undefined;
                 const pendienteTotal = Math.max(0, Number(c.montoFinal) - Number(c.montoPagado));
@@ -435,7 +435,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                 return (
                   <div
                     key={c.id}
-                    className={`p-3 flex items-center justify-between gap-3 transition text-xs ${
+                    className={`p-3.5 flex items-center justify-between gap-3 transition text-[13px] ${
                       seleccionado
                         ? 'bg-brand/10'
                         : 'bg-surface hover:bg-paper-2/40'
@@ -450,16 +450,16 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-ink">
+                          <span className="font-bold text-ink text-sm">
                             {c.concepto?.nombre || 'Cuota'}
                           </span>
                           {c.concepto?.mes && (
-                            <span className="px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                            <span className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-xs font-bold">
                               {NOMBRES_MESES[c.concepto.mes]}
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-ink-muted flex items-center gap-1.5 flex-wrap">
+                        <div className="text-xs text-ink-muted flex items-center gap-1.5 flex-wrap mt-0.5">
                           <span>Total: {formatearMoneda(c.montoFinal)}</span>
                           <span className="text-slate-300 dark:text-slate-600">/</span>
                           <span>Abonado: {formatearMoneda(c.montoPagado)}</span>
@@ -472,9 +472,9 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                     </label>
 
                     {seleccionado && (
-                      <div className="w-28 shrink-0">
+                      <div className="w-32 shrink-0">
                         <div className="relative">
-                          <span className="absolute left-2.5 top-1.5 text-xs font-bold text-ink-muted pointer-events-none">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[13px] font-bold text-ink-muted pointer-events-none">
                             $
                           </span>
                           <input
@@ -484,7 +484,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                             max={pendienteTotal}
                             value={montoActual}
                             onChange={(e) => handleCambioMontoImputado(c.id, e.target.value, pendienteTotal)}
-                            className="w-full rounded-xl border border-brand/40 bg-surface pl-6 pr-2 py-1 text-xs font-bold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none text-right transition-colors"
+                            className="w-full min-h-[38px] rounded-xl border border-brand/40 bg-surface pl-7 pr-2.5 py-1.5 text-sm font-bold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none text-right transition-colors"
                           />
                         </div>
                       </div>
@@ -494,7 +494,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               })}
             </div>
           ) : (
-            <div className="p-4 text-center bg-paper-2 rounded-2xl border border-rule text-xs text-ink-muted">
+            <div className="p-4 text-center bg-paper-2 rounded-2xl border border-rule text-[13px] text-ink-muted">
               No hay cuotas pendientes. Podés registrar igualmente un <strong>pago a cuenta (adelanto)</strong> que quedará como Saldo a Favor.
             </div>
           )}
@@ -511,11 +511,11 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                 className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
               />
               <div>
-                <span className="text-xs font-bold text-teal-950 dark:text-teal-100 flex items-center gap-1.5">
-                  <Wallet className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
+                <span className="text-[13px] font-bold text-teal-950 dark:text-teal-100 flex items-center gap-1.5">
+                  <Wallet className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                   Usar Saldo a Favor disponible ({formatearMoneda(saldoAFavorDisponible)})
                 </span>
-                <span className="text-[11px] text-teal-700 dark:text-teal-300 block">
+                <span className="text-xs text-teal-700 dark:text-teal-300 block mt-0.5">
                   {usarSaldoAFavor
                     ? `Se descuentan ${formatearMoneda(saldoAFavorAUsar)} de su saldo a favor.`
                     : 'Tildá esta opción para descontar el saldo a favor de este cobro.'}
@@ -523,7 +523,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               </div>
             </div>
             {usarSaldoAFavor && (
-              <span className="text-sm font-black text-teal-700 dark:text-teal-300 shrink-0">
+              <span className="text-base font-black text-teal-700 dark:text-teal-300 shrink-0">
                 -{formatearMoneda(saldoAFavorAUsar)}
               </span>
             )}
@@ -531,7 +531,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
         )}
 
         {/* Subtotal imputado y restante */}
-        <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule space-y-1.5 text-xs">
+        <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-2 text-[13px]">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-ink-muted">
               Total imputado a cuotas seleccionadas:
@@ -546,11 +546,11 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               <span className="font-bold">-{formatearMoneda(saldoAFavorAUsar)}</span>
             </div>
           )}
-          <div className="flex items-center justify-between pt-1 border-t border-rule">
+          <div className="flex items-center justify-between pt-1.5 border-t border-rule">
             <span className="font-bold text-ink">
               Restante a cobrar hoy en caja / transferencia:
             </span>
-            <span className="text-sm font-black text-brand">
+            <span className="text-base font-black text-brand">
               {formatearMoneda(minimoEfectivoRequerido)}
             </span>
           </div>
@@ -558,13 +558,13 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
         {/* Monto recibido hoy y medio de pago */}
         <div className="space-y-4 pt-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-bold text-ink-2 mb-1">
+              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
                 Monto Recibido Hoy ($) *
               </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-2.5 text-xs font-bold text-ink-muted pointer-events-none">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
                   $
                 </span>
                 <input
@@ -576,20 +576,20 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                     setMontoTotalIngresado(e.target.value === '' ? '' : Number(e.target.value))
                   }
                   placeholder={minimoEfectivoRequerido.toString()}
-                  className="w-full min-h-[40px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2 text-xs font-extrabold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-extrabold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink-2 mb-1">
+              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
                 Método de Pago
               </label>
               <select
                 value={metodoPago}
                 onChange={(e) => setMetodoPago(e.target.value as any)}
                 disabled={montoEfectivoFinal <= 0}
-                className="w-full min-h-[40px] rounded-xl border border-rule bg-surface px-3 py-2 text-xs font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors disabled:opacity-50"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors disabled:opacity-50"
               >
                 <option value="EFECTIVO">Efectivo</option>
                 <option value="TRANSFERENCIA">Transferencia Bancaria</option>
@@ -600,15 +600,15 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
           {/* Selector o indicador de Cuenta Financiera según método de pago (solo alcance GLOBAL) */}
           {esGlobal && montoEfectivoFinal > 0 && metodoPago === 'TRANSFERENCIA' && (
-            <div className="p-3 rounded-xl bg-paper-2 border border-rule space-y-1.5 animate-in fade-in">
-              <label className="block text-xs font-bold text-ink-2 flex items-center gap-1.5">
-                <Landmark className="w-3.5 h-3.5 text-brand" />
+            <div className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2 animate-in fade-in">
+              <label className="block text-[13px] font-bold text-ink-2 flex items-center gap-1.5">
+                <Landmark className="w-4 h-4 text-brand" />
                 <span>Cuenta Bancaria Destino</span>
               </label>
               <select
                 value={cuentaId}
                 onChange={(e) => setCuentaId(e.target.value === '' ? '' : Number(e.target.value))}
-                className="w-full min-h-[38px] rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               >
                 {cuentas
                   .filter((c) => c.tipo === 'BANCO')
@@ -621,23 +621,23 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                   <option value="">Banco Principal (por defecto)</option>
                 )}
               </select>
-              <p className="text-[11px] text-ink-muted">
+              <p className="text-xs text-ink-muted">
                 El cobro se acreditará como ingreso en el libro diario de esta cuenta bancaria.
               </p>
             </div>
           )}
 
           {esGlobal && montoEfectivoFinal > 0 && metodoPago === 'EFECTIVO' && (
-            <div className="p-3 rounded-xl bg-paper-2 border border-rule space-y-1.5 animate-in fade-in">
-              <label className="block text-xs font-bold text-ink-2 flex items-center gap-1.5">
-                <Wallet className="w-3.5 h-3.5 text-brand" />
+            <div className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2 animate-in fade-in">
+              <label className="block text-[13px] font-bold text-ink-2 flex items-center gap-1.5">
+                <Wallet className="w-4 h-4 text-brand" />
                 <span>Cuenta de Efectivo / Caja Chica</span>
               </label>
               {cuentas.filter((c) => c.tipo === 'CAJA_EFECTIVO').length > 1 ? (
                 <select
                   value={cuentaId}
                   onChange={(e) => setCuentaId(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-full min-h-[38px] rounded-xl border border-rule bg-surface px-3 py-1.5 text-xs font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
+                  className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 >
                   {cuentas
                     .filter((c) => c.tipo === 'CAJA_EFECTIVO')
@@ -648,18 +648,18 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                     ))}
                 </select>
               ) : (
-                <div className="flex items-center justify-between text-xs text-ink bg-surface p-2 rounded-lg border border-rule">
+                <div className="flex items-center justify-between text-[13px] text-ink bg-surface p-2.5 rounded-lg border border-rule">
                   <span className="font-bold">
                     {cuentas.find((c) => c.id === cuentaId)?.nombre || 'Caja Chica Central'}
                   </span>
                   {cuentas.find((c) => c.id === cuentaId)?.saldoActual !== undefined && (
-                    <span className="text-ink-muted text-[11px]">
+                    <span className="text-ink-muted text-xs">
                       Saldo: {formatearMoneda(cuentas.find((c) => c.id === cuentaId)?.saldoActual)}
                     </span>
                   )}
                 </div>
               )}
-              <p className="text-[11px] text-ink-muted">
+              <p className="text-xs text-ink-muted">
                 El cobro se acreditará en el libro diario de la caja física.
               </p>
             </div>
@@ -667,8 +667,8 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
           {/* Banner de Excedente o Adelanto como Saldo a Favor */}
           {excedenteSaldoAFavor > 0 && (
-            <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 flex items-center justify-between text-xs animate-in fade-in">
-              <div className="flex items-center gap-2">
+            <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 flex items-center justify-between text-[13px] animate-in fade-in">
+              <div className="flex items-center gap-2.5">
                 <Sparkles className="w-4 h-4 text-brand shrink-0" />
                 <div>
                   <span className="font-bold text-ink block">
@@ -676,7 +676,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                       ? `Adelanto a cuenta: ${formatearMoneda(excedenteSaldoAFavor)}`
                       : `Excedente a favor: ${formatearMoneda(excedenteSaldoAFavor)}`}
                   </span>
-                  <span className="text-[11px] text-ink-2">
+                  <span className="text-xs text-ink-2">
                     Se acreditará automáticamente como Saldo a Favor del miembro para futuras cuotas.
                   </span>
                 </div>
@@ -686,9 +686,9 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
           {/* Referencia Comprobante y Observaciones */}
           {montoEfectivoFinal > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div>
-                <label className="block text-xs font-semibold text-ink-2 mb-1">
+                <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
                   N° Comprobante / Referencia (opcional)
                 </label>
                 <input
@@ -696,12 +696,12 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                   value={referenciaComprobante}
                   onChange={(e) => setReferenciaComprobante(e.target.value)}
                   placeholder="Ej. Transf 884920..."
-                  className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs text-ink"
+                  className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-ink-2 mb-1">
+                <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
                   Observaciones (opcional)
                 </label>
                 <input
@@ -709,7 +709,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                   value={observaciones}
                   onChange={(e) => setObservaciones(e.target.value)}
                   placeholder="Notas para tesorería..."
-                  className="w-full rounded-xl border border-rule bg-surface px-3 py-2 text-xs text-ink"
+                  className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
                 />
               </div>
             </div>
@@ -717,18 +717,18 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
         </div>
 
         {/* Footer del Formulario */}
-        <div className="pt-3 border-t border-rule flex items-center justify-end gap-3">
+        <div className="pt-3.5 border-t border-rule flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onCerrar}
-            className="min-h-[42px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-xs hover:bg-paper-2 transition cursor-pointer"
+            className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-semibold text-sm hover:bg-paper-2 transition cursor-pointer"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={!puedeConfirmar}
-            className="min-h-[42px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+            className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>

@@ -56,15 +56,15 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
 }) => {
   if (editandoFicha && plantillaActiva && precargaFicha) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-extrabold text-ink-2">
+          <span className="text-sm font-extrabold text-ink-2">
             Completando Ficha {obtenerCicloAnioActual()}
           </span>
           <button
             type="button"
             onClick={() => setEditandoFicha(false)}
-            className="min-h-[36px] px-3 rounded-xl bg-paper-3 text-ink-2 font-bold text-xs cursor-pointer"
+            className="min-h-[40px] px-3.5 rounded-xl bg-paper-3 text-ink-2 font-bold text-[13px] cursor-pointer"
           >
             Volver al resumen
           </button>
@@ -98,19 +98,19 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
     <div className="space-y-3">
       <div className="p-4 bg-surface rounded-2xl border border-rule space-y-3.5">
         <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <span className="font-extrabold text-ink text-sm block">
+          <div className="space-y-1.5">
+            <span className="font-extrabold text-ink text-[15px] block">
               Ficha Médica y Autorizaciones {obtenerCicloAnioActual()}
             </span>
             <div className="flex items-center gap-2 flex-wrap">
               <span
-                className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${cfgEstado.badgeClass}`}
+                className={`px-3 py-0.5 rounded-full font-bold text-xs border ${cfgEstado.badgeClass}`}
               >
                 {cfgEstado.label}
               </span>
             </div>
             {ent?.validadoPor && (
-              <span className="block text-[11px] text-brand font-bold pt-0.5">
+              <span className="block text-xs text-brand font-bold pt-0.5">
                 ✓ Papel recibido por {ent.validadoPor.nombre} {ent.validadoPor.apellido}
               </span>
             )}
@@ -124,7 +124,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
               type="button"
               disabled={validandoFichaId === ent?.id}
               onClick={() => onValidarFisicoDirecto(ent)}
-              className="col-span-2 sm:flex-1 min-h-[44px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+              className="col-span-2 sm:flex-1 min-h-[46px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-[13px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
             >
               <FileCheck2 className="w-4 h-4" />
               <span>
@@ -137,7 +137,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
             type="button"
             disabled={generandoVistaPrevia}
             onClick={() => onVerPdfEducador(ent)}
-            className="min-h-[44px] px-3.5 rounded-xl bg-brand/10 hover:bg-brand/15 text-brand border border-brand/30 font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+            className="min-h-[46px] px-4 rounded-xl bg-brand/10 hover:bg-brand/15 text-brand border border-brand/30 font-extrabold text-[13px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
           >
             {generandoVistaPrevia ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -151,7 +151,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
             type="button"
             disabled={descargandoPdfId !== null}
             onClick={() => onDescargarPdfEducador(ent)}
-            className="min-h-[44px] px-3.5 rounded-xl bg-paper-3 hover:opacity-90 text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+            className="min-h-[46px] px-4 rounded-xl bg-paper-3 hover:opacity-90 text-ink font-bold text-[13px] flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
           >
             {descargandoPdfId !== null ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -166,7 +166,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
               type="button"
               disabled={cargandoFichaEditor}
               onClick={onAbrirEditorFicha}
-              className="col-span-2 sm:col-span-1 min-h-[44px] px-3.5 rounded-xl border border-rule bg-surface text-ink-2 hover:bg-paper-2 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              className="col-span-2 sm:col-span-1 min-h-[46px] px-4 rounded-xl border border-rule bg-surface text-ink-2 hover:bg-paper-2 font-bold text-[13px] flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
             >
               {cargandoFichaEditor ? (
                 <Loader2 className="w-4 h-4 animate-spin" />

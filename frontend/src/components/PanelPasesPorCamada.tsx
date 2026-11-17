@@ -23,7 +23,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
 }) => {
   const { tienePermiso, tieneGlobal } = useAuthStore();
   const esGlobal = tieneGlobal();
-  const puedeEjecutarPases = tienePermiso('pases.ejecutar');
+  const puedeEjecutarPases = tienePermiso('pases.editar');
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});
@@ -233,27 +233,27 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
         onAbrirMiembro={onAbrirMiembro}
       />
 
-      <div className="bg-surface rounded-2xl border border-rule shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-surface rounded-2xl border border-rule shadow-xs p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-extrabold text-ink flex items-center gap-2">
+          <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-brand" />
             <span>Sugerencias de Pases de Rama por Camada</span>
           </h2>
-          <p className="text-xs text-ink-muted mt-0.5">
+          <p className="text-sm text-ink-muted mt-1">
             Se agrupan en la misma camada quienes cumplen la edad reglamentaria de pase en este ciclo.
           </p>
         </div>
 
-        <span className="text-xs font-extrabold bg-brand/10 text-brand px-3.5 py-1.5 rounded-full border border-brand/30 shrink-0 self-start sm:self-center">
+        <span className="text-[13px] font-extrabold bg-brand/10 text-brand px-4 py-1.5 rounded-full border border-brand/30 shrink-0 self-start sm:self-center">
           {candidatos.length} {candidatos.length === 1 ? 'pase sugerido' : 'pases sugeridos'} en {gruposCamada.length}{' '}
           {gruposCamada.length === 1 ? 'camada' : 'camadas'}
         </span>
       </div>
 
       {gruposCamada.length === 0 ? (
-        <div className="bg-surface rounded-2xl border border-rule p-10 text-center space-y-2">
+        <div className="bg-surface rounded-2xl border border-rule p-10 text-center space-y-2.5">
           <Users className="w-10 h-10 text-ink-muted/50 mx-auto" />
-          <p className="text-sm font-bold text-ink-2">
+          <p className="text-base font-bold text-ink-2">
             Todas las camadas se encuentran en la rama correspondiente a su edad escolar.
           </p>
         </div>
@@ -270,20 +270,20 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                 className="bg-surface rounded-2xl border border-rule shadow-xs overflow-hidden"
               >
                 {/* Cabecera de la Camada */}
-                <div className="p-4 sm:p-5 bg-paper-2 border-b border-rule flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="p-4 sm:p-5 bg-paper-2 border-b border-rule flex flex-col md:flex-row md:items-center justify-between gap-3.5">
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-3 py-1 rounded-xl bg-brand/15 text-ink font-black text-xs border border-brand/40">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="px-3 py-1 rounded-xl bg-brand/15 text-ink font-black text-[13px] border border-brand/40">
                         Camada {g.camada}
                       </span>
-                      <span className="text-sm font-extrabold text-ink">
+                      <span className="text-[15px] font-extrabold text-ink">
                         {g.unidadActualNombre} →{' '}
                         <span className="text-brand">
                           {g.ramaSugeridaNombre}
                         </span>
                       </span>
                     </div>
-                    <p className="text-xs text-ink-muted mt-1">
+                    <p className="text-[13px] text-ink-muted mt-1.5">
                       Nacidos entre 07/{g.camada - 1} y 06/{g.camada} • Cumplen{' '}
                       <strong>{g.edadAlCorte} años</strong> •{' '}
                       <strong>
@@ -293,12 +293,12 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                   </div>
 
                   {puedeEjecutarPases && (!esGlobal && g.tipo === 'EGRESO' ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold shrink-0">
+                    <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[13px] font-bold shrink-0">
                       <ShieldAlert className="w-4 h-4" />
                       Requiere Jefatura (Global)
                     </span>
                   ) : (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
                       {g.unidadesDestino.length > 1 && (
                         <select
                           value={destinoLote}
@@ -308,7 +308,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                               [g.key]: Number(e.target.value),
                             }))
                           }
-                          className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-xs font-bold text-ink outline-none"
+                          className="min-h-[42px] px-3.5 py-2 rounded-xl border border-rule bg-surface text-[13px] font-bold text-ink outline-none"
                         >
                           {g.unidadesDestino.map((u) => (
                             <option key={u.id} value={u.id}>
@@ -322,7 +322,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                         type="button"
                         disabled={ejecutandoLote || g.miembros.every((m) => Boolean(m.solicitudPendiente))}
                         onClick={() => solicitarPaseCamada(g)}
-                        className="min-h-[40px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                        className="min-h-[42px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
                       >
                         {ejecutandoLote ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -356,7 +356,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                     return (
                       <div
                         key={c.asignacionId}
-                        className="p-3.5 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-paper-2 transition"
+                        className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-paper-2 transition"
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -364,19 +364,19 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                               <button
                                 type="button"
                                 onClick={() => onAbrirMiembro(c.usuario.id)}
-                                className="font-bold text-sm text-ink hover:text-brand hover:underline transition text-left cursor-pointer"
+                                className="font-bold text-[15px] text-ink hover:text-brand hover:underline transition text-left cursor-pointer"
                                 title="Abrir ficha y configurar pase detallado"
                               >
                                 {c.usuario.apellido}, {c.usuario.nombre}
                               </button>
                             ) : (
-                              <span className="font-bold text-sm text-ink">
+                              <span className="font-bold text-[15px] text-ink">
                                 {c.usuario.apellido}, {c.usuario.nombre}
                               </span>
                             )}
-                            <span className="text-xs text-ink-muted">DNI {c.usuario.dni}</span>
+                            <span className="text-[13px] text-ink-muted">DNI {c.usuario.dni}</span>
                           </div>
-                          <div className="text-xs text-ink-muted mt-0.5 flex items-center gap-2 flex-wrap">
+                          <div className="text-[13px] text-ink-muted mt-1 flex items-center gap-2 flex-wrap">
                             <span>Nac.: {fechaNacStr}</span>
                             <span className="text-ink-muted/50">/</span>
                             <span>
@@ -390,12 +390,12 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                         </div>
 
                         {puedeEjecutarPases && (c.solicitudPendiente ? (
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs font-bold self-end sm:self-center shrink-0">
-                            <Clock className="w-3.5 h-3.5" />
+                          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[13px] font-bold self-end sm:self-center shrink-0">
+                            <Clock className="w-4 h-4" />
                             Pendiente ({c.solicitudPendiente.unidadDestinoNombre})
                           </span>
                         ) : !esGlobal && g.tipo === 'EGRESO' ? (
-                          <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 self-end sm:self-center shrink-0">
+                          <span className="text-[13px] font-semibold text-amber-700 dark:text-amber-300 self-end sm:self-center shrink-0">
                             Requiere Jefatura (Global)
                           </span>
                         ) : (
@@ -409,7 +409,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                                     [c.asignacionId]: Number(e.target.value),
                                   }))
                                 }
-                                className="min-h-[36px] px-2.5 py-1 rounded-xl border border-rule bg-paper-2 text-xs font-semibold text-ink-2 outline-none"
+                                className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-paper-2 text-[13px] font-semibold text-ink-2 outline-none"
                               >
                                 {g.unidadesDestino.map((u) => (
                                   <option key={u.id} value={u.id}>
@@ -423,12 +423,12 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                               type="button"
                               disabled={enProceso || ejecutandoLote}
                               onClick={() => handlePasarIndividual(c, g)}
-                              className="min-h-[36px] px-3.5 py-1.5 rounded-xl bg-paper-3 hover:bg-brand hover:text-brand-contrast text-ink-2 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                              className="min-h-[40px] px-4 py-1.5 rounded-xl bg-paper-3 hover:bg-brand hover:text-brand-contrast text-ink-2 font-bold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                             >
                               {enProceso ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
-                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                                <ArrowRightLeft className="w-4 h-4" />
                               )}
                               <span>Pasar individual</span>
                             </button>

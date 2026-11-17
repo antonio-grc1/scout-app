@@ -416,7 +416,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                   setMapeo((prev) => ({ ...prev, pdfBaseUrl: e.target.value }))
                 }
                 aria-label="PDF Base"
-                className="s-input min-h-[36px] px-2.5 py-1 rounded-lg text-xs font-semibold flex-1 min-w-[160px]"
+                className="s-input min-h-[42px] px-3 py-1.5 rounded-lg text-[13px] font-semibold flex-1 min-w-[160px]"
               >
                 {PDF_TEMPLATES_CONOCIDOS.map((t) => (
                   <option key={t.value} value={t.value}>
@@ -438,9 +438,9 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                 onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
                 aria-label="Página anterior"
               >
-                <ChevronLeft className="w-3.5 h-3.5" />
+                <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-xs font-bold s-tabular px-2">
+              <span className="text-[13px] font-bold s-tabular px-2">
                 Hoja {paginaActual} / {Math.max(1, numPages)}
               </span>
               <Button
@@ -451,13 +451,13 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                 onClick={() => setPaginaActual((p) => Math.min(numPages, p + 1))}
                 aria-label="Página siguiente"
               >
-                <ChevronRight className="w-3.5 h-3.5" />
+                <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
-          <div className="s-badge-info rounded-xl px-3 py-2 text-[11px] font-semibold flex items-center gap-2">
-            <Crosshair className="w-3.5 h-3.5 shrink-0" />
+          <div className="s-badge-info rounded-xl px-3.5 py-2.5 text-xs font-semibold flex items-center gap-2">
+            <Crosshair className="w-4 h-4 shrink-0" />
             <span>
               {campoActivoKey ? (
                 <>
@@ -471,9 +471,9 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
 
           <div className="overflow-auto rounded-2xl border border-rule bg-paper-3 p-3 flex justify-center min-h-[340px]">
             {cargandoPdf ? (
-              <div className="flex flex-col items-center justify-center gap-2 text-ink-muted py-16">
+              <div className="flex flex-col items-center justify-center gap-2.5 text-ink-muted py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-brand" />
-                <span className="text-xs font-semibold">Renderizando hoja PDF…</span>
+                <span className="text-sm font-semibold">Renderizando hoja PDF…</span>
               </div>
             ) : (
               <div
@@ -504,7 +504,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                         top: `${Math.min(96, Math.max(2, topPct))}%`,
                         transform: 'translate(-4px, -50%)',
                       }}
-                      className={`absolute px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border whitespace-nowrap cursor-pointer ${
+                      className={`absolute px-1.5 py-0.5 rounded text-[11px] font-mono font-bold border whitespace-nowrap cursor-pointer ${
                         activo
                           ? 'bg-brand text-brand-contrast border-brand z-20'
                           : 'bg-amber-200/90 text-slate-900 border-amber-500 z-10 hover:z-20'
@@ -523,10 +523,10 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
         {/* Columna Derecha: Inspector Sincronizado Esquema ↔ Coordenadas */}
         <div className="lg:col-span-5 space-y-4">
           {/* Secciones */}
-          <div className="s-panel rounded-2xl p-3.5 space-y-2.5">
+          <div className="s-panel rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h3 className="text-xs font-black text-ink flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-brand" />
+              <h3 className="text-[13px] font-black text-ink flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-brand" />
                 <span>Secciones del Formulario ({esquema.secciones.length})</span>
               </h3>
               <Button
@@ -534,7 +534,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                 variant="secondary"
                 size="sm"
                 onClick={handleAgregarSeccion}
-                leftIcon={<Plus className="w-3 h-3" />}
+                leftIcon={<Plus className="w-3.5 h-3.5" />}
               >
                 Sección
               </Button>
@@ -546,7 +546,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                   key={sec.id}
                   type="button"
                   onClick={() => setSeccionActivaIdx(idx)}
-                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border cursor-pointer transition ${
+                  className={`min-h-[34px] px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer transition ${
                     idx === seccionActivaIdx
                       ? 's-btn-brand border-brand'
                       : 's-btn-sec text-ink-2'
@@ -558,7 +558,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
             </div>
 
             {seccionActiva && (
-              <div className="pt-2 border-t border-rule grid grid-cols-1 gap-2">
+              <div className="pt-2.5 border-t border-rule grid grid-cols-1 gap-2.5">
                 <Input
                   label="Título de sección"
                   value={seccionActiva.titulo}
@@ -571,7 +571,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                     }));
                   }}
                 />
-                <label className="flex items-center gap-2 text-xs font-semibold text-ink-2 cursor-pointer">
+                <label className="flex items-center gap-2 text-[13px] font-semibold text-ink-2 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={Boolean(seccionActiva.permiteCopiarHermano)}
@@ -585,6 +585,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                         ),
                       }));
                     }}
+                    className="w-4 h-4 accent-brand"
                   />
                   <span>Permite copiar datos entre hermanos</span>
                 </label>
@@ -594,12 +595,12 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
 
           {/* Inspector Coordenada Activa */}
           {campoActivoKey && (
-            <div className="s-card rounded-2xl p-3.5 space-y-2.5 border-brand/50">
+            <div className="s-card rounded-2xl p-4 space-y-2.5 border-brand/50">
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-black text-brand font-mono truncate">
+                <span className="text-[13px] font-black text-brand font-mono truncate">
                   {campoActivoKey}
                 </span>
-                <span className="text-[10px] font-bold text-ink-muted">Coordenada PDF</span>
+                <span className="text-xs font-bold text-ink-muted">Coordenada PDF</span>
               </div>
 
               <div className="grid grid-cols-4 gap-2">
@@ -646,15 +647,15 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
           )}
 
           {/* Lista de Campos de la Sección */}
-          <div className="s-panel rounded-2xl p-3.5 space-y-3">
-            <h3 className="text-xs font-black text-ink">
+          <div className="s-panel rounded-2xl p-4 space-y-3">
+            <h3 className="text-[13px] font-black text-ink">
               Campos de "{seccionActiva?.titulo || 'Sin sección'}" (
               {seccionActiva?.campos.length || 0})
             </h3>
 
-            <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+            <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
               {(!seccionActiva || seccionActiva.campos.length === 0) && (
-                <p className="text-xs text-ink-muted py-3 text-center">
+                <p className="text-[13px] text-ink-muted py-3 text-center">
                   Sin campos en esta sección aún.
                 </p>
               )}
@@ -670,7 +671,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                         setPaginaActual(mapped.page);
                       }
                     }}
-                    className={`p-2.5 rounded-xl border text-xs cursor-pointer flex items-center justify-between gap-2 transition ${
+                    className={`p-3 rounded-xl border text-[13px] cursor-pointer flex items-center justify-between gap-2 transition ${
                       seleccionado
                         ? 'bg-brand-soft/35 border-brand'
                         : 'bg-surface border-rule hover:border-brand/50'
@@ -678,7 +679,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                   >
                     <div className="min-w-0 flex-1">
                       <div className="font-bold text-ink truncate">{campo.label}</div>
-                      <div className="text-[10px] font-mono text-ink-muted flex items-center gap-2">
+                      <div className="text-xs font-mono text-ink-muted flex items-center gap-2 mt-0.5">
                         <span>{campo.key}</span>
                         <span>· {campo.type}</span>
                         {mapped ? (
@@ -698,7 +699,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                           e.stopPropagation();
                           handleUpdateCampoSchema(campo.key, { required: !campo.required });
                         }}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold border cursor-pointer ${
+                        className={`px-2 py-0.5 rounded text-xs font-bold border cursor-pointer ${
                           campo.required ? 's-badge-warn' : 'bg-paper-2 text-ink-muted border-rule'
                         }`}
                         title="Alternar obligatorio"
@@ -711,10 +712,10 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                           e.stopPropagation();
                           handleEliminarCampo(campo.key);
                         }}
-                        className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                        className="p-1.5 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                         aria-label={`Eliminar campo ${campo.key}`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -724,8 +725,8 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
 
             {/* Agregar nuevo campo */}
             {seccionActiva && (
-              <div className="pt-2 border-t border-rule space-y-2">
-                <span className="text-[11px] font-bold text-ink-2 block">
+              <div className="pt-2.5 border-t border-rule space-y-2.5">
+                <span className="text-xs font-bold text-ink-2 block">
                   Agregar campo sincronizado (Esquema + PDF)
                 </span>
                 <div className="grid grid-cols-2 gap-2">
