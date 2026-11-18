@@ -360,7 +360,7 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
     if (lower.includes('dni')) return 'Ya hay una persona registrada con este número de DNI.';
     return 'Este registro ya existe en el sistema.';
   }
-  if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('timeout')) {
+  if (!status && (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('timeout'))) {
     return 'Sin conexión a internet. Verifica tu señal e intenta nuevamente.';
   }
   if (
