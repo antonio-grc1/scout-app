@@ -3,6 +3,10 @@
     {
       "source": "/((?!api/|assets/|.*\\..*).*)",
       "destination": "/index.html"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "https://scout-app-vek5.onrender.com/api/$1"
     }
   ]
 }

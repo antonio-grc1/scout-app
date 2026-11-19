@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { obtenerRutaInicialUsuario } from '../lib/permisos';
+import { traducirErrorAmigable } from '../lib/formatters';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { BotonInstalarPwa } from '../components/BotonInstalarPwa';
 import { Button } from '../components/ui/Button';
@@ -49,10 +50,14 @@ export const Login: React.FC = () => {
     setCargando(true);
 
     try {
-      const res = await api.post('/auth/login', {
-        dni: dni.trim(),
-        password,
-      });
+      const res = await api.post(
+        '/auth/login',
+        {
+          dni: dni.trim(),
+          password,
+        },
+        { timeout: 45000 },
+      );
 
       setSesion(res.data);
 
@@ -70,6 +75,13 @@ export const Login: React.FC = () => {
           err?.response?.data?.message ||
             'Demasiados intentos seguidos. Esperá unos segundos antes de volver a intentar.',
         );
+      } else if (!err?.response) {
+        setError(
+          traducirErrorAmigable(
+            err,
+            'No se pudo conectar con el servidor. Intentá nuevamente en unos segundos.',
+          ),
+        );
       } else {
         setError(err?.response?.data?.message || 'DNI o contraseña incorrectos.');
       }
@@ -84,16 +96,23 @@ export const Login: React.FC = () => {
     setMensajeRecupero(null);
     setEnviandoRecupero(true);
     try {
-      const res = await api.post('/auth/recuperar-clave', {
-        dni: dni.trim(),
-      });
+      const res = await api.post(
+        '/auth/recuperar-clave',
+        {
+          dni: dni.trim(),
+        },
+        { timeout: 45000 },
+      );
       setMensajeRecupero(
         res.data?.mensaje ||
           'Si el DNI corresponde a una cuenta activa con correo electrónico registrado, recibirás una nueva contraseña temporal en tu casilla.',
       );
     } catch (err: any) {
       setError(
-        err?.response?.data?.message || 'No se pudo procesar la solicitud. Intentá en unos segundos.',
+        traducirErrorAmigable(
+          err,
+          err?.response?.data?.message || 'No se pudo procesar la solicitud. Intentá en unos segundos.',
+        ),
       );
     } finally {
       setEnviandoRecupero(false);

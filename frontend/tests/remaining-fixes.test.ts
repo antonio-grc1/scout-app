@@ -130,6 +130,12 @@ describe('M3: configuración PWA prompt y vercel.json seguro', () => {
     assert.equal(regex.test('/api/miembros'), false);
     assert.equal(regex.test('/assets/index-123.js'), false);
     assert.equal(regex.test('/manifest.webmanifest'), false);
+
+    assert.equal(vercel.rewrites?.[1]?.source, '/api/(.*)');
+    assert.equal(
+      vercel.rewrites?.[1]?.destination,
+      'https://scout-app-vek5.onrender.com/api/$1',
+    );
   });
 
   it('toastStore soporta toast con acción personalizada para actualización PWA', async () => {

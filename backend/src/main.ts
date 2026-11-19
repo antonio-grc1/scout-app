@@ -7,11 +7,25 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new PrismaExceptionFilter());
-  const corsOrigins =
+  const normalizarOrigen = (o: string) => o.trim().replace(/\/+$/, '');
+  const origenesEnv =
     env.CORS_ORIGIN && env.CORS_ORIGIN !== '*'
-      ? env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+      ? env.CORS_ORIGIN.split(',').map(normalizarOrigen).filter(Boolean)
+      : [];
+  const origenAppUrl = (() => {
+    try {
+      return new URL(env.APP_URL).origin;
+    } catch {
+      return null;
+    }
+  })();
+  const corsOrigins =
+    origenesEnv.length > 0
+      ? origenesEnv
       : process.env.NODE_ENV === 'production'
-        ? false
+        ? origenAppUrl && !origenAppUrl.includes('localhost')
+          ? [origenAppUrl]
+          : false
         : true;
   app.enableCors({
     origin: corsOrigins,
