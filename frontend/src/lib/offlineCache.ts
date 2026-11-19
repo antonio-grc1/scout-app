@@ -352,7 +352,6 @@ function resolverFallbackInteligente<T>(
               usuario,
               asignaciones,
               requiereCambioClave: localStorage.getItem('scout_cambio_clave') === 'true',
-              accessToken: localStorage.getItem('scout_token') || '',
             } as T,
             timestamp: Date.now(),
           };

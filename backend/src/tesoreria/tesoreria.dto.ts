@@ -234,12 +234,14 @@ export type DesvincularHermanoDto = z.infer<typeof DesvincularHermanoSchema>;
 export const CrearCuentaFinancieraSchema = z.object({
   nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100),
   tipo: z.enum(TipoCuenta),
+  unidadId: z.number().int().positive().nullable().optional(),
 });
 export type CrearCuentaFinancieraDto = z.infer<typeof CrearCuentaFinancieraSchema>;
 
 export const ActualizarCuentaFinancieraSchema = z.object({
   nombre: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres').max(100).optional(),
   tipo: z.enum(TipoCuenta).optional(),
+  unidadId: z.number().int().positive().nullable().optional(),
   activa: z.boolean().optional(),
 });
 export type ActualizarCuentaFinancieraDto = z.infer<typeof ActualizarCuentaFinancieraSchema>;

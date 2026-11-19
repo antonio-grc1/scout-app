@@ -3,7 +3,7 @@ import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
-import { filtrarUnidadesPorAlcance, obtenerUnidadesEnAlcanceIds, puedeModificarPorAlcanceUnidad } from '../lib/permisos';
+import { puedeModificarPorAlcanceUnidad } from '../lib/permisos';
 import { useAuthStore } from '../store/authStore';
 import {
   X,
@@ -60,18 +60,30 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
   onGuardado,
 }) => {
   const anioActual = new Date().getFullYear();
-  const esGlobal = useAuthStore((s) => s.tieneGlobal());
-  const tienePermiso = useAuthStore((s) => s.tienePermiso);
-  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const {
+    tienePermisoGlobal,
+    tienePermisoUnidadOGlobal,
+    obtenerUnidadesConPermiso,
+    asignaciones,
+  } = useAuthStore();
+  const esGlobal = tienePermisoGlobal(['planes.editar', 'caja.editar']);
   const unidadesEnAlcanceIds = useMemo(
-    () => obtenerUnidadesEnAlcanceIds(asignaciones),
-    [asignaciones],
+    () => obtenerUnidadesConPermiso(['planes.editar', 'caja.editar']),
+    [obtenerUnidadesConPermiso, asignaciones],
   );
   const unidadesPermitidas = useMemo(
-    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
-    [unidades, esGlobal, asignaciones],
+    () =>
+      esGlobal
+        ? unidades
+        : unidades.filter((u) => unidadesEnAlcanceIds.includes(u.id)),
+    [unidades, esGlobal, unidadesEnAlcanceIds],
   );
-  const puedeCrearRubroGlobal = esGlobal && tienePermiso('caja.editar');
+  const esGlobalRubros = tienePermisoGlobal('caja.editar');
+  const unidadesRubrosIds = useMemo(
+    () => obtenerUnidadesConPermiso('caja.editar'),
+    [obtenerUnidadesConPermiso, asignaciones],
+  );
+  const puedeCrearRubroGlobal = tienePermisoUnidadOGlobal('caja.editar');
 
   const [nombre, setNombre] = useState('');
   const [cicloAnio, setCicloAnio] = useState(anioActual);
@@ -177,7 +189,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
     setError(null);
 
     if (!nombre.trim()) {
-      setError('El nombre del plan de cuota es requerido');
+      setError('El nombre del cobro mensual es requerido');
       return;
     }
 
@@ -215,7 +227,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
       onCerrar();
     } catch (err: any) {
       console.error('Error al guardar plan de cuota mensual', err);
-      setError(err.response?.data?.message || 'Error al guardar el plan de cuota mensual');
+      setError(err.response?.data?.message || 'Error al guardar el cobro mensual');
     } finally {
       setGuardando(false);
     }
@@ -238,10 +250,10 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-bold text-ink text-lg">
-                {planAEditar ? 'Editar Cuadro de Cuota Mensual' : 'Nuevo Cuadro de Cuota Mensual'}
+                {planAEditar ? 'Editar Cobro Mensual' : 'Nuevo Cobro Mensual'}
               </h3>
               <p className="text-[13px] text-ink-muted">
-                Configure la cuota progresiva y los casilleros de meses del año
+                Configure el monto mensual y los casilleros de meses del año
               </p>
             </div>
           </div>
@@ -265,7 +277,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="sm:col-span-2">
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Nombre del Cuadro / Plan *
+                Nombre del Cobro Mensual *
               </label>
               <input
                 type="text"
@@ -301,10 +313,10 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
               </label>
               <div className="flex items-center gap-2.5">
                 {rubroId !== '' &&
-                  tienePermiso('caja.editar') &&
+                  puedeCrearRubroGlobal &&
                   puedeModificarPorAlcanceUnidad(
                     rubros.find((x) => x.id === rubroId)?.unidadId ?? null,
-                    { esGlobal, unidadesEnAlcanceIds },
+                    { esGlobal: esGlobalRubros, unidadesEnAlcanceIds: unidadesRubrosIds },
                   ) && (
                   <button
                     type="button"
@@ -493,7 +505,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                     onChange={(e) => setUsarPorcentajePersonalizado(e.target.checked)}
                     className="w-4 h-4 rounded text-brand focus:ring-brand/20"
                   />
-                  <span>Fijar porcentaje de descuento específico para este cuadro</span>
+                  <span>Fijar porcentaje de descuento específico para este cobro</span>
                 </label>
 
                 {usarPorcentajePersonalizado && (
@@ -533,7 +545,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
               className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{guardando ? 'Guardando...' : planAEditar ? 'Guardar Cambios' : 'Crear Cuadro de Cuota'}</span>
+              <span>{guardando ? 'Guardando...' : planAEditar ? 'Guardar Cambios' : 'Crear Cobro Mensual'}</span>
             </button>
           </div>
         </form>

@@ -1,7 +1,36 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { TipoUnidad, AlcanceRol, EstadoSolicitudPase } from '@prisma/client';
+import type { AuthUser } from '../common/types/auth.types.js';
 import { PasesService } from './pases.service.js';
+
+const actorGlobalPases: AuthUser = {
+  sub: 1,
+  dni: '10000001',
+  requiereCambioClave: false,
+  asignaciones: [
+    {
+      unidadId: 1,
+      unidadNombre: 'Jefatura',
+      rol: 'Jefe de Grupo',
+      alcance: AlcanceRol.GLOBAL,
+      permisos: ['pases.ver', 'pases.editar'],
+    },
+  ],
+};
+
+const mkActorUnidadPases = (unidadIds: number[], sub = 999): AuthUser => ({
+  sub,
+  dni: String(sub),
+  requiereCambioClave: false,
+  asignaciones: unidadIds.map((unidadId) => ({
+    unidadId,
+    unidadNombre: `Unidad ${unidadId}`,
+    rol: 'Educador de Rama',
+    alcance: AlcanceRol.UNIDAD,
+    permisos: ['pases.ver', 'pases.editar'],
+  })),
+});
 
 describe('PasesService - Validaciones de Rama y Rol', () => {
   const mockTx = {
@@ -31,12 +60,11 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
     unidadId: 2,
     rolId: 1,
     activo: true,
-    alcanceOverride: null,
     rol: { id: 1, nombre: 'Protagonista', alcancePorDefecto: AlcanceRol.PROPIO },
     usuario: { id: 100, activo: true, fechaNacimiento: new Date('2015-01-01') },
   };
 
-  it('rechaza si se intenta asignar Jefe de Grupo o Educador Sin Rama a una sección de rama', async () => {
+  it('A3: permite asignar libremente cualquier rol a una sección de rama (desacoplado de requiereRama)', async () => {
     mockTx.asignacionMiembro.findUnique.mockResolvedValueOnce(mockOrigen);
     mockTx.unidadOrganizativa.findUnique.mockResolvedValueOnce({
       id: 3,
@@ -48,15 +76,31 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
       id: 4,
       nombre: 'Educador Sin Rama',
       alcancePorDefecto: AlcanceRol.GLOBAL,
+      activo: true,
+      permisos: [],
+    });
+    mockTx.asignacionMiembro.updateMany.mockResolvedValueOnce({ count: 1 });
+    mockTx.asignacionMiembro.create.mockResolvedValueOnce({
+      id: 21,
+      usuarioId: 100,
+      unidadId: 3,
+      rolId: 4,
+      unidad: { id: 3, nombre: 'Rama Caminantes' },
+      rol: { id: 4, nombre: 'Educador Sin Rama' },
     });
 
-    await expect(
-      service.ejecutar({ tipo: 'GLOBAL' }, {
+    const resultado = await service.ejecutar(
+      { tipo: 'GLOBAL' },
+      {
         asignacionOrigenId: 10,
         unidadDestinoId: 3,
         rolDestinoId: 4,
-      }),
-    ).rejects.toThrow(BadRequestException);
+      },
+      actorGlobalPases,
+    );
+
+    expect(resultado.asignacionNueva.rolId).toBe(4);
+    expect(resultado.asignacionNueva.unidadId).toBe(3);
   });
 
   it('rechaza si un Educador de Unidad (alcance UNIDAD) intenta otorgar Jefe de Grupo', async () => {
@@ -74,11 +118,15 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
     });
 
     await expect(
-      service.ejecutar({ tipo: 'UNIDAD', unidadIds: [2] }, {
-        asignacionOrigenId: 10,
-        unidadDestinoId: 6,
-        rolDestinoId: 3,
-      }),
+      service.ejecutar(
+        { tipo: 'UNIDAD', unidadIds: [2] },
+        {
+          asignacionOrigenId: 10,
+          unidadDestinoId: 6,
+          rolDestinoId: 3,
+        },
+        mkActorUnidadPases([2]),
+      ),
     ).rejects.toThrow(ForbiddenException);
   });
 
@@ -105,11 +153,15 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
       rol: { id: 1, nombre: 'Protagonista' },
     });
 
-    const resultado = await service.ejecutar({ tipo: 'UNIDAD', unidadIds: [2] }, {
-      asignacionOrigenId: 10,
-      unidadDestinoId: 3,
-      rolDestinoId: 1,
-    });
+    const resultado = await service.ejecutar(
+      { tipo: 'UNIDAD', unidadIds: [2] },
+      {
+        asignacionOrigenId: 10,
+        unidadDestinoId: 3,
+        rolDestinoId: 1,
+      },
+      mkActorUnidadPases([2]),
+    );
 
     expect(resultado).toBeDefined();
     expect(resultado.usuarioId).toBe(100);
@@ -145,10 +197,14 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
       rol: { id: 4, nombre: 'Educador Sin Rama' },
     });
 
-    const resultado = await service.ejecutar({ tipo: 'GLOBAL' }, {
-      asignacionOrigenId: 10,
-      unidadDestinoId: 7,
-    });
+    const resultado = await service.ejecutar(
+      { tipo: 'GLOBAL' },
+      {
+        asignacionOrigenId: 10,
+        unidadDestinoId: 7,
+      },
+      actorGlobalPases,
+    );
 
     expect(resultado).toBeDefined();
     expect(mockTx.rol.findFirst).toHaveBeenCalledWith(
@@ -201,10 +257,14 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
       rol: { id: 2, nombre: 'Educador de Rama' },
     });
 
-    const resultado = await service.ejecutar({ tipo: 'GLOBAL' }, {
-      asignacionOrigenId: 10,
-      unidadDestinoId: 1,
-    });
+    const resultado = await service.ejecutar(
+      { tipo: 'GLOBAL' },
+      {
+        asignacionOrigenId: 10,
+        unidadDestinoId: 1,
+      },
+      actorGlobalPases,
+    );
 
     expect(resultado).toBeDefined();
     expect(resultado.asignacionNueva.rolId).toBe(2);
@@ -266,7 +326,6 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
         usuarioId: 10,
         unidadId: 1,
         rolId: 1,
-        alcanceOverride: null,
         usuario: { id: 10, activo: true, fechaNacimiento: new Date('2015-01-01') },
         unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, activa: true, rama: null },
         rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
@@ -277,7 +336,6 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
         usuarioId: 11,
         unidadId: 1,
         rolId: 1,
-        alcanceOverride: null,
         usuario: { id: 11, activo: true, fechaNacimiento: new Date('2015-02-01') },
         unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, activa: true, rama: null },
         rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
@@ -301,12 +359,16 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
     const prisma: any = { $transaction: vi.fn(async (cb: any) => cb(tx)) };
     const pasesSvc = new PasesService(prisma);
 
-    const res = await pasesSvc.ejecutarLote({ tipo: 'GLOBAL' }, {
-      pases: [
-        { asignacionOrigenId: 1, unidadDestinoId: 2 },
-        { asignacionOrigenId: 2, unidadDestinoId: 2 },
-      ],
-    });
+    const res = await pasesSvc.ejecutarLote(
+      { tipo: 'GLOBAL' },
+      {
+        pases: [
+          { asignacionOrigenId: 1, unidadDestinoId: 2 },
+          { asignacionOrigenId: 2, unidadDestinoId: 2 },
+        ],
+      },
+      actorGlobalPases,
+    );
     expect(res.total).toBe(2);
     expect(asigFindMany).toHaveBeenCalledTimes(1);
     expect(asigFindUnique).not.toHaveBeenCalled();
@@ -365,13 +427,16 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       unidadId: 1,
       rolId: 2,
       activo: true,
-      alcanceOverride: null,
       rol: { id: 2, nombre: 'Educador', tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD, permisos: [] },
       unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, ramaId: 1 },
       usuario: { id: 100, activo: true, fechaNacimiento: new Date('1990-01-01') },
     });
     await expect(
-      service.ejecutar({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, { asignacionOrigenId: 10, unidadDestinoId: 1 }),
+      service.ejecutar(
+        { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 },
+        { asignacionOrigenId: 10, unidadDestinoId: 1 },
+        mkActorUnidadPases([1]),
+      ),
     ).rejects.toThrow(ForbiddenException);
 
     // Caso 2: protagonista destino rol EDUCADOR (ej. Rover -> Educador)
@@ -381,7 +446,6 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       unidadId: 4,
       rolId: 1,
       activo: true,
-      alcanceOverride: null,
       rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
       unidad: { id: 4, tipo: TipoUnidad.SECCION_RAMA, ramaId: 4 },
       usuario: { id: 101, activo: true, fechaNacimiento: new Date('2004-01-01') },
@@ -405,6 +469,7 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       service.ejecutar(
         { tipo: 'UNIDAD', unidadIds: [4], usuarioIdPropio: 999 },
         { asignacionOrigenId: 11, unidadDestinoId: 1, rolDestinoId: 2 },
+        mkActorUnidadPases([4]),
       ),
     ).rejects.toThrow(ForbiddenException);
   });
@@ -420,7 +485,6 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       unidadId: 1,
       rolId: 1,
       activo: true,
-      alcanceOverride: null,
       rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', requiereRama: true, alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
       unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, ramaId: 1 },
       usuario: { id: 102, activo: true, fechaNacimiento: new Date('2015-01-01') },
@@ -441,6 +505,7 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       service.ejecutar(
         { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 },
         { asignacionOrigenId: 20, unidadDestinoId: 5, rolDestinoId: 1 },
+        mkActorUnidadPases([1]),
       ),
     ).rejects.toThrow(ForbiddenException);
 
@@ -463,6 +528,7 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       service.ejecutar(
         { tipo: 'UNIDAD', unidadIds: [5], usuarioIdPropio: 999 },
         { asignacionOrigenId: 20, unidadDestinoId: 3, rolDestinoId: 1 },
+        mkActorUnidadPases([5]),
       ),
     ).rejects.toThrow(ForbiddenException);
   });
@@ -476,7 +542,6 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       unidadId: 1,
       rolId: 1,
       activo: true,
-      alcanceOverride: null,
       rol: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', requiereRama: true, alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
       unidad: { id: 1, tipo: TipoUnidad.SECCION_RAMA, ramaId: 1 },
       usuario: { id: 103, activo: true, fechaNacimiento: new Date('2015-01-01') },
@@ -508,7 +573,7 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
     const resultadoSolicitud: any = await service.ejecutar(
       { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 },
       { asignacionOrigenId: 30, unidadDestinoId: 3, rolDestinoId: 1 },
-      999,
+      mkActorUnidadPases([1], 999),
     );
 
     expect(resultadoSolicitud.pendienteAprobacion).toBe(true);
@@ -523,21 +588,24 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       unidadOrigenId: 1,
       unidadDestinoId: 3,
       rolDestinoId: 1,
-      alcanceOverride: null,
       estado: EstadoSolicitudPase.PENDIENTE,
       unidadDestino: { id: 3, ramaId: 2, tipo: TipoUnidad.SECCION_RAMA, activa: true },
       rolDestino: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
       asignacionOrigen: {
         id: 30,
         activo: true,
-        alcanceOverride: null,
         rol: { id: 1, tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
         unidad: { id: 1, ramaId: 1 },
         usuario: { id: 103, activo: true, fechaNacimiento: new Date('2015-01-01') },
       },
     });
     await expect(
-      service.aprobarSolicitud({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 77, {}, 999),
+      service.aprobarSolicitud(
+        { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 },
+        77,
+        {},
+        mkActorUnidadPases([1], 999),
+      ),
     ).rejects.toThrow(ForbiddenException);
 
     // Unidad destino aprueba (redirigiendo a Unidad Scout B = 4 dentro de misma ramaId=2)
@@ -548,14 +616,12 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       unidadOrigenId: 1,
       unidadDestinoId: 3,
       rolDestinoId: 1,
-      alcanceOverride: null,
       estado: EstadoSolicitudPase.PENDIENTE,
       unidadDestino: { id: 3, ramaId: 2, tipo: TipoUnidad.SECCION_RAMA, activa: true },
       rolDestino: { id: 1, nombre: 'Protagonista', tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
       asignacionOrigen: {
         id: 30,
         activo: true,
-        alcanceOverride: null,
         rol: { id: 1, tipoMiembro: 'PROTAGONISTA', alcancePorDefecto: AlcanceRol.PROPIO, permisos: [] },
         unidad: { id: 1, ramaId: 1 },
         usuario: { id: 103, activo: true, fechaNacimiento: new Date('2015-01-01') },
@@ -580,7 +646,7 @@ describe('PasesService - Reglas de Alcance, Progresión y Solicitudes en Dos Pas
       { tipo: 'UNIDAD', unidadIds: [3, 4], usuarioIdPropio: 888 },
       77,
       { unidadDestinoId: 4 },
-      888,
+      mkActorUnidadPases([3, 4], 888),
     );
     expect(aprobacion.aprobada).toBe(true);
     expect(aprobacion.asignacionNueva.unidadId).toBe(4);

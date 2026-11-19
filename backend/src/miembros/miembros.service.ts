@@ -11,12 +11,16 @@ import { AlcanceRol, EstadoCargo, EstadoEntrega, Prisma, TipoUnidad } from '@pri
 import * as bcrypt from 'bcrypt';
 import {
   alcanceEfectivo,
+  assertActorDominaObjetivo,
   assertPuedeOtorgar,
   assertUnidadEnAlcance,
   esRolEducadorEfectivo,
   filtroUsuariosPorAlcance,
   resolverAlcance,
+  rolTienePermisoConAlcanceGlobal,
+  tipoMiembroEfectivo,
 } from '../common/scope/alcance.util.js';
+import { PERMISOS_CRITICOS_ADMIN } from '../common/scope/permisos-catalogo.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
 import {
@@ -62,6 +66,7 @@ export const MIEMBRO_SELECT = {
   fechaNacimiento: true,
   emailContacto: true,
   telefonoContacto: true,
+  tipoMiembro: true,
   grupoFamiliarId: true,
   datosFijosJson: true,
   requiereCambioClave: true,
@@ -111,7 +116,6 @@ export const MIEMBRO_SELECT = {
       fechaInicio: true,
       fechaFin: true,
       activo: true,
-      alcanceOverride: true,
       unidad: {
         select: {
           id: true,
@@ -138,6 +142,8 @@ export const MIEMBRO_SELECT = {
           alcancePorDefecto: true,
           tipoMiembro: true,
           requiereRama: true,
+          tipoUnidad: true,
+          activo: true,
         },
       },
     },
@@ -423,8 +429,10 @@ export class MiembrosService {
     if (alcance.tipo === 'PROPIO') {
       throw new ForbiddenException('No tiene permisos para consultar datos de otros miembros');
     }
-    const hermano = await this.prisma.usuario.findUnique({
-      where: { dni: dniHermano },
+    const hermano = await this.prisma.usuario.findFirst({
+      where: {
+        AND: [{ dni: dniHermano, activo: true }, filtroUsuariosPorAlcance(alcance)],
+      },
       select: {
         id: true,
         dni: true,
@@ -441,7 +449,9 @@ export class MiembrosService {
         },
       },
     });
-    if (!hermano || !hermano.activo) throw new NotFoundException('No se encontró un miembro activo con ese DNI');
+    if (!hermano || !hermano.activo) {
+      throw new NotFoundException('No se encontró un miembro activo con ese DNI dentro de su alcance');
+    }
     return {
       id: hermano.id,
       dni: hermano.dni,
@@ -561,7 +571,7 @@ export class MiembrosService {
   }
 
   // ---------------- Alta ----------------
-  async crear(alcance: AlcanceAcceso, dto: CrearMiembroDto) {
+  async crear(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearMiembroDto) {
     if (dto.soloEnviarPorCorreo) {
       if (!dto.emailContacto?.trim()) {
         throw new BadRequestException(
@@ -575,8 +585,14 @@ export class MiembrosService {
       }
     }
 
-    const unidadIdResuelta = await this.resolverYValidarUnidadYRol(alcance, dto.unidadId, dto.rolId);
+    const { unidadId: unidadIdResuelta, tipoMiembroRol } = await this.resolverYValidarUnidadYRol(
+      alcance,
+      dto.unidadId,
+      dto.rolId,
+      actor,
+    );
     assertUnidadEnAlcance(alcance, unidadIdResuelta);
+    const tipoMiembroFinal = dto.tipoMiembro ?? tipoMiembroRol;
     // Temporal: usamos el DNI como clave inicial; se fuerza el cambio en el primer login.
     const claveTemporal = dto.dni;
     const passwordHash = await bcrypt.hash(claveTemporal, BCRYPT_ROUNDS);
@@ -589,8 +605,12 @@ export class MiembrosService {
 
       if (dto.hermanoDni) {
         if (dto.hermanoDni === dto.dni) throw new BadRequestException('El hermano no puede ser el mismo DNI');
-        const hermano = await tx.usuario.findUnique({ where: { dni: dto.hermanoDni } });
-        if (!hermano || !hermano.activo) throw new NotFoundException('Hermano no encontrado');
+        const hermano = tx.usuario.findFirst
+          ? await tx.usuario.findFirst({
+              where: { AND: [{ dni: dto.hermanoDni, activo: true }, filtroUsuariosPorAlcance(alcance)] },
+            })
+          : null;
+        if (!hermano || !hermano.activo) throw new NotFoundException('Hermano no encontrado en su alcance');
 
         grupoFamiliarId = hermano.grupoFamiliarId;
         if (grupoFamiliarId === null) {
@@ -615,6 +635,7 @@ export class MiembrosService {
           fechaNacimiento: new Date(dto.fechaNacimiento),
           emailContacto: email,
           telefonoContacto: telefono,
+          tipoMiembro: tipoMiembroFinal,
           grupoFamiliarId,
           datosFijosJson: datosFijos as Prisma.InputJsonObject,
           requiereCambioClave: true,
@@ -688,69 +709,117 @@ export class MiembrosService {
     if (!objetivo) throw new NotFoundException('Miembro no encontrado en su alcance');
 
     const esPropio = id === actor.sub;
-    // Solo GLOBAL edita todo; quien edita su propia ficha (o tiene alcance PROPIO) solo contacto y datos fijos.
-    if (alcance.tipo === 'PROPIO' || (esPropio && alcance.tipo !== 'GLOBAL')) {
+    // Alcance PROPIO estricto (autogestión): solo contacto y datos fijos.
+    if (alcance.tipo === 'PROPIO') {
       const prohibidos = Object.keys(dto).filter(
         (k) => !(CAMPOS_EDITABLES_PROPIOS as readonly string[]).includes(k),
       );
       if (prohibidos.length) throw new ForbiddenException(`No puede modificar: ${prohibidos.join(', ')}`);
     }
-    if (alcance.tipo !== 'GLOBAL' && !esPropio) {
-      if (objetivo.asignaciones.some((a) => alcanceEfectivo(a) === AlcanceRol.GLOBAL)) {
-        throw new ForbiddenException('No puede modificar a un usuario con alcance global');
-      }
-    }
 
-    // Permiso unificado por panel: padron.editar habilita editar toda la ficha del miembro en su alcance.
+    // Permiso unificado por panel: padron.editar habilita editar la ficha del miembro según alcance.
     const CAMPOS_SENSIBLES_COBERTURA_TOTAL = new Set([
       'nombre',
       'apellido',
       'dni',
       'fechaNacimiento',
+      'tipoMiembro',
       'activo',
     ]);
-    if (!esPropio || alcance.tipo === 'GLOBAL') {
-      const alcanceEdicion = resolverAlcance(actor, 'padron.editar');
-      const sinPermiso = Object.keys(dto).filter((k) => {
-        // Enviar el mismo valor no cuenta como modificación
-        const actual = (objetivo as Record<string, unknown>)[k];
-        const nuevo = (dto as Record<string, unknown>)[k];
-        const igual =
-          k === 'fechaNacimiento'
-            ? actual instanceof Date && String(nuevo) === actual.toISOString().slice(0, 10)
-            : actual === nuevo;
-        if (igual) return false;
+    const CAMPOS_CONTROLADOS = new Set([
+      'nombre',
+      'apellido',
+      'dni',
+      'fechaNacimiento',
+      'tipoMiembro',
+      'activo',
+      'emailContacto',
+      'telefonoContacto',
+      'datosFijosJson',
+    ]);
 
-        if (!alcanceEdicion) return true;
-        if (alcanceEdicion.tipo === 'GLOBAL') return false;
-        if (alcanceEdicion.tipo === 'UNIDAD') {
-          const unidadesObjetivo = objetivo.asignaciones.map((a) => a.unidadId);
-          // Campos sensibles (identidad / baja) requieren cobertura de TODAS las unidades activas del objetivo.
-          const requiereCoberturaCompleta = CAMPOS_SENSIBLES_COBERTURA_TOTAL.has(k);
-          const cubierto = requiereCoberturaCompleta
-            ? unidadesObjetivo.length > 0 && unidadesObjetivo.every((uId) => alcanceEdicion.unidadIds.includes(uId))
-            : unidadesObjetivo.some((uId) => alcanceEdicion.unidadIds.includes(uId));
-          return !cubierto;
+    const camposModificados = Object.keys(dto).filter((k) => {
+      if (!CAMPOS_CONTROLADOS.has(k)) return false;
+      const actual = (objetivo as Record<string, unknown>)[k];
+      const nuevo = (dto as Record<string, unknown>)[k];
+      if (k === 'fechaNacimiento') {
+        return !(actual instanceof Date && String(nuevo) === actual.toISOString().slice(0, 10));
+      }
+      return actual !== nuevo;
+    });
+
+    const alcanceEdicion = resolverAlcance(actor, 'padron.editar');
+
+    if (esPropio) {
+      const prohibidosPropios: string[] = [];
+      for (const k of camposModificados) {
+        const esEditablePropio = (CAMPOS_EDITABLES_PROPIOS as readonly string[]).includes(k);
+        if (esEditablePropio) {
+          if (!alcanceEdicion && alcance.tipo !== 'PROPIO') {
+            prohibidosPropios.push(k);
+          }
+        } else if (alcanceEdicion?.tipo !== 'GLOBAL') {
+          prohibidosPropios.push(k);
         }
-        return true;
-      });
+      }
+      if (prohibidosPropios.length) {
+        throw new ForbiddenException(`No puede modificar: ${prohibidosPropios.join(', ')}`);
+      }
+    } else {
+      const objetivoTieneGlobal = objetivo.asignaciones.some(
+        (a) => alcanceEfectivo(a) === AlcanceRol.GLOBAL,
+      );
+      const unidadesObjetivo = objetivo.asignaciones.map((a) => a.unidadId);
+      const sinPermiso: string[] = [];
+
+      for (const k of camposModificados) {
+        if (!alcanceEdicion || alcanceEdicion.tipo === 'PROPIO') {
+          sinPermiso.push(k);
+          continue;
+        }
+        if (alcanceEdicion.tipo === 'GLOBAL') continue;
+        if (objetivoTieneGlobal) {
+          throw new ForbiddenException('No puede modificar a un usuario con alcance global');
+        }
+        const requiereCoberturaCompleta = CAMPOS_SENSIBLES_COBERTURA_TOTAL.has(k);
+        const cubierto = requiereCoberturaCompleta
+          ? unidadesObjetivo.length > 0 && unidadesObjetivo.every((uId) => alcanceEdicion.unidadIds.includes(uId))
+          : unidadesObjetivo.some((uId) => alcanceEdicion.unidadIds.includes(uId));
+        if (!cubierto) {
+          sinPermiso.push(k);
+        }
+      }
       if (sinPermiso.length) {
         throw new ForbiddenException(`No tiene permiso para modificar: ${sinPermiso.join(', ')}`);
+      }
+      if (alcance.tipo !== 'GLOBAL' && objetivoTieneGlobal) {
+        throw new ForbiddenException('No puede modificar a un usuario con alcance global');
+      }
+      if (camposModificados.length > 0) {
+        assertActorDominaObjetivo(
+          actor,
+          objetivo.asignaciones,
+          'No puede modificar a un usuario con permisos o alcance superiores a los suyos',
+        );
       }
     }
 
     const cambioEstadoActivo = dto.activo !== undefined && dto.activo !== objetivo.activo;
-    const verificaUltimoAdmin =
-      dto.activo === false &&
-      objetivo.activo &&
-      objetivo.asignaciones.some((a) => this.esAsignacionAdminGlobal(a));
+    const cambioTipoMiembro =
+      dto.tipoMiembro !== undefined &&
+      dto.tipoMiembro !== (objetivo as { tipoMiembro?: string | null }).tipoMiembro;
+    const capacidadesCriticasObjetivo =
+      dto.activo === false && objetivo.activo
+        ? this.extraerCapacidadesCriticasGlobales(objetivo.asignaciones)
+        : [];
+    const verificaUltimoAdmin = capacidadesCriticasObjetivo.length > 0;
 
     const ejecutarEdicion = async (tx: Prisma.TransactionClient) => {
       if ((dto.datosFijosJson || verificaUltimoAdmin) && '$queryRaw' in tx && typeof tx.$queryRaw === 'function') {
         await tx.$queryRaw`SELECT id FROM usuarios WHERE id = ${id} FOR UPDATE`;
       }
       if (verificaUltimoAdmin) {
-        await this.asegurarNoDesactivarUltimoAdmin(id, undefined, tx);
+        await this.asegurarNoDesactivarUltimoAdmin(id, capacidadesCriticasObjetivo, undefined, tx);
       }
 
       let datosFijosJson: Prisma.InputJsonObject | undefined;
@@ -776,10 +845,10 @@ export class MiembrosService {
         select: MIEMBRO_SELECT,
       });
 
-      if (cambioEstadoActivo && this.tesoreria) {
+      if ((cambioEstadoActivo || cambioTipoMiembro) && this.tesoreria) {
         if (dto.activo === false) {
           await this.tesoreria.anularCargosImpagosDeMiembroEnTx(tx, id);
-        } else if (dto.activo === true) {
+        } else if (actualizado.activo !== false) {
           const hoy = hoyUtc();
           await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(
             tx,
@@ -833,9 +902,18 @@ export class MiembrosService {
           activo: true,
           saldoAFavor: true,
           grupoFamiliarId: true,
+          asignaciones: {
+            where: { activo: true },
+            include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+          },
         },
       });
       if (!objetivo) throw new NotFoundException('Miembro no encontrado');
+      assertActorDominaObjetivo(
+        actor,
+        objetivo.asignaciones ?? [],
+        'No puede eliminar definitivamente a un usuario con permisos superiores a los suyos',
+      );
       if (objetivo.activo) {
         throw new BadRequestException('Solo se pueden eliminar definitivamente miembros dados de baja (inactivos)');
       }
@@ -963,28 +1041,41 @@ export class MiembrosService {
 
   // ---------------- Asignaciones adicionales ----------------
   /** Agrega una asignación (ej. un Rover que además es Educador). No toca las existentes. */
-  async agregarAsignacion(alcance: AlcanceAcceso, usuarioId: number, dto: CrearAsignacionDto) {
+  async agregarAsignacion(actor: AuthUser, alcance: AlcanceAcceso, usuarioId: number, dto: CrearAsignacionDto) {
     if (alcance.tipo === 'PROPIO') throw new ForbiddenException('No puede gestionar asignaciones');
-    const unidadIdResuelta = await this.resolverYValidarUnidadYRol(
+    const { unidadId: unidadIdResuelta } = await this.resolverYValidarUnidadYRol(
       alcance,
       dto.unidadId,
       dto.rolId,
-      dto.alcanceOverride,
+      actor,
     );
     assertUnidadEnAlcance(alcance, unidadIdResuelta);
 
     const usuario = await this.prisma.usuario.findFirst({
       where: { AND: [{ id: usuarioId }, filtroUsuariosPorAlcance(alcance)] },
-      include: { asignaciones: { where: { activo: true }, include: { rol: true } } },
+      include: {
+        asignaciones: {
+          where: { activo: true },
+          include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+        },
+      },
     });
     if (!usuario || !usuario.activo) throw new NotFoundException('Miembro no encontrado en su alcance');
 
+    assertActorDominaObjetivo(
+      actor,
+      usuario.asignaciones,
+      'No puede gestionar asignaciones de un usuario con permisos o alcance superiores a los suyos',
+    );
+
     if (alcance.tipo !== 'GLOBAL') {
-      const tieneAsignacionGlobalOEducador = usuario.asignaciones.some(
-        (a) =>
-          (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL ||
-          esRolEducadorEfectivo(a.rol, a.alcanceOverride),
-      );
+      const tieneAsignacionGlobalOEducador =
+        (usuario as { tipoMiembro?: string | null }).tipoMiembro === 'EDUCADOR' ||
+        usuario.asignaciones.some(
+          (a) =>
+            a.rol.alcancePorDefecto === AlcanceRol.GLOBAL ||
+            esRolEducadorEfectivo(a.rol),
+        );
       if (tieneAsignacionGlobalOEducador) {
         throw new ForbiddenException(
           'Solo un usuario con alcance global puede gestionar asignaciones de educadores o usuarios con alcance global',
@@ -1011,7 +1102,6 @@ export class MiembrosService {
           usuarioId,
           unidadId: unidadIdResuelta,
           rolId: dto.rolId,
-          alcanceOverride: dto.alcanceOverride ?? null,
           cicloAnio: ciclo,
         },
       });
@@ -1043,13 +1133,14 @@ export class MiembrosService {
       });
       if (!asig) throw new NotFoundException('Asignación activa no encontrada');
       assertUnidadEnAlcance(alcance, asig.unidadId);
-      assertPuedeOtorgar(alcance, asig.rol, asig.alcanceOverride);
-      if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(asig.rol, asig.alcanceOverride)) {
+      assertPuedeOtorgar(alcance, asig.rol, actor, asig.unidadId);
+      if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(asig.rol)) {
         throw new ForbiddenException('Solo un usuario con alcance global puede cerrar asignaciones de educadores');
       }
 
-      if (this.esAsignacionAdminGlobal(asig)) {
-        await this.asegurarNoDesactivarUltimoAdmin(usuarioId, asignacionId, tx);
+      const capacidadesCriticasAsig = this.extraerCapacidadesCriticasGlobales([asig]);
+      if (capacidadesCriticasAsig.length > 0) {
+        await this.asegurarNoDesactivarUltimoAdmin(usuarioId, capacidadesCriticasAsig, asignacionId, tx);
       }
 
       if (tx.asignacionMiembro?.updateMany) {
@@ -1082,24 +1173,45 @@ export class MiembrosService {
   }
 
   // ---------------- Anti-Lockout Helpers ----------------
-  private esAsignacionAdminGlobal(asig: {
-    alcanceOverride?: AlcanceRol | null;
-    rol?: { alcancePorDefecto: AlcanceRol; permisos?: Array<{ permiso?: { clave: string } } | string> };
-  }): boolean {
-    if (!asig.rol) return false;
-    const alcance = asig.alcanceOverride ?? asig.rol.alcancePorDefecto;
-    if (alcance !== AlcanceRol.GLOBAL) return false;
-    if (!asig.rol.permisos || asig.rol.permisos.length === 0) {
-      return false;
+  private esAsignacionConPermisoCriticoGlobal(
+    asig: {
+      rol?: {
+        activo?: boolean;
+        alcancePorDefecto: AlcanceRol;
+        permisos?: ReadonlyArray<{ permiso?: { clave: string }; alcance?: AlcanceRol | null } | string>;
+      };
+    },
+    clavePermiso?: string,
+  ): boolean {
+    if (!asig.rol || asig.rol.activo === false) return false;
+    if (clavePermiso) return rolTienePermisoConAlcanceGlobal(asig.rol, clavePermiso);
+    return PERMISOS_CRITICOS_ADMIN.some((c) => rolTienePermisoConAlcanceGlobal(asig.rol, c));
+  }
+
+  private extraerCapacidadesCriticasGlobales(
+    asignaciones: ReadonlyArray<{
+      rol?: {
+        activo?: boolean;
+        alcancePorDefecto: AlcanceRol;
+        permisos?: ReadonlyArray<{ permiso?: { clave: string }; alcance?: AlcanceRol | null } | string>;
+      };
+    }>,
+  ): string[] {
+    const caps = new Set<string>();
+    for (const a of asignaciones) {
+      if (!a.rol || a.rol.activo === false) continue;
+      for (const c of PERMISOS_CRITICOS_ADMIN) {
+        if (rolTienePermisoConAlcanceGlobal(a.rol, c)) {
+          caps.add(c);
+        }
+      }
     }
-    return asig.rol.permisos.some((p) => {
-      const clave = typeof p === 'string' ? p : p.permiso?.clave;
-      return clave === 'organizacion.editar';
-    });
+    return [...caps];
   }
 
   private async asegurarNoDesactivarUltimoAdmin(
     usuarioId: number,
+    capacidadesRequeridas: readonly string[],
     asignacionIdACerrar?: number,
     tx: Prisma.TransactionClient | PrismaService = this.prisma,
   ): Promise<void> {
@@ -1108,10 +1220,7 @@ export class MiembrosService {
       activo: true,
       usuario: { activo: true },
       unidad: { activa: true },
-      OR: [
-        { alcanceOverride: AlcanceRol.GLOBAL },
-        { alcanceOverride: null, rol: { alcancePorDefecto: AlcanceRol.GLOBAL } },
-      ],
+      rol: { alcancePorDefecto: AlcanceRol.GLOBAL, activo: true },
       ...(asignacionIdACerrar !== undefined ? { id: { not: asignacionIdACerrar } } : {}),
       ...(asignacionIdACerrar === undefined ? { usuarioId: { not: usuarioId } } : {}),
     };
@@ -1130,13 +1239,18 @@ export class MiembrosService {
       if (uno) candidatos = [uno];
     }
 
-    const hayOtroAdmin = Array.isArray(candidatos) && candidatos.some((a) => this.esAsignacionAdminGlobal(a));
-    if (!hayOtroAdmin) {
-      throw new BadRequestException(
-        asignacionIdACerrar !== undefined
-          ? 'No se puede cerrar la asignación del último administrador global activo del sistema'
-          : 'No se puede desactivar al último administrador global activo del sistema',
-      );
+    const caps = capacidadesRequeridas.length > 0 ? capacidadesRequeridas : PERMISOS_CRITICOS_ADMIN;
+    for (const cap of caps) {
+      const cubierto =
+        Array.isArray(candidatos) &&
+        candidatos.some((a) => this.esAsignacionConPermisoCriticoGlobal(a, cap));
+      if (!cubierto) {
+        throw new BadRequestException(
+          asignacionIdACerrar !== undefined
+            ? `No se puede cerrar la asignación del último administrador global activo del sistema con permiso "${cap}"`
+            : `No se puede desactivar al último administrador global activo del sistema con permiso "${cap}"`,
+        );
+      }
     }
   }
 
@@ -1145,12 +1259,18 @@ export class MiembrosService {
     alcance: AlcanceAcceso,
     unidadId: number | undefined,
     rolId: number,
-    alcanceOverride?: AlcanceRol | null,
-  ): Promise<number> {
-    const rol = await this.prisma.rol.findUnique({ where: { id: rolId } });
+    actor: AuthUser,
+  ): Promise<{ unidadId: number; tipoMiembroRol: 'PROTAGONISTA' | 'EDUCADOR' }> {
+    const rol = await this.prisma.rol.findUnique({
+      where: { id: rolId },
+      include: { permisos: { include: { permiso: true } } },
+    });
     if (!rol) throw new BadRequestException('Rol inexistente');
-    assertPuedeOtorgar(alcance, rol, alcanceOverride);
-    if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(rol, alcanceOverride)) {
+    if (rol.activo === false) {
+      throw new BadRequestException('El rol seleccionado está archivado o inactivo');
+    }
+    assertPuedeOtorgar(alcance, rol, actor, unidadId);
+    if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(rol)) {
       throw new ForbiddenException('Solo un usuario con alcance global puede otorgar roles de educador');
     }
 
@@ -1160,7 +1280,11 @@ export class MiembrosService {
 
     if (!unidad && rol.requiereRama === false && this.prisma.unidadOrganizativa.findFirst) {
       const tipoPreferido =
-        rol.alcancePorDefecto === AlcanceRol.GLOBAL ? TipoUnidad.JEFATURA : TipoUnidad.SIN_RAMA_APOYO;
+        rol.tipoUnidad && rol.tipoUnidad !== TipoUnidad.SECCION_RAMA
+          ? rol.tipoUnidad
+          : rol.alcancePorDefecto === AlcanceRol.GLOBAL
+            ? TipoUnidad.JEFATURA
+            : TipoUnidad.SIN_RAMA_APOYO;
       unidad =
         (await this.prisma.unidadOrganizativa.findFirst({
           where: { activa: true, tipo: tipoPreferido },
@@ -1174,29 +1298,10 @@ export class MiembrosService {
       throw new BadRequestException('Rama o sección inexistente o inactiva');
     }
 
-    if (rol.requiereRama !== undefined && rol.requiereRama !== null && unidad.tipo !== undefined) {
-      const esUnidadRama = unidad.tipo === TipoUnidad.SECCION_RAMA;
-      if (esUnidadRama && !rol.requiereRama) {
-        throw new BadRequestException(
-          'El rol seleccionado está configurado como rol sin rama asignada y no puede asignarse a una rama específica.',
-        );
-      }
-      if (!esUnidadRama && rol.requiereRama) {
-        throw new BadRequestException(
-          'El rol seleccionado requiere estar asignado a una rama específica.',
-        );
-      }
+    if (unidadId === undefined) {
+      assertPuedeOtorgar(alcance, rol, actor, unidad.id);
     }
 
-    return unidad.id;
-  }
-
-  private async validarUnidadYRol(
-    alcance: AlcanceAcceso,
-    unidadId: number,
-    rolId: number,
-    alcanceOverride?: AlcanceRol | null,
-  ) {
-    await this.resolverYValidarUnidadYRol(alcance, unidadId, rolId, alcanceOverride);
+    return { unidadId: unidad.id, tipoMiembroRol: tipoMiembroEfectivo(rol) };
   }
 }

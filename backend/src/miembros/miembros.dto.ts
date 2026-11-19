@@ -1,4 +1,3 @@
-import { AlcanceRol } from '@prisma/client';
 import { z } from 'zod';
 import { queryBooleanOptionalSchema } from '../common/utils/plantillas.util.js';
 
@@ -9,6 +8,8 @@ const datosJson = z
   .refine((obj) => Object.keys(obj).length <= 100, 'Demasiadas claves en datosFijosJson');
 const email = z.email('Email inválido').max(150);
 
+export const TipoMiembroSchema = z.enum(['PROTAGONISTA', 'EDUCADOR']);
+
 export const CrearMiembroSchema = z.object({
   dni,
   nombre: z.string().trim().min(1).max(100),
@@ -16,6 +17,7 @@ export const CrearMiembroSchema = z.object({
   fechaNacimiento: fecha,
   emailContacto: email.nullish(),
   telefonoContacto: z.string().trim().max(50).nullish(),
+  tipoMiembro: TipoMiembroSchema.optional(),
   datosFijosJson: datosJson.optional(),
   unidadId: z.number().int().positive().optional(),
   rolId: z.number().int().positive(),
@@ -39,6 +41,7 @@ export const EditarMiembroSchema = z
     fechaNacimiento: fecha,
     emailContacto: email.nullable(),
     telefonoContacto: z.string().trim().max(50).nullable(),
+    tipoMiembro: TipoMiembroSchema,
     /** Se fusiona con el JSON existente; una clave con `null` la elimina. */
     datosFijosJson: datosJson,
     activo: z.boolean(),
@@ -89,7 +92,6 @@ export type ListarMiembrosDto = z.infer<typeof ListarMiembrosSchema>;
 export const CrearAsignacionSchema = z.object({
   unidadId: z.number().int().positive().optional(),
   rolId: z.number().int().positive(),
-  alcanceOverride: z.enum(AlcanceRol).nullish(),
   cicloAnio: z.number().int().min(2000).max(2100).optional(),
 });
 export type CrearAsignacionDto = z.infer<typeof CrearAsignacionSchema>;

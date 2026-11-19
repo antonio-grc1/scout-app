@@ -6,31 +6,46 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { REQUIRED_PERMISSION_KEY } from '../decorators/auth.decorators.js';
+import {
+  PERMITIR_AUTOGESTION_PROPIA_KEY,
+  REQUIRED_PERMISSION_KEY,
+} from '../decorators/auth.decorators.js';
 import { resolverAlcance } from '../scope/alcance.util.js';
 import type { AuthenticatedRequest } from '../types/auth.types.js';
 
 /**
  * Guard global de RBAC con alcance (AGENTS.md §6.1).
  * Si el endpoint declara @RequirePermission('x'), verifica que alguna asignación
- * activa otorgue 'x' y deja en `req.alcance` el alcance efectivo
- * (GLOBAL / UNIDAD / PROPIO) que los servicios DEBEN aplicar a sus consultas.
+ * activa otorgue 'x' (o habilita alcance `PROPIO` únicamente cuando el endpoint
+ * declara explícitamente @PermitirAutogestionPropia()) y deja en `req.alcance`
+ * el alcance efectivo que los servicios DEBEN aplicar a sus consultas.
  */
 @Injectable()
 export class ScopedRbacGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(ctx: ExecutionContext): boolean {
-    const permiso = this.reflector.getAllAndOverride<string | string[] | undefined>(REQUIRED_PERMISSION_KEY, [
-      ctx.getHandler(),
-      ctx.getClass(),
-    ]);
+    const targets = [ctx.getHandler(), ctx.getClass()];
+    const permiso = this.reflector.getAllAndOverride<string | string[] | undefined>(
+      REQUIRED_PERMISSION_KEY,
+      targets,
+    );
     if (!permiso || (Array.isArray(permiso) && permiso.length === 0)) return true;
 
     const req = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
     if (!req.user) throw new UnauthorizedException();
 
-    const alcance = resolverAlcance(req.user, permiso);
+    let alcance = resolverAlcance(req.user, permiso);
+    if (!alcance) {
+      const permiteAutogestion = this.reflector.getAllAndOverride<boolean>(
+        PERMITIR_AUTOGESTION_PROPIA_KEY,
+        targets,
+      );
+      if (permiteAutogestion && Array.isArray(req.user.asignaciones) && req.user.asignaciones.length > 0) {
+        alcance = { tipo: 'PROPIO', usuarioId: req.user.sub };
+      }
+    }
+
     if (!alcance) {
       const desc = Array.isArray(permiso) ? permiso.join(' | ') : permiso;
       throw new ForbiddenException(`Permiso requerido: ${desc}`);

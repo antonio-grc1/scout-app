@@ -17,19 +17,8 @@ import { useAuthStore } from '../store/authStore';
 import {
   esFechaCalendarioValida,
   formatearFecha,
-  rolRequiereRama,
-  esRolDeProtagonista,
-  esRolJefe,
-  esRolRama,
-  esRolSinRama,
 } from '../lib/formatters';
-import {
-  esUnidadJefatura,
-  esUnidadRama,
-  esUnidadSinRama,
-  filtrarRolesAsignablesPorAlcance,
-  filtrarUnidadesPorAlcance,
-} from '../lib/permisos';
+import { filtrarRolesAsignablesPorAlcance } from '../lib/permisos';
 import { exportarAExcel, exportarACSV } from '../utils/exportadorPlanillas';
 
 export interface FilaImportada {
@@ -153,8 +142,12 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   rolesDisponibles,
   miembrosExistentes,
 }) => {
-  const { tieneGlobal, asignaciones } = useAuthStore();
-  const esGlobal = tieneGlobal();
+  const { tienePermisoGlobal, obtenerUnidadesConPermiso, asignaciones } = useAuthStore();
+  const esGlobal = tienePermisoGlobal('padron.editar');
+  const unidadesCrearIds = useMemo(
+    () => obtenerUnidadesConPermiso('padron.editar'),
+    [obtenerUnidadesConPermiso, asignaciones],
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null);
@@ -165,6 +158,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   // Asignación de Rama y Rol único para el lote en pantalla
   const [unidadId, setUnidadId] = useState<number | ''>('');
   const [rolId, setRolId] = useState<number | ''>('');
+  const [tipoMiembro, setTipoMiembro] = useState<'PROTAGONISTA' | 'EDUCADOR'>('PROTAGONISTA');
 
   // Opción ante DNIs existentes: actualizar info o no
   const [actualizarExistentes, setActualizarExistentes] = useState(false);
@@ -198,6 +192,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
     setErrorGlobal(null);
     setUnidadId('');
     setRolId('');
+    setTipoMiembro('PROTAGONISTA');
     setActualizarExistentes(false);
     setEjecutando(false);
     setProgreso({ actual: 0, total: 0 });
@@ -206,74 +201,32 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   };
 
   const unidadesPermitidas = useMemo(
-    () => filtrarUnidadesPorAlcance(unidadesDisponibles, { esGlobal, asignaciones }),
-    [unidadesDisponibles, esGlobal, asignaciones],
+    () =>
+      esGlobal
+        ? unidadesDisponibles
+        : unidadesDisponibles.filter((u) => unidadesCrearIds.includes(u.id)),
+    [unidadesDisponibles, esGlobal, unidadesCrearIds],
   );
 
   const rolesPermitidos = useMemo(
-    () => filtrarRolesAsignablesPorAlcance(rolesDisponibles, unidadesPermitidas, esGlobal),
-    [rolesDisponibles, unidadesPermitidas, esGlobal],
+    () => filtrarRolesAsignablesPorAlcance(rolesDisponibles, unidadesPermitidas, esGlobal, asignaciones),
+    [rolesDisponibles, unidadesPermitidas, esGlobal, asignaciones],
   );
 
-  const rolesFiltrados = useMemo(() => {
-    const u = unidadesPermitidas.find((x) => x.id === Number(unidadId));
-    if (u) {
-      if (esUnidadRama(u)) {
-        const deRama = rolesPermitidos.filter(esRolRama);
-        return deRama.length > 0 ? deRama : rolesPermitidos;
-      }
-      if (esUnidadSinRama(u)) {
-        const sinRama = rolesPermitidos.filter((r) => !rolRequiereRama(r));
-        return sinRama.length > 0 ? sinRama : rolesPermitidos;
-      }
-      if (esUnidadJefatura(u)) {
-        const jefe = rolesPermitidos.filter(esRolJefe);
-        return jefe.length > 0 ? jefe : rolesPermitidos.filter((r) => !rolRequiereRama(r));
-      }
-    }
-    return rolesPermitidos;
-  }, [rolesPermitidos, unidadId, unidadesPermitidas]);
+  const rolesFiltrados = rolesPermitidos;
 
   const handleCambioUnidad = (nuevaUnidadId: number | '') => {
     setUnidadId(nuevaUnidadId);
-    if (!nuevaUnidadId) return;
-    const u = unidadesPermitidas.find((x) => x.id === nuevaUnidadId);
-    if (!u) return;
-
-    if (esUnidadRama(u)) {
-      const rActual = rolesPermitidos.find((r) => r.id === Number(rolId));
-      if (!rActual || !rolRequiereRama(rActual)) {
-        const prota =
-          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-          rolesPermitidos.find(esRolRama);
-        if (prota) setRolId(prota.id);
-      }
-    } else if (esUnidadSinRama(u)) {
-      const rSinRama =
-        rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
-      if (rSinRama) setRolId(rSinRama.id);
-    } else if (esUnidadJefatura(u)) {
-      const rJefe =
-        rolesPermitidos.find(esRolJefe) || rolesPermitidos.find((r) => !rolRequiereRama(r));
-      if (rJefe) setRolId(rJefe.id);
-    }
   };
 
   useEffect(() => {
     if (!abierto) return;
     if (!esGlobal && unidadesPermitidas.length === 1 && !unidadId) {
-      const unica = unidadesPermitidas[0];
-      setUnidadId(unica.id);
-      if (esUnidadRama(unica)) {
-        const prota =
-          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-          rolesPermitidos.find(esRolRama);
-        if (prota) setRolId(prota.id);
-      }
+      setUnidadId(unidadesPermitidas[0].id);
     } else if (unidadId && !unidadesPermitidas.some((u) => u.id === Number(unidadId))) {
       setUnidadId('');
     }
-  }, [abierto, esGlobal, unidadesPermitidas, rolesPermitidos, unidadId]);
+  }, [abierto, esGlobal, unidadesPermitidas, unidadId]);
 
   // Procesamiento del archivo cargado
   const handleSeleccionarArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -525,12 +478,11 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   // Ejecución de la importación
   const handleConfirmarImportacion = async () => {
     if (!rolId) {
-      setErrorGlobal('Debes seleccionar una Función (Rol) para asignar al lote.');
+      setErrorGlobal('Debes seleccionar un Rol para asignar al lote.');
       return;
     }
-    const rolSel = rolesDisponibles.find((r) => r.id === Number(rolId));
-    if (rolRequiereRama(rolSel) && !unidadId) {
-      setErrorGlobal('Esta función requiere seleccionar una Rama / Unidad asignada.');
+    if (!unidadId) {
+      setErrorGlobal('Debes seleccionar una Rama / Sección de destino para el lote.');
       return;
     }
 
@@ -562,6 +514,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
             nombre: f.nombre,
             apellido: f.apellido,
             fechaNacimiento: f.fechaNacimiento,
+            tipoMiembro,
             unidadId: unidadId ? Number(unidadId) : undefined,
             rolId: Number(rolId),
             telefonoContacto: f.telefonoContacto || undefined,
@@ -840,9 +793,25 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
               {/* Sección 2: Asignación Masiva de Rama y Rol (para todos en el lote) */}
               <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-3">
                 <label className="font-bold text-ink block">
-                  2. Asignar Rama / Sección y Función para este lote:
+                  2. Categoría, Sección y Rol para este lote:
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[13px] font-bold text-ink-muted block mb-1.5">
+                      Categoría del lote:
+                    </label>
+                    <select
+                      value={tipoMiembro}
+                      onChange={(e) =>
+                        setTipoMiembro(e.target.value as 'PROTAGONISTA' | 'EDUCADOR')
+                      }
+                      className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-semibold focus:border-brand outline-none cursor-pointer"
+                    >
+                      <option value="PROTAGONISTA">Protagonista / Beneficiario</option>
+                      <option value="EDUCADOR">Educador / Adulto</option>
+                    </select>
+                  </div>
+
                   <div>
                     <label className="text-[13px] font-bold text-ink-muted block mb-1.5">
                       Rama / Sección de destino:
@@ -865,14 +834,14 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
 
                   <div>
                     <label className="text-[13px] font-bold text-ink-muted block mb-1.5">
-                      Función / Rol asignado:
+                      Rol / Permisos asignados:
                     </label>
                     <select
                       value={rolId}
                       onChange={(e) => setRolId(Number(e.target.value) || '')}
                       className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-semibold focus:border-brand outline-none cursor-pointer"
                     >
-                      <option value="">-- Seleccionar Rol / Función --</option>
+                      <option value="">-- Seleccionar Rol --</option>
                       {rolesFiltrados.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.nombre}

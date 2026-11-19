@@ -23,6 +23,7 @@ import { useModalOverlay } from '../hooks/useModalOverlay';
 
 export interface PedidoAEditar {
   id: number;
+  estado?: string;
   compradorNombre: string;
   compradorContacto?: string | null;
   vendedorUsuarioId?: number | null;
@@ -92,8 +93,10 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
   });
   const [modalConfirmarEliminar, setModalConfirmarEliminar] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const esGlobal = useAuthStore((s) => s.tieneGlobal());
-  const puedeImputarCuenta = !bloquearVendedor && esGlobal;
+  const esGlobalEventos = useAuthStore((s) =>
+    s.tienePermisoGlobal(['eventos.editar', 'eventos.editar', 'caja.editar']),
+  );
+  const puedeImputarCuenta = !bloquearVendedor && esGlobalEventos;
 
   // Buscador de miembros
   const [busquedaMiembro, setBusquedaMiembro] = useState('');
@@ -121,12 +124,16 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           pedidoAEditar.vendedorUsuarioId ? String(pedidoAEditar.vendedorUsuarioId) : '',
         );
         setObservaciones(pedidoAEditar.observaciones || '');
-        if (pedidoAEditar.metodoPago === 'EFECTIVO' || pedidoAEditar.metodoPago === 'TRANSFERENCIA') {
+        if (
+          puedeImputarCuenta &&
+          (pedidoAEditar.metodoPago === 'EFECTIVO' || pedidoAEditar.metodoPago === 'TRANSFERENCIA')
+        ) {
           setMetodoPago(pedidoAEditar.metodoPago);
-        } else if (pedidoAEditar.preferirCobro) {
+        } else if (pedidoAEditar.preferirCobro && puedeImputarCuenta) {
           setMetodoPago('EFECTIVO');
         } else {
-          setMetodoPago('PENDIENTE');
+          // Para GLOBAL pre-selecciona EFECTIVO para cobro directo; para UNIDAD/PROPIO mantiene PENDIENTE (A3)
+          setMetodoPago(puedeImputarCuenta ? 'EFECTIVO' : 'PENDIENTE');
         }
         if (pedidoAEditar.cuentaId) {
           setCuentaId(String(pedidoAEditar.cuentaId));
@@ -173,7 +180,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
     try {
       const [resMiembros, resCuentas] = await Promise.all([
         api.get('/miembros?porPagina=100').catch(() => ({ data: { items: [] } })),
-        esGlobal
+        esGlobalEventos
           ? api.get('/tesoreria/cuentas').catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] }),
       ]);
@@ -301,6 +308,11 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
     if (totalUnidades <= 0) {
       setError('Debe seleccionar al menos un producto (cantidad mayor a 0)');
+      return;
+    }
+
+    if (!bloquearVendedor && !esGlobalEventos && !vendedorUsuarioId) {
+      setError('Seleccioná un miembro de tu rama como vendedor del pedido.');
       return;
     }
 
@@ -493,7 +505,11 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 Scout / Familia Vendedora (Acredita Ganancia)
               </span>
               <span className="text-xs text-ink-muted">
-                {bloquearVendedor ? 'Asignado a tu cuenta' : 'Opcional'}
+                {bloquearVendedor
+                  ? 'Asignado a tu cuenta'
+                  : esGlobalEventos
+                  ? 'Opcional'
+                  : 'Obligatorio (tu rama)'}
               </span>
             </label>
 
@@ -551,18 +567,20 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
                     {mostrarDropdownMiembros && (
                       <div className="absolute left-0 right-0 top-full mt-1 max-h-52 overflow-y-auto rounded-xl bg-surface border border-rule shadow-xl z-20 py-1 divide-y divide-rule/40">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setVendedorUsuarioId('');
-                            setMostrarDropdownMiembros(false);
-                            setBusquedaMiembro('');
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink-muted hover:bg-paper-2 flex items-center justify-between cursor-pointer"
-                        >
-                          <span>(Venta general del Grupo Scout - sin vendedor)</span>
-                          <span className="text-xs text-ink-muted">Sin ganancia individual</span>
-                        </button>
+                        {esGlobalEventos && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVendedorUsuarioId('');
+                              setMostrarDropdownMiembros(false);
+                              setBusquedaMiembro('');
+                            }}
+                            className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink-muted hover:bg-paper-2 flex items-center justify-between cursor-pointer"
+                          >
+                            <span>(Venta general del Grupo Scout - sin vendedor)</span>
+                            <span className="text-xs text-ink-muted">Sin ganancia individual</span>
+                          </button>
+                        )}
 
                         {miembrosFiltrados.map((m) => (
                           <button
@@ -763,7 +781,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           )}
 
           <div className="pt-3.5 flex flex-wrap items-center justify-between gap-2.5 border-t border-rule shrink-0">
-            {esModoEdicion ? (
+            {esModoEdicion && (esGlobalEventos || pedidoAEditar?.estado !== 'PAGADO') ? (
               modalConfirmarEliminar ? (
                 <div className="w-full p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 flex flex-wrap items-center justify-between gap-2.5">
                   <span className="text-[13px] font-bold text-rose-800 dark:text-rose-200">

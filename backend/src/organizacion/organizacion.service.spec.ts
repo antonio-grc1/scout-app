@@ -6,7 +6,29 @@ import {
 } from '@nestjs/common';
 import { AlcanceRol, TipoUnidad } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
+import type { AuthUser } from '../common/types/auth.types.js';
 import { OrganizacionService } from './organizacion.service.js';
+
+const actorAdminGlobal: AuthUser = {
+  sub: 1,
+  dni: '10000001',
+  requiereCambioClave: false,
+  asignaciones: [
+    {
+      unidadId: 1,
+      unidadNombre: 'Jefatura',
+      rol: 'Jefe de Grupo',
+      alcance: AlcanceRol.GLOBAL,
+      permisos: [
+        'organizacion.ver',
+        'organizacion.editar',
+        'roles.editar',
+        'padron.ver',
+        'cobranzas.editar',
+      ],
+    },
+  ],
+};
 
 const crearMockPrisma = () => {
   const mock: any = {
@@ -77,7 +99,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
       requiereRama: true,
     });
 
-    const res = await service.editarRol({ tipo: 'GLOBAL' }, 2, {
+    const res = await service.editarRol(actorAdminGlobal, { tipo: 'GLOBAL' }, 2, {
       nombre: 'Dirigente de Sección',
       permisos: ['padron.ver'],
     });
@@ -108,7 +130,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
     prisma.rol.findMany.mockResolvedValueOnce([unicoAdmin]);
 
     await expect(
-      service.editarRol({ tipo: 'GLOBAL' }, 1, {
+      service.editarRol(actorAdminGlobal, { tipo: 'GLOBAL' }, 1, {
         permisos: ['organizacion.ver'], // intenta quitar organizacion.editar
       }),
     ).rejects.toThrow(BadRequestException);
@@ -133,7 +155,7 @@ describe('OrganizacionService - Roles Dinámicos y Anti-Lockout', () => {
       ],
     });
 
-    await expect(service.eliminarRol({ tipo: 'GLOBAL' }, 5)).rejects.toThrow(ConflictException);
+    await expect(service.eliminarRol(actorAdminGlobal, { tipo: 'GLOBAL' }, 5)).rejects.toThrow(ConflictException);
   });
 });
 
@@ -503,6 +525,7 @@ describe('OrganizacionService - obtenerHistorialUnidad', () => {
                 nombre: true,
                 apellido: true,
                 dni: true,
+                tipoMiembro: true,
                 activo: true,
               },
             },
@@ -632,6 +655,296 @@ describe('OrganizacionService - obtenerHistorialUnidad', () => {
       totalProtagonistas: 0,
       totalProtagonistasUnicos: 0,
       totalMiembros: 0,
+    });
+  });
+});
+
+describe('OrganizacionService - Etapa 2: Catálogo, Invariantes, Archivado y Anti-Lockout independiente', () => {
+  const actorFullGlobal: AuthUser = {
+    sub: 1,
+    dni: '10000001',
+    requiereCambioClave: false,
+    asignaciones: [
+      {
+        unidadId: 1,
+        unidadNombre: 'Jefatura',
+        rol: 'Jefe de Grupo',
+        alcance: AlcanceRol.GLOBAL,
+        permisos: [
+          'organizacion.ver',
+          'organizacion.editar',
+          'roles.editar',
+          'padron.ver',
+          'cobranzas.ver',
+          'cobranzas.editar',
+          'caja.ver',
+          'caja.editar',
+          'eventos.ver',
+          'eventos.editar',
+        ],
+      },
+    ],
+  };
+
+  it('ARQ-01: crearRol rechaza permisos incompatibles con el alcance o sin dependencias requeridas', async () => {
+    const prisma = crearMockPrisma();
+    const service = new OrganizacionService(prisma);
+
+    // Permiso con alcanceMinimo GLOBAL (organizacion.editar) en rol UNIDAD
+    await expect(
+      service.crearRol(actorFullGlobal, { tipo: 'GLOBAL' }, {
+        nombre: 'Educador Org',
+        alcancePorDefecto: AlcanceRol.UNIDAD,
+        permisos: ['organizacion.ver', 'organizacion.editar'],
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    // Falta dependencia declarada (cuotas.cobrar requiere cuotas.ver)
+    await expect(
+      service.crearRol(actorFullGlobal, { tipo: 'GLOBAL' }, {
+        nombre: 'Cobrador Incompleto',
+        alcancePorDefecto: AlcanceRol.UNIDAD,
+        permisos: ['cobranzas.editar'],
+      }),
+    ).rejects.toThrow(/requiere incluir previamente/i);
+
+    // PROTAGONISTA solo puede tener alcance PROPIO y SECCION_RAMA
+    await expect(
+      service.crearRol(actorFullGlobal, { tipo: 'GLOBAL' }, {
+        nombre: 'Prota Inválido',
+        alcancePorDefecto: AlcanceRol.UNIDAD,
+        tipoMiembro: 'PROTAGONISTA',
+        permisos: ['padron.ver'],
+      }),
+    ).rejects.toThrow(/PROTAGONISTA/i);
+  });
+
+  it('COD-04: listarPermisos enriquece cada clave con módulo, nombre, alcanceMinimo y dependencias del catálogo', async () => {
+    const prisma = crearMockPrisma();
+    prisma.permiso.findMany.mockResolvedValueOnce([
+      { id: 1, clave: 'cobranzas.editar', descripcion: 'Registrar cobros e imputar pagos a cargos' },
+      { id: 2, clave: 'roles.editar', descripcion: 'Crear, editar y archivar roles' },
+    ]);
+    const service = new OrganizacionService(prisma);
+
+    const lista = await service.listarPermisos();
+    expect(lista).toEqual([
+      expect.objectContaining({
+        id: 1,
+        clave: 'cobranzas.editar',
+        modulo: 'Tesorería y Cobranzas',
+        alcanceMinimo: AlcanceRol.UNIDAD,
+        requiere: ['cobranzas.ver'],
+      }),
+      expect.objectContaining({
+        id: 2,
+        clave: 'roles.editar',
+        modulo: 'Roles y Permisos',
+        alcanceMinimo: AlcanceRol.GLOBAL,
+        requiere: ['roles.ver'],
+      }),
+    ]);
+  });
+
+  it('A6 & COD-03: eliminarRol protege roles esSistema y archiva (activo=false) cuando existe historial sin borrar asignaciones', async () => {
+    const prisma = crearMockPrisma();
+    prisma.solicitudPase = { count: vi.fn().mockResolvedValue(0) };
+    const service = new OrganizacionService(prisma);
+
+    // Rol de sistema bloqueado
+    prisma.rol.findUnique.mockResolvedValueOnce({
+      id: 1,
+      nombre: 'Jefe de Grupo',
+      alcancePorDefecto: AlcanceRol.GLOBAL,
+      esSistema: true,
+      activo: true,
+      _count: { asignaciones: 0 },
+      permisos: [{ permiso: { clave: 'organizacion.ver' } }],
+      asignaciones: [],
+    });
+    await expect(service.eliminarRol(actorFullGlobal, { tipo: 'GLOBAL' }, 1)).rejects.toThrow(/rol base del sistema/i);
+
+    // Rol custom sin asignaciones activas pero con historial pasado -> archiva
+    prisma.rol.findUnique.mockResolvedValueOnce({
+      id: 9,
+      nombre: 'Ayudante Histórico',
+      alcancePorDefecto: AlcanceRol.UNIDAD,
+      esSistema: false,
+      activo: true,
+      _count: { asignaciones: 0 },
+      permisos: [{ permiso: { clave: 'padron.ver' } }],
+      asignaciones: [],
+    });
+    prisma.asignacionMiembro.count.mockResolvedValueOnce(4);
+    prisma.rol.update.mockResolvedValueOnce({ id: 9, activo: false });
+
+    const resArchivado = await service.eliminarRol(actorFullGlobal, { tipo: 'GLOBAL' }, 9);
+    expect(resArchivado.archivado).toBe(true);
+    expect(resArchivado.eliminado).toBe(false);
+    expect(prisma.asignacionMiembro.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.rol.update).toHaveBeenCalledWith({ where: { id: 9 }, data: { activo: false } });
+
+    // Rol custom sin historial -> elimina físicamente
+    prisma.rol.findUnique.mockResolvedValueOnce({
+      id: 10,
+      nombre: 'Rol Temporal Sin Uso',
+      alcancePorDefecto: AlcanceRol.UNIDAD,
+      esSistema: false,
+      activo: true,
+      _count: { asignaciones: 0 },
+      permisos: [{ permiso: { clave: 'padron.ver' } }],
+      asignaciones: [],
+    });
+    prisma.asignacionMiembro.count.mockResolvedValueOnce(0);
+    prisma.solicitudPase.count.mockResolvedValueOnce(0);
+    prisma.rol.delete.mockResolvedValueOnce({ id: 10 });
+
+    const resEliminado = await service.eliminarRol(actorFullGlobal, { tipo: 'GLOBAL' }, 10);
+    expect(resEliminado.eliminado).toBe(true);
+    expect(resEliminado.archivado).toBe(false);
+    expect(prisma.rol.delete).toHaveBeenCalledWith({ where: { id: 10 } });
+  });
+
+  it('COD-02: bloquea quitar roles.gestionar si otro rol admin solo tiene organizacion.gestionar, y protege editarRama/eliminarRama', async () => {
+    const prisma = crearMockPrisma();
+    const service = new OrganizacionService(prisma);
+
+    const rolRoles = {
+      id: 1,
+      nombre: 'Gestor Roles',
+      alcancePorDefecto: AlcanceRol.GLOBAL,
+      tipoMiembro: 'EDUCADOR',
+      requiereRama: false,
+      tipoUnidad: TipoUnidad.JEFATURA,
+      esSistema: false,
+      activo: true,
+      _count: { asignaciones: 1 },
+      permisos: [
+        { permiso: { clave: 'organizacion.ver' } },
+        { permiso: { clave: 'roles.editar' } },
+      ],
+    };
+    const rolSoloOrg = {
+      id: 2,
+      nombre: 'Solo Estructura',
+      alcancePorDefecto: AlcanceRol.GLOBAL,
+      tipoMiembro: 'EDUCADOR',
+      requiereRama: false,
+      tipoUnidad: TipoUnidad.JEFATURA,
+      esSistema: false,
+      activo: true,
+      _count: { asignaciones: 1 },
+      permisos: [
+        { permiso: { clave: 'organizacion.ver' } },
+        { permiso: { clave: 'organizacion.editar' } },
+      ],
+    };
+
+    prisma.rol.findUnique.mockResolvedValueOnce(rolRoles);
+    prisma.rol.findMany.mockResolvedValueOnce([rolRoles, rolSoloOrg]);
+
+    await expect(
+      service.editarRol(actorFullGlobal, { tipo: 'GLOBAL' }, 1, {
+        permisos: ['organizacion.ver'], // intenta quitar roles.gestionar aunque rolSoloOrg tenga organizacion.gestionar
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    // editarRama(activa: false) protege si las secciones de la rama alojan al único titular global
+    prisma.rama.findUnique.mockResolvedValueOnce({ id: 5, activa: true, edadMinima: 7, edadMaxima: 9 });
+    prisma.unidadOrganizativa.findMany.mockResolvedValueOnce([{ id: 50 }]);
+    prisma.asignacionMiembro.findMany = vi.fn().mockResolvedValueOnce([
+      {
+        id: 100,
+        unidadId: 50,
+        rol: {
+          activo: true,
+          alcancePorDefecto: AlcanceRol.GLOBAL,
+          permisos: [{ permiso: { clave: 'roles.editar' } }],
+        },
+      },
+    ]);
+
+    await expect(
+      service.editarRama({ tipo: 'GLOBAL' }, 5, { activa: false }),
+    ).rejects.toThrow(/último administrador global/i);
+
+    // eliminarRama(definitivo=false) también verifica las unidades hijas contra asignaciones globales
+    prisma.rama.findUnique.mockResolvedValueOnce({
+      id: 5,
+      nombre: 'Rama Admin',
+      unidades: [{ id: 50, _count: { asignaciones: 1, conceptos: 0, planesCuota: 0 } }],
+    });
+    prisma.asignacionMiembro.findMany.mockResolvedValueOnce([
+      {
+        id: 100,
+        unidadId: 50,
+        rol: {
+          activo: true,
+          alcancePorDefecto: AlcanceRol.GLOBAL,
+          permisos: [{ permiso: { clave: 'organizacion.editar' } }],
+        },
+      },
+    ]);
+
+    await expect(service.eliminarRama({ tipo: 'GLOBAL' }, 5, false)).rejects.toThrow(
+      /último administrador global/i,
+    );
+  });
+
+  it('COD-08: listarRamas y listarUnidades ignoran incluirInactivas=true si alcance no es GLOBAL', async () => {
+    const prisma = crearMockPrisma();
+    prisma.rama.findMany.mockResolvedValueOnce([]);
+    prisma.unidadOrganizativa.findMany.mockResolvedValueOnce([]);
+    const service = new OrganizacionService(prisma);
+
+    await service.listarRamas({ tipo: 'UNIDAD', unidadIds: [1] }, true);
+    expect(prisma.rama.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { activa: true } }));
+
+    await service.listarUnidades({ tipo: 'UNIDAD', unidadIds: [1] }, true);
+    expect(prisma.unidadOrganizativa.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { activa: true } }));
+  });
+
+  it('Roles generalizados: crea y mapea un rol mixto enviando solo nombre, permisos y permisosAlcance', async () => {
+    const prisma = crearMockPrisma();
+    prisma.permiso.findMany.mockResolvedValueOnce([
+      { id: 1, clave: 'padron.ver' },
+      { id: 2, clave: 'eventos.ver' },
+      { id: 3, clave: 'eventos.editar' },
+    ]);
+    prisma.rol.create.mockImplementationOnce(async ({ data }: any) => ({
+      id: 42,
+      nombre: data.nombre,
+      alcancePorDefecto: data.alcancePorDefecto,
+      tipoMiembro: data.tipoMiembro,
+      requiereRama: data.requiereRama,
+      tipoUnidad: data.tipoUnidad,
+      esSistema: data.esSistema,
+      activo: true,
+      _count: { asignaciones: 0 },
+      permisos: [
+        { alcance: AlcanceRol.UNIDAD, permiso: { clave: 'padron.ver' } },
+        { alcance: AlcanceRol.GLOBAL, permiso: { clave: 'eventos.ver' } },
+        { alcance: AlcanceRol.GLOBAL, permiso: { clave: 'eventos.editar' } },
+      ],
+    }));
+
+    const service = new OrganizacionService(prisma);
+    const res = await service.crearRol(actorFullGlobal, { tipo: 'GLOBAL' }, {
+      nombre: 'Coordinador de Eventos',
+      permisos: ['padron.ver', 'eventos.ver', 'eventos.editar'],
+      permisosAlcance: {
+        'padron.ver': AlcanceRol.UNIDAD,
+        'eventos.ver': AlcanceRol.GLOBAL,
+        'eventos.editar': AlcanceRol.GLOBAL,
+      },
+    });
+
+    expect(res.nombre).toBe('Coordinador de Eventos');
+    expect(res.alcancePorDefecto).toBe(AlcanceRol.GLOBAL);
+    expect(res.permisosAlcance).toEqual({
+      'padron.ver': AlcanceRol.UNIDAD,
+      'eventos.ver': AlcanceRol.GLOBAL,
+      'eventos.editar': AlcanceRol.GLOBAL,
     });
   });
 });

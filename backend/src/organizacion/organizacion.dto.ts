@@ -37,34 +37,27 @@ export type EditarUnidadDto = z.infer<typeof EditarUnidadSchema>;
 
 // ---------------- Roles ----------------
 const permisosClaves = z.array(z.string().trim().min(1)).max(200);
+const permisosAlcanceSchema = z.record(z.string().trim().min(1), z.enum(AlcanceRol));
 export const TipoMiembroRolSchema = z.enum(['PROTAGONISTA', 'EDUCADOR']);
 
 export const CrearRolSchema = z.object({
   nombre: nombre(80),
-  alcancePorDefecto: z.enum(AlcanceRol),
+  alcancePorDefecto: z.enum(AlcanceRol).optional(),
   tipoMiembro: TipoMiembroRolSchema.optional(),
   requiereRama: z.boolean().optional(),
+  tipoUnidad: z.enum(TipoUnidad).optional(),
   permisos: permisosClaves.default([]),
+  permisosAlcance: permisosAlcanceSchema.optional(),
 });
 export const EditarRolSchema = z.object({
   nombre: nombre(80).optional(),
   alcancePorDefecto: z.enum(AlcanceRol).optional(),
   tipoMiembro: TipoMiembroRolSchema.optional(),
   requiereRama: z.boolean().optional(),
+  tipoUnidad: z.enum(TipoUnidad).optional(),
+  activo: z.boolean().optional(),
   permisos: permisosClaves.optional(),
+  permisosAlcance: permisosAlcanceSchema.optional(),
 });
 export type CrearRolDto = z.infer<typeof CrearRolSchema>;
 export type EditarRolDto = z.infer<typeof EditarRolSchema>;
-
-// ---------------- Permisos ----------------
-export const CrearPermisoSchema = z.object({
-  clave: z
-    .string()
-    .trim()
-    .regex(/^[a-z0-9_]+(\.[a-z0-9_]+)+$/, 'Formato esperado: modulo.accion (minúsculas)')
-    .max(100),
-  descripcion: z.string().trim().max(255).optional(),
-});
-export const EditarPermisoSchema = z.object({ descripcion: z.string().trim().max(255).nullable() });
-export type CrearPermisoDto = z.infer<typeof CrearPermisoSchema>;
-export type EditarPermisoDto = z.infer<typeof EditarPermisoSchema>;

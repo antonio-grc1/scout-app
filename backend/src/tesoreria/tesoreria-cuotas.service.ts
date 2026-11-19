@@ -22,6 +22,7 @@ import {
   assertUnidadEnAlcance,
   esRolEducadorEfectivo,
   filtroUsuariosPorAlcance,
+  resolverAlcance,
   tipoMiembroEfectivo,
 } from '../common/scope/alcance.util.js';
 import { CLAVES_FAMILIARES_ESTANDAR } from '../common/utils/plantillas.util.js';
@@ -229,28 +230,17 @@ export class TesoreriaCuotasService {
       excepciones = rows.map((r: { usuarioId: number }) => r.usuarioId);
     }
 
-    const rolFiltro = construirFiltroRol(concepto.destinatarioTipo, concepto.esParaEducadores);
-    const esSoloEducadores =
-      concepto.destinatarioTipo === 'EDUCADORES' ||
-      (!concepto.destinatarioTipo && concepto.esParaEducadores);
+    const tipoUsuarioFiltro = construirFiltroRol(concepto.destinatarioTipo, concepto.esParaEducadores);
 
     const usuariosWhere: Prisma.UsuarioWhereInput = {
       activo: true,
       ...(excepciones.length > 0 ? { id: { notIn: excepciones } } : {}),
+      ...(tipoUsuarioFiltro ?? {}),
       asignaciones: {
         some: {
           activo: true,
           ...(concepto.unidadId ? { unidadId: concepto.unidadId } : {}),
-          ...(rolFiltro ? { rol: rolFiltro } : {}),
         },
-        ...(esSoloEducadores
-          ? {
-              none: {
-                activo: true,
-                rol: { tipoMiembro: 'PROTAGONISTA' },
-              },
-            }
-          : {}),
       },
     };
 
@@ -470,13 +460,20 @@ export class TesoreriaCuotasService {
     if (!usuario || !usuario.activo) return;
 
     const unidadesMiembro = new Set(usuario.asignaciones.map((a) => a.unidadId));
-    const esProtagonista = usuario.asignaciones.some(
-      (a) => tipoMiembroEfectivo(a.rol, a.alcanceOverride) === 'PROTAGONISTA',
-    );
-    // Regla de Prevalencia Multirrol: Protagonista prevalece sobre Educador para cuotas
+    const tipoExplicitoUsuario = (usuario as { tipoMiembro?: string | null }).tipoMiembro;
+    const esProtagonista =
+      tipoExplicitoUsuario === 'PROTAGONISTA'
+        ? true
+        : tipoExplicitoUsuario === 'EDUCADOR'
+          ? false
+          : usuario.asignaciones.some((a) => tipoMiembroEfectivo(a.rol) === 'PROTAGONISTA');
+    // Regla de Prevalencia Multirrol: Protagonista prevalece sobre Educador para cuotas cuando no hay categoría explícita en Usuario
     const esEducador =
-      !esProtagonista &&
-      usuario.asignaciones.some((a) => esRolEducadorEfectivo(a.rol, a.alcanceOverride));
+      tipoExplicitoUsuario === 'EDUCADOR'
+        ? true
+        : tipoExplicitoUsuario === 'PROTAGONISTA'
+          ? false
+          : !esProtagonista && usuario.asignaciones.some((a) => esRolEducadorEfectivo(a.rol));
 
     const conceptosVigentes = await tx.conceptoCuota.findMany({
       where: {
@@ -488,7 +485,7 @@ export class TesoreriaCuotasService {
       },
     });
 
-    // Anular cuotas pendientes futuras de unidad anterior si el miembro dejó esa unidad y no hubo pagos
+    // Anular cuotas pendientes futuras si el miembro dejó la unidad o cambió su categoría scout y no hubo pagos
     if (tx.cargoMiembro?.updateMany) {
       const conceptosPorId = new Map(conceptosVigentes.map((c) => [c.id, c]));
       const idsCargosAAnular: number[] = [];
@@ -496,7 +493,13 @@ export class TesoreriaCuotasService {
         if (c.estado !== EstadoCargo.PENDIENTE || Number(c.montoPagado) > 0) continue;
         const concepto = conceptosPorId.get(c.conceptoId);
         if (!concepto || concepto.destinatarioTipo === 'INDIVIDUAL') continue;
-        if (concepto.unidadId && !unidadesMiembro.has(concepto.unidadId)) {
+        const tipoDestCargo =
+          concepto.destinatarioTipo || (concepto.esParaEducadores ? 'EDUCADORES' : 'TODOS');
+        const fueraDeUnidad = Boolean(concepto.unidadId && !unidadesMiembro.has(concepto.unidadId));
+        const fueraDeCategoria =
+          (tipoDestCargo === 'EDUCADORES' && !esEducador) ||
+          (tipoDestCargo === 'PROTAGONISTAS' && !esProtagonista);
+        if (fueraDeUnidad || fueraDeCategoria) {
           if (concepto.planCuotaMensualId === null || concepto.mes === null || concepto.mes >= mesEfectivo) {
             idsCargosAAnular.push(c.id);
           }
@@ -1480,6 +1483,29 @@ export class TesoreriaCuotasService {
 
     const grupoIdAnterior = usuario.grupoFamiliarId;
 
+    if (alcance.tipo === 'UNIDAD') {
+      const miembrosFamilia = this.prisma.usuario?.findMany
+        ? await this.prisma.usuario.findMany({
+            where: { grupoFamiliarId: grupoIdAnterior, activo: true },
+            select: {
+              id: true,
+              asignaciones: { where: { activo: true }, select: { unidadId: true } },
+            },
+          })
+        : null;
+      if (!miembrosFamilia) {
+        throw new ForbiddenException('No se puede verificar el alcance del grupo familiar');
+      }
+      const tieneMiembroFueraDeAlcance = miembrosFamilia.some(
+        (m) => !m.asignaciones.some((a) => alcance.unidadIds.includes(a.unidadId)),
+      );
+      if (tieneMiembroFueraDeAlcance) {
+        throw new ForbiddenException(
+          'Solo un usuario con alcance global puede desvincular integrantes de una familia con miembros en otras ramas',
+        );
+      }
+    }
+
     return this.prisma.$transaction(async (tx) => {
       await tx.usuario.update({
         where: { id: usuario.id },
@@ -1577,6 +1603,9 @@ export class TesoreriaCuotasService {
 
     if (concepto.unidadId) {
       assertUnidadEnAlcance(alcance, concepto.unidadId);
+      if (dto.unidadId && dto.unidadId !== concepto.unidadId) {
+        throw new BadRequestException('No puede indicar una unidad diferente a la del concepto');
+      }
     } else if (alcance.tipo !== 'GLOBAL' && !dto.unidadId) {
       throw new ForbiddenException(
         'Para generar cargos de un concepto general con alcance de unidad, debe especificar su unidadId',
@@ -1591,29 +1620,18 @@ export class TesoreriaCuotasService {
     const excepcionesConcepto = extraerExcepcionIds(concepto);
     const excluirIds = [...new Set([...(dto.excluirUsuarioIds ?? []), ...excepcionesConcepto])];
 
-    const rolFiltro = construirFiltroRol(concepto.destinatarioTipo, concepto.esParaEducadores);
-    const esSoloEducadores =
-      concepto.destinatarioTipo === 'EDUCADORES' ||
-      (!concepto.destinatarioTipo && concepto.esParaEducadores);
+    const tipoUsuarioFiltro = construirFiltroRol(concepto.destinatarioTipo, concepto.esParaEducadores);
 
     const usuariosWhere: Prisma.UsuarioWhereInput = {
       activo: true,
       ...(dto.usuarioIds ? { id: { in: dto.usuarioIds } } : {}),
       ...(excluirIds.length > 0 ? { id: { notIn: excluirIds } } : {}),
+      ...(tipoUsuarioFiltro ?? {}),
       asignaciones: {
         some: {
           activo: true,
           ...(targetUnidadId ? { unidadId: targetUnidadId } : {}),
-          ...(rolFiltro ? { rol: rolFiltro } : {}),
         },
-        ...(esSoloEducadores
-          ? {
-              none: {
-                activo: true,
-                rol: { tipoMiembro: 'PROTAGONISTA' },
-              },
-            }
-          : {}),
       },
     };
 
@@ -1696,6 +1714,23 @@ export class TesoreriaCuotasService {
       const unidadesMiembro = usuario.asignaciones.map((a) => a.unidadId);
       const tieneUnidad = unidadesMiembro.some((uId) => alcance.unidadIds.includes(uId));
       if (!tieneUnidad) throw new ForbiddenException('El miembro no pertenece a su unidad');
+    }
+
+    if ((dto.montoDescuento ?? 0) > 0) {
+      const alcanceAjuste = resolverAlcance(actor, ['cobranzas.editar', 'caja.editar']);
+      if (!alcanceAjuste || alcanceAjuste.tipo === 'PROPIO') {
+        throw new ForbiddenException(
+          'Aplicar descuentos en cargos individuales requiere permiso cobranzas.editar o caja.editar',
+        );
+      }
+      if (alcanceAjuste.tipo === 'UNIDAD') {
+        const cubierto = usuario.asignaciones.some((a) => alcanceAjuste.unidadIds.includes(a.unidadId));
+        if (!cubierto) {
+          throw new ForbiddenException(
+            'No tiene permiso cobranzas.editar o caja.editar sobre la unidad de este miembro',
+          );
+        }
+      }
     }
 
     if (dto.conceptoId) {
@@ -2450,62 +2485,7 @@ export class TesoreriaCuotasService {
 
         // Generar movimiento financiero si ingresó dinero físico o bancario
         if (montoTotalRedondeado > 0 && tx.movimientoFinanciero?.create) {
-          let targetCuentaId: number | null = null;
-          if (tx.cuentaFinanciera?.findFirst) {
-            if (dto.metodoPago === MetodoPago.EFECTIVO) {
-              if (dto.cuentaId) {
-                const c = await tx.cuentaFinanciera.findFirst({
-                  where: { id: dto.cuentaId, activa: true, tipo: TipoCuenta.CAJA_EFECTIVO },
-                });
-                if (!c) throw new BadRequestException('La cuenta seleccionada no corresponde a una caja de efectivo activa');
-                targetCuentaId = c.id;
-              } else {
-                let c = await tx.cuentaFinanciera.findFirst({
-                  where: { activa: true, tipo: TipoCuenta.CAJA_EFECTIVO },
-                  orderBy: { id: 'asc' },
-                });
-                if (!c && tx.cuentaFinanciera.create) {
-                  c = await tx.cuentaFinanciera.create({
-                    data: { nombre: 'Caja Chica Central', tipo: TipoCuenta.CAJA_EFECTIVO, activa: true },
-                  });
-                }
-                if (c) targetCuentaId = c.id;
-              }
-            } else if (dto.metodoPago === MetodoPago.TRANSFERENCIA) {
-              if (dto.cuentaId) {
-                const c = await tx.cuentaFinanciera.findFirst({
-                  where: { id: dto.cuentaId, activa: true, tipo: TipoCuenta.BANCO },
-                });
-                if (!c) throw new BadRequestException('La cuenta bancaria seleccionada no es válida o no está activa');
-                targetCuentaId = c.id;
-              } else {
-                let c = await tx.cuentaFinanciera.findFirst({
-                  where: { activa: true, tipo: TipoCuenta.BANCO },
-                  orderBy: { id: 'asc' },
-                });
-                if (!c && tx.cuentaFinanciera.create) {
-                  c = await tx.cuentaFinanciera.create({
-                    data: { nombre: 'Banco Principal', tipo: TipoCuenta.BANCO, activa: true },
-                  });
-                }
-                if (c) targetCuentaId = c.id;
-              }
-            } else {
-              if (dto.cuentaId) {
-                const c = await tx.cuentaFinanciera.findFirst({
-                  where: { id: dto.cuentaId, activa: true },
-                });
-                if (!c) throw new BadRequestException('La cuenta seleccionada no es válida o no está activa');
-                targetCuentaId = c.id;
-              } else {
-                const c = await tx.cuentaFinanciera.findFirst({
-                  where: { activa: true, tipo: TipoCuenta.CAJA_EFECTIVO },
-                  orderBy: { id: 'asc' },
-                });
-                if (c) targetCuentaId = c.id;
-              }
-            }
-          }
+          const targetCuentaId = await this.resolverCuentaPagoEnTx(tx, alcance, dto);
 
           if (targetCuentaId) {
             let nombreMiembro = '';
@@ -2578,6 +2558,36 @@ export class TesoreriaCuotasService {
     });
   }
 
+  private assertUsuariosPagoEnAlcanceUnidad(
+    alcance: AlcanceAcceso,
+    pago: {
+      usuario?: { id: number; asignaciones?: Array<{ unidadId: number }> } | null;
+      imputaciones?: Array<{
+        cargo?: { usuario?: { id: number; asignaciones?: Array<{ unidadId: number }> } | null } | null;
+      }>;
+    },
+  ): void {
+    if (alcance.tipo !== 'UNIDAD') return;
+    const afectados = new Map<number, Array<{ unidadId: number }>>();
+    if (pago.usuario) {
+      afectados.set(pago.usuario.id, pago.usuario.asignaciones ?? []);
+    }
+    for (const imp of pago.imputaciones ?? []) {
+      const u = imp.cargo?.usuario;
+      if (u) {
+        afectados.set(u.id, u.asignaciones ?? []);
+      }
+    }
+    if (afectados.size === 0) {
+      throw new ForbiddenException('No se puede verificar la unidad del pago');
+    }
+    for (const asignaciones of afectados.values()) {
+      if (!asignaciones.some((a) => alcance.unidadIds.includes(a.unidadId))) {
+        throw new ForbiddenException('El pago involucra a miembros fuera de su unidad');
+      }
+    }
+  }
+
   async editarPago(alcance: AlcanceAcceso, id: number, dto: EditarPagoDto) {
     if (alcance.tipo === 'PROPIO') throw new ForbiddenException();
 
@@ -2598,15 +2608,7 @@ export class TesoreriaCuotasService {
     });
     if (!pago) throw new NotFoundException('Pago no encontrado');
 
-    if (alcance.tipo === 'UNIDAD') {
-      const targetUser = pago.usuario || pago.imputaciones[0]?.cargo?.usuario;
-      if (targetUser) {
-        const uIds = targetUser.asignaciones.map((a) => a.unidadId);
-        if (!uIds.some((uId) => alcance.unidadIds.includes(uId))) {
-          throw new ForbiddenException('El pago pertenece a un miembro fuera de su unidad');
-        }
-      }
-    }
+    this.assertUsuariosPagoEnAlcanceUnidad(alcance, pago);
 
     return this.prisma.$transaction(async (tx) => {
       const fechaOp = dto.fechaPago !== undefined ? parsearFechaOperacion(dto.fechaPago) : undefined;
@@ -2673,13 +2675,8 @@ export class TesoreriaCuotasService {
       });
       if (!pago) throw new NotFoundException('Pago no encontrado');
 
+      this.assertUsuariosPagoEnAlcanceUnidad(alcance, pago);
       const titular = pago.usuario || pago.imputaciones[0]?.cargo?.usuario;
-      if (alcance.tipo === 'UNIDAD' && titular) {
-        const uIds = titular.asignaciones.map((a: any) => a.unidadId);
-        if (!uIds.some((uId: number) => alcance.unidadIds.includes(uId))) {
-          throw new ForbiddenException('El pago pertenece a un miembro fuera de su unidad');
-        }
-      }
 
       const targetUsuarioId = titular?.id;
       await lockFilasPorIds(tx, 'usuarios', [targetUsuarioId]);
@@ -2895,7 +2892,15 @@ export class TesoreriaCuotasService {
       if (tx.cargoMiembro?.findMany) {
         const cargosExistentes = await tx.cargoMiembro.findMany({
           where: { id: { in: cargoIds } },
-          include: { usuario: { select: { id: true, grupoFamiliarId: true } } },
+          include: {
+            usuario: {
+              select: {
+                id: true,
+                grupoFamiliarId: true,
+                asignaciones: { where: { activo: true }, select: { unidadId: true } },
+              },
+            },
+          },
         });
         for (const c of cargosExistentes) {
           cargosMap.set(c.id, c);
@@ -2907,7 +2912,15 @@ export class TesoreriaCuotasService {
           ? cargosMap.get(imp.cargoId)
           : await tx.cargoMiembro.findUnique({
               where: { id: imp.cargoId },
-              include: { usuario: { select: { id: true, grupoFamiliarId: true } } },
+              include: {
+                usuario: {
+                  select: {
+                    id: true,
+                    grupoFamiliarId: true,
+                    asignaciones: { where: { activo: true }, select: { unidadId: true } },
+                  },
+                },
+              },
             });
         if (!cargo) {
           throw new BadRequestException(`El cargo #${imp.cargoId} no existe`);
@@ -2922,6 +2935,16 @@ export class TesoreriaCuotasService {
           throw new BadRequestException(
             `El cargo #${imp.cargoId} no pertenece al miembro ni a su grupo familiar`,
           );
+        }
+        if (alcance.tipo === 'UNIDAD' && !mismoUsuario) {
+          const enUnidadCargo = (cargo.usuario?.asignaciones ?? []).some((a: any) =>
+            alcance.unidadIds.includes(a.unidadId),
+          );
+          if (!enUnidadCargo) {
+            throw new ForbiddenException(
+              'No puede aplicar saldo a favor sobre cargos de miembros fuera de su unidad',
+            );
+          }
         }
         if (cargo.estado === EstadoCargo.PAGADO || cargo.estado === EstadoCargo.ANULADO) {
           throw new BadRequestException(`El cargo #${imp.cargoId} ya está saldado o anulado`);
@@ -3046,6 +3069,77 @@ export class TesoreriaCuotasService {
     });
   }
 
+  private async resolverCuentaPagoEnTx(
+    tx: Prisma.TransactionClient,
+    alcance: AlcanceAcceso,
+    dto: RegistrarPagoDto,
+  ): Promise<number | null> {
+    if (!tx.cuentaFinanciera?.findFirst) return null;
+
+    const tipoEsperado: TipoCuenta | undefined =
+      dto.metodoPago === MetodoPago.EFECTIVO
+        ? TipoCuenta.CAJA_EFECTIVO
+        : dto.metodoPago === MetodoPago.TRANSFERENCIA
+          ? TipoCuenta.BANCO
+          : undefined;
+
+    if (dto.cuentaId) {
+      const c = await tx.cuentaFinanciera.findFirst({
+        where: { id: dto.cuentaId, activa: true, ...(tipoEsperado ? { tipo: tipoEsperado } : {}) },
+      });
+      if (!c) {
+        if (dto.metodoPago === MetodoPago.EFECTIVO) {
+          throw new BadRequestException('La cuenta seleccionada no corresponde a una caja de efectivo activa');
+        }
+        if (dto.metodoPago === MetodoPago.TRANSFERENCIA) {
+          throw new BadRequestException('La cuenta bancaria seleccionada no es válida o no está activa');
+        }
+        throw new BadRequestException('La cuenta seleccionada no es válida o no está activa');
+      }
+      if (alcance.tipo === 'UNIDAD') {
+        assertUnidadEnAlcance(alcance, c.unidadId);
+      }
+      return c.id;
+    }
+
+    const tipoBuscar = tipoEsperado ?? TipoCuenta.CAJA_EFECTIVO;
+    let c =
+      alcance.tipo === 'UNIDAD' && alcance.unidadIds.length > 0
+        ? await tx.cuentaFinanciera.findFirst({
+            where: { activa: true, tipo: tipoBuscar, unidadId: { in: alcance.unidadIds } },
+            orderBy: { id: 'asc' },
+          })
+        : null;
+
+    if (!c) {
+      c =
+        (await tx.cuentaFinanciera.findFirst({
+          where: { activa: true, tipo: tipoBuscar, unidadId: null },
+          orderBy: { id: 'asc' },
+        })) ??
+        (alcance.tipo === 'GLOBAL'
+          ? await tx.cuentaFinanciera.findFirst({
+              where: { activa: true, tipo: tipoBuscar },
+              orderBy: { id: 'asc' },
+            })
+          : null);
+    }
+
+    if (!c && tx.cuentaFinanciera.create) {
+      if (dto.metodoPago === MetodoPago.EFECTIVO) {
+        c = await tx.cuentaFinanciera.create({
+          data: { nombre: 'Caja Chica Central', tipo: TipoCuenta.CAJA_EFECTIVO, unidadId: null, activa: true },
+        });
+      } else if (dto.metodoPago === MetodoPago.TRANSFERENCIA) {
+        c = await tx.cuentaFinanciera.create({
+          data: { nombre: 'Banco Principal', tipo: TipoCuenta.BANCO, unidadId: null, activa: true },
+        });
+      }
+    }
+
+    return c?.id ?? null;
+  }
+
   async listarPagos(alcance: AlcanceAcceso, usuarioId?: number) {
     const conditions: Prisma.PagoWhereInput[] = [];
 
@@ -3074,6 +3168,12 @@ export class TesoreriaCuotasService {
               },
             },
           },
+          ...(alcance.usuarioIdPropio !== undefined
+            ? [
+                { usuarioId: alcance.usuarioIdPropio },
+                { imputaciones: { some: { cargo: { usuarioId: alcance.usuarioIdPropio } } } },
+              ]
+            : []),
         ],
       });
     } else if (alcance.tipo === 'PROPIO') {

@@ -51,18 +51,17 @@ import {
   obtenerCicloAnioActual,
   obtenerRolPrincipal,
   obtenerRolesSecundarios,
-  rolRequiereRama,
   seleccionarPlantillaPorMiembro,
   traducirErrorAmigable,
   type OpcionTelefonoContacto,
 } from '../../lib/formatters';
 import {
+  actorDominaPermisosRol,
   esUnidadJefatura,
   esUnidadRama,
   esUnidadSinRama,
   miembroEsEducador,
   miembroTieneAlcanceGlobal,
-  obtenerUnidadesEnAlcanceIds,
   puedeCerrarAsignacionPorAlcance,
   puedeEditarFamiliaPorAlcance,
   usePermisosUI,
@@ -126,8 +125,9 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const {
     usuario: usuarioActual,
     asignaciones: asignacionesActuales,
-    tieneGlobal,
-    tienePermiso,
+    tienePermisoGlobal,
+    tienePermisoUnidadOGlobal,
+    obtenerUnidadesConPermiso,
     refrescarSesionDesdeServidor,
   } = useAuthStore();
   const caps = useCapabilities();
@@ -135,13 +135,32 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const mostrarToast = useToastStore((s) => s.mostrarToast);
   const { canEdit, canView } = usePermisosUI();
 
-  const esGlobal = tieneGlobal();
-  const unidadesEnAlcanceIds = useMemo(
-    () => obtenerUnidadesEnAlcanceIds(asignacionesActuales),
-    [asignacionesActuales],
+  const esGlobalPadron = tienePermisoGlobal('padron.editar');
+  const tieneBajaGlobal = esGlobalPadron;
+  const esGlobalPases = tienePermisoGlobal('pases.editar');
+  const unidadesPasesIds = useMemo(
+    () => obtenerUnidadesConPermiso('pases.editar'),
+    [obtenerUnidadesConPermiso, asignacionesActuales],
   );
-  const tieneBajaGlobal = asignacionesActuales.some(
-    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('padron.editar'),
+  const esGlobalFamilia = tienePermisoGlobal([
+    'padron.editar',
+    'cobranzas.editar',
+    'caja.editar',
+  ]);
+  const unidadesFamiliaIds = useMemo(
+    () =>
+      obtenerUnidadesConPermiso(['padron.editar', 'cobranzas.editar', 'caja.editar']),
+    [obtenerUnidadesConPermiso, asignacionesActuales],
+  );
+  const esGlobalDescuentoFamilia = tienePermisoGlobal([
+    'cobranzas.editar',
+    'planes.editar',
+    'caja.editar',
+  ]);
+  const unidadesDescuentoIds = useMemo(
+    () =>
+      obtenerUnidadesConPermiso(['cobranzas.editar', 'planes.editar', 'caja.editar']),
+    [obtenerUnidadesConPermiso, asignacionesActuales],
   );
 
   const [tab, setTab] = useState<TabExpediente360>(tabInicial);
@@ -202,6 +221,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     apellido: '',
     dni: '',
     fechaNacimiento: '',
+    tipoMiembro: 'PROTAGONISTA',
     emailContacto: '',
     telefonoContacto: '',
     madreNombres: '',
@@ -226,25 +246,28 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const targetEsGlobal = useMemo(() => miembroTieneAlcanceGlobal(miembro), [miembro]);
   const targetEsEducador = useMemo(() => miembroEsEducador(miembro), [miembro]);
   const esMismoUsuario = Boolean(miembro && usuarioActual && miembro.id === usuarioActual.id);
-  const bloqueadoPorTargetGlobal = !esGlobal && targetEsGlobal;
 
   const puedeVerCuotas = canView('cuotas');
   const puedeCobrarCuotas = canEdit('cuotas', 'cobrar');
   const puedeCrearCargoIndividual = canEdit('cuotas', 'cargoIndividual');
   const puedeAjustarCuotas = canEdit('cuotas', 'editarCargo');
-  const puedeGestionarTesoreria = tienePermiso('cobranzas.editar') || tienePermiso('caja.editar');
+  const puedeGestionarTesoreria = tienePermisoUnidadOGlobal(['cobranzas.editar', 'caja.editar']);
   const puedeVerFicha = canView('ficha');
   const puedeCompletarFicha = canEdit('ficha', 'completar');
-  const puedeValidarFisico = canEdit('ficha', 'validarFisico');
-  const puedeEditarIdentidad = canEdit('miembro', 'identidad') && !bloqueadoPorTargetGlobal;
-  const puedeEditarContacto = canEdit('miembro', 'contacto') && !bloqueadoPorTargetGlobal;
-  const puedeDarBaja = canEdit('miembro', 'estado') && !bloqueadoPorTargetGlobal;
+  const puedeValidarFisico = canEdit('ficha', 'validarFisico') && !esMismoUsuario;
+  const puedeEditarIdentidad =
+    canEdit('miembro', 'identidad') && (!targetEsGlobal || esGlobalPadron);
+  const puedeEditarContacto =
+    canEdit('miembro', 'contacto') && (!targetEsGlobal || esGlobalPadron);
+  const puedeDarBaja =
+    canEdit('miembro', 'estado') && (!targetEsGlobal || tieneBajaGlobal);
   const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
   const puedeHacerPases =
     canEdit('miembro', 'pase') &&
-    !bloqueadoPorTargetGlobal &&
-    !(!esGlobal && (esMismoUsuario || targetEsEducador));
-  const puedeResetearClave = canEdit('miembro', 'clave') && !bloqueadoPorTargetGlobal;
+    (!targetEsGlobal || esGlobalPases) &&
+    !(!esGlobalPases && (esMismoUsuario || targetEsEducador));
+  const puedeResetearClave =
+    canEdit('miembro', 'clave') && (!targetEsGlobal || esGlobalPadron);
 
   const ramaSeleccionadaObj = useMemo(
     () => ramas.find((r) => r.id === ramaSeleccionadaId),
@@ -266,34 +289,35 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     return Boolean(esRover && (edad ?? 0) >= 21);
   }, [candidatoPase, miembro]);
 
-  const rolesRama = useMemo(() => {
-    const base = roles.filter((r) => esRolRama(r) && (esGlobal || !esRolAlcanceGlobal(r)));
-    if (esEgreso && esGlobal) {
-      const edus = base.filter((r) => esRolDeEducador(r));
-      return edus.length > 0 ? edus : base;
-    }
-    return base;
-  }, [roles, esEgreso, esGlobal]);
+  const rolesActivosDominados = useMemo(
+    () =>
+      roles.filter(
+        (r) => r.activo !== false && actorDominaPermisosRol(asignacionesActuales, r),
+      ),
+    [roles, asignacionesActuales],
+  );
 
-  const rolesSinRama = useMemo(() => {
-    const permitidos = esGlobal ? roles : roles.filter((r) => !esRolAlcanceGlobal(r));
-    const sr = permitidos.filter(esRolSinRama);
-    return sr.length > 0 ? sr : permitidos.filter((r) => !rolRequiereRama(r) && !esRolJefe(r));
-  }, [roles, esGlobal]);
+  const rolesRama = rolesActivosDominados.filter(
+    (r) => esGlobalPases || !esRolAlcanceGlobal(r),
+  );
 
-  const rolesJefatura = useMemo(() => {
-    if (!esGlobal) return [];
-    const jf = roles.filter(esRolJefe);
-    return jf.length > 0 ? jf : roles.filter((r) => !rolRequiereRama(r));
-  }, [roles, esGlobal]);
+  const rolesSinRama = rolesActivosDominados.filter(
+    (r) => esGlobalPases || !esRolAlcanceGlobal(r),
+  );
+
+  const rolesJefatura = esGlobalPases ? rolesActivosDominados : [];
 
   const familiaActual = miembro?.grupoFamiliar || estadoCuenta?.grupoFamiliar;
-  const puedeVincularHermano = !bloqueadoPorTargetGlobal && canEdit('miembro', 'familia');
+  const puedeVincularHermano =
+    canEdit('miembro', 'familia') && (!targetEsGlobal || esGlobalFamilia);
   const puedeEditarDescuentoFamilia = Boolean(
     familiaActual &&
-      !bloqueadoPorTargetGlobal &&
+      (!targetEsGlobal || esGlobalDescuentoFamilia) &&
       canEdit('miembro', 'descuentoFamiliar') &&
-      puedeEditarFamiliaPorAlcance(familiaActual, { esGlobal, unidadesEnAlcanceIds }),
+      puedeEditarFamiliaPorAlcance(familiaActual, {
+        esGlobal: esGlobalDescuentoFamilia,
+        unidadesEnAlcanceIds: unidadesDescuentoIds,
+      }),
   );
 
   const asignacionPrincipal = miembro ? obtenerRolPrincipal(miembro) : null;
@@ -307,7 +331,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     return Number(unidadDestinoId) === unidadIdActual && Number(rolDestinoId) === rolIdActual;
   }, [asignacionPrincipal, unidadDestinoId, rolDestinoId]);
 
-  const esEducador = esRolDeEducador(asignacionPrincipal?.rol);
+  const esEducador = targetEsEducador;
 
   const guardOffline = (accion = 'realizar esta acción'): boolean => {
     if (!isOnline) {
@@ -397,6 +421,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           apellido: m.apellido || '',
           dni: m.dni || '',
           fechaNacimiento: fechaNac,
+          tipoMiembro:
+            m.tipoMiembro === 'EDUCADOR' || (m.tipoMiembro == null && miembroEsEducador(m))
+              ? 'EDUCADOR'
+              : 'PROTAGONISTA',
           emailContacto: m.emailContacto || '',
           telefonoContacto: m.telefonoContacto || m.datosFijosJson?.protagonista_telefono || '',
           madreNombres: m.datosFijosJson?.madre_nombres || '',
@@ -425,9 +453,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           if (candidato.tipo === 'EGRESO' || candidato.tipo === 'EGRESO_SIN_RAMA') {
             catIni = 'SIN_RAMA';
             const uSin = unidadesResueltas.find(esUnidadSinRama);
-            const rSin =
-              rolesResueltos.find(esRolSinRama) ||
-              rolesResueltos.find((r: any) => !rolRequiereRama(r) && !esRolJefe(r));
+            const rSin = rolesResueltos.find(esRolSinRama) || rolesResueltos[0];
             if (uSin) unidadIni = String(uSin.id);
             if (rSin) rolIni = String(rSin.id);
           } else if (candidato.ramaSugerida) {
@@ -449,18 +475,12 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           if (uActual && esUnidadSinRama(uActual)) {
             catIni = 'SIN_RAMA';
             unidadIni = String(uActual.id);
-            const rSin =
-              asig?.rol?.id ||
-              rolesResueltos.find(esRolSinRama)?.id ||
-              rolesResueltos.find((r: any) => !rolRequiereRama(r))?.id;
+            const rSin = asig?.rol?.id || rolesResueltos.find(esRolSinRama)?.id || rolesResueltos[0]?.id;
             if (rSin) rolIni = String(rSin);
           } else if (uActual && esUnidadJefatura(uActual)) {
             catIni = 'JEFATURA';
             unidadIni = String(uActual.id);
-            const rJefe =
-              asig?.rol?.id ||
-              rolesResueltos.find(esRolJefe)?.id ||
-              rolesResueltos.find((r: any) => !rolRequiereRama(r))?.id;
+            const rJefe = asig?.rol?.id || rolesResueltos.find(esRolJefe)?.id || rolesResueltos[0]?.id;
             if (rJefe) rolIni = String(rJefe);
           } else {
             catIni = 'RAMA';
@@ -544,6 +564,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         payload.apellido = formData.apellido.trim();
         payload.dni = formData.dni.trim();
         payload.fechaNacimiento = formData.fechaNacimiento || undefined;
+        payload.tipoMiembro = formData.tipoMiembro;
       }
       if (puedeDarBaja) payload.activo = formData.activo;
       if (puedeEditarContacto) {
@@ -701,14 +722,13 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     if (cat === 'SIN_RAMA') {
       setRamaSeleccionadaId(null);
       const u = unidades.find(esUnidadSinRama) || unidades.find((x) => !esUnidadRama(x));
-      const r =
-        roles.find(esRolSinRama) || roles.find((x) => !rolRequiereRama(x) && !esRolJefe(x));
+      const r = roles.find(esRolSinRama) || roles[0];
       if (u) setUnidadDestinoId(String(u.id));
       if (r) setRolDestinoId(String(r.id));
     } else if (cat === 'JEFATURA') {
       setRamaSeleccionadaId(null);
       const u = unidades.find(esUnidadJefatura) || unidades.find((x) => !esUnidadRama(x));
-      const r = roles.find(esRolJefe) || roles.find((x) => !rolRequiereRama(x));
+      const r = roles.find(esRolJefe) || roles[0];
       if (u) setUnidadDestinoId(String(u.id));
       if (r) setRolDestinoId(String(r.id));
     } else if (cat === 'RAMA') {
@@ -1399,7 +1419,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
 
   return (
     <div className="space-y-4 text-ink min-w-0">
-      {/* Cabecera Identidad del Expediente 360° */}
+      {/* Cabecera Identidad del Expediente */}
       <div className="s-panel rounded-2xl p-4 sm:p-5 flex items-start justify-between gap-3.5 min-w-0">
         <div className="flex items-center gap-3.5 min-w-0">
           <div
@@ -1770,8 +1790,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   puedeGestionarTesoreria={puedeGestionarTesoreria}
                   puedeVincularHermano={puedeVincularHermano}
                   puedeEditarDescuentoFamilia={puedeEditarDescuentoFamilia}
-                  esGlobal={esGlobal}
-                  unidadesEnAlcanceIds={unidadesEnAlcanceIds}
+                  esGlobal={esGlobalFamilia}
+                  unidadesEnAlcanceIds={unidadesFamiliaIds}
                   puedeEliminarDefinitivo={puedeEliminarDefinitivo}
                   eliminandoDefinitivo={eliminandoDefinitivo}
                   onGuardarDatos={handleGuardarDatos}
@@ -1798,8 +1818,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   puedeAjustarCuotas={puedeAjustarCuotas}
                   puedeVincularHermano={puedeVincularHermano}
                   puedeEditarDescuentoFamilia={puedeEditarDescuentoFamilia}
-                  esGlobal={esGlobal}
-                  unidadesEnAlcanceIds={unidadesEnAlcanceIds}
+                  esGlobal={esGlobalFamilia}
+                  unidadesEnAlcanceIds={unidadesFamiliaIds}
                   ajustandoSaldo={ajustandoSaldo}
                   setAjustandoSaldo={setAjustandoSaldo}
                   tipoAjusteSaldo={tipoAjusteSaldo}
@@ -1873,9 +1893,9 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   candidatoPase={candidatoPase}
                   categoriaDestino={categoriaDestino}
                   onCambioCategoria={handleCambioCategoria}
-                  tieneGlobal={tieneGlobal}
+                  tieneGlobal={() => esGlobalPases}
                   unidades={unidades}
-                  unidadesEnAlcanceIds={unidadesEnAlcanceIds}
+                  unidadesEnAlcanceIds={unidadesPasesIds}
                   ramaOrigenId={asignacionPrincipal?.unidad?.ramaId ?? null}
                   ramas={ramas}
                   ramaSeleccionadaId={ramaSeleccionadaId}
@@ -1888,6 +1908,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   rolesRama={rolesRama}
                   rolesSinRama={rolesSinRama}
                   rolesJefatura={rolesJefatura}
+                  todosRoles={esGlobalPases ? rolesActivosDominados : undefined}
                   onSeleccionarRama={handleSeleccionarRama}
                   onEjecutarPase={handleEjecutarPase}
                   ejecutandoPase={ejecutandoPase}
@@ -1895,14 +1916,14 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   asignacionesActivas={asignacionesActivas}
                   puedeCerrarAsignacion={(asig) =>
                     puedeCerrarAsignacionPorAlcance(asig, {
-                      esGlobal,
-                      unidadesEnAlcanceIds,
+                      esGlobal: esGlobalPases,
+                      unidadesEnAlcanceIds: unidadesPasesIds,
                       esMismoUsuario,
                     })
                   }
                   onCerrarAsignacion={handleCerrarAsignacion}
                   onAgregarAsignacion={
-                    esGlobal || unidadesEnAlcanceIds.length > 0
+                    esGlobalPases || unidadesPasesIds.length > 0
                       ? handleAgregarAsignacion
                       : undefined
                   }

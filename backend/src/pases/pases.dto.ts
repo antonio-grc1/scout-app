@@ -1,4 +1,3 @@
-import { AlcanceRol } from '@prisma/client';
 import { z } from 'zod';
 
 export const CandidatosQuerySchema = z.object({
@@ -13,7 +12,6 @@ export const PaseSchema = z.object({
   unidadDestinoId: z.number().int().positive().optional(),
   /** Si se omite, conserva el rol de la asignación de origen. */
   rolDestinoId: z.number().int().positive().optional(),
-  alcanceOverride: z.enum(AlcanceRol).nullish(),
   cicloAnio: z.number().int().min(2000).max(2100).optional(),
 });
 export type PaseDto = z.infer<typeof PaseSchema>;

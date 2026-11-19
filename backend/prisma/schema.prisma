@@ -82,6 +82,7 @@ model UnidadOrganizativa {
   conceptos    ConceptoCuota[]
   planesCuota  PlanCuotaMensual[]
   rubros       RubroContable[]
+  cuentasFinancieras     CuentaFinanciera[]
   solicitudesPaseOrigen  SolicitudPase[] @relation("SolicitudesPaseOrigen")
   solicitudesPaseDestino SolicitudPase[] @relation("SolicitudesPaseDestino")
 
@@ -106,6 +107,7 @@ model Usuario {
   fechaNacimiento     DateTime            @map("fecha_nacimiento") @db.Date
   emailContacto       String?             @map("email_contacto") @db.VarChar(150) // NO UNIQUE!
   telefonoContacto    String?             @map("telefono_contacto") @db.VarChar(50)
+  tipoMiembro         String              @default("PROTAGONISTA") @map("tipo_miembro") @db.VarChar(30)
   grupoFamiliarId     Int?                @map("grupo_familiar_id")
   datosFijosJson      Json                @default("{}") @map("datos_fijos_json")
   requiereCambioClave Boolean             @default(true) @map("requiere_cambio_clave")
@@ -141,10 +143,12 @@ model Usuario {
 model Rol {
   id                Int                 @id @default(autoincrement())
   nombre            String              @unique @db.VarChar(80)
-  alcancePorDefecto AlcanceRol          @map("alcance_por_defecto")
+  alcancePorDefecto AlcanceRol          @default(PROPIO) @map("alcance_por_defecto")
   tipoMiembro       String              @default("EDUCADOR") @map("tipo_miembro") @db.VarChar(30)
   requiereRama      Boolean             @default(true) @map("requiere_rama")
+  tipoUnidad        TipoUnidad          @default(SECCION_RAMA) @map("tipo_unidad")
   esSistema         Boolean             @default(false) @map("es_sistema")
+  activo            Boolean             @default(true)
   permisos          RolPermiso[]
   asignaciones      AsignacionMiembro[]
   solicitudesPase   SolicitudPase[]
@@ -162,10 +166,11 @@ model Permiso {
 }
 
 model RolPermiso {
-  rolId     Int     @map("rol_id")
-  permisoId Int     @map("permiso_id")
-  rol       Rol     @relation(fields: [rolId], references: [id], onDelete: Cascade)
-  permiso   Permiso @relation(fields: [permisoId], references: [id], onDelete: Cascade)
+  rolId     Int        @map("rol_id")
+  permisoId Int        @map("permiso_id")
+  alcance   AlcanceRol @default(PROPIO)
+  rol       Rol        @relation(fields: [rolId], references: [id], onDelete: Cascade)
+  permiso   Permiso    @relation(fields: [permisoId], references: [id], onDelete: Cascade)
 
   @@id([rolId, permisoId])
   @@map("rol_permisos")
@@ -176,7 +181,6 @@ model AsignacionMiembro {
   usuarioId       Int                @map("usuario_id")
   unidadId        Int                @map("unidad_id")
   rolId           Int                @map("rol_id")
-  alcanceOverride AlcanceRol?        @map("alcance_override")
   camada          Int?
   cicloAnio       Int                @map("ciclo_anio")
   fechaInicio     DateTime           @default(now()) @map("fecha_inicio") @db.Date
@@ -200,7 +204,6 @@ model SolicitudPase {
   unidadOrigenId     Int                 @map("unidad_origen_id")
   unidadDestinoId    Int                 @map("unidad_destino_id")
   rolDestinoId       Int                 @map("rol_destino_id")
-  alcanceOverride    AlcanceRol?         @map("alcance_override")
   modo               String              @default("MOVER") @db.VarChar(20)
   estado             EstadoSolicitudPase @default(PENDIENTE)
   solicitadoPorId    Int                 @map("solicitado_por_id")
@@ -390,15 +393,18 @@ model CuentaFinanciera {
   id            Int                    @id @default(autoincrement())
   nombre        String                 @db.VarChar(100)
   tipo          TipoCuenta
+  unidadId      Int?                   @map("unidad_id")
   activa        Boolean                @default(true)
   createdAt     DateTime               @default(now()) @map("created_at")
   updatedAt     DateTime               @updatedAt @map("updated_at")
 
+  unidad        UnidadOrganizativa?    @relation(fields: [unidadId], references: [id], onDelete: SetNull)
   movimientos   MovimientoFinanciero[]
   gastos        Gasto[]
   eventos       Evento[]
   pedidosEvento PedidoEvento[]
 
+  @@index([unidadId])
   @@map("cuentas_financieras")
 }
 

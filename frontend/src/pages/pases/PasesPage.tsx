@@ -101,7 +101,7 @@ export const PasesPage: React.FC = () => {
 
   return (
     <div className="space-y-4 sm:space-y-5 s-anim-fade-up">
-      {/* Cabecera de módulo + selector de fecha de corte 30/06 */}
+      {/* Cabecera de módulo + selector de fecha de corte */}
       <section className="s-card rounded-2xl p-4 sm:p-6 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
           <div className="space-y-1.5 min-w-0">
@@ -114,7 +114,7 @@ export const PasesPage: React.FC = () => {
               </span>
             </div>
             <p className="text-sm text-ink-muted">
-              Cálculo reglamentario por camada al 30/06. Ajustá la fecha de corte, revisá destinos individuales o ejecutá pases en lote.
+              Cálculo de pases por camada. Ajustá la fecha de corte, revisá destinos individuales o ejecutá pases en lote.
             </p>
           </div>
 
@@ -137,10 +137,10 @@ export const PasesPage: React.FC = () => {
                 variant="secondary"
                 size="sm"
                 onClick={() => setFechaReferencia(fechaCorteDefault)}
-                title={`Restablecer al 30/06/${cicloActual}`}
+                title="Restablecer fecha por defecto"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
-                <span>30/06/{cicloActual}</span>
+                <span>Restablecer</span>
               </Button>
             )}
 
@@ -184,7 +184,7 @@ export const PasesPage: React.FC = () => {
         <KpiCard
           label="Egresos a Educador"
           value={cargando ? '—' : metricas.egresos}
-          hint={caps.esGlobal ? 'Habilitado (Global)' : 'Requiere Jefatura (Global)'}
+          hint={caps.canExecuteEgreso ? 'Habilitado (Global)' : 'Requiere alcance Global'}
           icon={<ArrowRightLeft className="w-4 h-4" />}
           tone={metricas.egresos > 0 ? 'warn' : 'neutral'}
         />

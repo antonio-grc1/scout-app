@@ -229,7 +229,6 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
           unidadId: 1,
           rolId: 1,
           activo: true,
-          alcanceOverride: null,
           rol: {
             alcancePorDefecto: 'GLOBAL',
             permisos: [{ permiso: { clave: 'organizacion.editar' } }],
@@ -274,7 +273,6 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
         usuarioId: 1,
         unidadId: 1,
         activo: true,
-        alcanceOverride: null,
         rol: {
           alcancePorDefecto: 'GLOBAL',
           permisos: [{ permiso: { clave: 'organizacion.editar' } }],
@@ -352,7 +350,6 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
           fechaInicio: new Date('2025-03-01'),
           fechaFin: null,
           activo: true,
-          alcanceOverride: null,
           unidad: {
             id: 3,
             nombre: 'Comunidad Rover',
@@ -371,7 +368,6 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
           fechaInicio: new Date('2023-03-01'),
           fechaFin: new Date('2024-12-15'),
           activo: false,
-          alcanceOverride: null,
           unidad: {
             id: 2,
             nombre: 'Comunidad Caminantes',
@@ -518,7 +514,6 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
           id: 50,
           usuarioId: 10,
           unidadId: 1,
-          alcanceOverride: null,
           rol: { alcancePorDefecto: 'UNIDAD', permisos: [] },
         }),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -526,18 +521,31 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       $transaction: vi.fn(async (cb: any) => cb(mockPrisma)),
     };
     const service = new MiembrosService(mockPrisma);
-    const actor: AuthUser = { sub: 1, dni: '100', asignaciones: [] };
+    const actor: AuthUser = {
+      sub: 1,
+      dni: '100',
+      requiereCambioClave: false,
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Admin',
+          alcance: AlcanceRol.GLOBAL,
+          permisos: ['pases.editar'],
+        },
+      ],
+    };
 
     await expect(service.cerrarAsignacion(actor, { tipo: 'GLOBAL' }, 10, 50)).rejects.toThrow(ConflictException);
   });
 
-  it('P2: resolverYValidarUnidadYRol impide asignar rol sin rama a una SECCION_RAMA y viceversa', async () => {
+  it('A3: resolverYValidarUnidadYRol permite asignar libremente cualquier rol a cualquier tipo de unidad activa', async () => {
     const mockPrisma: any = {
       rol: {
         findUnique: vi
           .fn()
-          .mockResolvedValueOnce({ id: 1, alcancePorDefecto: 'UNIDAD', requiereRama: false })
-          .mockResolvedValueOnce({ id: 2, alcancePorDefecto: 'PROPIO', requiereRama: true }),
+          .mockResolvedValueOnce({ id: 1, alcancePorDefecto: 'UNIDAD', requiereRama: false, activo: true, permisos: [] })
+          .mockResolvedValueOnce({ id: 2, alcancePorDefecto: 'PROPIO', requiereRama: true, activo: true, permisos: [] }),
       },
       unidadOrganizativa: {
         findUnique: vi
@@ -545,16 +553,39 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
           .mockResolvedValueOnce({ id: 10, activa: true, tipo: TipoUnidad.SECCION_RAMA })
           .mockResolvedValueOnce({ id: 20, activa: true, tipo: TipoUnidad.JEFATURA }),
       },
+      usuario: {
+        findFirst: vi.fn().mockResolvedValue({ id: 5, activo: true, asignaciones: [] }),
+        findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 5, asignaciones: [] }),
+      },
+      asignacionMiembro: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({ id: 99 }),
+      },
+      $transaction: vi.fn((cb: any) => cb(mockPrisma)),
     };
     const service = new MiembrosService(mockPrisma);
+    const actorGlobalAsignar: AuthUser = {
+      sub: 1,
+      dni: '10000001',
+      requiereCambioClave: false,
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Admin',
+          alcance: AlcanceRol.GLOBAL,
+          permisos: ['pases.editar'],
+        },
+      ],
+    };
 
     await expect(
-      service.agregarAsignacion({ tipo: 'GLOBAL' }, 5, { rolId: 1, unidadId: 10 }),
-    ).rejects.toThrow(BadRequestException);
+      service.agregarAsignacion(actorGlobalAsignar, { tipo: 'GLOBAL' }, 5, { rolId: 1, unidadId: 10 }),
+    ).resolves.toBeDefined();
 
     await expect(
-      service.agregarAsignacion({ tipo: 'GLOBAL' }, 5, { rolId: 2, unidadId: 20 }),
-    ).rejects.toThrow(BadRequestException);
+      service.agregarAsignacion(actorGlobalAsignar, { tipo: 'GLOBAL' }, 5, { rolId: 2, unidadId: 20 }),
+    ).resolves.toBeDefined();
   });
 
   it('P1-20: listar con búsqueda q hidrata MIEMBRO_SELECT solo para los IDs paginados', async () => {
@@ -642,7 +673,14 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
     const mailerMock = { enviarBienvenidaAlta: vi.fn().mockResolvedValue(true) };
     const txUsuarioCreate = vi.fn().mockResolvedValue({ id: 91 });
     const mockPrisma: any = {
-      rol: { findUnique: vi.fn().mockResolvedValue({ id: 2, requiereRama: true }) },
+      rol: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 2,
+          requiereRama: true,
+          alcancePorDefecto: AlcanceRol.PROPIO,
+          tipoMiembro: 'PROTAGONISTA',
+        }),
+      },
       unidadOrganizativa: { findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }) },
       $transaction: vi.fn((cb: any) =>
         cb({
@@ -661,8 +699,22 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       },
     };
     const service = new MiembrosService(mockPrisma, undefined, mailerMock as any);
+    const actorCrearGlobal: AuthUser = {
+      sub: 1,
+      dni: '10000001',
+      requiereCambioClave: false,
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Admin',
+          alcance: AlcanceRol.GLOBAL,
+          permisos: ['padron.editar'],
+        },
+      ],
+    };
 
-    const res = await service.crear({ tipo: 'GLOBAL' }, {
+    const res = await service.crear(actorCrearGlobal, { tipo: 'GLOBAL' }, {
       dni: '44555666',
       nombre: 'Lucia',
       apellido: 'Scout',
@@ -686,7 +738,14 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
     };
     const txUsuarioCreate = vi.fn().mockResolvedValue({ id: 92 });
     const mockPrisma: any = {
-      rol: { findUnique: vi.fn().mockResolvedValue({ id: 2, requiereRama: true }) },
+      rol: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 2,
+          requiereRama: true,
+          alcancePorDefecto: AlcanceRol.PROPIO,
+          tipoMiembro: 'PROTAGONISTA',
+        }),
+      },
       unidadOrganizativa: { findUnique: vi.fn().mockResolvedValue({ id: 1, activa: true, tipo: TipoUnidad.SECCION_RAMA }) },
       $transaction: vi.fn((cb: any) =>
         cb({
@@ -705,8 +764,23 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       },
     };
     const service = new MiembrosService(mockPrisma, undefined, mailerMock as any);
+    const actorCrearGlobal: AuthUser = {
+      sub: 1,
+      dni: '10000001',
+      requiereCambioClave: false,
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Admin',
+          alcance: AlcanceRol.GLOBAL,
+          permisos: ['padron.editar'],
+        },
+      ],
+    };
 
     const res = await service.crear(
+      actorCrearGlobal,
       { tipo: 'GLOBAL' },
       {
         dni: '44555777',
@@ -732,6 +806,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
 
     await expect(
       service.crear(
+        actorCrearGlobal,
         { tipo: 'GLOBAL' },
         {
           dni: '44555888',
@@ -985,6 +1060,21 @@ describe('MiembrosService - Eliminación definitiva de miembros dados de baja', 
 });
 
 describe('MiembrosService - Reglas de Educadores en Asignaciones', () => {
+  const actorUnidadEducador: AuthUser = {
+    sub: 999,
+    dni: '12345678',
+    requiereCambioClave: false,
+    asignaciones: [
+      {
+        unidadId: 1,
+        unidadNombre: 'Manada',
+        rol: 'Educador de Rama',
+        alcance: AlcanceRol.UNIDAD,
+        permisos: ['pases.editar'],
+      },
+    ],
+  };
+
   it('impide que un usuario UNIDAD otorgue un rol EDUCADOR en agregarAsignacion', async () => {
     const prisma: any = {
       rol: {
@@ -1003,7 +1093,7 @@ describe('MiembrosService - Reglas de Educadores en Asignaciones', () => {
     const service = new MiembrosService(prisma);
 
     await expect(
-      service.agregarAsignacion({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
+      service.agregarAsignacion(actorUnidadEducador, { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
         unidadId: 1,
         rolId: 2,
       }),
@@ -1033,7 +1123,6 @@ describe('MiembrosService - Reglas de Educadores en Asignaciones', () => {
               id: 20,
               unidadId: 1,
               activo: true,
-              alcanceOverride: null,
               rol: { id: 2, tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD },
             },
           ],
@@ -1045,30 +1134,22 @@ describe('MiembrosService - Reglas de Educadores en Asignaciones', () => {
           usuarioId: 50,
           unidadId: 1,
           activo: true,
-          alcanceOverride: null,
           rol: { id: 2, tipoMiembro: 'EDUCADOR', alcancePorDefecto: AlcanceRol.UNIDAD, permisos: [] },
         }),
       },
       $transaction: vi.fn(async (cb: any) => cb(prisma)),
     };
     const service = new MiembrosService(prisma);
-    const actor: AuthUser = {
-      sub: 999,
-      dni: '12345678',
-      nombre: 'Edu',
-      apellido: 'Test',
-      asignaciones: [],
-    };
 
     await expect(
-      service.agregarAsignacion({ tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
+      service.agregarAsignacion(actorUnidadEducador, { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, {
         unidadId: 1,
         rolId: 1,
       }),
     ).rejects.toThrow(ForbiddenException);
 
     await expect(
-      service.cerrarAsignacion(actor, { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, 20),
+      service.cerrarAsignacion(actorUnidadEducador, { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 999 }, 50, 20),
     ).rejects.toThrow(ForbiddenException);
   });
 });

@@ -4,7 +4,7 @@ import { Button } from './ui/Button';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
-import { obtenerUnidadesEnAlcanceIds, puedeModificarPorAlcanceUnidad } from '../lib/permisos';
+import { puedeModificarPorAlcanceUnidad } from '../lib/permisos';
 import { useAuthStore } from '../store/authStore';
 import {
   Tag,
@@ -58,12 +58,20 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
   const [modalConfirmarEliminar, setModalConfirmarEliminar] = useState(false);
   const [eliminando, setEliminando] = useState(false);
 
-  const esGlobal = useAuthStore((s) => s.tieneGlobal());
   const asignaciones = useAuthStore((s) => s.asignaciones);
-  const unidadesEnAlcanceIds = useMemo(
-    () => obtenerUnidadesEnAlcanceIds(asignaciones),
-    [asignaciones],
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const obtenerUnidadesConPermiso = useAuthStore((s) => s.obtenerUnidadesConPermiso);
+  const permisosRubros = [
+    'caja.editar',
+    'planes.editar',
+    'caja.editar',
+  ] as const;
+  const esGlobalRubros = tienePermisoGlobal(permisosRubros);
+  const unidadesRubrosIds = useMemo(
+    () => obtenerUnidadesConPermiso(permisosRubros),
+    [asignaciones, obtenerUnidadesConPermiso],
   );
+  const puedeCrearRubro = esGlobalRubros || unidadesRubrosIds.length > 0;
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto,
@@ -124,6 +132,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
               await api.post('/tesoreria/rubros', {
                 nombre: r.nombre,
                 tipo: r.tipo,
+                unidadId: r.unidadId ?? null,
                 permiteDescuentoDefault: r.permiteDescuentoDefault,
               });
             }
@@ -219,8 +228,8 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                 </button>
               </div>
 
-              {/* Botón Crear (crear rubro general requiere alcance GLOBAL) */}
-              {esGlobal && (
+              {/* Botón Crear (GLOBAL crea generales o de rama; UNIDAD crea rubros de su rama - A2) */}
+              {puedeCrearRubro && (
                 <Button
                   type="button"
                   variant="primary"
@@ -291,6 +300,9 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                       >
                         {r.tipo === 'EGRESO' ? 'Gasto' : 'Ingreso'}
                       </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-paper-2 text-ink-2 border border-rule">
+                        {r.unidad?.nombre || 'General'}
+                      </span>
                       {r.permiteDescuentoDefault && r.tipo === 'INGRESO' && (
                         <span className="text-xs px-2 py-0.5 rounded bg-brand/10 text-brand font-semibold">
                           Desc. Hermanos
@@ -299,7 +311,11 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                     </div>
                   </div>
 
-                  {puedeModificarPorAlcanceUnidad(r.unidadId, { esGlobal, unidadesEnAlcanceIds }) && (
+                  {puedeCrearRubro &&
+                    puedeModificarPorAlcanceUnidad(r.unidadId, {
+                      esGlobal: esGlobalRubros,
+                      unidadesEnAlcanceIds: unidadesRubrosIds,
+                    }) && (
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
@@ -308,6 +324,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                             id: r.id,
                             nombre: r.nombre,
                             tipo: r.tipo,
+                            unidadId: r.unidadId ?? null,
                             permiteDescuentoDefault: r.permiteDescuentoDefault,
                             activo: r.activo,
                           });

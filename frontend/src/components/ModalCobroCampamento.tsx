@@ -27,11 +27,26 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   onGenerado,
 }) => {
   const anioActual = new Date().getFullYear();
-  const esGlobal = useAuthStore((s) => s.tieneGlobal());
   const asignaciones = useAuthStore((s) => s.asignaciones);
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const obtenerUnidadesConPermiso = useAuthStore((s) => s.obtenerUnidadesConPermiso);
+  const esGlobal = tienePermisoGlobal(['planes.editar', 'caja.editar']);
+  const unidadesConceptosIds = useMemo(
+    () => obtenerUnidadesConPermiso(['planes.editar', 'caja.editar']),
+    [asignaciones, obtenerUnidadesConPermiso],
+  );
   const unidadesPermitidas = useMemo(
-    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
-    [unidades, esGlobal, asignaciones],
+    () =>
+      esGlobal
+        ? [...unidades]
+        : filtrarUnidadesPorAlcance(unidades, {
+            esGlobal: false,
+            asignaciones: unidadesConceptosIds.map((id) => ({
+              alcance: 'UNIDAD' as const,
+              unidadId: id,
+            })),
+          }),
+    [unidades, esGlobal, unidadesConceptosIds],
   );
 
   const [nombre, setNombre] = useState('');
@@ -91,7 +106,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           Array.isArray(conceptoAEditar.excepcionesJson) ? conceptoAEditar.excepcionesJson : [],
         );
       } else {
-        setNombre('Campamento Anual ' + anioActual);
+        setNombre('');
         setTipo('CAMPAMENTO');
         setMontoBase('');
         setCicloAnio(anioActual);
@@ -115,7 +130,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
     setError(null);
 
     if (!nombre.trim()) {
-      setError('El nombre del evento / campamento es obligatorio');
+      setError('El nombre del cobro puntual es obligatorio');
       return;
     }
 
@@ -154,7 +169,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
 
       onCerrar();
     } catch (err: any) {
-      setError(traducirErrorAmigable(err, 'No se pudo guardar el cobro de campamento / evento.'));
+      setError(traducirErrorAmigable(err, 'No se pudo guardar el cobro puntual.'));
     } finally {
       setGuardando(false);
     }
@@ -172,14 +187,14 @@ export const ModalCobroCampamento: React.FC<Props> = ({
         {/* Header */}
         <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+            <div className="p-2.5 rounded-2xl bg-brand/10 text-brand">
               <Tent className="w-5 h-5" />
             </div>
             <div>
               <h3 className="font-bold text-ink text-lg">
                 {conceptoAEditar
-                  ? 'Editar Campamento / Cobro Especial'
-                  : 'Nuevo Campamento / Cobro Especial'}
+                  ? 'Editar Cobro Puntual'
+                  : 'Nuevo Cobro Puntual'}
               </h3>
               <p className="text-[13px] text-ink-muted">
                 Definí el monto, a quiénes aplica y quiénes están becados o exentos
@@ -206,7 +221,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
             <div className="sm:col-span-2">
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Nombre del Campamento / Cobro *
+                Nombre del Cobro Puntual *
               </label>
               <input
                 type="text"
@@ -214,7 +229,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder={`Ej. Campamento de Verano ${anioActual}, Acantonamiento, Pañuelo...`}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>
 
@@ -225,7 +240,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
               <select
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value as any)}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               >
                 <option value="CAMPAMENTO">Campamento</option>
                 <option value="EVENTO">Evento Especial</option>
@@ -242,7 +257,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
               <select
                 value={rubroId ?? ''}
                 onChange={(e) => setRubroId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               >
                 <option value="">Sin rubro contable</option>
                 {rubros.map((r) => (
@@ -272,7 +287,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                   value={montoBase}
                   onChange={(e) => setMontoBase(e.target.value === '' ? '' : Number(e.target.value))}
                   placeholder="25000.00"
-                  className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-bold text-blue-600 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-bold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
             </div>
@@ -287,7 +302,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 max={2100}
                 value={cicloAnio}
                 onChange={(e) => setCicloAnio(Number(e.target.value))}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>
 
@@ -299,7 +314,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 type="date"
                 value={fechaVencimiento}
                 onChange={(e) => setFechaVencimiento(e.target.value)}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
             </div>
           </div>
@@ -322,7 +337,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 type="checkbox"
                 checked={permiteDescuentoHermanos}
                 onChange={(e) => setPermiteDescuentoHermanos(e.target.checked)}
-                className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                className="w-4 h-4 rounded text-brand focus:ring-brand/20"
               />
               <span className="text-sm font-bold text-ink">
                 Permitir descuento por hermanos / grupo familiar
@@ -336,7 +351,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                     type="checkbox"
                     checked={usarPorcentajePersonalizado}
                     onChange={(e) => setUsarPorcentajePersonalizado(e.target.checked)}
-                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                    className="w-4 h-4 rounded text-brand focus:ring-brand/20"
                   />
                   <span>Fijar porcentaje de descuento específico para este cobro</span>
                 </label>
@@ -353,7 +368,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                           setPorcentajeDescuentoHermanos(e.target.value === '' ? '' : Number(e.target.value))
                         }
                         placeholder="Ej. 20"
-                        className="w-full min-h-[42px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-sm font-semibold text-ink"
+                        className="w-full min-h-[42px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-sm font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                       />
                       <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-ink-muted">%</span>
                     </div>
@@ -364,7 +379,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           </div>
 
           {/* Nota informativa */}
-          <div className="p-3.5 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
+          <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 text-xs text-ink-2 leading-relaxed">
             Al guardar, las deudas se asignan y actualizan automáticamente en la cuenta de los miembros seleccionados. Si quitás a alguien que ya había pagado, el dinero pagado pasa automáticamente a su <strong>Saldo a Favor</strong>.
           </div>
 
@@ -380,7 +395,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             <button
               type="submit"
               disabled={guardando}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>

@@ -8,6 +8,7 @@ export interface FormDatosMiembro {
   apellido: string;
   dni: string;
   fechaNacimiento: string;
+  tipoMiembro: 'PROTAGONISTA' | 'EDUCADOR';
   emailContacto: string;
   telefonoContacto: string;
   madreNombres: string;
@@ -129,6 +130,44 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
 
   return (
     <form onSubmit={onGuardarDatos} className="space-y-4">
+      {/* Categoría en el Grupo (independiente del rol de permisos) */}
+      <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div>
+          <span className="text-sm font-bold text-ink block">Categoría en el Grupo</span>
+          <span className="text-xs text-ink-muted block">
+            Define plantilla de legajo y cobros aplicables al miembro.
+          </span>
+        </div>
+        {puedeEditarIdentidad ? (
+          <div className="inline-grid grid-cols-2 rounded-xl bg-paper-3 p-1 gap-1 shrink-0">
+            {(
+              [
+                { id: 'PROTAGONISTA', label: 'Protagonista' },
+                { id: 'EDUCADOR', label: 'Educador / Adulto' },
+              ] as const
+            ).map((op) => {
+              const sel = formData.tipoMiembro === op.id;
+              return (
+                <button
+                  key={op.id}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, tipoMiembro: op.id })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    sel ? 'bg-brand text-brand-contrast shadow-xs' : 'text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {op.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <span className="px-3 py-1 rounded-xl bg-surface border border-rule text-xs font-bold text-ink">
+            {formData.tipoMiembro === 'EDUCADOR' ? 'Educador / Adulto' : 'Protagonista / Beneficiario'}
+          </span>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {campos.map((c) => {
           const valor = mostrarValor(c);

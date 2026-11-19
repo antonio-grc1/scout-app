@@ -154,7 +154,7 @@ export const EventoWorkspacePage: React.FC = () => {
       if (!caps.canSellEventos) {
         requests.push(api.get('/tesoreria/mis-pedidos').catch(() => ({ data: [] })));
       }
-      if (caps.canSellEventos && caps.esGlobal) {
+      if (caps.canCreateGlobalEventos) {
         requests.push(api.get('/tesoreria/cuentas').catch(() => ({ data: [] })));
       }
       if (caps.canSellEventos) {
@@ -171,7 +171,7 @@ export const EventoWorkspacePage: React.FC = () => {
         setMisPedidosPropios(mp.filter((p: any) => Number(p.eventoId) === eventoId));
         idx++;
       }
-      if (caps.canSellEventos && caps.esGlobal) {
+      if (caps.canCreateGlobalEventos) {
         const cList: CuentaOption[] = Array.isArray(results[idx]?.data) ? results[idx].data : [];
         setCuentas(cList);
         if (cList.length > 0) {
@@ -196,7 +196,7 @@ export const EventoWorkspacePage: React.FC = () => {
     } finally {
       setCargando(false);
     }
-  }, [eventoId, caps.canSellEventos, caps.esGlobal]);
+  }, [eventoId, caps.canSellEventos, caps.canCreateGlobalEventos]);
 
   useEffect(() => {
     void cargarTodo();
@@ -430,7 +430,7 @@ export const EventoWorkspacePage: React.FC = () => {
       return;
     }
 
-    const puedeImputarPago = caps.canSellEventos && caps.esGlobal;
+    const puedeImputarPago = caps.canCreateGlobalEventos;
     if (puedeImputarPago && posMetodoPago !== 'PENDIENTE' && !posCuentaId) {
       mostrarToast('Seleccioná la cuenta donde ingresa el pago.', 'error');
       return;
@@ -1082,7 +1082,7 @@ export const EventoWorkspacePage: React.FC = () => {
               disabled={evento.estado !== 'PUBLICADO'}
             />
 
-            {caps.canSellEventos && caps.esGlobal && (
+            {caps.canCreateGlobalEventos && (
               <div className="space-y-2 pt-2 border-t border-rule">
                 <label className="block text-sm font-bold text-ink-2">Estado de cobro</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -1328,7 +1328,7 @@ export const EventoWorkspacePage: React.FC = () => {
                           </td>
                           <td className="py-3 px-4 text-right whitespace-nowrap">
                             <div className="inline-flex items-center gap-1.5">
-                              {caps.canSellEventos && p.estado === 'PENDIENTE' && (
+                              {caps.canCreateGlobalEventos && p.estado === 'PENDIENTE' && (
                                 <Button
                                   type="button"
                                   variant="primary"
@@ -1345,34 +1345,40 @@ export const EventoWorkspacePage: React.FC = () => {
                                   Cobrar
                                 </Button>
                               )}
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                disabled={
-                                  p.gananciaAcreditada || (!caps.canSellEventos && algunoRetirado)
-                                }
-                                onClick={() =>
-                                  setPedidoModalState({
-                                    abierto: true,
-                                    pedido: { ...p, algunoRetirado, preferirCobro: false },
-                                  })
-                                }
-                                leftIcon={<Edit2 className="w-3.5 h-3.5" />}
-                              >
-                                Editar
-                              </Button>
-                              {!algunoRetirado && !p.gananciaAcreditada && (
+                              {(caps.canCreateGlobalEventos ||
+                                (caps.canSellEventos && p.estado !== 'PAGADO')) && (
                                 <Button
                                   type="button"
-                                  variant="danger"
+                                  variant="secondary"
                                   size="sm"
-                                  aria-label={`Eliminar pedido #${p.id}`}
-                                  onClick={() => setPedidoAEliminar(p)}
+                                  disabled={
+                                    p.gananciaAcreditada || (!caps.canSellEventos && algunoRetirado)
+                                  }
+                                  onClick={() =>
+                                    setPedidoModalState({
+                                      abierto: true,
+                                      pedido: { ...p, algunoRetirado, preferirCobro: false },
+                                    })
+                                  }
+                                  leftIcon={<Edit2 className="w-3.5 h-3.5" />}
                                 >
-                                  <Trash2 className="w-3.5 h-3.5" />
+                                  Editar
                                 </Button>
                               )}
+                              {(caps.canCreateGlobalEventos ||
+                                (caps.canSellEventos && p.estado !== 'PAGADO')) &&
+                                !algunoRetirado &&
+                                !p.gananciaAcreditada && (
+                                  <Button
+                                    type="button"
+                                    variant="danger"
+                                    size="sm"
+                                    aria-label={`Eliminar pedido #${p.id}`}
+                                    onClick={() => setPedidoAEliminar(p)}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
                             </div>
                           </td>
                         </tr>
@@ -1454,7 +1460,7 @@ export const EventoWorkspacePage: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-1.5 ml-auto">
-                          {caps.canSellEventos && p.estado === 'PENDIENTE' && (
+                          {caps.canCreateGlobalEventos && p.estado === 'PENDIENTE' && (
                             <Button
                               type="button"
                               variant="primary"
@@ -1470,29 +1476,35 @@ export const EventoWorkspacePage: React.FC = () => {
                               Cobrar
                             </Button>
                           )}
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={
-                              p.gananciaAcreditada || (!caps.canSellEventos && algunoRetirado)
-                            }
-                            onClick={() =>
-                              setPedidoModalState({
-                                abierto: true,
-                                pedido: { ...p, algunoRetirado, preferirCobro: false },
-                              })
-                            }
-                          >
-                            Editar
-                          </Button>
-                          {!algunoRetirado && !p.gananciaAcreditada && (
+                          {(caps.canCreateGlobalEventos ||
+                            (caps.canSellEventos && p.estado !== 'PAGADO')) && (
                             <Button
                               type="button"
-                              variant="danger"
+                              variant="secondary"
                               size="sm"
-                              aria-label="Eliminar pedido"
-                              onClick={() => setPedidoAEliminar(p)}
+                              disabled={
+                                p.gananciaAcreditada || (!caps.canSellEventos && algunoRetirado)
+                              }
+                              onClick={() =>
+                                setPedidoModalState({
+                                  abierto: true,
+                                  pedido: { ...p, algunoRetirado, preferirCobro: false },
+                                })
+                              }
+                            >
+                              Editar
+                            </Button>
+                          )}
+                          {(caps.canCreateGlobalEventos ||
+                            (caps.canSellEventos && p.estado !== 'PAGADO')) &&
+                            !algunoRetirado &&
+                            !p.gananciaAcreditada && (
+                              <Button
+                                type="button"
+                                variant="danger"
+                                size="sm"
+                                aria-label="Eliminar pedido"
+                                onClick={() => setPedidoAEliminar(p)}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>

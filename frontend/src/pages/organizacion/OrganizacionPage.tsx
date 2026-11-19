@@ -90,6 +90,7 @@ export const OrganizacionPage: React.FC = () => {
   const [ramas, setRamas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [mostrarInactivas, setMostrarInactivas] = useState(false);
+  const [mostrarRolesInactivos, setMostrarRolesInactivos] = useState(false);
   const [roles, setRoles] = useState<any[]>([]);
   const [permisosCatalogo, setPermisosCatalogo] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -104,7 +105,8 @@ export const OrganizacionPage: React.FC = () => {
     setCargando(true);
     setError(null);
     try {
-      const qInactivas = mostrarInactivas ? '?incluirInactivas=true' : '';
+      const qInactivas = mostrarInactivas && caps.esGlobal ? '?incluirInactivas=true' : '';
+      const qRolesInactivos = mostrarRolesInactivos && caps.esGlobal ? '?incluirInactivos=true' : '';
       const [resRamas, resUnidades, resRoles, resPermisos] = await Promise.all([
         caps.canViewOrganizacion
           ? api.get(`/organizacion/ramas${qInactivas}`)
@@ -113,7 +115,7 @@ export const OrganizacionPage: React.FC = () => {
           ? api.get(`/organizacion/unidades${qInactivas}`)
           : Promise.resolve({ data: [] }),
         caps.canViewRoles
-          ? api.get('/organizacion/roles').catch(() => ({ data: [] }))
+          ? api.get(`/organizacion/roles${qRolesInactivos}`).catch(() => ({ data: [] }))
           : Promise.resolve({ data: [] }),
         caps.canViewRoles
           ? api.get('/organizacion/permisos').catch(() => ({ data: [] }))
@@ -134,7 +136,14 @@ export const OrganizacionPage: React.FC = () => {
     } finally {
       setCargando(false);
     }
-  }, [caps.canViewOrganizacion, caps.canViewRoles, mostrarInactivas, tabsDisponibles.length]);
+  }, [
+    caps.canViewOrganizacion,
+    caps.canViewRoles,
+    caps.esGlobal,
+    mostrarInactivas,
+    mostrarRolesInactivos,
+    tabsDisponibles.length,
+  ]);
 
   useEffect(() => {
     void cargarDatos();
@@ -249,6 +258,8 @@ export const OrganizacionPage: React.FC = () => {
           <PanelGestorRoles
             roles={roles}
             permisosCatalogo={permisosCatalogo}
+            mostrarInactivos={mostrarRolesInactivos}
+            onToggleMostrarInactivos={setMostrarRolesInactivos}
             onRecargar={async () => {
               await cargarDatos();
               await refrescarSesionDesdeServidor();

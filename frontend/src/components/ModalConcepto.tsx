@@ -16,11 +16,7 @@ import { api } from '../api/client';
 import { ModalCrearRubro } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { useAuthStore } from '../store/authStore';
-import {
-  filtrarUnidadesPorAlcance,
-  obtenerUnidadesEnAlcanceIds,
-  puedeModificarPorAlcanceUnidad,
-} from '../lib/permisos';
+import { puedeModificarPorAlcanceUnidad } from '../lib/permisos';
 
 export interface ConceptoData {
   id?: number;
@@ -63,21 +59,27 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
   concepto,
   unidades,
 }) => {
-  const { tieneGlobal, tienePermiso, asignaciones } = useAuthStore();
-  const esGlobal = tieneGlobal();
+  const {
+    tienePermisoGlobal,
+    tienePermisoUnidadOGlobal,
+    obtenerUnidadesConPermiso,
+    asignaciones,
+  } = useAuthStore();
+  const esGlobal = tienePermisoGlobal(['planes.editar', 'caja.editar']);
   const unidadesEnAlcanceIds = useMemo(
-    () => obtenerUnidadesEnAlcanceIds(asignaciones),
-    [asignaciones],
+    () => obtenerUnidadesConPermiso(['planes.editar', 'caja.editar']),
+    [obtenerUnidadesConPermiso, asignaciones],
   );
   const unidadesPermitidas = useMemo(
-    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
-    [unidades, esGlobal, asignaciones],
+    () =>
+      esGlobal
+        ? unidades
+        : unidades.filter((u) => unidadesEnAlcanceIds.includes(u.id)),
+    [unidades, esGlobal, unidadesEnAlcanceIds],
   );
-  const puedeVerRubros =
-    tienePermiso('caja.ver') ||
-    tienePermiso('planes.ver');
+  const puedeVerRubros = tienePermisoUnidadOGlobal(['caja.ver', 'planes.ver', 'caja.editar']);
   const puedeGestionarRubros =
-    tienePermiso('caja.editar') && (esGlobal || unidadesPermitidas.length > 0);
+    tienePermisoUnidadOGlobal('caja.editar') && (esGlobal || unidadesPermitidas.length > 0);
 
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState('CUOTA_MENSUAL');

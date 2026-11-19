@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { EstadoEntrega } from '@prisma/client';
 import type { AlcanceAcceso, AuthUser } from '../src/common/types/auth.types.js';
 import { LegajosService, CAMPOS_DATOS_FIJOS_PERMITIDOS, CAMPOS_FAMILIARES_PERMITIDOS_COMPARTIR } from '../src/legajos/legajos.service.js';
@@ -383,6 +383,35 @@ describe('BLOQUE 3 - Backend Legajos, Formularios de Salud y Auditoría Médica'
             fechaGeneracionPdf: null,
           }),
         }),
+      );
+    });
+
+    it('COD-08: obtenerPlantilla oculta plantillas inactivas a no-GLOBAL y validarFisico bloquea autovalidación', async () => {
+      const mockPrisma: any = {
+        plantillaFormulario: {
+          findUnique: vi.fn().mockResolvedValue({ id: 9, titulo: 'Vieja 2024', activa: false }),
+        },
+        entregaFormulario: {
+          findFirst: vi.fn().mockResolvedValue({
+            id: 55,
+            estado: EstadoEntrega.PENDIENTE_FIRMA_FISICA,
+            hashVerificacion: 'hash-propio',
+            usuario: {
+              id: actorEducador.sub,
+              activo: true,
+              asignaciones: [{ unidadId: 1 }],
+            },
+          }),
+        },
+      };
+      const service = new LegajosService(mockPrisma);
+
+      await expect(service.obtenerPlantilla(9, { tipo: 'UNIDAD', unidadIds: [1] })).rejects.toThrow(NotFoundException);
+      const visibleGlobal = await service.obtenerPlantilla(9, { tipo: 'GLOBAL' });
+      expect(visibleGlobal.id).toBe(9);
+
+      await expect(service.validarFisico(actorEducador, alcanceGlobal, 'hash-propio')).rejects.toThrow(
+        ForbiddenException,
       );
     });
   });

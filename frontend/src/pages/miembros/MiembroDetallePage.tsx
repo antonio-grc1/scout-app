@@ -69,7 +69,7 @@ export const MiembroDetallePage: React.FC = () => {
           <span>Volver a Miembros</span>
         </Link>
 
-        <span className="text-[13px] font-bold text-ink-muted">Expediente 360° #{usuarioId}</span>
+        <span className="text-[13px] font-bold text-ink-muted">Expediente #{usuarioId}</span>
       </div>
 
       <div className="s-card rounded-2xl p-5 sm:p-6">

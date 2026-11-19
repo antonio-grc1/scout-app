@@ -15,6 +15,7 @@ import { TipoEvento } from '@prisma/client';
 import {
   Alcance,
   CurrentUser,
+  PermitirAutogestionPropia,
   RequireAnyPermission,
   RequirePermission,
 } from '../common/decorators/auth.decorators.js';
@@ -248,7 +249,8 @@ export class TesoreriaController {
     return this.tesoreria.listarCargos(a, q);
   }
 
-  @RequirePermission(CUOTAS_VER)
+  @RequireAnyPermission(CUOTAS_VER, CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @PermitirAutogestionPropia()
   @Get('estado-cuenta/:usuarioId')
   obtenerEstadoCuenta(
     @Alcance() a: AlcanceAcceso,
@@ -363,7 +365,14 @@ export class TesoreriaController {
   }
 
   // ---------------- Cuentas Financieras, Libro Diario y Transferencias (Fase 1) ----------------
-  @RequireAnyPermission(TESORERIA_CAJA, CUOTAS_COBRAR, TESORERIA_GESTIONAR, EVENTOS_VENDER, EVENTOS_GESTIONAR)
+  @RequireAnyPermission(
+    TESORERIA_CAJA,
+    TESORERIA_GASTOS,
+    CUOTAS_COBRAR,
+    TESORERIA_GESTIONAR,
+    EVENTOS_VENDER,
+    EVENTOS_GESTIONAR,
+  )
   @Get('cuentas')
   listarCuentas(
     @Alcance() a: AlcanceAcceso,
@@ -372,7 +381,7 @@ export class TesoreriaController {
     return this.tesoreria.listarCuentasFinancieras(a, incluirInactivas);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Post('cuentas')
   crearCuenta(
     @CurrentUser() u: AuthUser,
@@ -382,7 +391,7 @@ export class TesoreriaController {
     return this.tesoreria.crearCuentaFinanciera(u, a, dto);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Patch('cuentas/:id')
   actualizarCuenta(
     @CurrentUser() u: AuthUser,
@@ -393,7 +402,7 @@ export class TesoreriaController {
     return this.tesoreria.actualizarCuentaFinanciera(u, a, id, dto);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Delete('cuentas/:id')
   eliminarCuenta(
     @CurrentUser() u: AuthUser,
@@ -403,7 +412,7 @@ export class TesoreriaController {
     return this.tesoreria.eliminarCuentaFinanciera(u, a, id);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Post('cuentas/:id/restaurar')
   restaurarCuenta(
     @CurrentUser() u: AuthUser,
@@ -423,7 +432,7 @@ export class TesoreriaController {
     return this.tesoreria.obtenerLibroDiario(a, id, query);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Post('transferencias')
   transferir(
     @CurrentUser() u: AuthUser,
@@ -434,7 +443,14 @@ export class TesoreriaController {
   }
 
   // ---------------- Rubros Contables (Fase 2) ----------------
-  @RequireAnyPermission(TESORERIA_CAJA, TESORERIA_GASTOS, TESORERIA_GESTIONAR, PLANES_VER, TESORERIA_CONCEPTOS)
+  @RequireAnyPermission(
+    TESORERIA_CAJA,
+    TESORERIA_GASTOS,
+    TESORERIA_GESTIONAR,
+    PLANES_VER,
+    TESORERIA_CONCEPTOS,
+    EVENTOS_GESTIONAR,
+  )
   @Get('rubros')
   listarRubros(
     @Alcance() a: AlcanceAcceso,
@@ -443,7 +459,7 @@ export class TesoreriaController {
     return this.tesoreria.listarRubrosContables(a, query);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_CONCEPTOS, TESORERIA_GESTIONAR)
   @Post('rubros')
   crearRubro(
     @Alcance() a: AlcanceAcceso,
@@ -452,7 +468,7 @@ export class TesoreriaController {
     return this.tesoreria.crearRubroContable(a, dto);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_CONCEPTOS, TESORERIA_GESTIONAR)
   @Patch('rubros/:id')
   actualizarRubro(
     @Alcance() a: AlcanceAcceso,
@@ -462,7 +478,7 @@ export class TesoreriaController {
     return this.tesoreria.actualizarRubroContable(a, id, dto);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_CONCEPTOS, TESORERIA_GESTIONAR)
   @Delete('rubros/:id')
   eliminarRubro(
     @Alcance() a: AlcanceAcceso,
@@ -471,7 +487,7 @@ export class TesoreriaController {
     return this.tesoreria.eliminarRubroContable(a, id);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_CONCEPTOS, TESORERIA_GESTIONAR)
   @Post('rubros/:id/restaurar')
   restaurarRubro(
     @Alcance() a: AlcanceAcceso,
@@ -532,7 +548,7 @@ export class TesoreriaController {
   }
 
   // ---------------- Ingresos Directos / Manuales ----------------
-  @RequireAnyPermission(TESORERIA_CAJA, TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_CAJA, TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Get('ingresos')
   listarIngresos(
     @Alcance() a: AlcanceAcceso,
@@ -541,7 +557,7 @@ export class TesoreriaController {
     return this.tesoreria.listarIngresos(a, query);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Post('ingresos')
   registrarIngreso(
     @CurrentUser() u: AuthUser,
@@ -551,7 +567,7 @@ export class TesoreriaController {
     return this.tesoreria.registrarIngreso(u, a, dto);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Patch('ingresos/:id')
   actualizarIngreso(
     @CurrentUser() u: AuthUser,
@@ -562,7 +578,7 @@ export class TesoreriaController {
     return this.tesoreria.actualizarIngreso(u, a, id, dto);
   }
 
-  @RequirePermission(TESORERIA_GESTIONAR)
+  @RequireAnyPermission(TESORERIA_GASTOS, TESORERIA_GESTIONAR)
   @Delete('ingresos/:id')
   eliminarIngreso(
     @CurrentUser() u: AuthUser,
@@ -682,13 +698,15 @@ export class TesoreriaController {
     return this.tesoreria.acreditarGananciasEvento(u, a, dto);
   }
 
-  @RequirePermission(EVENTOS_VER)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
+  @PermitirAutogestionPropia()
   @Get('mis-tickets')
   obtenerMisTickets(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisTickets(u);
   }
 
-  @RequirePermission(EVENTOS_VER)
+  @RequireAnyPermission(EVENTOS_VER, EVENTOS_VENDER, EVENTOS_GESTIONAR, TESORERIA_GESTIONAR)
+  @PermitirAutogestionPropia()
   @Get('mis-pedidos')
   obtenerMisPedidos(@CurrentUser() u: AuthUser) {
     return this.tesoreria.obtenerMisPedidos(u);

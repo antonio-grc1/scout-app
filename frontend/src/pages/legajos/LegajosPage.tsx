@@ -33,6 +33,7 @@ import {
   obtenerNombreUnidadActiva,
 } from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
+import { useAuthStore } from '../../store/authStore';
 import { useToastStore } from '../../store/toastStore';
 import {
   esErrorOffline,
@@ -91,13 +92,16 @@ export const LegajosPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const caps = useCapabilities();
+  const usuarioActual = useAuthStore((s) => s.usuario);
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const esGlobalPlantillas = tienePermisoGlobal(['plantillas.ver', 'plantillas.editar']);
   const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
   const abrirQr = useQrModalStore((s) => s.abrirQr);
   const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
 
   const puedeVerPlantillasTab =
-    caps.esGlobal && caps.hasAnyPermiso('plantillas.ver', 'plantillas.editar');
+    esGlobalPlantillas && caps.hasAnyPermiso('plantillas.ver', 'plantillas.editar');
   const tabUrl = searchParams.get('tab') as TabLegajos | null;
   const tabInicial: TabLegajos =
     tabUrl === 'plantillas' && puedeVerPlantillasTab
@@ -228,7 +232,7 @@ export const LegajosPage: React.FC = () => {
     setCargandoPlantillas(true);
     try {
       const res = await api.get(
-        `/legajos/plantillas${caps.esGlobal ? '?incluirInactivas=true' : ''}`,
+        `/legajos/plantillas${esGlobalPlantillas ? '?incluirInactivas=true' : ''}`,
       );
       setPlantillasAdmin(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
@@ -238,7 +242,7 @@ export const LegajosPage: React.FC = () => {
     } finally {
       setCargandoPlantillas(false);
     }
-  }, [caps.esGlobal, mostrarToast]);
+  }, [esGlobalPlantillas, mostrarToast]);
 
   useEffect(() => {
     if (tab === 'cumplimiento') void cargarCumplimiento();
@@ -790,6 +794,7 @@ export const LegajosPage: React.FC = () => {
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
                         {caps.canValidateQr &&
+                          miembro?.id !== usuarioActual?.id &&
                           estado === 'LISTO_PARA_FIRMA' &&
                           entrega?.hashVerificacion && (
                             <Button

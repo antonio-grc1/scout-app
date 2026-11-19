@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
+import { puedeModificarPorAlcanceUnidad } from '../lib/permisos';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { X, PlusCircle, AlertCircle, Pencil, ArrowDownRight } from 'lucide-react';
@@ -34,6 +36,7 @@ export interface RubroItem {
   id: number;
   nombre: string;
   tipo: 'INGRESO' | 'EGRESO';
+  unidadId?: number | null;
   permiteDescuentoDefault: boolean;
 }
 
@@ -54,6 +57,23 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
   cuentaIdInicial,
 }) => {
   const esModoEdicion = Boolean(ingresoAEditar);
+  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const obtenerUnidadesConPermiso = useAuthStore((s) => s.obtenerUnidadesConPermiso);
+  const esGlobalRubros = tienePermisoGlobal([
+    'caja.editar',
+    'planes.editar',
+    'caja.editar',
+  ]);
+  const unidadesRubrosIds = useMemo(
+    () =>
+      obtenerUnidadesConPermiso([
+        'caja.editar',
+        'planes.editar',
+        'caja.editar',
+      ]),
+    [asignaciones, obtenerUnidadesConPermiso],
+  );
 
   const [fecha, setFecha] = useState(ahoraLocalDatetime());
   const [monto, setMonto] = useState<string>('');
@@ -294,7 +314,11 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
                   Rubro / Categoría de Ingreso *
                 </label>
                 <div className="flex items-center gap-2.5">
-                  {rubroId && (
+                  {rubroId &&
+                    puedeModificarPorAlcanceUnidad(
+                      rubros.find((x) => x.id === rubroId)?.unidadId ?? null,
+                      { esGlobal: esGlobalRubros, unidadesEnAlcanceIds: unidadesRubrosIds },
+                    ) && (
                     <button
                       type="button"
                       onClick={() => {
@@ -304,6 +328,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
                             id: r.id,
                             nombre: r.nombre,
                             tipo: r.tipo,
+                            unidadId: r.unidadId ?? null,
                             permiteDescuentoDefault: r.permiteDescuentoDefault,
                           });
                           setModalNuevoRubroAbierto(true);

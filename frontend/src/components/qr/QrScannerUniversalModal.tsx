@@ -31,6 +31,7 @@ import {
   obtenerRolPrincipal,
   traducirErrorAmigable,
 } from '../../lib/formatters';
+import { useAuthStore } from '../../store/authStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
 import { Button } from '../ui/Button';
@@ -101,11 +102,13 @@ function playFeedbackTone(frequency: number) {
 export const QrScannerUniversalModal: React.FC = () => {
   const { abierto, scopeInicial, cerrarQr, notificarValidacion } = useQrModalStore();
   const caps = useCapabilities();
+  const usuarioActual = useAuthStore((s) => s.usuario);
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
 
   const puedeLegajo = caps.canValidateQr;
   const puedeEvento = caps.canSellEventos;
+  const puedeCobrarEventoPuerta = caps.canCreateGlobalEventos;
   const tieneAmbos = puedeLegajo && puedeEvento;
 
   const resolverScopeInicial = useCallback(
@@ -212,7 +215,7 @@ export const QrScannerUniversalModal: React.FC = () => {
       setErrorCobro(null);
       setErrorCuentas(null);
 
-      if (caps.esGlobal) {
+      if (caps.canCreateGlobalEventos) {
         setCargandoCuentas(true);
         try {
           const res = await api.get('/tesoreria/cuentas');
@@ -232,7 +235,7 @@ export const QrScannerUniversalModal: React.FC = () => {
         setCuentas([]);
       }
     },
-    [caps.esGlobal, limpiarCooldown, seleccionarCuentaPorMetodo],
+    [caps.canCreateGlobalEventos, limpiarCooldown, seleccionarCuentaPorMetodo],
   );
 
   const procesarLegajo = useCallback(
@@ -282,7 +285,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           );
           const resolvedPedidoId = data.pedidoId || data.ticket?.pedidoId;
 
-          if (esPendiente && resolvedPedidoId) {
+          if (esPendiente && resolvedPedidoId && puedeCobrarEventoPuerta) {
             void abrirSubVistaCobro({
               pedidoId: resolvedPedidoId,
               monto: data.montoPendiente || data.ticket?.pedidoTotal || 0,
@@ -318,6 +321,7 @@ export const QrScannerUniversalModal: React.FC = () => {
       mostrarToast,
       notificarValidacion,
       abrirSubVistaCobro,
+      puedeCobrarEventoPuerta,
       continuo,
       programarResetScan,
     ],
@@ -453,11 +457,11 @@ export const QrScannerUniversalModal: React.FC = () => {
       return;
     }
 
-    if (caps.esGlobal && errorCuentas) {
+    if (caps.canCreateGlobalEventos && errorCuentas) {
       setErrorCobro(errorCuentas);
       return;
     }
-    if (caps.esGlobal && !cuentaId && cuentas.length > 0) {
+    if (caps.canCreateGlobalEventos && !cuentaId && cuentas.length > 0) {
       setErrorCobro('Seleccioná la cuenta financiera donde ingresa el dinero.');
       return;
     }
@@ -467,7 +471,7 @@ export const QrScannerUniversalModal: React.FC = () => {
     try {
       const payload: Record<string, unknown> = {
         metodoPago,
-        cuentaId: caps.esGlobal && cuentaId ? Number(cuentaId) : undefined,
+        cuentaId: caps.canCreateGlobalEventos && cuentaId ? Number(cuentaId) : undefined,
       };
       if (observaciones.trim()) {
         payload.observaciones = observaciones.trim();
@@ -750,7 +754,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                   </div>
                 </div>
 
-                {caps.esGlobal && (
+                {caps.canCreateGlobalEventos && (
                   <div>
                     <label htmlFor="qr-cuenta-destino" className="block text-[13px] font-bold text-ink mb-1.5">
                       Cuenta de destino
@@ -984,7 +988,8 @@ export const QrScannerUniversalModal: React.FC = () => {
                 </Button>
 
                 {resultadoLegajo.estado !== 'VALIDADO_FISICAMENTE' &&
-                  resultadoLegajo.estado !== 'DESACTUALIZADO_REQUIERE_REIMPRESION' && (
+                  resultadoLegajo.estado !== 'DESACTUALIZADO_REQUIERE_REIMPRESION' &&
+                  resultadoLegajo.usuario?.id !== usuarioActual?.id && (
                     <Button
                       type="button"
                       variant="primary"
@@ -1037,30 +1042,32 @@ export const QrScannerUniversalModal: React.FC = () => {
                           )}
                           )
                         </span>
-                        <Button
-                          type="button"
-                          variant="primary"
-                          size="sm"
-                          onClick={() => {
-                            const pId =
-                              resultadoEvento.pedidoId || resultadoEvento.ticket?.pedidoId;
-                            if (!pId) return;
-                            void abrirSubVistaCobro({
-                              pedidoId: pId,
-                              monto:
-                                resultadoEvento.montoPendiente ||
-                                resultadoEvento.ticket?.pedidoTotal ||
-                                0,
-                              comprador: resultadoEvento.ticket?.comprador || 'Comprador',
-                              producto: resultadoEvento.ticket?.producto,
-                              cantidad: resultadoEvento.ticket?.cantidad,
-                              evento: resultadoEvento.ticket?.evento,
-                              vendedor: resultadoEvento.ticket?.vendedor,
-                            });
-                          }}
-                        >
-                          Cobrar en Puerta
-                        </Button>
+                        {puedeCobrarEventoPuerta && (
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            onClick={() => {
+                              const pId =
+                                resultadoEvento.pedidoId || resultadoEvento.ticket?.pedidoId;
+                              if (!pId) return;
+                              void abrirSubVistaCobro({
+                                pedidoId: pId,
+                                monto:
+                                  resultadoEvento.montoPendiente ||
+                                  resultadoEvento.ticket?.pedidoTotal ||
+                                  0,
+                                comprador: resultadoEvento.ticket?.comprador || 'Comprador',
+                                producto: resultadoEvento.ticket?.producto,
+                                cantidad: resultadoEvento.ticket?.cantidad,
+                                evento: resultadoEvento.ticket?.evento,
+                                vendedor: resultadoEvento.ticket?.vendedor,
+                              });
+                            }}
+                          >
+                            Cobrar en Puerta
+                          </Button>
+                        )}
                       </div>
                     )}
 

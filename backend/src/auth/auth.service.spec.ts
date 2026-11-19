@@ -1,8 +1,10 @@
 import { BadRequestException, HttpException } from '@nestjs/common';
+import { AlcanceRol } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { describe, expect, it, vi } from 'vitest';
 import type { AuthUser } from '../common/types/auth.types.js';
 import { MailerService } from '../mailer/mailer.service.js';
+import { AuthController } from './auth.controller.js';
 import { CambiarClaveSchema } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 import { LoginRateLimitGuard } from './login-rate-limit.guard.js';
@@ -307,11 +309,21 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
     );
     expect(jwt.signAsync).toHaveBeenCalledWith(expect.objectContaining({ tokenVersion: 2 }));
 
-    const resReset = await service.resetearClave(
-      { sub: 1, dni: '11111111', requiereCambioClave: false, asignaciones: [] },
-      { tipo: 'GLOBAL' },
-      7,
-    );
+    const actorAdminReset: AuthUser = {
+      sub: 1,
+      dni: '11111111',
+      requiereCambioClave: false,
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Admin',
+          alcance: AlcanceRol.GLOBAL,
+          permisos: ['padron.editar'],
+        },
+      ],
+    };
+    const resReset = await service.resetearClave(actorAdminReset, { tipo: 'GLOBAL' }, 7);
     expect(resReset.claveTemporal).toBeDefined();
     expect(resReset.claveTemporal).not.toBe('40111222');
     expect(resReset.claveTemporal?.length).toBeGreaterThanOrEqual(8);
@@ -347,6 +359,21 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
     expect(sent.html).not.toContain('<script>');
   });
 
+  const actorAdminReset: AuthUser = {
+    sub: 1,
+    dni: '11111111',
+    requiereCambioClave: false,
+    asignaciones: [
+      {
+        unidadId: 1,
+        unidadNombre: 'Jefatura',
+        rol: 'Admin',
+        alcance: AlcanceRol.GLOBAL,
+        permisos: ['padron.editar'],
+      },
+    ],
+  };
+
   it('AuthService.resetearClave envía la nueva clave temporal por correo cuando el usuario tiene emailContacto', async () => {
     const prisma: any = {
       usuario: {
@@ -368,7 +395,7 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
     const service = new AuthService(prisma, jwt, mailer);
 
     const res = await service.resetearClave(
-      { sub: 1, dni: '11111111', requiereCambioClave: false, asignaciones: [] },
+      actorAdminReset,
       { tipo: 'GLOBAL' },
       7,
     );
@@ -406,7 +433,7 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
     const service = new AuthService(prisma, jwt, mailer);
 
     const res = await service.resetearClave(
-      { sub: 1, dni: '11111111', requiereCambioClave: false, asignaciones: [] },
+      actorAdminReset,
       { tipo: 'GLOBAL' },
       7,
       { soloPorCorreo: true },
@@ -420,7 +447,7 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
     mailer.estaDisponibleParaEnvio.mockResolvedValue(false);
     await expect(
       service.resetearClave(
-        { sub: 1, dni: '11111111', requiereCambioClave: false, asignaciones: [] },
+        actorAdminReset,
         { tipo: 'GLOBAL' },
         7,
         { soloPorCorreo: true },
@@ -505,5 +532,130 @@ describe('LoginRateLimitGuard (P1-6) y MailerService (P3-1)', () => {
       fuente: 'db',
     });
     expect(await mailer.estaDisponibleParaEnvio()).toBe(true);
+  });
+});
+
+describe('Etapa 3: JWT liviano, Cookie-Only y Revocación Real en Logout', () => {
+  it('ARQ-06: emitirSesion firma solo { sub, dni, tokenVersion } sin asignaciones ni permisos en el JWT', async () => {
+    const hash = await bcrypt.hash('scout2026', 6);
+    const signAsync = vi.fn().mockResolvedValue('jwt-liviano');
+    const prisma: any = {
+      usuario: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 5,
+          dni: '40111222',
+          nombre: 'Juan',
+          apellido: 'Pérez',
+          passwordHash: hash,
+          activo: true,
+          requiereCambioClave: false,
+          tokenVersion: 4,
+          asignaciones: [
+            {
+              unidadId: 1,
+              unidad: { id: 1, nombre: 'Manada', activa: true },
+              rol: {
+                id: 2,
+                nombre: 'Educador de Rama',
+                tipoMiembro: 'EDUCADOR',
+                requiereRama: true,
+                tipoUnidad: 'SECCION_RAMA',
+                activo: true,
+                alcancePorDefecto: AlcanceRol.UNIDAD,
+                permisos: [{ permiso: { clave: 'padron.ver' } }],
+              },
+            },
+          ],
+        }),
+      },
+    };
+    const service = new AuthService(prisma, { signAsync } as any);
+    const sesion = await service.login({ dni: '40111222', password: 'scout2026' });
+
+    expect(signAsync).toHaveBeenCalledTimes(1);
+    expect(signAsync).toHaveBeenCalledWith({
+      sub: 5,
+      dni: '40111222',
+      tokenVersion: 4,
+    });
+    expect(sesion.asignaciones).toHaveLength(1);
+  });
+
+  it('A7 & COD-05: AuthService.logout revoca tokenVersion si cookie es válida e ignora tokens inválidos', async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const verifyAsync = vi
+      .fn()
+      .mockResolvedValueOnce({ sub: 5, dni: '40111222', tokenVersion: 4 })
+      .mockRejectedValueOnce(new Error('expired'));
+    const prisma: any = { usuario: { updateMany } };
+    const service = new AuthService(prisma, { verifyAsync } as any);
+
+    await service.logout('token-valido');
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 5, tokenVersion: 4 },
+      data: { tokenVersion: { increment: 1 } },
+    });
+
+    await expect(service.logout('token-vencido')).resolves.toBeUndefined();
+    await expect(service.logout(null)).resolves.toBeUndefined();
+    expect(updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('A7: AuthController responde solo cookie HttpOnly (sin accessToken en JSON) y logout revoca y limpia cookie', async () => {
+    const hash = await bcrypt.hash('scout2026', 6);
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const prisma: any = {
+      usuario: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 5,
+          dni: '40111222',
+          nombre: 'Juan',
+          apellido: 'Pérez',
+          passwordHash: hash,
+          activo: true,
+          requiereCambioClave: false,
+          tokenVersion: 2,
+          asignaciones: [],
+        }),
+        updateMany,
+      },
+    };
+    const jwt: any = {
+      signAsync: vi.fn().mockResolvedValue('cookie-jwt-secret'),
+      verifyAsync: vi.fn().mockResolvedValue({ sub: 5, dni: '40111222', tokenVersion: 2 }),
+    };
+    const authService = new AuthService(prisma, jwt);
+    const controller = new AuthController(authService);
+
+    const resMock: any = { cookie: vi.fn(), clearCookie: vi.fn() };
+    const loginBody: any = await controller.login({ dni: '40111222', password: 'scout2026' }, resMock);
+
+    expect(resMock.cookie).toHaveBeenCalledWith(
+      'scout_access_token',
+      'cookie-jwt-secret',
+      expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/' }),
+    );
+    expect(loginBody.accessToken).toBeUndefined();
+    expect(loginBody.usuario).toEqual({ id: 5, dni: '40111222', nombre: 'Juan', apellido: 'Pérez' });
+
+    const meBody: any = await controller.me(
+      { sub: 5, dni: '40111222', requiereCambioClave: false, asignaciones: [] },
+      resMock,
+    );
+    expect(meBody.accessToken).toBeUndefined();
+
+    const logoutRes = await controller.logout(
+      { headers: { cookie: 'scout_access_token=cookie-jwt-secret' } } as any,
+      resMock,
+    );
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 5, tokenVersion: 2 },
+      data: { tokenVersion: { increment: 1 } },
+    });
+    expect(resMock.clearCookie).toHaveBeenCalledWith(
+      'scout_access_token',
+      expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/' }),
+    );
+    expect(logoutRes).toEqual({ ok: true });
   });
 });

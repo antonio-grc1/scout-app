@@ -2,7 +2,10 @@ import { ForbiddenException, HttpStatus, UnauthorizedException, type ExecutionCo
 import { Reflector } from '@nestjs/core';
 import { AlcanceRol, Prisma } from '@prisma/client';
 import { vi } from 'vitest';
-import { REQUIRED_PERMISSION_KEY } from '../decorators/auth.decorators.js';
+import {
+  PERMITIR_AUTOGESTION_PROPIA_KEY,
+  REQUIRED_PERMISSION_KEY,
+} from '../decorators/auth.decorators.js';
 import { PrismaExceptionFilter } from '../filters/prisma-exception.filter.js';
 import { extraerTokenDeRequest, JwtAuthGuard } from './jwt-auth.guard.js';
 import { filtroUsuariosPorAlcance, resolverAlcance } from '../scope/alcance.util.js';
@@ -91,9 +94,14 @@ describe('filtroUsuariosPorAlcance', () => {
 });
 
 describe('ScopedRbacGuard', () => {
-  const ctxCon = (req: Partial<AuthenticatedRequest>, permiso?: string | string[]): ExecutionContext => {
+  const ctxCon = (
+    req: Partial<AuthenticatedRequest>,
+    permiso?: string | string[],
+    autogestionPropia = false,
+  ): ExecutionContext => {
     const handler = () => undefined;
     if (permiso) Reflect.defineMetadata(REQUIRED_PERMISSION_KEY, permiso, handler);
+    if (autogestionPropia) Reflect.defineMetadata(PERMITIR_AUTOGESTION_PROPIA_KEY, true, handler);
     return {
       getHandler: () => handler,
       getClass: () => class {},
@@ -130,11 +138,31 @@ describe('ScopedRbacGuard', () => {
     ).toThrow(ForbiddenException);
   });
 
-  it('P1-1: resolverAlcance no habilita PROPIO en arrays alternativos ni sin asignaciones activas', () => {
+  it('ARQ-04 & COD-01: bloquea sin @PermitirAutogestionPropia aunque el permiso fuese legajos.ver/cuotas.ver/miembros.ver, y habilita PROPIO solo con decorador explícito', () => {
     expect(resolverAlcance(user(), 'legajos.ver')).toBeNull();
+    expect(
+      resolverAlcance(user(asig(1, AlcanceRol.UNIDAD, ['eventos.editar'])), 'legajos.ver'),
+    ).toBeNull();
+    expect(
+      resolverAlcance(user(asig(1, AlcanceRol.UNIDAD, ['eventos.editar'])), 'cobranzas.ver'),
+    ).toBeNull();
     expect(
       resolverAlcance(user(asig(1, AlcanceRol.UNIDAD, ['eventos.editar'])), ['cobranzas.ver', 'caja.editar']),
     ).toBeNull();
+
+    // Sin @PermitirAutogestionPropia: ForbiddenException
+    const sinPermisoUser = user(asig(1, AlcanceRol.PROPIO, ['eventos.ver']));
+    expect(() => guard.canActivate(ctxCon({ user: sinPermisoUser }, 'legajos.ver', false))).toThrow(
+      ForbiddenException,
+    );
+
+    // Con @PermitirAutogestionPropia y al menos 1 asignación activa: habilita PROPIO
+    const reqAutogestion: Partial<AuthenticatedRequest> = { user: sinPermisoUser };
+    expect(guard.canActivate(ctxCon(reqAutogestion, ['cobranzas.ver', 'cobranzas.editar'], true))).toBe(true);
+    expect(reqAutogestion.alcance).toEqual({ tipo: 'PROPIO', usuarioId: 104 });
+
+    // Con @PermitirAutogestionPropia pero sin asignaciones activas: bloquea
+    expect(() => guard.canActivate(ctxCon({ user: user() }, 'legajos.ver', true))).toThrow(ForbiddenException);
   });
 });
 
@@ -167,8 +195,8 @@ describe('PrismaExceptionFilter (P1-17)', () => {
   });
 });
 
-describe('JwtAuthGuard (P2)', () => {
-  it('hidrata usuario con select mínimo en lugar de include completo', async () => {
+describe('JwtAuthGuard (P2 & Etapa 3 Cookie-Only)', () => {
+  it('hidrata usuario con select mínimo en lugar de include completo desde cookie HttpOnly', async () => {
     const findUnique = vi.fn().mockResolvedValue({
       id: 10,
       dni: '12345678',
@@ -177,13 +205,14 @@ describe('JwtAuthGuard (P2)', () => {
       asignaciones: [
         {
           unidadId: 2,
-          alcanceOverride: null,
           unidad: { nombre: 'Manada', activa: true },
           rol: {
             id: 3,
             nombre: 'Educador',
             tipoMiembro: 'EDUCADOR',
             requiereRama: true,
+            tipoUnidad: 'SECCION_RAMA',
+            activo: true,
             alcancePorDefecto: AlcanceRol.UNIDAD,
             permisos: [{ permiso: { clave: 'padron.ver' } }],
           },
@@ -192,10 +221,10 @@ describe('JwtAuthGuard (P2)', () => {
     });
     const guard = new JwtAuthGuard(
       new Reflector(),
-      { verifyAsync: vi.fn().mockResolvedValue({ sub: 10 }) } as any,
+      { verifyAsync: vi.fn().mockResolvedValue({ sub: 10, dni: '12345678', tokenVersion: 1 }) } as any,
       { usuario: { findUnique } } as any,
     );
-    const req: any = { headers: { authorization: 'Bearer token-valido' } };
+    const req: any = { headers: { cookie: 'scout_access_token=token-valido' } };
     const ctx = {
       getHandler: () => () => undefined,
       getClass: () => class {},
@@ -220,10 +249,10 @@ describe('JwtAuthGuard (P2)', () => {
     });
     const guard = new JwtAuthGuard(
       new Reflector(),
-      { verifyAsync: vi.fn().mockResolvedValue({ sub: 10, tokenVersion: 2 }) } as any,
+      { verifyAsync: vi.fn().mockResolvedValue({ sub: 10, dni: '12345678', tokenVersion: 2 }) } as any,
       { usuario: { findUnique } } as any,
     );
-    const req: any = { headers: { authorization: 'Bearer token-revocado' } };
+    const req: any = { headers: { cookie: 'scout_access_token=token-revocado' } };
     const ctx = {
       getHandler: () => () => undefined,
       getClass: () => class {},
@@ -233,23 +262,36 @@ describe('JwtAuthGuard (P2)', () => {
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
   });
 
-  it('extraerTokenDeRequest y JwtAuthGuard aceptan cookie HttpOnly scout_access_token además de Bearer', async () => {
-    expect(extraerTokenDeRequest({ headers: { authorization: 'Bearer tok-header' } })).toBe('tok-header');
+  it('A7 & ARQ-06: extraerTokenDeRequest solo acepta cookie scout_access_token (ignora Bearer) y JwtAuthGuard falla cerrado sin Prisma', async () => {
+    expect(extraerTokenDeRequest({ headers: { authorization: 'Bearer tok-header' } })).toBeNull();
     expect(
       extraerTokenDeRequest({ headers: { cookie: 'pref=1; scout_access_token=tok%2Dcookie; otro=2' } }),
     ).toBe('tok-cookie');
     expect(extraerTokenDeRequest({ headers: {} })).toBeNull();
+
+    const guardSinPrisma = new JwtAuthGuard(
+      new Reflector(),
+      { verifyAsync: vi.fn().mockResolvedValue({ sub: 10, dni: '12345678', tokenVersion: 1 }) } as any,
+    );
+    const reqSinPrisma: any = { headers: { cookie: 'scout_access_token=jwt-en-cookie' } };
+    const ctxSinPrisma = {
+      getHandler: () => () => undefined,
+      getClass: () => class {},
+      switchToHttp: () => ({ getRequest: () => reqSinPrisma }),
+    } as any;
+    await expect(guardSinPrisma.canActivate(ctxSinPrisma)).rejects.toThrow(UnauthorizedException);
 
     const findUnique = vi.fn().mockResolvedValue({
       id: 10,
       dni: '12345678',
       activo: true,
       requiereCambioClave: false,
+      tokenVersion: 1,
       asignaciones: [],
     });
     const guard = new JwtAuthGuard(
       new Reflector(),
-      { verifyAsync: vi.fn().mockResolvedValue({ sub: 10 }) } as any,
+      { verifyAsync: vi.fn().mockResolvedValue({ sub: 10, dni: '12345678', tokenVersion: 1 }) } as any,
       { usuario: { findUnique } } as any,
     );
     const req: any = { headers: { cookie: 'scout_access_token=jwt-en-cookie' } };

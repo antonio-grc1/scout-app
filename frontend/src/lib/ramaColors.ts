@@ -94,11 +94,13 @@ export function obtenerConfigRama(m: any, unidades: any[] = []): RamaColorConfig
 
   const rolObj = asig?.rol;
   const esAdulto =
-    asig?.unidad?.tipo === 'JEFATURA' ||
-    asig?.unidad?.tipo === 'SIN_RAMA_APOYO' ||
-    rolObj?.tipoMiembro === 'EDUCADOR' ||
-    (rolObj?.tipoMiembro == null &&
-      (rolObj?.alcancePorDefecto === 'UNIDAD' || rolObj?.alcancePorDefecto === 'GLOBAL'));
+    m?.tipoMiembro === 'EDUCADOR' ||
+    (m?.tipoMiembro == null &&
+      (asig?.unidad?.tipo === 'JEFATURA' ||
+        asig?.unidad?.tipo === 'SIN_RAMA_APOYO' ||
+        rolObj?.tipoMiembro === 'EDUCADOR' ||
+        (rolObj?.tipoMiembro == null &&
+          (rolObj?.alcancePorDefecto === 'UNIDAD' || rolObj?.alcancePorDefecto === 'GLOBAL'))));
 
   // 1. Lobatos: Amarillo
   if (texto.includes('lobat') || texto.includes('manada')) {

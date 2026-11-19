@@ -52,7 +52,9 @@ export class TesoreriaEventosService {
     permisosRequeridos: string[],
     message: string,
   ): void {
-    if (!actor?.asignaciones || actor.asignaciones.length === 0) return;
+    if (!actor?.asignaciones || actor.asignaciones.length === 0) {
+      throw new ForbiddenException(message);
+    }
     const tiene = actor.asignaciones.some((a) => {
       if (alcance.tipo === 'GLOBAL' && a.alcance !== undefined && a.alcance !== AlcanceRol.GLOBAL) return false;
       if (alcance.tipo === 'UNIDAD' && a.alcance !== undefined && a.alcance === AlcanceRol.PROPIO) return false;
@@ -141,8 +143,9 @@ export class TesoreriaEventosService {
 
   async listarEventos(alcance: AlcanceAcceso, tipo?: TipoEvento) {
     const esPropio = alcance.tipo === 'PROPIO';
+    const esGlobal = alcance.tipo === 'GLOBAL';
     const usarAgregadoSql =
-      !esPropio &&
+      esGlobal &&
       typeof (this.prisma as { $queryRaw?: unknown }).$queryRaw === 'function' &&
       typeof this.prisma.pedidoEvento?.groupBy === 'function';
 
@@ -164,6 +167,9 @@ export class TesoreriaEventosService {
         ...(!esPropio && !usarAgregadoSql
           ? {
               pedidos: {
+                ...(alcance.tipo === 'UNIDAD'
+                  ? { where: { vendedorUsuario: filtroUsuariosPorAlcance(alcance) } }
+                  : {}),
                 select: {
                   id: true,
                   total: true,
@@ -298,8 +304,8 @@ export class TesoreriaEventosService {
         lugarEntrega: ev.lugarEntrega,
         rubro: ev.rubro,
         rubroId: ev.rubroId,
-        cuenta: esPropio ? null : ev.cuenta,
-        cuentaId: esPropio ? null : ev.cuentaId,
+        cuenta: esGlobal ? ev.cuenta : null,
+        cuentaId: esGlobal ? ev.cuentaId : null,
         creadoPor: ev.creadoPor,
         items: esPropio ? this.sanitizeItemsEventoParaPropio(ev.items) : ev.items,
         ...(esPropio
@@ -365,6 +371,13 @@ export class TesoreriaEventosService {
         cuenta: null,
         cuentaId: null,
         items: this.sanitizeItemsEventoParaPropio(ev.items),
+      };
+    }
+    if (alcance.tipo === 'UNIDAD') {
+      return {
+        ...ev,
+        cuenta: null,
+        cuentaId: null,
       };
     }
     return ev;
@@ -559,7 +572,7 @@ export class TesoreriaEventosService {
       if (dto.vendedorUsuarioId && dto.vendedorUsuarioId !== actor.sub) {
         throw new ForbiddenException('Solo puedes cargar pedidos a tu propio nombre');
       }
-      if (dto.cuentaId) {
+      if (dto.cuentaId !== undefined && dto.cuentaId !== null) {
         throw new ForbiddenException('No tienes permisos para imputar cobros a cuentas financieras');
       }
       dto.vendedorUsuarioId = actor.sub;
@@ -571,13 +584,20 @@ export class TesoreriaEventosService {
         ['eventos.editar', 'caja.editar'],
         'No tienes permisos para registrar ventas en este alcance',
       );
-      if (alcance.tipo === 'UNIDAD' && dto.vendedorUsuarioId) {
+      if (alcance.tipo === 'UNIDAD') {
+        if (dto.cuentaId !== undefined && dto.cuentaId !== null) {
+          throw new ForbiddenException('Solo un usuario con alcance global puede imputar cobros a cuentas financieras');
+        }
+        if (!dto.vendedorUsuarioId) {
+          throw new ForbiddenException('Solo un usuario con alcance global puede registrar pedidos de Venta General');
+        }
         const vendedor = await this.prisma.usuario.findFirst({
           where: { AND: [{ id: dto.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
         });
         if (!vendedor) {
           throw new ForbiddenException('El vendedor asignado no pertenece a su unidad');
         }
+        dto.cuentaId = undefined;
       }
     }
 
@@ -746,6 +766,9 @@ export class TesoreriaEventosService {
           ['eventos.editar', 'caja.editar'],
           'No tienes permisos para modificar pedidos en este alcance',
         );
+        if (alcance.tipo === 'UNIDAD' && pedido.estado === EstadoPedidoEvento.PAGADO) {
+          throw new ForbiddenException('Solo un usuario con alcance global puede modificar un pedido ya cobrado');
+        }
         if (pedido.estado === EstadoPedidoEvento.PAGADO) {
           this.assertActorTienePermisoEvento(
             actor,
@@ -756,16 +779,23 @@ export class TesoreriaEventosService {
         }
 
         if (alcance.tipo === 'UNIDAD') {
+          if (dto.cuentaId !== undefined && dto.cuentaId !== null) {
+            throw new ForbiddenException('Solo un usuario con alcance global puede imputar cobros a cuentas financieras');
+          }
+          if (!pedido.vendedorUsuarioId) {
+            throw new ForbiddenException('Solo un usuario con alcance global puede modificar pedidos de Venta General');
+          }
           const findUsuario = tx.usuario?.findFirst
             ? tx.usuario.findFirst.bind(tx.usuario)
             : this.prisma.usuario.findFirst.bind(this.prisma.usuario);
-          if (pedido.vendedorUsuarioId) {
-            const vendedorActual = await findUsuario({
-              where: { AND: [{ id: pedido.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
-            });
-            if (!vendedorActual && pedido.registradoPorUsuarioId !== actor.sub) {
-              throw new ForbiddenException('El pedido pertenece a un miembro fuera de su unidad');
-            }
+          const vendedorActual = await findUsuario({
+            where: { AND: [{ id: pedido.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
+          });
+          if (!vendedorActual) {
+            throw new ForbiddenException('El pedido pertenece a un miembro fuera de su unidad');
+          }
+          if (dto.vendedorUsuarioId === null) {
+            throw new ForbiddenException('Solo un usuario con alcance global puede convertir un pedido a Venta General');
           }
           if (dto.vendedorUsuarioId) {
             const nuevoVendedor = await findUsuario({
@@ -775,6 +805,7 @@ export class TesoreriaEventosService {
               throw new ForbiddenException('El vendedor asignado no pertenece a su unidad');
             }
           }
+          dto.cuentaId = undefined;
         }
       }
 
@@ -1015,6 +1046,9 @@ export class TesoreriaEventosService {
           ['eventos.editar', 'caja.editar'],
           'No tienes permisos para eliminar pedidos en este alcance',
         );
+        if (alcance.tipo === 'UNIDAD' && pedido.estado === EstadoPedidoEvento.PAGADO) {
+          throw new ForbiddenException('Solo un usuario con alcance global puede eliminar un pedido ya cobrado');
+        }
         if (pedido.estado === EstadoPedidoEvento.PAGADO) {
           this.assertActorTienePermisoEvento(
             actor,
@@ -1024,14 +1058,17 @@ export class TesoreriaEventosService {
           );
         }
 
-        if (alcance.tipo === 'UNIDAD' && pedido.vendedorUsuarioId) {
+        if (alcance.tipo === 'UNIDAD') {
+          if (!pedido.vendedorUsuarioId) {
+            throw new ForbiddenException('Solo un usuario con alcance global puede eliminar pedidos de Venta General');
+          }
           const findUsuario = tx.usuario?.findFirst
             ? tx.usuario.findFirst.bind(tx.usuario)
             : this.prisma.usuario.findFirst.bind(this.prisma.usuario);
           const vendedorActual = await findUsuario({
             where: { AND: [{ id: pedido.vendedorUsuarioId }, filtroUsuariosPorAlcance(alcance)] },
           });
-          if (!vendedorActual && pedido.registradoPorUsuarioId !== actor.sub) {
+          if (!vendedorActual) {
             throw new ForbiddenException('El pedido pertenece a un miembro fuera de su unidad');
           }
         }
@@ -1160,10 +1197,15 @@ export class TesoreriaEventosService {
 
       await lockFilasPorIds(tx, 'pedidos_evento', [pedidoIdReal]);
 
-      if (alcance.tipo === 'UNIDAD' && ticket.pedido.vendedorUsuarioId) {
+      if (alcance.tipo === 'UNIDAD') {
+        if (!ticket.pedido.vendedorUsuarioId) {
+          throw new ForbiddenException('Solo un usuario con alcance global puede validar vales de Venta General');
+        }
         const uIds = ticket.pedido.vendedorUsuario?.asignaciones?.map((a: any) => a.unidadId) ?? [];
-        const perteneceUnidad = uIds.some((uid: number) => alcance.unidadIds.includes(uid));
-        if (!perteneceUnidad && ticket.pedido.registradoPorUsuarioId !== actor.sub) {
+        const perteneceUnidad =
+          ticket.pedido.vendedorUsuarioId === actor.sub ||
+          uIds.some((uid: number) => alcance.unidadIds.includes(uid));
+        if (!perteneceUnidad) {
           throw new ForbiddenException('El vale pertenece a un pedido fuera de su unidad');
         }
       }

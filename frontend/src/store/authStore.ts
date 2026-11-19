@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api, setOnAuthError, setOnRequirePasswordChange } from '../api/client';
 import { limpiarCacheApi } from '../lib/offlineCache';
+import type { TipoUnidad } from '../types/miembro';
 
 function safeJsonParse<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
@@ -18,8 +19,10 @@ export interface AsignacionUsuario {
   rol: string;
   tipoMiembro?: string;
   requiereRama?: boolean;
+  tipoUnidad?: TipoUnidad;
   alcance: 'PROPIO' | 'UNIDAD' | 'GLOBAL';
   permisos: string[];
+  permisosAlcance?: Record<string, 'PROPIO' | 'UNIDAD' | 'GLOBAL'>;
 }
 
 export interface UsuarioSesion {
@@ -27,54 +30,134 @@ export interface UsuarioSesion {
   dni: string;
   nombre: string;
   apellido: string;
+  tipoMiembro?: 'PROTAGONISTA' | 'EDUCADOR' | string;
+}
+
+function normalizarListaPermisos(permiso: string | readonly string[]): readonly string[] {
+  return typeof permiso === 'string' ? [permiso] : permiso;
+}
+
+export function clavesQueSatisfacenPermisoUI(
+  permisosAsignacion: readonly string[],
+  requerido: string,
+): string[] {
+  if (!Array.isArray(permisosAsignacion)) return [];
+  const res: string[] = [];
+  if (permisosAsignacion.includes(requerido)) res.push(requerido);
+  if (requerido.endsWith('.ver')) {
+    const base = requerido.slice(0, -4);
+    const editClave = `${base}.editar`;
+    if (permisosAsignacion.includes(editClave)) res.push(editClave);
+    if (requerido === 'legajos.ver') {
+      if (permisosAsignacion.includes('plantillas.ver')) res.push('plantillas.ver');
+      if (permisosAsignacion.includes('plantillas.editar')) res.push('plantillas.editar');
+    }
+    if (
+      requerido === 'cobranzas.ver' ||
+      requerido === 'planes.ver' ||
+      requerido === 'eventos.ver'
+    ) {
+      if (permisosAsignacion.includes('caja.editar')) res.push('caja.editar');
+    }
+    if (requerido === 'roles.ver') {
+      if (permisosAsignacion.includes('organizacion.ver')) res.push('organizacion.ver');
+      if (permisosAsignacion.includes('organizacion.editar')) res.push('organizacion.editar');
+    }
+    if (requerido === 'organizacion.ver') {
+      if (permisosAsignacion.includes('roles.ver')) res.push('roles.ver');
+      if (permisosAsignacion.includes('roles.editar')) res.push('roles.editar');
+    }
+  }
+  return res;
+}
+
+export function asignacionOtorgaPermisoUI(
+  permisosAsignacion: readonly string[],
+  requerido: string,
+): boolean {
+  return clavesQueSatisfacenPermisoUI(permisosAsignacion, requerido).length > 0;
+}
+
+const PESO_ALCANCE_STORE: Record<'PROPIO' | 'UNIDAD' | 'GLOBAL', number> = {
+  PROPIO: 1,
+  UNIDAD: 2,
+  GLOBAL: 3,
+};
+
+export function obtenerAlcancePermisoEnAsignacionUI(
+  asig: {
+    alcance: 'PROPIO' | 'UNIDAD' | 'GLOBAL';
+    permisos?: readonly string[];
+    permisosAlcance?: Record<string, 'PROPIO' | 'UNIDAD' | 'GLOBAL'>;
+  },
+  requerido: string,
+): 'PROPIO' | 'UNIDAD' | 'GLOBAL' | null {
+  const claves = clavesQueSatisfacenPermisoUI(asig.permisos ?? [], requerido);
+  if (claves.length === 0) return null;
+  let mejor: 'PROPIO' | 'UNIDAD' | 'GLOBAL' = 'PROPIO';
+  let mejorPeso = 0;
+  for (const c of claves) {
+    const alc = asig.permisosAlcance?.[c] ?? asig.alcance;
+    const peso = PESO_ALCANCE_STORE[alc] ?? 1;
+    if (peso > mejorPeso) {
+      mejor = alc;
+      mejorPeso = peso;
+    }
+  }
+  return mejor;
 }
 
 interface AuthState {
-  token: string | null;
+  autenticado: boolean;
   usuario: UsuarioSesion | null;
   requiereCambioClave: boolean;
   asignaciones: AsignacionUsuario[];
   setSesion: (data: {
-    accessToken: string;
     usuario: UsuarioSesion;
     requiereCambioClave: boolean;
     asignaciones: AsignacionUsuario[];
+    accessToken?: string;
   }) => void;
   setRequiereCambioClave: (val: boolean) => void;
   refrescarSesionDesdeServidor: () => Promise<void>;
+  limpiarSesionLocal: () => void;
   logout: () => void;
   // Helpers de alcance y capacidades
   tieneGlobal: () => boolean;
   tieneUnidad: () => boolean;
   tienePropio: () => boolean;
   tienePermiso: (permiso: string) => boolean;
+  tienePermisoGlobal: (permiso: string | readonly string[]) => boolean;
+  tienePermisoUnidadOGlobal: (permiso: string | readonly string[]) => boolean;
+  obtenerUnidadesConPermiso: (permiso: string | readonly string[]) => number[];
   puedeVerPadron: () => boolean;
   puedeAccederPanelGestion: () => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
-  const savedToken = localStorage.getItem('scout_token');
+  localStorage.removeItem('scout_token');
   const savedUser = localStorage.getItem('scout_user');
   const savedAsignaciones = localStorage.getItem('scout_asignaciones');
   const savedCambioClave = localStorage.getItem('scout_cambio_clave');
+  const initialUser = safeJsonParse<UsuarioSesion | null>(savedUser, null);
 
   return {
-    token: savedToken,
-    usuario: safeJsonParse<UsuarioSesion | null>(savedUser, null),
+    autenticado: initialUser !== null,
+    usuario: initialUser,
     requiereCambioClave: savedCambioClave === 'true',
     asignaciones: safeJsonParse<AsignacionUsuario[]>(savedAsignaciones, []),
 
-    setSesion: ({ accessToken, usuario, requiereCambioClave, asignaciones }) => {
+    setSesion: ({ usuario, requiereCambioClave, asignaciones }) => {
       const prevUsuario = get().usuario;
       if (prevUsuario && prevUsuario.id !== usuario.id) {
         limpiarCacheApi();
       }
-      localStorage.setItem('scout_token', accessToken);
+      localStorage.removeItem('scout_token');
       localStorage.setItem('scout_user', JSON.stringify(usuario));
       localStorage.setItem('scout_asignaciones', JSON.stringify(asignaciones));
       localStorage.setItem('scout_cambio_clave', String(requiereCambioClave));
       set({
-        token: accessToken,
+        autenticado: true,
         usuario,
         requiereCambioClave,
         asignaciones,
@@ -87,8 +170,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     refrescarSesionDesdeServidor: async () => {
-      const currentToken = get().token;
-      if (!currentToken) return;
+      if (!get().autenticado) return;
       try {
         const res = await api.get('/auth/me');
         if (res.headers?.['x-from-cache'] === 'true') {
@@ -96,13 +178,11 @@ export const useAuthStore = create<AuthState>((set, get) => {
         }
         const data = res.data;
         if (data?.usuario && Array.isArray(data?.asignaciones)) {
-          const nuevoToken = data.accessToken || currentToken;
           const cambioClave =
             data.requiereCambioClave === undefined
               ? get().requiereCambioClave
               : Boolean(data.requiereCambioClave);
           get().setSesion({
-            accessToken: nuevoToken,
             usuario: data.usuario,
             requiereCambioClave: cambioClave,
             asignaciones: data.asignaciones,
@@ -113,30 +193,42 @@ export const useAuthStore = create<AuthState>((set, get) => {
       }
     },
 
-    logout: () => {
-      const hadToken = Boolean(get().token);
+    limpiarSesionLocal: () => {
       limpiarCacheApi();
       localStorage.removeItem('scout_token');
       localStorage.removeItem('scout_user');
       localStorage.removeItem('scout_asignaciones');
       localStorage.removeItem('scout_cambio_clave');
       set({
-        token: null,
+        autenticado: false,
         usuario: null,
         requiereCambioClave: false,
         asignaciones: [],
       });
-      if (hadToken) {
+    },
+
+    logout: () => {
+      const estabaAutenticado = get().autenticado;
+      get().limpiarSesionLocal();
+      if (estabaAutenticado) {
         void api.post('/auth/logout').catch(() => {});
       }
     },
 
     tieneGlobal: () => {
-      return get().asignaciones.some((a) => a.alcance === 'GLOBAL');
+      return get().asignaciones.some(
+        (a) =>
+          a.alcance === 'GLOBAL' ||
+          Object.values(a.permisosAlcance ?? {}).includes('GLOBAL'),
+      );
     },
 
     tieneUnidad: () => {
-      return get().asignaciones.some((a) => a.alcance === 'UNIDAD');
+      return get().asignaciones.some(
+        (a) =>
+          a.alcance === 'UNIDAD' ||
+          Object.values(a.permisosAlcance ?? {}).includes('UNIDAD'),
+      );
     },
 
     tienePropio: () => {
@@ -144,46 +236,87 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     tienePermiso: (permiso: string) => {
-      const equivalenteEditar = permiso.endsWith('.ver')
-        ? `${permiso.slice(0, -4)}.editar`
-        : null;
-      return get().asignaciones.some(
-        (a) =>
-          a.permisos.includes(permiso) ||
-          (equivalenteEditar !== null && a.permisos.includes(equivalenteEditar)),
+      return get().asignaciones.some((a) => asignacionOtorgaPermisoUI(a.permisos, permiso));
+    },
+
+    tienePermisoGlobal: (permiso: string | readonly string[]) => {
+      const lista = normalizarListaPermisos(permiso);
+      return get().asignaciones.some((a) =>
+        lista.some((p) => obtenerAlcancePermisoEnAsignacionUI(a, p) === 'GLOBAL'),
       );
+    },
+
+    tienePermisoUnidadOGlobal: (permiso: string | readonly string[]) => {
+      const lista = normalizarListaPermisos(permiso);
+      return get().asignaciones.some((a) =>
+        lista.some((p) => {
+          const alc = obtenerAlcancePermisoEnAsignacionUI(a, p);
+          return alc === 'GLOBAL' || alc === 'UNIDAD';
+        }),
+      );
+    },
+
+    obtenerUnidadesConPermiso: (permiso: string | readonly string[]) => {
+      const lista = normalizarListaPermisos(permiso);
+      const ids = new Set<number>();
+      for (const a of get().asignaciones) {
+        if (
+          typeof a.unidadId === 'number' &&
+          Number.isFinite(a.unidadId) &&
+          lista.some((p) => obtenerAlcancePermisoEnAsignacionUI(a, p) === 'UNIDAD')
+        ) {
+          ids.add(a.unidadId);
+        }
+      }
+      return Array.from(ids);
     },
 
     puedeVerPadron: () => {
-      const { tieneUnidad, tieneGlobal, tienePermiso } = get();
-      return (tieneUnidad() || tieneGlobal()) && tienePermiso('padron.ver');
+      return get().tienePermisoUnidadOGlobal(['padron.ver', 'padron.editar']);
     },
 
     puedeAccederPanelGestion: () => {
-      const { asignaciones, tieneGlobal, tienePermiso } = get();
-      // Beneficiarios (o usuarios sin asignaciones de gestión/educador) jamás acceden al panel de gestión
+      const { asignaciones, tienePermisoUnidadOGlobal, tienePermisoGlobal } = get();
       const tieneAsignacionGestion = asignaciones.some(
-        (a) => a.tipoMiembro === 'EDUCADOR' || a.alcance === 'UNIDAD' || a.alcance === 'GLOBAL',
+        (a) => a.alcance === 'UNIDAD' || a.alcance === 'GLOBAL',
       );
       if (!tieneAsignacionGestion) return false;
 
-      const permisosPanelNoGlobal = [
+      const permisosPanelUnidadOGlobal = [
         'padron.ver',
+        'padron.editar',
         'legajos.ver',
+        'legajos.editar',
+        'plantillas.ver',
         'pases.ver',
+        'pases.editar',
         'cobranzas.ver',
+        'cobranzas.editar',
         'planes.ver',
+        'planes.editar',
+        'caja.ver',
+        'caja.editar',
         'eventos.ver',
+        'eventos.editar',
         'organizacion.ver',
+        'roles.ver',
       ];
-      return tieneGlobal() || permisosPanelNoGlobal.some((p) => tienePermiso(p));
+      const permisosPanelSoloGlobal = [
+        'organizacion.editar',
+        'roles.editar',
+        'plantillas.editar',
+      ];
+      return (
+        tienePermisoUnidadOGlobal(permisosPanelUnidadOGlobal) ||
+        tienePermisoGlobal(permisosPanelSoloGlobal)
+      );
     },
   };
 });
 
-// Sincronizar logout y cambio obligatorio de clave con el cliente HTTP
+// Sincronizar cierre de sesión local y cambio obligatorio de clave con el cliente HTTP
 setOnAuthError(() => {
-  useAuthStore.getState().logout();
+  useAuthStore.getState().limpiarSesionLocal();
 });
 
 setOnRequirePasswordChange(() => {

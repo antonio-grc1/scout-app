@@ -51,22 +51,42 @@ import {
 export class TesoreriaCajaService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private assertCuentaEnAlcance(
+    alcance: AlcanceAcceso,
+    cuenta: { id?: number; unidadId?: number | null } | null | undefined,
+  ): void {
+    if (alcance.tipo === 'GLOBAL') return;
+    assertUnidadEnAlcance(alcance, cuenta?.unidadId ?? null);
+  }
+
   // ===========================================================================
   // 7. MOTOR FINANCIERO: CUENTAS, LIBRO DIARIO Y TRANSFERENCIAS (FASE 1)
   // ===========================================================================
 
   async listarCuentasFinancieras(alcance: AlcanceAcceso, incluirInactivas?: boolean) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden ver las cuentas de tesorería');
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver cuentas financieras de tesorería');
     }
 
+    const where: Prisma.CuentaFinancieraWhereInput = {
+      ...(incluirInactivas ? {} : { activa: true }),
+      ...(alcance.tipo === 'UNIDAD' ? { unidadId: { in: alcance.unidadIds } } : {}),
+    };
+
     const cuentas = await this.prisma.cuentaFinanciera.findMany({
-      where: incluirInactivas ? {} : { activa: true },
+      where,
       orderBy: { id: 'asc' },
+      include: {
+        unidad: { select: { id: true, nombre: true } },
+      },
     });
 
+    if (cuentas.length === 0) return [];
+
+    const cuentaIds = cuentas.map((c) => c.id);
     const agregados = await this.prisma.movimientoFinanciero.groupBy({
       by: ['cuentaId'],
+      ...(alcance.tipo === 'UNIDAD' ? { where: { cuentaId: { in: cuentaIds } } } : {}),
       _sum: { montoIngreso: true, montoEgreso: true },
       _count: { id: true },
     });
@@ -88,11 +108,14 @@ export class TesoreriaCajaService {
       const totalIngresos = deCentavos(agg.ingresoCts);
       const totalEgresos = deCentavos(agg.egresoCts);
       const saldoActual = deCentavos(saldoCts);
+      const unidad = (c as { unidad?: { id: number; nombre: string } | null }).unidad ?? null;
 
       return {
         id: c.id,
         nombre: c.nombre,
         tipo: c.tipo,
+        unidadId: c.unidadId ?? null,
+        unidad,
         activa: c.activa,
         saldoActual,
         saldoActualConsolidado: saldoActual,
@@ -105,35 +128,64 @@ export class TesoreriaCajaService {
     });
   }
 
-  async crearCuentaFinanciera(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearCuentaFinancieraDto) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden administrar cuentas financieras');
+  async crearCuentaFinanciera(_actor: AuthUser, alcance: AlcanceAcceso, dto: CrearCuentaFinancieraDto) {
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para administrar cuentas financieras');
+    }
+
+    let unidadIdFinal: number | null = dto.unidadId ?? null;
+    if (alcance.tipo === 'UNIDAD') {
+      if (dto.unidadId === null) {
+        throw new ForbiddenException('Solo usuarios con alcance global pueden crear cuentas generales del grupo');
+      }
+      if (dto.unidadId !== undefined) {
+        assertUnidadEnAlcance(alcance, dto.unidadId);
+        unidadIdFinal = dto.unidadId;
+      } else if (alcance.unidadIds.length === 1) {
+        unidadIdFinal = alcance.unidadIds[0];
+      } else {
+        throw new BadRequestException('Debe especificar la rama o sección para la nueva cuenta financiera');
+      }
+    }
+
+    if (unidadIdFinal != null && this.prisma.unidadOrganizativa?.findUnique) {
+      const unidad = await this.prisma.unidadOrganizativa.findUnique({ where: { id: unidadIdFinal } });
+      if (!unidad || !unidad.activa) {
+        throw new BadRequestException('La rama o sección especificada es inexistente o inactiva');
+      }
     }
 
     const existe = await this.prisma.cuentaFinanciera.findFirst({
-      where: { nombre: { equals: dto.nombre, mode: 'insensitive' } },
+      where: {
+        nombre: { equals: dto.nombre, mode: 'insensitive' },
+        unidadId: unidadIdFinal,
+      },
     });
     if (existe) {
-      throw new ConflictException(`Ya existe una cuenta con el nombre "${dto.nombre}"`);
+      throw new ConflictException(`Ya existe una cuenta con el nombre "${dto.nombre}" en ese ámbito`);
     }
 
     return this.prisma.cuentaFinanciera.create({
       data: {
         nombre: dto.nombre,
         tipo: dto.tipo,
+        unidadId: unidadIdFinal,
         activa: true,
+      },
+      include: {
+        unidad: { select: { id: true, nombre: true } },
       },
     });
   }
 
   async actualizarCuentaFinanciera(
-    actor: AuthUser,
+    _actor: AuthUser,
     alcance: AlcanceAcceso,
     id: number,
     dto: ActualizarCuentaFinancieraDto,
   ) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden administrar cuentas financieras');
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para administrar cuentas financieras');
     }
 
     return runInTransaction(this.prisma, async (tx) => {
@@ -142,6 +194,21 @@ export class TesoreriaCajaService {
       const cuenta = await tx.cuentaFinanciera.findUnique({ where: { id } });
       if (!cuenta) {
         throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
+      }
+      this.assertCuentaEnAlcance(alcance, cuenta);
+
+      let unidadIdFinal: number | null = cuenta.unidadId ?? null;
+      if (dto.unidadId !== undefined) {
+        if (alcance.tipo === 'UNIDAD') {
+          assertUnidadEnAlcance(alcance, dto.unidadId);
+        }
+        if (dto.unidadId != null && tx.unidadOrganizativa?.findUnique) {
+          const unidad = await tx.unidadOrganizativa.findUnique({ where: { id: dto.unidadId } });
+          if (!unidad || !unidad.activa) {
+            throw new BadRequestException('La rama o sección especificada es inexistente o inactiva');
+          }
+        }
+        unidadIdFinal = dto.unidadId;
       }
 
       if (dto.activa === false && cuenta.activa) {
@@ -153,12 +220,20 @@ export class TesoreriaCajaService {
         }
       }
 
-      if (dto.nombre && dto.nombre.toLowerCase() !== cuenta.nombre.toLowerCase()) {
+      const nombreFinal = dto.nombre ?? cuenta.nombre;
+      if (
+        (dto.nombre && dto.nombre.toLowerCase() !== cuenta.nombre.toLowerCase()) ||
+        (dto.unidadId !== undefined && unidadIdFinal !== (cuenta.unidadId ?? null))
+      ) {
         const existe = await tx.cuentaFinanciera.findFirst({
-          where: { id: { not: id }, nombre: { equals: dto.nombre, mode: 'insensitive' } },
+          where: {
+            id: { not: id },
+            nombre: { equals: nombreFinal, mode: 'insensitive' },
+            unidadId: unidadIdFinal,
+          },
         });
         if (existe) {
-          throw new ConflictException(`Ya existe otra cuenta con el nombre "${dto.nombre}"`);
+          throw new ConflictException(`Ya existe otra cuenta con el nombre "${nombreFinal}" en ese ámbito`);
         }
       }
 
@@ -167,19 +242,23 @@ export class TesoreriaCajaService {
         data: {
           ...(dto.nombre ? { nombre: dto.nombre } : {}),
           ...(dto.tipo ? { tipo: dto.tipo } : {}),
+          ...(dto.unidadId !== undefined ? { unidadId: dto.unidadId } : {}),
           ...(dto.activa !== undefined ? { activa: dto.activa } : {}),
+        },
+        include: {
+          unidad: { select: { id: true, nombre: true } },
         },
       });
     });
   }
 
   async eliminarCuentaFinanciera(
-    actor: AuthUser,
+    _actor: AuthUser,
     alcance: AlcanceAcceso,
     id: number,
   ) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden administrar cuentas financieras');
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para administrar cuentas financieras');
     }
 
     return runInTransaction(this.prisma, async (tx) => {
@@ -196,6 +275,7 @@ export class TesoreriaCajaService {
       if (!cuenta) {
         throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
       }
+      this.assertCuentaEnAlcance(alcance, cuenta);
 
       const saldo = (await obtenerSaldoCuentaEnTx(tx, id)) ?? 0;
       if (aCentavos(saldo) !== 0) {
@@ -224,14 +304,15 @@ export class TesoreriaCajaService {
     alcance: AlcanceAcceso,
     id: number,
   ) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden restaurar cuentas financieras');
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para restaurar cuentas financieras');
     }
 
     const cuenta = await this.prisma.cuentaFinanciera.findUnique({ where: { id } });
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${id} no encontrada`);
     }
+    this.assertCuentaEnAlcance(alcance, cuenta);
 
     return this.prisma.cuentaFinanciera.update({
       where: { id },
@@ -240,14 +321,18 @@ export class TesoreriaCajaService {
   }
 
   async obtenerLibroDiario(alcance: AlcanceAcceso, cuentaId: number, query: ConsultaLibroDiarioQueryDto) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden ver el libro diario');
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para ver el libro diario');
     }
 
-    const cuenta = await this.prisma.cuentaFinanciera.findUnique({ where: { id: cuentaId } });
+    const cuenta = await this.prisma.cuentaFinanciera.findUnique({
+      where: { id: cuentaId },
+      include: { unidad: { select: { id: true, nombre: true } } },
+    });
     if (!cuenta) {
       throw new NotFoundException(`Cuenta con ID ${cuentaId} no encontrada`);
     }
+    this.assertCuentaEnAlcance(alcance, cuenta);
 
     const fechaDesdeStr = query.fecha || query.desde;
     const fechaHastaStr = query.fecha || query.hasta;
@@ -387,6 +472,8 @@ export class TesoreriaCajaService {
         id: cuenta.id,
         nombre: cuenta.nombre,
         tipo: cuenta.tipo,
+        unidadId: cuenta.unidadId ?? null,
+        unidad: (cuenta as { unidad?: { id: number; nombre: string } | null }).unidad ?? null,
         activa: cuenta.activa,
       },
       saldoAnterior,
@@ -399,8 +486,8 @@ export class TesoreriaCajaService {
   }
 
   async transferirEntreCuentas(actor: AuthUser, alcance: AlcanceAcceso, dto: CrearTransferenciaDto) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden transferir fondos entre cuentas');
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para transferir fondos entre cuentas');
     }
 
     if (dto.origenCuentaId === dto.destinoCuentaId) {
@@ -425,6 +512,8 @@ export class TesoreriaCajaService {
       if (!origen || !destino) {
         throw new NotFoundException('Una o ambas cuentas no existen');
       }
+      this.assertCuentaEnAlcance(alcance, origen);
+      this.assertCuentaEnAlcance(alcance, destino);
 
       if (!origen.activa || !destino.activa) {
         throw new BadRequestException('Ambas cuentas deben estar activas para realizar la transferencia');
@@ -531,12 +620,17 @@ export class TesoreriaCajaService {
       },
     });
     if (existente) {
+      if (existente.unidadId) {
+        assertUnidadEnAlcance(alcance, existente.unidadId);
+      } else if (alcance.tipo !== 'GLOBAL') {
+        throw new ConflictException(`Ya existe un rubro general de ${dto.tipo.toLowerCase()} llamado "${dto.nombre}"`);
+      }
       if (!existente.activo) {
         return this.prisma.rubroContable.update({
           where: { id: existente.id },
           data: {
             activo: true,
-            unidadId: dto.unidadId ?? null,
+            unidadId: dto.unidadId ?? existente.unidadId ?? null,
             permiteDescuentoDefault: dto.permiteDescuentoDefault ?? existente.permiteDescuentoDefault,
           },
           include: { unidad: { select: { id: true, nombre: true } } },
@@ -659,7 +753,7 @@ export class TesoreriaCajaService {
       ...(query.cuentaId ? { cuentaId: query.cuentaId } : {}),
       ...(query.rubroId ? { rubroId: query.rubroId } : {}),
       ...(query.incluirAnulados ? {} : { anulado: false }),
-      ...(alcance.tipo === 'UNIDAD' ? { rubro: { unidadId: { in: alcance.unidadIds } } } : {}),
+      ...(alcance.tipo === 'UNIDAD' ? { cuenta: { unidadId: { in: alcance.unidadIds } } } : {}),
       ...(query.desde || query.hasta
         ? {
             fecha: {
@@ -676,7 +770,7 @@ export class TesoreriaCajaService {
       take: 500,
       include: {
         rubro: { select: { id: true, nombre: true, tipo: true } },
-        cuenta: { select: { id: true, nombre: true, tipo: true } },
+        cuenta: { select: { id: true, nombre: true, tipo: true, unidadId: true } },
         registradoPor: { select: { id: true, nombre: true, apellido: true } },
       },
     });
@@ -704,12 +798,15 @@ export class TesoreriaCajaService {
 
       if (!cuenta) throw new NotFoundException('La cuenta financiera especificada no existe');
       if (!cuenta.activa) throw new BadRequestException('La cuenta financiera se encuentra inactiva');
+      this.assertCuentaEnAlcance(alcance, cuenta);
       if (!rubro) throw new NotFoundException('El rubro de gasto especificado no existe');
       if (!rubro.activo) throw new BadRequestException('El rubro contable se encuentra inactivo');
       if (rubro.tipo !== TipoRubro.EGRESO) {
         throw new BadRequestException('El rubro seleccionado debe ser de tipo EGRESO');
       }
-      assertUnidadEnAlcance(alcance, rubro.unidadId);
+      if (rubro.unidadId != null) {
+        assertUnidadEnAlcance(alcance, rubro.unidadId);
+      }
 
       // Validar saldo disponible en la cuenta
       await assertSaldoCuentaDisponibleEnTx(
@@ -781,7 +878,10 @@ export class TesoreriaCajaService {
       if (!gasto) throw new NotFoundException('Gasto no encontrado');
       if (gasto.anulado) throw new BadRequestException('No se puede modificar un gasto anulado');
 
-      assertUnidadEnAlcance(alcance, gasto.rubro?.unidadId);
+      if (gasto.rubro?.unidadId != null) {
+        assertUnidadEnAlcance(alcance, gasto.rubro.unidadId);
+      }
+      this.assertCuentaEnAlcance(alcance, gasto.cuenta);
 
       let nuevoRubro = gasto.rubro;
       if (dto.rubroId && dto.rubroId !== gasto.rubroId) {
@@ -792,7 +892,9 @@ export class TesoreriaCajaService {
         if (!rubroEncontrado || !rubroEncontrado.activo || rubroEncontrado.tipo !== TipoRubro.EGRESO) {
           throw new BadRequestException('El rubro contable de egreso no es válido o está inactivo');
         }
-        assertUnidadEnAlcance(alcance, rubroEncontrado.unidadId);
+        if (rubroEncontrado.unidadId != null) {
+          assertUnidadEnAlcance(alcance, rubroEncontrado.unidadId);
+        }
         nuevoRubro = rubroEncontrado;
       }
 
@@ -805,6 +907,7 @@ export class TesoreriaCajaService {
         if (!cuentaEncontrada || !cuentaEncontrada.activa) {
           throw new BadRequestException('La cuenta financiera seleccionada no está activa');
         }
+        this.assertCuentaEnAlcance(alcance, cuentaEncontrada);
         nuevaCuenta = cuentaEncontrada;
       }
 
@@ -896,7 +999,10 @@ export class TesoreriaCajaService {
       if (!gasto) throw new NotFoundException('Gasto no encontrado');
       if (gasto.anulado) throw new BadRequestException('El gasto ya se encuentra anulado');
 
-      assertUnidadEnAlcance(alcance, gasto.rubro?.unidadId);
+      if (gasto.rubro?.unidadId != null) {
+        assertUnidadEnAlcance(alcance, gasto.rubro.unidadId);
+      }
+      this.assertCuentaEnAlcance(alcance, gasto.cuenta);
 
       await tx.movimientoFinanciero.deleteMany({
         where: { gastoId: gasto.id },
@@ -935,7 +1041,10 @@ export class TesoreriaCajaService {
         throw new BadRequestException('La cuenta financiera se encuentra inactiva');
       }
 
-      assertUnidadEnAlcance(alcance, gasto.rubro?.unidadId);
+      if (gasto.rubro?.unidadId != null) {
+        assertUnidadEnAlcance(alcance, gasto.rubro.unidadId);
+      }
+      this.assertCuentaEnAlcance(alcance, gasto.cuenta);
 
       await assertSaldoCuentaDisponibleEnTx(
         tx,
@@ -996,12 +1105,15 @@ export class TesoreriaCajaService {
 
       if (!cuenta) throw new NotFoundException('La cuenta financiera especificada no existe');
       if (!cuenta.activa) throw new BadRequestException('La cuenta financiera se encuentra inactiva');
+      this.assertCuentaEnAlcance(alcance, cuenta);
       if (!rubro) throw new NotFoundException('El rubro de ingreso especificado no existe');
       if (!rubro.activo) throw new BadRequestException('El rubro contable se encuentra inactivo');
       if (rubro.tipo !== TipoRubro.INGRESO) {
         throw new BadRequestException('El rubro seleccionado debe ser de tipo INGRESO');
       }
-      assertUnidadEnAlcance(alcance, rubro.unidadId);
+      if (rubro.unidadId != null) {
+        assertUnidadEnAlcance(alcance, rubro.unidadId);
+      }
 
       const fechaOperacion = parsearFechaOperacion(dto.fecha);
       const refTexto = dto.comprobanteNro ? ` (Comp. #${dto.comprobanteNro})` : '';
@@ -1051,13 +1163,17 @@ export class TesoreriaCajaService {
         throw new BadRequestException('Solo se pueden modificar ingresos manuales registrados directamente');
       }
 
-      assertUnidadEnAlcance(alcance, movimiento.rubro?.unidadId);
+      if (movimiento.rubro?.unidadId != null) {
+        assertUnidadEnAlcance(alcance, movimiento.rubro.unidadId);
+      }
+      this.assertCuentaEnAlcance(alcance, movimiento.cuenta);
 
       let cuentaId = movimiento.cuentaId;
       if (dto.cuentaId !== undefined && dto.cuentaId !== movimiento.cuentaId) {
         const c = await tx.cuentaFinanciera.findUnique({ where: { id: dto.cuentaId } });
         if (!c) throw new NotFoundException('Cuenta destino no encontrada');
         if (!c.activa) throw new BadRequestException('La cuenta seleccionada está inactiva');
+        this.assertCuentaEnAlcance(alcance, c);
         cuentaId = c.id;
 
         await lockFilasPorIds(tx, 'cuentas_financieras', [movimiento.cuentaId, cuentaId]);
@@ -1084,7 +1200,9 @@ export class TesoreriaCajaService {
         if (!r) throw new NotFoundException('Rubro no encontrado');
         if (!r.activo) throw new BadRequestException('El rubro seleccionado se encuentra inactivo');
         if (r.tipo !== TipoRubro.INGRESO) throw new BadRequestException('El rubro debe ser de tipo INGRESO');
-        assertUnidadEnAlcance(alcance, r.unidadId);
+        if (r.unidadId != null) {
+          assertUnidadEnAlcance(alcance, r.unidadId);
+        }
         rubroId = r.id;
         rubroNombre = r.nombre;
       }
@@ -1165,7 +1283,10 @@ export class TesoreriaCajaService {
         throw new BadRequestException('Solo se pueden eliminar ingresos manuales registrados directamente');
       }
 
-      assertUnidadEnAlcance(alcance, movimiento.rubro?.unidadId);
+      if (movimiento.rubro?.unidadId != null) {
+        assertUnidadEnAlcance(alcance, movimiento.rubro.unidadId);
+      }
+      this.assertCuentaEnAlcance(alcance, movimiento.cuenta);
 
       if (movimiento.cuenta && 'activa' in movimiento.cuenta && !movimiento.cuenta.activa) {
         throw new BadRequestException(`La cuenta financiera ${movimiento.cuenta.nombre} se encuentra inactiva.`);
@@ -1197,7 +1318,7 @@ export class TesoreriaCajaService {
 
     const where: Prisma.MovimientoFinancieroWhereInput = {
       tipo: TipoMovimientoFinanciero.INGRESO_OTRO,
-      ...(alcance.tipo === 'UNIDAD' ? { rubro: { unidadId: { in: alcance.unidadIds } } } : {}),
+      ...(alcance.tipo === 'UNIDAD' ? { cuenta: { unidadId: { in: alcance.unidadIds } } } : {}),
     };
 
     if (query.cuentaId) where.cuentaId = query.cuentaId;
@@ -1214,7 +1335,7 @@ export class TesoreriaCajaService {
       take: 500,
       include: {
         rubro: { select: { id: true, nombre: true, tipo: true } },
-        cuenta: { select: { id: true, nombre: true, tipo: true } },
+        cuenta: { select: { id: true, nombre: true, tipo: true, unidadId: true } },
         creadoPor: { select: { id: true, nombre: true, apellido: true } },
       },
     });
@@ -1320,8 +1441,8 @@ export class TesoreriaCajaService {
     alcance: AlcanceAcceso,
     query: ConsultaCuadroResultadosQueryDto,
   ) {
-    if (alcance.tipo !== 'GLOBAL') {
-      throw new ForbiddenException('Solo usuarios con alcance global pueden consultar el cuadro de resultados consolidado');
+    if (alcance.tipo === 'PROPIO') {
+      throw new ForbiddenException('No tiene permisos para consultar el cuadro de resultados');
     }
 
     const anio = query.anio || anioActual();
@@ -1350,10 +1471,45 @@ export class TesoreriaCajaService {
       }
     };
 
+    const esUnidad = alcance.tipo === 'UNIDAD';
+    const unidadIdsFiltro = esUnidad ? alcance.unidadIds : [];
+    const filtroCuentaUnidadPrisma = esUnidad
+      ? { cuenta: { unidadId: { in: unidadIdsFiltro } } }
+      : {};
+    const filtroPagoUnidadPrisma = esUnidad
+      ? { movimientos: { some: { cuenta: { unidadId: { in: unidadIdsFiltro } } } } }
+      : {};
+
     let cuentas: Awaited<ReturnType<TesoreriaCajaService['listarCuentasFinancieras']>>;
     const queryRawFn = (this.prisma as { $queryRaw?: PrismaService['$queryRaw'] }).$queryRaw;
 
     if (typeof queryRawFn === 'function') {
+      const sqlFiltroPagoUnidad = !esUnidad
+        ? Prisma.empty
+        : unidadIdsFiltro.length > 0
+          ? Prisma.sql`AND EXISTS (
+              SELECT 1 FROM "movimientos_financieros" mf_u
+              INNER JOIN "cuentas_financieras" cf_u ON cf_u."id" = mf_u."cuenta_id"
+              WHERE mf_u."pago_id" = p."id" AND cf_u."unidad_id" IN (${Prisma.join(unidadIdsFiltro)})
+            )`
+          : Prisma.sql`AND FALSE`;
+      const sqlJoinMovCuentaUnidad = esUnidad
+        ? Prisma.sql`INNER JOIN "cuentas_financieras" cf_m ON cf_m."id" = mf."cuenta_id"`
+        : Prisma.empty;
+      const sqlFiltroMovUnidad = !esUnidad
+        ? Prisma.empty
+        : unidadIdsFiltro.length > 0
+          ? Prisma.sql`AND cf_m."unidad_id" IN (${Prisma.join(unidadIdsFiltro)})`
+          : Prisma.sql`AND FALSE`;
+      const sqlJoinGastoCuentaUnidad = esUnidad
+        ? Prisma.sql`INNER JOIN "cuentas_financieras" cf_g ON cf_g."id" = g."cuenta_id"`
+        : Prisma.empty;
+      const sqlFiltroGastoUnidad = !esUnidad
+        ? Prisma.empty
+        : unidadIdsFiltro.length > 0
+          ? Prisma.sql`AND cf_g."unidad_id" IN (${Prisma.join(unidadIdsFiltro)})`
+          : Prisma.sql`AND FALSE`;
+
       const [
         rubrosDb,
         cuentasRes,
@@ -1363,6 +1519,7 @@ export class TesoreriaCajaService {
         gastosSql,
       ] = await Promise.all([
         this.prisma.rubroContable.findMany({
+          ...(esUnidad ? { where: { unidadId: { in: unidadIdsFiltro } } } : {}),
           select: { id: true, nombre: true, tipo: true },
           orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
         }),
@@ -1394,6 +1551,7 @@ export class TesoreriaCajaService {
           WHERE p."fecha_pago" >= ${desdeAnio}
             AND p."fecha_pago" <= ${hastaAnio}
             AND (p."referencia_comprobante" IS NULL OR p."referencia_comprobante" <> 'APLICACION_SALDO_A_FAVOR')
+            ${sqlFiltroPagoUnidad}
           GROUP BY 1, c."nombre", c."tipo", c."rubro_id", r."id", r."nombre"
         `,
         this.prisma.$queryRaw<Array<{ mes: number; total: Prisma.Decimal }>>`
@@ -1411,6 +1569,7 @@ export class TesoreriaCajaService {
             WHERE p."fecha_pago" >= ${desdeAnio}
               AND p."fecha_pago" <= ${hastaAnio}
               AND (p."referencia_comprobante" IS NULL OR p."referencia_comprobante" <> 'APLICACION_SALDO_A_FAVOR')
+              ${sqlFiltroPagoUnidad}
             GROUP BY p."id", p."fecha_pago", p."monto_total"
           ) sub
           GROUP BY sub.mes
@@ -1436,6 +1595,7 @@ export class TesoreriaCajaService {
             re."nombre" AS "eventoRubroNombre",
             COALESCE(SUM(mf."monto_ingreso"), 0) AS total
           FROM "movimientos_financieros" mf
+          ${sqlJoinMovCuentaUnidad}
           LEFT JOIN "rubros_contables" rm ON rm."id" = mf."rubro_id"
           LEFT JOIN "pedidos_evento" pe ON pe."id" = mf."pedido_evento_id"
           LEFT JOIN "eventos" ev ON ev."id" = pe."evento_id"
@@ -1443,6 +1603,7 @@ export class TesoreriaCajaService {
           WHERE (mf."tipo" = 'INGRESO_OTRO'::"TipoMovimientoFinanciero" OR mf."pedido_evento_id" IS NOT NULL)
             AND mf."fecha" >= ${desdeAnio}
             AND mf."fecha" <= ${hastaAnio}
+            ${sqlFiltroMovUnidad}
           GROUP BY 1, mf."rubro_id", rm."nombre", (mf."pedido_evento_id" IS NOT NULL), ev."rubro_id", re."nombre"
         `,
         this.prisma.$queryRaw<
@@ -1459,10 +1620,12 @@ export class TesoreriaCajaService {
             r."nombre" AS "rubroNombre",
             COALESCE(SUM(g."monto"), 0) AS total
           FROM "gastos" g
+          ${sqlJoinGastoCuentaUnidad}
           INNER JOIN "rubros_contables" r ON r."id" = g."rubro_id"
           WHERE g."anulado" = false
             AND g."fecha" >= ${desdeAnio}
             AND g."fecha" <= ${hastaAnio}
+            ${sqlFiltroGastoUnidad}
           GROUP BY 1, g."rubro_id", r."nombre"
         `,
       ]);
@@ -1516,12 +1679,14 @@ export class TesoreriaCajaService {
       // Fallback en memoria para mocks unitarios sin $queryRaw
       const [rubrosDb, pagos, ingresosMovimientos, gastos, cuentasRes] = await Promise.all([
         this.prisma.rubroContable.findMany({
+          ...(esUnidad ? { where: { unidadId: { in: unidadIdsFiltro } } } : {}),
           select: { id: true, nombre: true, tipo: true },
           orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
         }),
         this.prisma.pago.findMany({
           where: {
             fechaPago: { gte: desdeAnio, lte: hastaAnio },
+            ...filtroPagoUnidadPrisma,
             OR: [
               { referenciaComprobante: null },
               { referenciaComprobante: { not: 'APLICACION_SALDO_A_FAVOR' } },
@@ -1553,6 +1718,7 @@ export class TesoreriaCajaService {
         }),
         this.prisma.movimientoFinanciero.findMany({
           where: {
+            ...filtroCuentaUnidadPrisma,
             OR: [
               { tipo: TipoMovimientoFinanciero.INGRESO_OTRO },
               { pedidoEventoId: { not: null } },
@@ -1580,6 +1746,7 @@ export class TesoreriaCajaService {
           where: {
             anulado: false,
             fecha: { gte: desdeAnio, lte: hastaAnio },
+            ...filtroCuentaUnidadPrisma,
           },
           select: {
             fecha: true,

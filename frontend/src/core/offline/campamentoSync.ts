@@ -326,7 +326,7 @@ export async function purgarCampamentoOffline(): Promise<void> {
 let ultimoUsuarioCampamentoId = useAuthStore.getState().usuario?.id ?? null;
 useAuthStore.subscribe((state) => {
   const nextId = state.usuario?.id ?? null;
-  if (!state.token || (ultimoUsuarioCampamentoId !== null && nextId !== ultimoUsuarioCampamentoId)) {
+  if (!state.autenticado || (ultimoUsuarioCampamentoId !== null && nextId !== ultimoUsuarioCampamentoId)) {
     void purgarCampamentoOffline();
   }
   ultimoUsuarioCampamentoId = nextId;

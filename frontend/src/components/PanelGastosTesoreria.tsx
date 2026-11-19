@@ -59,7 +59,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
   useEffect(() => {
     onToastRef.current = onToast;
   }, [onToast]);
-  const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermiso('caja.editar'));
+  const puedeGestionarTesoreria = useAuthStore((s) => s.tienePermisoUnidadOGlobal('caja.editar'));
   const [gastos, setGastos] = useState<GastoItem[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);

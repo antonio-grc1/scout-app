@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { X, Users, Percent, Check, AlertCircle, UserMinus, Trash2 } from 'lucide-react';
 import { obtenerRolPrincipal, traducirErrorAmigable } from '../lib/formatters';
+import { puedeDesvincularIntegrantePorAlcance } from '../lib/permisos';
 
 interface Props {
   abierto: boolean;
@@ -25,8 +26,19 @@ export const ModalEditarFamilia: React.FC<Props> = ({
   onGuardado,
   embedded = false,
 }) => {
-  const { tienePermiso } = useAuthStore();
-  const puedeDisolverGrupo = tienePermiso('cobranzas.editar') || tienePermiso('caja.editar');
+  const { tienePermisoGlobal, obtenerUnidadesConPermiso, asignaciones } = useAuthStore();
+  const puedeDisolverGrupo = tienePermisoGlobal(['cobranzas.editar', 'caja.editar']);
+  const esGlobalFamilia = tienePermisoGlobal([
+    'padron.editar',
+    'cobranzas.editar',
+    'caja.editar',
+  ]);
+  const unidadesFamiliaIds = useMemo(
+    () =>
+      obtenerUnidadesConPermiso(['padron.editar', 'cobranzas.editar', 'caja.editar']),
+    [obtenerUnidadesConPermiso, asignaciones],
+  );
+  const puedeOperarFamilia = esGlobalFamilia || unidadesFamiliaIds.length > 0;
   const [nombreFamilia, setNombreFamilia] = useState('');
   const [porcentajeDescuento, setPorcentajeDescuento] = useState<number>(0);
   const [miembrosLocal, setMiembrosLocal] = useState<any[]>([]);
@@ -257,16 +269,22 @@ export const ModalEditarFamilia: React.FC<Props> = ({
                         DNI {m.dni} • {unidadNombre}
                       </span>
                     </div>
-                    <button
-                      type="button"
-                      disabled={desvinculandoId === m.id}
-                      onClick={() => handleDesvincularMiembro(m.id)}
-                      title="Desvincular de la familia"
-                      className="min-h-[36px] px-3 py-1 rounded-lg bg-surface border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
-                    >
-                      <UserMinus className="w-3.5 h-3.5" />
-                      <span>{desvinculandoId === m.id ? 'Quitando...' : 'Desvincular'}</span>
-                    </button>
+                    {puedeOperarFamilia &&
+                      puedeDesvincularIntegrantePorAlcance(m, {
+                        esGlobal: esGlobalFamilia,
+                        unidadesEnAlcanceIds: unidadesFamiliaIds,
+                      }) && (
+                        <button
+                          type="button"
+                          disabled={desvinculandoId === m.id}
+                          onClick={() => handleDesvincularMiembro(m.id)}
+                          title="Desvincular de la familia"
+                          className="min-h-[36px] px-3 py-1 rounded-lg bg-surface border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
+                        >
+                          <UserMinus className="w-3.5 h-3.5" />
+                          <span>{desvinculandoId === m.id ? 'Quitando...' : 'Desvincular'}</span>
+                        </button>
+                      )}
                   </div>
                 );
               })}

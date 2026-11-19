@@ -1,5 +1,11 @@
 import { Body, Controller, Delete, Get, Param, ParseBoolPipe, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import { Alcance, CurrentUser, RequireAnyPermission, RequirePermission } from '../common/decorators/auth.decorators.js';
+import {
+  Alcance,
+  CurrentUser,
+  PermitirAutogestionPropia,
+  RequireAnyPermission,
+  RequirePermission,
+} from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import {
@@ -41,8 +47,8 @@ export class MiembrosController {
     return this.miembros.actualizarMiPerfil(u.sub, dto);
   }
 
-  /** Búsqueda flexible de hermanos por DNI, Apellido o Nombre en todo el padrón activo. */
-  @RequireAnyPermission('padron.editar', 'cobranzas.editar')
+  /** Búsqueda flexible de hermanos por DNI, Apellido o Nombre dentro del alcance del actor. */
+  @RequireAnyPermission('padron.editar', 'cobranzas.editar', 'caja.editar')
   @Get('hermanos/buscar')
   buscarHermanosPorCriterio(@Alcance() a: AlcanceAcceso, @Query('q') q?: string) {
     return this.miembros.buscarHermanosPorCriterio(a, q ?? '');
@@ -56,6 +62,7 @@ export class MiembrosController {
   }
 
   @RequirePermission('padron.ver')
+  @PermitirAutogestionPropia()
   @Get(':id')
   obtener(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
     return this.miembros.obtener(a, id);
@@ -63,8 +70,12 @@ export class MiembrosController {
 
   @RequirePermission('padron.editar')
   @Post()
-  crear(@Alcance() a: AlcanceAcceso, @Body(new ZodValidationPipe(CrearMiembroSchema)) dto: CrearMiembroDto) {
-    return this.miembros.crear(a, dto);
+  crear(
+    @CurrentUser() u: AuthUser,
+    @Alcance() a: AlcanceAcceso,
+    @Body(new ZodValidationPipe(CrearMiembroSchema)) dto: CrearMiembroDto,
+  ) {
+    return this.miembros.crear(u, a, dto);
   }
 
   @RequirePermission('padron.editar')
@@ -93,11 +104,12 @@ export class MiembrosController {
   @RequirePermission('pases.editar')
   @Post(':id/asignaciones')
   agregarAsignacion(
+    @CurrentUser() u: AuthUser,
     @Alcance() a: AlcanceAcceso,
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(CrearAsignacionSchema)) dto: CrearAsignacionDto,
   ) {
-    return this.miembros.agregarAsignacion(a, id, dto);
+    return this.miembros.agregarAsignacion(u, a, id, dto);
   }
 
   /** Cierra la asignación (activo=false, fechaFin=hoy). Nunca borra el registro. */

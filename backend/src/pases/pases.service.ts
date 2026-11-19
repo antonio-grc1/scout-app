@@ -1,12 +1,14 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, Optional, Inject, forwardRef } from '@nestjs/common';
 import { AlcanceRol, EstadoSolicitudPase, TipoUnidad, type Prisma } from '@prisma/client';
 import {
-  alcanceEfectivo,
   assertPuedeOtorgar,
   assertUnidadEnAlcance,
   esRolEducadorEfectivo,
+  rolTienePermisoConAlcanceGlobal,
+  tipoMiembroEfectivo,
 } from '../common/scope/alcance.util.js';
-import type { AlcanceAcceso } from '../common/types/auth.types.js';
+import { PERMISOS_CRITICOS_ADMIN } from '../common/scope/permisos-catalogo.js';
+import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, calcularEdad, fechaCorteCicloEscolar, hoyUtc } from '../common/utils/fechas.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { TesoreriaService } from '../tesoreria/tesoreria.service.js';
@@ -56,7 +58,7 @@ export class PasesService {
         include: {
           rol: true,
           unidad: { include: { rama: true } },
-          usuario: { select: { id: true, dni: true, nombre: true, apellido: true, fechaNacimiento: true } },
+          usuario: { select: { id: true, dni: true, nombre: true, apellido: true, fechaNacimiento: true, tipoMiembro: true } },
         },
       }),
     ]);
@@ -65,8 +67,7 @@ export class PasesService {
 
     const candidatas = asignaciones.filter((a) => {
       const esProtagonista =
-        (a.rol.tipoMiembro ?? (alcanceEfectivo(a) === AlcanceRol.PROPIO ? 'PROTAGONISTA' : 'EDUCADOR')) ===
-        'PROTAGONISTA';
+        tipoMiembroEfectivo(a.rol, a.usuario as { tipoMiembro?: string | null }) === 'PROTAGONISTA';
       return esProtagonista && Boolean(a.unidad.rama);
     });
 
@@ -151,14 +152,14 @@ export class PasesService {
   }
 
   /** Ejecuta un pase en una transacción (o crea solicitud pendiente si destino multi-sección queda fuera de alcance). */
-  async ejecutar(alcance: AlcanceAcceso, dto: PaseDto, actorId?: number) {
-    const [resultado] = await this.prisma.$transaction((tx) => this.aplicarPases(tx, alcance, [dto], actorId));
+  async ejecutar(alcance: AlcanceAcceso, dto: PaseDto, actor: AuthUser) {
+    const [resultado] = await this.prisma.$transaction((tx) => this.aplicarPases(tx, alcance, [dto], actor));
     return resultado;
   }
 
   /** Ejecuta varios pases de forma atómica: si uno falla, no se aplica ninguno. */
-  async ejecutarLote(alcance: AlcanceAcceso, dto: PasesLoteDto, actorId?: number) {
-    const resultados = await this.prisma.$transaction((tx) => this.aplicarPases(tx, alcance, dto.pases, actorId), {
+  async ejecutarLote(alcance: AlcanceAcceso, dto: PasesLoteDto, actor: AuthUser) {
+    const resultados = await this.prisma.$transaction((tx) => this.aplicarPases(tx, alcance, dto.pases, actor), {
       timeout: 30_000,
     });
     const pendientesAprobacion = resultados.filter((r: any) => Boolean(r.pendienteAprobacion)).length;
@@ -174,8 +175,9 @@ export class PasesService {
     tx: Prisma.TransactionClient,
     alcance: AlcanceAcceso,
     pases: PaseDto[],
-    actorId?: number,
+    actor: AuthUser,
   ) {
+    const actorId = actor.sub;
     const resultados = [];
     const hoy = hoyUtc();
     const ultimaRama = tx.rama?.findFirst
@@ -205,7 +207,7 @@ export class PasesService {
           include: {
             rol: { include: { permisos: { include: { permiso: true } } } },
             unidad: { include: { rama: true } },
-            usuario: { select: { id: true, activo: true, fechaNacimiento: true } },
+            usuario: { select: { id: true, activo: true, fechaNacimiento: true, tipoMiembro: true } },
           },
         })
       : [];
@@ -244,7 +246,7 @@ export class PasesService {
               include: {
                 rol: { include: { permisos: { include: { permiso: true } } } },
                 unidad: { include: { rama: true } },
-                usuario: { select: { id: true, activo: true, fechaNacimiento: true } },
+                usuario: { select: { id: true, activo: true, fechaNacimiento: true, tipoMiembro: true } },
               },
             })
           : null);
@@ -254,8 +256,11 @@ export class PasesService {
 
       // El origen debe estar en el alcance de quien ejecuta; no se puede mover a alguien con más privilegios.
       assertUnidadEnAlcance(alcance, origen.unidadId);
-      assertPuedeOtorgar(alcance, origen.rol, origen.alcanceOverride);
-      if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(origen.rol, origen.alcanceOverride)) {
+      assertPuedeOtorgar(alcance, origen.rol, actor, origen.unidadId);
+      if (
+        alcance.tipo !== 'GLOBAL' &&
+        (tipoMiembroEfectivo(origen.rol, origen.usuario as { tipoMiembro?: string | null }) === 'EDUCADOR')
+      ) {
         throw new ForbiddenException('Solo un usuario con alcance global puede realizar pases de educadores');
       }
 
@@ -286,7 +291,11 @@ export class PasesService {
 
       if (!unidadDestino && rolDestino?.requiereRama === false && tx.unidadOrganizativa.findFirst) {
         const tipoPref =
-          rolDestino.alcancePorDefecto === AlcanceRol.GLOBAL ? TipoUnidad.JEFATURA : TipoUnidad.SIN_RAMA_APOYO;
+          rolDestino.tipoUnidad && rolDestino.tipoUnidad !== TipoUnidad.SECCION_RAMA
+            ? rolDestino.tipoUnidad
+            : rolDestino.alcancePorDefecto === AlcanceRol.GLOBAL
+              ? TipoUnidad.JEFATURA
+              : TipoUnidad.SIN_RAMA_APOYO;
         const cacheKey = `fallback:${tipoPref}`;
         if (!unidadesFallbackCache.has(cacheKey)) {
           const encontrada =
@@ -309,6 +318,10 @@ export class PasesService {
       if (!unidadDestino || !unidadDestino.activa) {
         throw new BadRequestException('Rama o sección destino inexistente o inactiva');
       }
+
+      const esOrigenProtagonista =
+        tipoMiembroEfectivo(origen.rol, origen.usuario as { tipoMiembro?: string | null }) === 'PROTAGONISTA';
+      let convierteAEducador = false;
 
       if (!rolDestino) {
         const exclusionRolesPrivilegiados = {
@@ -333,18 +346,21 @@ export class PasesService {
               'SIN_RAMA_APOYO',
               await tx.rol.findFirst({
                 where: {
+                  activo: true,
                   tipoMiembro: 'EDUCADOR',
                   requiereRama: false,
                   permisos: exclusionRolesPrivilegiados,
                 },
+                include: { permisos: { include: { permiso: true } } },
                 orderBy: { id: 'asc' },
               }),
             );
           }
           rolDestino = rolesFallbackCache.get('SIN_RAMA_APOYO');
+          if (esOrigenProtagonista) convierteAEducador = true;
         } else if (unidadDestino.tipo === TipoUnidad.JEFATURA) {
           throw new BadRequestException('Para pases a Jefatura debe especificar explícitamente el rol destino');
-        } else if (unidadDestino.tipo === TipoUnidad.SECCION_RAMA && origen.rol.tipoMiembro === 'PROTAGONISTA') {
+        } else if (unidadDestino.tipo === TipoUnidad.SECCION_RAMA && esOrigenProtagonista) {
           const edad = calcularEdad(origen.usuario.fechaNacimiento, hoy);
           // Si el protagonista alcanzó o superó la edad máxima de la última rama, pasa a educador
           if (edad >= edadEgreso && tx.rol.findFirst) {
@@ -353,33 +369,53 @@ export class PasesService {
                 'EDUCADOR_RAMA',
                 await tx.rol.findFirst({
                   where: {
+                    activo: true,
                     tipoMiembro: 'EDUCADOR',
                     requiereRama: true,
                     permisos: exclusionRolesPrivilegiados,
                   },
+                  include: { permisos: { include: { permiso: true } } },
                   orderBy: { id: 'asc' },
                 }),
               );
             }
             rolDestino = rolesFallbackCache.get('EDUCADOR_RAMA');
+            convierteAEducador = true;
           } else {
             rolDestino = origen.rol;
           }
         } else {
           rolDestino = origen.rol;
         }
+      } else if (esOrigenProtagonista) {
+        const edad = calcularEdad(origen.usuario.fechaNacimiento, hoy);
+        if (
+          edad >= edadEgreso &&
+          (esRolEducadorEfectivo(rolDestino) ||
+            unidadDestino.tipo === TipoUnidad.SIN_RAMA_APOYO ||
+            unidadDestino.tipo === TipoUnidad.JEFATURA)
+        ) {
+          convierteAEducador = true;
+        }
       }
       if (!rolDestino) throw new BadRequestException('Rol destino inexistente');
-      const alcanceOverride = p.alcanceOverride !== undefined ? p.alcanceOverride : null;
+      if (rolDestino.activo === false) {
+        throw new BadRequestException('El rol destino está archivado o inactivo');
+      }
+      const alcanceDestino = rolDestino.alcancePorDefecto;
 
       // Validación dinámica de privilegios por alcance (CERO nombres fijos)
-      assertPuedeOtorgar(alcance, rolDestino, alcanceOverride);
-      if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(rolDestino, alcanceOverride)) {
+      assertPuedeOtorgar(
+        alcance,
+        rolDestino,
+        actor,
+        alcanceDestino === AlcanceRol.PROPIO ? undefined : unidadDestino.id,
+      );
+      if (alcance.tipo !== 'GLOBAL' && esRolEducadorEfectivo(rolDestino)) {
         throw new ForbiddenException('Solo un usuario con alcance global puede asignar roles de educador');
       }
 
       // Si el rol en la unidad destino tiene alcance distinto de PROPIO, exige que la unidad destino esté en el alcance del actor
-      const alcanceDestino = alcanceOverride ?? rolDestino.alcancePorDefecto;
       if (alcanceDestino !== AlcanceRol.PROPIO && alcance.tipo !== 'GLOBAL') {
         assertUnidadEnAlcance(alcance, unidadDestino.id);
       }
@@ -403,26 +439,6 @@ export class PasesService {
         }
       }
 
-      // Validación dinámica de vínculo con Rama según `requiereRama` del rol
-      const requiereRamaEfectivo =
-        rolDestino.requiereRama !== undefined && rolDestino.requiereRama !== null
-          ? rolDestino.requiereRama
-          : rolDestino.alcancePorDefecto !== AlcanceRol.GLOBAL;
-
-      const esUnidadRama = unidadDestino.tipo === TipoUnidad.SECCION_RAMA;
-
-      if (esUnidadRama && !requiereRamaEfectivo) {
-        throw new BadRequestException(
-          'El rol seleccionado está configurado como rol sin rama asignada y no puede asignarse a una rama específica.',
-        );
-      }
-
-      if (!esUnidadRama && requiereRamaEfectivo) {
-        throw new BadRequestException(
-          'El rol seleccionado requiere estar asignado a una rama específica.',
-        );
-      }
-
       if (unidadDestino.id === origen.unidadId && rolDestino.id === origen.rolId) {
         throw new BadRequestException(`El pase de la asignación ${origen.id} no cambia de rama ni de rol`);
       }
@@ -444,40 +460,30 @@ export class PasesService {
         );
       }
 
-      // Anti-lockout: impedir que el pase quite el último rol administrador global activo del sistema.
-      const esOrigenAdminGlobal =
-        (origen.alcanceOverride ?? origen.rol.alcancePorDefecto) === AlcanceRol.GLOBAL &&
-        (origen.rol as { permisos?: Array<{ permiso?: { clave: string } }> }).permisos?.some(
-          (rp) => rp.permiso?.clave === 'organizacion.editar',
-        );
-      if (esOrigenAdminGlobal && tx.asignacionMiembro.findMany) {
-        const destinoMantieneAdmin =
-          alcanceDestino === AlcanceRol.GLOBAL &&
-          (rolDestino as { permisos?: Array<{ permiso?: { clave: string } }> }).permisos?.some(
-            (rp) => rp.permiso?.clave === 'organizacion.editar',
+      // Anti-lockout: impedir que el pase quite algún permiso crítico global si es el último titular activo.
+      const capacidadesPerdidas = PERMISOS_CRITICOS_ADMIN.filter(
+        (cap) =>
+          rolTienePermisoConAlcanceGlobal(origen.rol, cap) &&
+          !rolTienePermisoConAlcanceGlobal(rolDestino, cap),
+      );
+      if (capacidadesPerdidas.length > 0 && tx.asignacionMiembro.findMany) {
+        const otrasGlobales = await tx.asignacionMiembro.findMany({
+          where: {
+            id: { not: origen.id },
+            activo: true,
+            usuario: { activo: true },
+            unidad: { activa: true },
+            rol: { alcancePorDefecto: AlcanceRol.GLOBAL, activo: true },
+          },
+          include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+        });
+        for (const cap of capacidadesPerdidas) {
+          const cubierto = otrasGlobales.some(
+            (a) => rolTienePermisoConAlcanceGlobal(a.rol, cap),
           );
-        if (!destinoMantieneAdmin) {
-          const otrasGlobales = await tx.asignacionMiembro.findMany({
-            where: {
-              id: { not: origen.id },
-              activo: true,
-              usuario: { activo: true },
-              unidad: { activa: true },
-              OR: [
-                { alcanceOverride: AlcanceRol.GLOBAL },
-                { alcanceOverride: null, rol: { alcancePorDefecto: AlcanceRol.GLOBAL } },
-              ],
-            },
-            include: { rol: { include: { permisos: { include: { permiso: true } } } } },
-          });
-          const hayOtroAdmin = otrasGlobales.some((a) =>
-            a.rol.permisos?.some(
-              (rp) => rp.permiso?.clave === 'organizacion.editar',
-            ),
-          );
-          if (!hayOtroAdmin) {
+          if (!cubierto) {
             throw new BadRequestException(
-              'No se puede transferir al último administrador global activo sin conservar un rol administrador.',
+              `No se puede transferir al último administrador global activo con permiso "${cap}" sin conservar un rol equivalente.`,
             );
           }
         }
@@ -521,7 +527,6 @@ export class PasesService {
               unidadOrigenId: origen.unidadId,
               unidadDestinoId: unidadDestino.id,
               rolDestinoId: rolDestino.id,
-              alcanceOverride,
               modo: 'MOVER',
               estado: EstadoSolicitudPase.PENDIENTE,
               solicitadoPorId: actorUsuarioId,
@@ -546,9 +551,9 @@ export class PasesService {
         usuarioId: origen.usuarioId,
         unidadDestinoId: unidadDestino.id,
         rolDestinoId: rolDestino.id,
-        alcanceOverride,
         cicloAnio: p.cicloAnio ?? anioActual(),
         fechaHoy: hoy,
+        convertirAEducador: convierteAEducador,
       });
 
       resultados.push(paseEjecutado);
@@ -563,9 +568,9 @@ export class PasesService {
       usuarioId: number;
       unidadDestinoId: number;
       rolDestinoId: number;
-      alcanceOverride: AlcanceRol | null;
       cicloAnio: number;
       fechaHoy: Date;
+      convertirAEducador?: boolean;
     },
   ) {
     // Cierre condicional: evita que dos pases concurrentes cierren la misma asignación.
@@ -577,12 +582,18 @@ export class PasesService {
       throw new ConflictException(`La asignación ${params.asignacionOrigenId} fue modificada por otro proceso`);
     }
 
+    if (params.convertirAEducador && tx.usuario?.update) {
+      await tx.usuario.update({
+        where: { id: params.usuarioId },
+        data: { tipoMiembro: 'EDUCADOR' },
+      });
+    }
+
     const nueva = await tx.asignacionMiembro.create({
       data: {
         usuarioId: params.usuarioId,
         unidadId: params.unidadDestinoId,
         rolId: params.rolDestinoId,
-        alcanceOverride: params.alcanceOverride,
         cicloAnio: params.cicloAnio,
         fechaInicio: params.fechaHoy,
       },
@@ -661,9 +672,10 @@ export class PasesService {
     alcance: AlcanceAcceso,
     solicitudId: number,
     dto: AprobarSolicitudPaseDto,
-    actorId?: number,
+    actor: AuthUser,
   ) {
     if (alcance.tipo === 'PROPIO') throw new ForbiddenException('Sin permisos para aprobar solicitudes');
+    const actorId = actor.sub;
 
     return this.prisma.$transaction(async (tx) => {
       const solicitud = await tx.solicitudPase.findUnique({
@@ -704,15 +716,20 @@ export class PasesService {
         throw new BadRequestException('El miembro se encuentra inactivo');
       }
 
+      if (solicitud.rolDestino.activo === false) {
+        throw new BadRequestException('El rol destino está archivado o inactivo');
+      }
+
       if (alcance.tipo !== 'GLOBAL') {
         if (
-          esRolEducadorEfectivo(origen.rol, origen.alcanceOverride) ||
-          esRolEducadorEfectivo(solicitud.rolDestino, solicitud.alcanceOverride)
+          esRolEducadorEfectivo(origen.rol) ||
+          esRolEducadorEfectivo(solicitud.rolDestino)
         ) {
           throw new ForbiddenException('Solo un usuario con alcance global puede aprobar pases de educadores');
         }
       }
-      assertPuedeOtorgar(alcance, solicitud.rolDestino, solicitud.alcanceOverride);
+      assertPuedeOtorgar(alcance, origen.rol, actor);
+      assertPuedeOtorgar(alcance, solicitud.rolDestino, actor, solicitud.unidadDestinoId);
 
       let unidadDestinoFinalId = solicitud.unidadDestinoId;
       if (dto.unidadDestinoId && dto.unidadDestinoId !== solicitud.unidadDestinoId) {
@@ -760,7 +777,6 @@ export class PasesService {
         usuarioId: solicitud.usuarioId,
         unidadDestinoId: unidadDestinoFinalId,
         rolDestinoId: solicitud.rolDestinoId,
-        alcanceOverride: solicitud.alcanceOverride,
         cicloAnio: anioActual(),
         fechaHoy: hoy,
       });

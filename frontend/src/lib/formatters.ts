@@ -576,21 +576,34 @@ export function esRolAlcanceGlobal(rol: any): boolean {
   return alcance === 'GLOBAL';
 }
 
+export function obtenerTipoUnidadRol(
+  rol: any,
+): 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO' {
+  const explicito = String(rol?.tipoUnidad || '').toUpperCase();
+  if (
+    explicito === 'SECCION_RAMA' ||
+    explicito === 'JEFATURA' ||
+    explicito === 'SIN_RAMA_APOYO'
+  ) {
+    return explicito;
+  }
+  if (rolRequiereRama(rol)) return 'SECCION_RAMA';
+  return esRolAlcanceGlobal(rol) ? 'JEFATURA' : 'SIN_RAMA_APOYO';
+}
+
 export function esRolJefe(rol: any): boolean {
   if (!rol) return false;
-  if (rolRequiereRama(rol)) return false;
-  const nombre = String(rol.nombre || '').toLowerCase();
-  return nombre.includes('jefe') || nombre.includes('jefatura');
+  return obtenerTipoUnidadRol(rol) === 'JEFATURA';
 }
 
 export function esRolSinRama(rol: any): boolean {
   if (!rol) return false;
-  if (rolRequiereRama(rol)) return false;
-  return !esRolJefe(rol);
+  return obtenerTipoUnidadRol(rol) === 'SIN_RAMA_APOYO';
 }
 
 export function esRolRama(rol: any): boolean {
-  return rolRequiereRama(rol);
+  if (!rol) return false;
+  return obtenerTipoUnidadRol(rol) === 'SECCION_RAMA';
 }
 
 /**
@@ -654,9 +667,11 @@ export function seleccionarPlantillaPorMiembro(
   const edadMinRama = Number(asig?.unidad?.rama?.edadMinima ?? 0);
 
   const esEducador =
-    esRolDeEducador(rolObj) ||
-    unidadTipo === 'JEFATURA' ||
-    unidadTipo === 'SIN_RAMA_APOYO';
+    miembro?.tipoMiembro === 'EDUCADOR' ||
+    (miembro?.tipoMiembro == null &&
+      (esRolDeEducador(rolObj) ||
+        unidadTipo === 'JEFATURA' ||
+        unidadTipo === 'SIN_RAMA_APOYO'));
 
   if (esEducador) {
     const pEdu =

@@ -1,12 +1,32 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { AlcanceRol, TipoUnidad } from '@prisma/client';
-import type { AlcanceAcceso } from '../src/common/types/auth.types.js';
+import type { AlcanceAcceso, AuthUser } from '../src/common/types/auth.types.js';
 import { PasesService } from '../src/pases/pases.service.js';
 import { OrganizacionService } from '../src/organizacion/organizacion.service.js';
 
 describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pases', () => {
   const alcanceGlobal: AlcanceAcceso = { tipo: 'GLOBAL' };
+  const actorGlobal: AuthUser = {
+    sub: 1,
+    dni: '10000001',
+    requiereCambioClave: false,
+    asignaciones: [
+      {
+        unidadId: 1,
+        unidadNombre: 'Jefatura',
+        rol: 'Jefe de Grupo',
+        alcance: AlcanceRol.GLOBAL,
+        permisos: [
+          'organizacion.ver',
+          'organizacion.editar',
+          'roles.editar',
+          'pases.ver',
+          'pases.editar',
+        ],
+      },
+    ],
+  };
 
   describe('PasesService - Control de duplicados e integridad de cuotas', () => {
     it('bloquea pase si el miembro ya tiene una asignación activa en la unidad destino con el mismo rol', async () => {
@@ -18,7 +38,6 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
             unidadId: 1,
             rolId: 2,
             activo: true,
-            alcanceOverride: null,
             rol: { id: 2, alcancePorDefecto: AlcanceRol.PROPIO, tipoMiembro: 'PROTAGONISTA', requiereRama: true },
             usuario: { id: 5, activo: true, fechaNacimiento: new Date('2012-05-10') },
           }),
@@ -49,11 +68,15 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
       const service = new PasesService(mockPrisma);
 
       await expect(
-        service.ejecutar(alcanceGlobal, {
-          asignacionOrigenId: 10,
-          unidadDestinoId: 2,
-          rolDestinoId: 3,
-        }),
+        service.ejecutar(
+          alcanceGlobal,
+          {
+            asignacionOrigenId: 10,
+            unidadDestinoId: 2,
+            rolDestinoId: 3,
+          },
+          actorGlobal,
+        ),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -70,7 +93,6 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
             unidadId: 1,
             rolId: 2,
             activo: true,
-            alcanceOverride: null,
             rol: { id: 2, alcancePorDefecto: AlcanceRol.PROPIO, tipoMiembro: 'PROTAGONISTA', requiereRama: true },
             usuario: { id: 8, activo: true, fechaNacimiento: new Date('2012-05-10') },
           }),
@@ -102,12 +124,16 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
 
       const service = new PasesService(mockPrisma, mockTesoreria);
 
-      const res = await service.ejecutar(alcanceGlobal, {
-        asignacionOrigenId: 20,
-        unidadDestinoId: 2,
-        rolDestinoId: 3,
-        cicloAnio: 2026,
-      });
+      const res = await service.ejecutar(
+        alcanceGlobal,
+        {
+          asignacionOrigenId: 20,
+          unidadDestinoId: 2,
+          rolDestinoId: 3,
+          cicloAnio: 2026,
+        },
+        actorGlobal,
+      );
 
       expect(res.asignacionNueva.id).toBe(25);
       expect(mockTesoreria.sincronizarCuotasMiembroActivoEnTx).toHaveBeenCalledWith(
@@ -212,7 +238,7 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
 
       const service = new OrganizacionService(mockPrisma);
 
-      await expect(service.eliminarRol(alcanceGlobal, 1)).rejects.toThrow(
+      await expect(service.eliminarRol(actorGlobal, alcanceGlobal, 1)).rejects.toThrow(
         /no se puede quitar el permiso de administrar roles ni eliminar el último rol administrador/i,
       );
     });

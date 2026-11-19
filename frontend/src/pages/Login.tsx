@@ -20,7 +20,7 @@ export const Login: React.FC = () => {
   const [enviandoRecupero, setEnviandoRecupero] = useState(false);
   const [mensajeRecupero, setMensajeRecupero] = useState<string | null>(null);
 
-  const token = useAuthStore((state) => state.token);
+  const autenticado = useAuthStore((state) => state.autenticado);
   const usuario = useAuthStore((state) => state.usuario);
   const requiereCambioClave = useAuthStore((state) => state.requiereCambioClave);
   const setSesion = useAuthStore((state) => state.setSesion);
@@ -34,9 +34,9 @@ export const Login: React.FC = () => {
     return () => clearInterval(t);
   }, [rateLimitSecs]);
 
-  if (token && usuario) {
+  if (autenticado && usuario) {
     const destino = obtenerRutaInicialUsuario({
-      token,
+      autenticado,
       requiereCambioClave,
     });
     return <Navigate to={destino} replace />;
@@ -58,7 +58,7 @@ export const Login: React.FC = () => {
 
       const estadoAuth = useAuthStore.getState();
       const destino = obtenerRutaInicialUsuario({
-        token: estadoAuth.token,
+        autenticado: estadoAuth.autenticado,
         requiereCambioClave: Boolean(res.data?.requiereCambioClave),
       });
       navigate(destino, { replace: true });

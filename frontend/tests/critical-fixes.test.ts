@@ -68,6 +68,7 @@ describe('C1 & C2: offlineCache y authStore', () => {
     const fallback = offlineCache.obtenerDeCache('/auth/me');
     assert.ok(fallback);
     assert.equal(fallback.data.requiereCambioClave, true);
+    assert.equal('accessToken' in fallback.data, false);
   });
 
   it('calcula resumen.saldoPendiente y totalDeuda en estado-cuenta offline sin confundir /miembros/:id', async () => {

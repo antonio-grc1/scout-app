@@ -162,7 +162,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
       items.push({
         id: 'miembros',
         label: 'Ir al Padrón de Miembros',
-        hint: 'Filtros por sección, bajas y ficha 360°',
+        hint: 'Filtros por sección, bajas y ficha',
         icon: <Users className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
           onCerrar();

@@ -43,11 +43,12 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
   onAbrirDetalle,
   onValidarFichaDirecto,
 }) => {
-  const { tienePermiso } = useAuthStore();
-  const puedeVerFicha = tienePermiso('legajos.ver');
-  const puedeValidarFisico = tienePermiso('legajos.editar');
-  const puedeEjecutarPases = tienePermiso('pases.editar');
-  const puedeVerCuotas = tienePermiso('cobranzas.ver') || tienePermiso('caja.ver');
+  const { usuario: usuarioActual, tienePermisoUnidadOGlobal } = useAuthStore();
+  const puedeVerFicha = tienePermisoUnidadOGlobal('legajos.ver');
+  const puedeValidarFisico =
+    tienePermisoUnidadOGlobal('legajos.editar') && miembro?.id !== usuarioActual?.id;
+  const puedeEjecutarPases = tienePermisoUnidadOGlobal('pases.editar');
+  const puedeVerCuotas = tienePermisoUnidadOGlobal(['cobranzas.ver', 'caja.ver']);
 
   const asig = obtenerRolPrincipal(miembro);
   const rolesSecundarios = obtenerRolesSecundarios(miembro);

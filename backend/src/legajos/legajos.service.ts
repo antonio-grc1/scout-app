@@ -101,9 +101,11 @@ export class LegajosService {
     });
   }
 
-  async obtenerPlantilla(id: number) {
+  async obtenerPlantilla(id: number, alcance?: AlcanceAcceso) {
     const plantilla = await this.prisma.plantillaFormulario.findUnique({ where: { id } });
-    if (!plantilla) throw new NotFoundException('Plantilla no encontrada');
+    if (!plantilla || (!plantilla.activa && alcance && alcance.tipo !== 'GLOBAL')) {
+      throw new NotFoundException('Plantilla no encontrada');
+    }
     return plantilla;
   }
 
@@ -163,6 +165,7 @@ export class LegajosService {
         fechaNacimiento: true,
         emailContacto: true,
         telefonoContacto: true,
+        tipoMiembro: true,
         datosFijosJson: true,
         grupoFamiliar: { select: { id: true, nombreFamilia: true } },
         asignaciones: {
@@ -189,7 +192,13 @@ export class LegajosService {
 
     const edad = calcularEdad(usuario.fechaNacimiento);
     const esMenor = edad < 18;
-    const esEducador = usuario.asignaciones.some((a) => esRolEducadorEfectivo(a.rol));
+    const tipoExplicit = (usuario as { tipoMiembro?: string | null }).tipoMiembro;
+    const esEducador =
+      tipoExplicit === 'EDUCADOR'
+        ? true
+        : tipoExplicit === 'PROTAGONISTA'
+          ? false
+          : usuario.asignaciones.some((a) => esRolEducadorEfectivo(a.rol));
 
     let datosFamiliaresSugeridos: Record<string, unknown> = {};
     if (usuario.grupoFamiliar) {
@@ -520,6 +529,10 @@ export class LegajosService {
       }
     } else if (alcance.tipo === 'PROPIO') {
       throw new ForbiddenException('No tiene permisos para validar físicamente fichas');
+    }
+
+    if (entrega.usuario.id === actor.sub) {
+      throw new ForbiddenException('No puede validar físicamente su propia ficha');
     }
 
     if (!entrega.usuario.activo) {

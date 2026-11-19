@@ -55,7 +55,7 @@ export const CambiarClave: React.FC = () => {
 
   const rutaDestino = () =>
     obtenerRutaInicialUsuario({
-      token: useAuthStore.getState().token,
+      autenticado: useAuthStore.getState().autenticado,
       requiereCambioClave: false,
     });
 
@@ -89,13 +89,8 @@ export const CambiarClave: React.FC = () => {
       });
 
       const payload = res.data;
-      if (
-        payload?.accessToken &&
-        payload?.usuario &&
-        Array.isArray(payload?.asignaciones)
-      ) {
+      if (payload?.usuario && Array.isArray(payload?.asignaciones)) {
         setSesion({
-          accessToken: payload.accessToken,
           usuario: payload.usuario,
           requiereCambioClave: Boolean(payload.requiereCambioClave),
           asignaciones: payload.asignaciones,

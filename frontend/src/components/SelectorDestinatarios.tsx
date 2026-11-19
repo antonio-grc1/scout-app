@@ -33,11 +33,26 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
   unidades,
   disabled = false,
 }) => {
-  const esGlobal = useAuthStore((s) => s.tieneGlobal());
   const asignaciones = useAuthStore((s) => s.asignaciones);
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const obtenerUnidadesConPermiso = useAuthStore((s) => s.obtenerUnidadesConPermiso);
+  const esGlobal = tienePermisoGlobal(['planes.editar', 'caja.editar']);
+  const unidadesConceptosIds = useMemo(
+    () => obtenerUnidadesConPermiso(['planes.editar', 'caja.editar']),
+    [asignaciones, obtenerUnidadesConPermiso],
+  );
   const unidadesPermitidas = useMemo(
-    () => filtrarUnidadesPorAlcance(unidades, { esGlobal, asignaciones }),
-    [unidades, esGlobal, asignaciones],
+    () =>
+      esGlobal
+        ? [...unidades]
+        : filtrarUnidadesPorAlcance(unidades, {
+            esGlobal: false,
+            asignaciones: unidadesConceptosIds.map((id) => ({
+              alcance: 'UNIDAD' as const,
+              unidadId: id,
+            })),
+          }),
+    [unidades, esGlobal, unidadesConceptosIds],
   );
 
   // Si el usuario no tiene alcance global, nunca puede quedar seleccionado "Todo el Grupo" (null)
@@ -186,7 +201,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             onClick={() => onChangeDestinatarioTipo('EDUCADORES')}
             className={`min-h-[42px] py-2 px-3 rounded-xl text-[13px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
               destinatarioTipo === 'EDUCADORES'
-                ? 'bg-purple-600 text-white border-purple-600 shadow-xs'
+                ? 'bg-brand text-brand-contrast border-brand font-extrabold shadow-2xs'
                 : 'bg-surface text-ink-2 border-rule hover:bg-paper-2/60'
             }`}
           >
@@ -200,7 +215,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             onClick={() => onChangeDestinatarioTipo('TODOS')}
             className={`min-h-[42px] py-2 px-3 rounded-xl text-[13px] font-bold transition flex items-center justify-center gap-1.5 cursor-pointer border ${
               destinatarioTipo === 'TODOS'
-                ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                ? 'bg-brand text-brand-contrast border-brand font-extrabold shadow-2xs'
                 : 'bg-surface text-ink-2 border-rule hover:bg-paper-2/60'
             }`}
           >
@@ -258,7 +273,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
         <div className="flex items-center justify-between gap-2">
           <label className="text-[13px] font-semibold text-ink-2 flex items-center gap-1.5">
             <UserX className="w-4 h-4 text-rose-500" />
-            <span>Excepciones particulares (miembros exentos de la cuota)</span>
+            <span>Excepciones particulares (miembros exentos del cobro)</span>
           </label>
           <span className="text-xs font-bold text-ink-muted dark:text-ink-muted">
             {excepcionesIds.length} {excepcionesIds.length === 1 ? 'excluido' : 'excluidos'}
@@ -275,7 +290,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder="Escriba nombre, apellido o DNI para excluir..."
-              className="w-full min-h-[42px] rounded-xl border border-rule bg-surface pl-10 pr-9 py-2 text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-rose-500 transition"
+              className="w-full min-h-[42px] rounded-xl border border-rule bg-surface pl-10 pr-9 py-2 text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
             />
             {busqueda && (
               <button

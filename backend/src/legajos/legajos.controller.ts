@@ -13,6 +13,7 @@ import {
 import {
   Alcance,
   CurrentUser,
+  PermitirAutogestionPropia,
   RequireAnyPermission,
   RequirePermission,
 } from '../common/decorators/auth.decorators.js';
@@ -42,6 +43,7 @@ export class LegajosController {
 
   // ---------------- Plantillas ----------------
   @RequirePermission(VER)
+  @PermitirAutogestionPropia()
   @Get('plantillas')
   listarPlantillas(
     @Alcance() alcance: AlcanceAcceso,
@@ -52,9 +54,10 @@ export class LegajosController {
   }
 
   @RequirePermission(VER)
+  @PermitirAutogestionPropia()
   @Get('plantillas/:id')
-  obtenerPlantilla(@Param('id', ParseIntPipe) id: number) {
-    return this.legajos.obtenerPlantilla(id);
+  obtenerPlantilla(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.legajos.obtenerPlantilla(id, a);
   }
 
   @RequirePermission(PLANTILLAS_GESTIONAR)
@@ -78,6 +81,7 @@ export class LegajosController {
 
   // ---------------- Precarga y Guardado ----------------
   @RequirePermission(COMPLETAR)
+  @PermitirAutogestionPropia()
   @Get('miembro/:usuarioId/plantilla/:plantillaId/precarga')
   obtenerPrecarga(
     @Alcance() a: AlcanceAcceso,
@@ -89,6 +93,7 @@ export class LegajosController {
   }
 
   @RequirePermission(COMPLETAR)
+  @PermitirAutogestionPropia()
   @Post('entregas')
   guardarEntrega(
     @CurrentUser() u: AuthUser,
@@ -99,6 +104,7 @@ export class LegajosController {
   }
 
   @RequirePermission(VER)
+  @PermitirAutogestionPropia()
   @Get('entregas')
   listarEntregas(
     @Alcance() a: AlcanceAcceso,

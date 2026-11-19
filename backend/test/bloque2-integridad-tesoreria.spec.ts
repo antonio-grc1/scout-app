@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { EstadoCargo, TipoMovimientoFinanciero } from '@prisma/client';
+import { AlcanceRol, EstadoCargo, TipoMovimientoFinanciero } from '@prisma/client';
 import type { AlcanceAcceso, AuthUser } from '../src/common/types/auth.types.js';
 import { TesoreriaService } from '../src/tesoreria/tesoreria.service.js';
 import {
@@ -17,10 +17,16 @@ describe('BLOQUE 2 - Integridad Transaccional, Saldos, Stock, Fechas y Rendimien
   const actorGlobal: AuthUser = {
     sub: 1,
     dni: '12345678',
-    email: 'admin@scout.org',
-    roles: ['ADMINISTRADOR'],
-    permisos: ['caja.editar', 'cobranzas.editar', 'cobranzas.ver', 'eventos.editar', 'eventos.ver'],
-    asignaciones: [{ unidadId: null, rolNombre: 'ADMINISTRADOR', permisos: ['caja.editar', 'cobranzas.editar', 'cobranzas.ver', 'eventos.editar', 'eventos.ver'] }],
+    requiereCambioClave: false,
+    asignaciones: [
+      {
+        unidadId: 1,
+        unidadNombre: 'Jefatura',
+        rol: 'ADMINISTRADOR',
+        alcance: AlcanceRol.GLOBAL,
+        permisos: ['caja.editar', 'cobranzas.editar', 'cobranzas.ver', 'eventos.editar', 'eventos.ver'],
+      },
+    ],
   };
 
   describe('ITEM-08: Preservación de cargos históricos PAGADO al sincronizar conceptos', () => {

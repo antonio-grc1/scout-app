@@ -123,9 +123,11 @@ describe('A4: obtenerRutaInicialUsuario unifica inicio autenticado en /inicio y 
     });
 
     const auth = useAuthStore.getState();
+    assert.equal(auth.autenticado, true);
+    assert.equal(localStorage.getItem('scout_token'), null);
     assert.equal(
       obtenerRutaInicialUsuario({
-        token: auth.token,
+        autenticado: auth.autenticado,
         requiereCambioClave: auth.requiereCambioClave,
         puedeVerPadron: auth.puedeVerPadron,
         puedeAccederPanelGestion: auth.puedeAccederPanelGestion,
@@ -302,7 +304,7 @@ describe('traducirErrorAmigable no confunde montos con códigos HTTP', () => {
 });
 
 describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinatarias', () => {
-  it('oculta Caja, Gastos y Balance para usuarios sin alcance GLOBAL', async () => {
+  it('habilita Caja, Gastos y Balance por rama (A2) y separa Roles de Organización/Correo (A5)', async () => {
     const { calcularPermisosPanelGlobal } = await vite.ssrLoadModule('/src/lib/permisos.ts');
 
     const soloCajaUnidad = calcularPermisosPanelGlobal({
@@ -316,9 +318,25 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
         },
       ],
     });
-    assert.equal(soloCajaUnidad.puedeVerCaja, false);
-    assert.equal(soloCajaUnidad.puedeVerGastos, false);
-    assert.equal(soloCajaUnidad.puedeVerBalance, false);
+    assert.equal(soloCajaUnidad.puedeVerCaja, true);
+    assert.equal(soloCajaUnidad.puedeVerGastos, true);
+    assert.equal(soloCajaUnidad.puedeVerBalance, true);
+    assert.equal(soloCajaUnidad.puedeVerTesoreria, true);
+    assert.equal(soloCajaUnidad.puedeVerCorreo, false);
+
+    // PROPIO nunca habilita Caja/Gastos/Balance
+    const soloCajaPropio = calcularPermisosPanelGlobal({
+      asignaciones: [
+        {
+          alcance: 'PROPIO',
+          unidadId: 2,
+          permisos: ['caja.ver', 'caja.editar'],
+        },
+      ],
+    });
+    assert.equal(soloCajaPropio.puedeVerCaja, false);
+    assert.equal(soloCajaPropio.puedeVerGastos, false);
+    assert.equal(soloCajaPropio.puedeVerBalance, false);
 
     const tesoreroRama = calcularPermisosPanelGlobal({
       esGlobal: false,
@@ -345,6 +363,19 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
     assert.equal(tesoreroGlobal.puedeVerCaja, true);
     assert.equal(tesoreroGlobal.puedeVerGastos, true);
     assert.equal(tesoreroGlobal.puedeVerBalance, true);
+
+    // A5: roles.editar != organizacion.editar; correo exige organizacion.editar GLOBAL
+    const gestorRoles = calcularPermisosPanelGlobal({
+      asignaciones: [{ alcance: 'GLOBAL', unidadId: 1, permisos: ['roles.ver', 'roles.editar'] }],
+    });
+    assert.equal(gestorRoles.puedeVerRoles, true);
+    assert.equal(gestorRoles.puedeVerCorreo, false);
+
+    const gestorOrgGlobal = calcularPermisosPanelGlobal({
+      asignaciones: [{ alcance: 'GLOBAL', unidadId: 1, permisos: ['organizacion.ver', 'organizacion.editar'] }],
+    });
+    assert.equal(gestorOrgGlobal.puedeVerOrganizacion, true);
+    assert.equal(gestorOrgGlobal.puedeVerCorreo, true);
   });
 
   it('filtra unidades y bloquea edición de conceptos globales o familias de otras ramas para alcance UNIDAD', async () => {
@@ -400,13 +431,12 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
     );
   });
 
-  it('puedeAccederPanelGestion no habilita /global si un usuario UNIDAD solo tiene permisos globales de caja/gastos', async () => {
+  it('puedeAccederPanelGestion habilita panel según permiso + alcance (A2/ARQ-02) y aísla multirrol', async () => {
     localStorage.clear();
     const { useAuthStore } = await vite.ssrLoadModule('/src/store/authStore.ts');
 
     useAuthStore.getState().setSesion({
-      accessToken: 'tok-caja-unidad',
-      usuario: { id: 9, dni: '99', nombre: 'Solo', apellido: 'Caja' },
+      usuario: { id: 9, dni: '99', nombre: 'Caja', apellido: 'Rama' },
       requiereCambioClave: false,
       asignaciones: [
         {
@@ -418,10 +448,9 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
         },
       ],
     });
-    assert.equal(useAuthStore.getState().puedeAccederPanelGestion(), false);
+    assert.equal(useAuthStore.getState().puedeAccederPanelGestion(), true);
 
     useAuthStore.getState().setSesion({
-      accessToken: 'tok-cuotas-unidad',
       usuario: { id: 10, dni: '100', nombre: 'Tesorero', apellido: 'Manada' },
       requiereCambioClave: false,
       asignaciones: [
@@ -435,6 +464,23 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
       ],
     });
     assert.equal(useAuthStore.getState().puedeAccederPanelGestion(), true);
+
+    // A1: Protagonista con eventos.ver en PROPIO no accede a gestión ni padrón
+    useAuthStore.getState().setSesion({
+      usuario: { id: 11, dni: '101', nombre: 'Prota', apellido: 'Scout' },
+      requiereCambioClave: false,
+      asignaciones: [
+        {
+          unidadId: 2,
+          unidadNombre: 'Manada',
+          rol: 'Protagonista',
+          alcance: 'PROPIO',
+          permisos: ['padron.ver', 'padron.editar', 'eventos.ver'],
+        },
+      ],
+    });
+    assert.equal(useAuthStore.getState().puedeVerPadron(), false);
+    assert.equal(useAuthStore.getState().puedeAccederPanelGestion(), false);
   });
 
   it('filtra roles asignables, bloquea modificaciones sobre usuarios GLOBALES y restringe pases según alcance', async () => {
@@ -604,6 +650,102 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
         { esGlobal: false, unidadesEnAlcanceIds: [2], miembroActualId: 12 },
       ),
       true,
+    );
+  });
+
+  it('Opción A: evalúa permisosAlcance por permiso, prioriza tipoMiembro en Usuario y permite asignación libre rol-unidad', async () => {
+    const {
+      tienePermisoConAlcance,
+      obtenerUnidadesConPermiso,
+      actorDominaPermisosRol,
+      miembroEsEducador,
+      filtrarRolesAsignablesPorAlcance,
+    } = await vite.ssrLoadModule('/src/lib/permisos.ts');
+    const { computeCapabilities } = await vite.ssrLoadModule('/src/core/capabilities.ts');
+
+    const asigMixta = [
+      {
+        unidadId: 3,
+        unidadNombre: 'Tropa',
+        rol: 'Coordinador Mixto',
+        alcance: 'GLOBAL' as const,
+        permisos: ['padron.ver', 'padron.editar', 'eventos.ver', 'eventos.editar'],
+        permisosAlcance: {
+          'padron.ver': 'UNIDAD' as const,
+          'padron.editar': 'UNIDAD' as const,
+          'eventos.ver': 'GLOBAL' as const,
+          'eventos.editar': 'GLOBAL' as const,
+        },
+      },
+    ];
+
+    assert.equal(tienePermisoConAlcance(asigMixta, 'eventos.editar', 'GLOBAL'), true);
+    assert.equal(tienePermisoConAlcance(asigMixta, 'padron.editar', 'GLOBAL'), false);
+    assert.equal(tienePermisoConAlcance(asigMixta, 'padron.editar', 'UNIDAD'), true);
+    assert.deepEqual(obtenerUnidadesConPermiso(asigMixta, 'padron.editar'), [3]);
+    assert.deepEqual(obtenerUnidadesConPermiso(asigMixta, 'eventos.editar'), []);
+
+    const caps = computeCapabilities(asigMixta);
+    assert.equal(caps.canCreateGlobalEventos, true);
+    assert.deepEqual(caps.unidadesAsignadasIds, [3]);
+
+    // Dominio por permiso: un actor no puede otorgar un rol con padron.editar GLOBAL si solo tiene UNIDAD
+    assert.equal(
+      actorDominaPermisosRol(asigMixta, {
+        alcancePorDefecto: 'GLOBAL',
+        permisos: ['padron.ver', 'padron.editar'],
+        permisosAlcance: { 'padron.ver': 'GLOBAL', 'padron.editar': 'GLOBAL' },
+      }),
+      false,
+    );
+    assert.equal(
+      actorDominaPermisosRol(
+        asigMixta,
+        {
+          alcancePorDefecto: 'GLOBAL',
+          permisos: ['padron.ver', 'eventos.editar'],
+          permisosAlcance: { 'padron.ver': 'UNIDAD', 'eventos.editar': 'GLOBAL' },
+        },
+        3,
+      ),
+      true,
+    );
+
+    // miembroEsEducador prioriza Usuario.tipoMiembro sin depender del nombre o tipo del rol
+    assert.equal(
+      miembroEsEducador({
+        tipoMiembro: 'EDUCADOR',
+        asignaciones: [{ activo: true, rol: { tipoMiembro: 'PROTAGONISTA', alcance: 'PROPIO' } }],
+      }),
+      true,
+    );
+    assert.equal(
+      miembroEsEducador({
+        tipoMiembro: 'PROTAGONISTA',
+        asignaciones: [{ activo: true, rol: { tipoMiembro: 'EDUCADOR', alcance: 'GLOBAL' } }],
+      }),
+      false,
+    );
+
+    // A3: roles con permisosAlcance no se filtran por requiereRama / tipoUnidad
+    const rolesConPermisosAlcance = [
+      {
+        id: 10,
+        nombre: 'Rol General',
+        alcancePorDefecto: 'UNIDAD',
+        requiereRama: false,
+        permisos: ['padron.ver'],
+        permisosAlcance: { 'padron.ver': 'UNIDAD' as const },
+      },
+    ];
+    assert.deepEqual(
+      filtrarRolesAsignablesPorAlcance(
+        rolesConPermisosAlcance,
+        [{ tipo: 'SECCION_RAMA', ramaId: 1 }],
+        false,
+        asigMixta,
+      ).map((r: any) => r.id),
+      [10],
     );
   });
 });

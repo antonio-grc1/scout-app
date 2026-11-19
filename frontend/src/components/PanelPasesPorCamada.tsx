@@ -21,9 +21,9 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   onToast,
   onAbrirMiembro,
 }) => {
-  const { tienePermiso, tieneGlobal } = useAuthStore();
-  const esGlobal = tieneGlobal();
-  const puedeEjecutarPases = tienePermiso('pases.editar');
+  const { tienePermisoGlobal, tienePermisoUnidadOGlobal } = useAuthStore();
+  const esGlobal = tienePermisoGlobal(['pases.ver', 'pases.editar']);
+  const puedeEjecutarPases = tienePermisoUnidadOGlobal('pases.editar');
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});

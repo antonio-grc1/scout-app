@@ -194,8 +194,8 @@ export function debeMostrarErrorOfflineLibro(
 }
 
 export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = ({ onToast }) => {
-  const { tienePermiso } = useAuthStore();
-  const puedeGestionarTesoreria = tienePermiso('caja.editar');
+  const { tienePermisoUnidadOGlobal } = useAuthStore();
+  const puedeGestionarTesoreria = tienePermisoUnidadOGlobal('caja.editar');
 
   const onToastRef = useRef(onToast);
   useEffect(() => {

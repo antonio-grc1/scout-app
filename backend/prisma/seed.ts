@@ -10,6 +10,7 @@
 import 'dotenv/config';
 import { AlcanceRol, PrismaClient, TipoCuenta, TipoRubro, TipoUnidad } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { CATALOGO_PERMISOS } from '../src/common/scope/permisos-catalogo.js';
 import { seedPlantillaOficial } from './plantilla-oficial-2026.js';
 import { seedDemo } from './seed-demo.js';
 
@@ -39,28 +40,12 @@ const UNIDADES: { nombre: string; tipo: TipoUnidad; rama: string | null }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// 3. Catálogo de permisos (claves por panel/pestaña usadas por @RequirePermission)
+// 3. Catálogo de permisos (fuente única compartida con OrganizacionService)
 // ---------------------------------------------------------------------------
-const PERMISOS: { clave: string; descripcion: string }[] = [
-  { clave: 'padron.ver', descripcion: 'Padrón y Ficha de Miembro: Solo lectura' },
-  { clave: 'padron.editar', descripcion: 'Padrón y Ficha de Miembro: Alta, edición de datos, baja y reseteo de clave' },
-  { clave: 'legajos.ver', descripcion: 'Legajos y Colaboradores: Solo lectura y descarga PDF' },
-  { clave: 'legajos.editar', descripcion: 'Legajos y Colaboradores: Completar fichas y validar entrega física QR' },
-  { clave: 'plantillas.ver', descripcion: 'Plantillas de Formularios: Solo lectura' },
-  { clave: 'plantillas.editar', descripcion: 'Plantillas de Formularios: Diseñar y editar moldes PDF' },
-  { clave: 'pases.ver', descripcion: 'Pases y Progresión: Solo lectura de candidatos y trayectoria' },
-  { clave: 'pases.editar', descripcion: 'Pases y Progresión: Ejecutar pases y gestionar asignaciones de rol' },
-  { clave: 'cobranzas.ver', descripcion: 'Cobranzas y Cuotas: Solo lectura de estado de cuenta y familias' },
-  { clave: 'cobranzas.editar', descripcion: 'Cobranzas y Cuotas: Cobrar, generar/ajustar cargos y descuentos familiares' },
-  { clave: 'planes.ver', descripcion: 'Planes y Conceptos: Solo lectura de planes anuales y campamentos' },
-  { clave: 'planes.editar', descripcion: 'Planes y Conceptos: Crear y editar planes de cuota y campamentos' },
-  { clave: 'caja.ver', descripcion: 'Caja, Bancos y Balance: Solo lectura de saldos, movimientos y cuadro de resultados' },
-  { clave: 'caja.editar', descripcion: 'Caja, Bancos y Balance: Registrar ingresos/gastos, traspasos, cuentas y rubros' },
-  { clave: 'eventos.ver', descripcion: 'Eventos Económicos: Solo lectura de eventos y pedidos' },
-  { clave: 'eventos.editar', descripcion: 'Eventos Económicos: Vender en POS, cobrar pedidos, validar QR y configurar eventos' },
-  { clave: 'organizacion.ver', descripcion: 'Organización y Sistema: Solo lectura de ramas, unidades y roles' },
-  { clave: 'organizacion.editar', descripcion: 'Organización y Sistema: Administrar ramas, unidades, roles y correo institucional' },
-];
+const PERMISOS: readonly { clave: string; descripcion: string }[] = CATALOGO_PERMISOS.map((p) => ({
+  clave: p.clave,
+  descripcion: p.descripcion,
+}));
 
 // ---------------------------------------------------------------------------
 // 4. Roles base y sus permisos por defecto
@@ -70,6 +55,8 @@ const ROLES: {
   alcancePorDefecto: AlcanceRol;
   tipoMiembro: 'PROTAGONISTA' | 'EDUCADOR';
   requiereRama: boolean;
+  tipoUnidad: TipoUnidad;
+  esSistema: boolean;
   permisos: string[] | 'TODOS';
 }[] = [
   {
@@ -77,6 +64,8 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.PROPIO,
     tipoMiembro: 'PROTAGONISTA',
     requiereRama: true,
+    tipoUnidad: TipoUnidad.SECCION_RAMA,
+    esSistema: true,
     permisos: ['padron.ver', 'padron.editar', 'legajos.ver', 'legajos.editar', 'cobranzas.ver', 'eventos.ver'],
   },
   {
@@ -84,8 +73,11 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.UNIDAD,
     tipoMiembro: 'EDUCADOR',
     requiereRama: true,
+    tipoUnidad: TipoUnidad.SECCION_RAMA,
+    esSistema: true,
     permisos: [
       'organizacion.ver',
+      'roles.ver',
       'padron.ver',
       'padron.editar',
       'pases.ver',
@@ -96,6 +88,8 @@ const ROLES: {
       'cobranzas.editar',
       'planes.ver',
       'planes.editar',
+      'caja.ver',
+      'caja.editar',
       'eventos.ver',
       'eventos.editar',
     ],
@@ -105,6 +99,8 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.GLOBAL,
     tipoMiembro: 'EDUCADOR',
     requiereRama: false,
+    tipoUnidad: TipoUnidad.JEFATURA,
+    esSistema: true,
     permisos: 'TODOS',
   },
   {
@@ -113,8 +109,11 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.GLOBAL,
     tipoMiembro: 'EDUCADOR',
     requiereRama: false,
+    tipoUnidad: TipoUnidad.SIN_RAMA_APOYO,
+    esSistema: false,
     permisos: [
       'organizacion.ver',
+      'roles.ver',
       'padron.ver',
       'legajos.ver',
       'legajos.editar',
@@ -127,10 +126,12 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.GLOBAL,
     tipoMiembro: 'EDUCADOR',
     requiereRama: false,
+    tipoUnidad: TipoUnidad.JEFATURA,
+    esSistema: false,
     permisos: [
       'organizacion.ver',
+      'roles.ver',
       'padron.ver',
-      'padron.editar',
       'cobranzas.ver',
       'cobranzas.editar',
       'planes.ver',
@@ -146,9 +147,12 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.GLOBAL,
     tipoMiembro: 'EDUCADOR',
     requiereRama: false,
+    tipoUnidad: TipoUnidad.JEFATURA,
+    esSistema: false,
     permisos: [
       'organizacion.ver',
       'organizacion.editar',
+      'roles.ver',
       'padron.ver',
       'padron.editar',
       'pases.ver',
@@ -164,8 +168,11 @@ const ROLES: {
     alcancePorDefecto: AlcanceRol.GLOBAL,
     tipoMiembro: 'EDUCADOR',
     requiereRama: false,
+    tipoUnidad: TipoUnidad.JEFATURA,
+    esSistema: false,
     permisos: [
       'organizacion.ver',
+      'roles.ver',
       'padron.ver',
       'eventos.ver',
       'eventos.editar',
@@ -261,14 +268,24 @@ async function seedRoles(permisoIds: Map<string, number>): Promise<Map<string, n
       continue;
     }
     const rol = existente
-      ? existente
+      ? await prisma.rol.update({
+          where: { id: existente.id },
+          data: {
+            tipoMiembro: r.tipoMiembro,
+            requiereRama: r.requiereRama,
+            tipoUnidad: r.tipoUnidad,
+            esSistema: r.esSistema,
+          },
+        })
       : await prisma.rol.create({
           data: {
             nombre: r.nombre,
             alcancePorDefecto: r.alcancePorDefecto,
             tipoMiembro: r.tipoMiembro,
             requiereRama: r.requiereRama,
-            esSistema: false,
+            tipoUnidad: r.tipoUnidad,
+            esSistema: r.esSistema,
+            activo: true,
           },
         });
     ids.set(rol.nombre, rol.id);
@@ -279,15 +296,38 @@ async function seedRoles(permisoIds: Map<string, number>): Promise<Map<string, n
         })
       : 0;
 
-    if (!existente || permisosActualesCount === 0 || r.permisos === 'TODOS' || r.nombre === 'Protagonista') {
+    if (
+      !existente ||
+      permisosActualesCount === 0 ||
+      r.permisos === 'TODOS' ||
+      r.nombre === 'Protagonista' ||
+      r.nombre === 'Educador de Rama'
+    ) {
       const claves = r.permisos === 'TODOS' ? [...permisoIds.keys()] : r.permisos;
       await prisma.rolPermiso.createMany({
         data: claves.map((clave) => {
           const permisoId = permisoIds.get(clave);
           if (!permisoId) throw new Error(`Permiso "${clave}" no definido`);
-          return { rolId: rol.id, permisoId };
+          return { rolId: rol.id, permisoId, alcance: r.alcancePorDefecto };
         }),
         skipDuplicates: true,
+      });
+    }
+  }
+
+  // Si venimos de `prisma db push` (columna alcance agregada con default PROPIO), sincroniza rol_permisos desde roles.alcance_por_defecto
+  const nonPropioCount = await prisma.rolPermiso.count({
+    where: { alcance: { not: AlcanceRol.PROPIO } },
+  });
+  if (nonPropioCount === 0) {
+    const rolesNoPropios = await prisma.rol.findMany({
+      where: { alcancePorDefecto: { not: AlcanceRol.PROPIO } },
+      select: { id: true, alcancePorDefecto: true },
+    });
+    for (const r of rolesNoPropios) {
+      await prisma.rolPermiso.updateMany({
+        where: { rolId: r.id },
+        data: { alcance: r.alcancePorDefecto },
       });
     }
   }
@@ -330,8 +370,14 @@ async function seedAdmin(unidadIds: Map<string, number>, rolIds: Map<string, num
         nombre: process.env.SEED_ADMIN_NOMBRE ?? 'Jefe',
         apellido: process.env.SEED_ADMIN_APELLIDO ?? 'de Grupo',
         fechaNacimiento: new Date(process.env.SEED_ADMIN_FECHA_NACIMIENTO ?? '1980-01-01'),
+        tipoMiembro: 'EDUCADOR',
         requiereCambioClave: false,
       },
+    });
+  } else if (usuario.tipoMiembro !== 'EDUCADOR') {
+    usuario = await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: { tipoMiembro: 'EDUCADOR' },
     });
   }
 

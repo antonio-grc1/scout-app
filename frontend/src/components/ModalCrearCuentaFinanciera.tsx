@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { traducirErrorAmigable, formatearMoneda } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { Input, Select } from './ui/Input';
 import { ModalConfirmacion } from './ModalConfirmacion';
-import { Landmark, Wallet, X, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { Landmark, Wallet, X, PlusCircle, Pencil, Trash2, Building2 } from 'lucide-react';
 
 export interface CuentaFinancieraItem {
   id: number;
   nombre: string;
   tipo: 'CAJA_EFECTIVO' | 'BANCO';
+  unidadId?: number | null;
+  unidad?: { id: number; nombre: string } | null;
   activa: boolean;
   saldoActual: number;
 }
@@ -20,6 +23,7 @@ export interface ModalCrearCuentaFinancieraProps {
   onCerrar: () => void;
   onCuentaCreada: (nuevaCuenta?: any) => void;
   cuentaAEditar?: CuentaFinancieraItem | null;
+  unidades?: Array<{ id: number; nombre: string; activa?: boolean }>;
   onCuentaEliminada?: (cuenta: CuentaFinancieraItem, eliminadoPermanente: boolean) => void;
   onToast?: (texto: string, tipo?: 'exito' | 'error') => void;
 }
@@ -29,13 +33,26 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
   onCerrar,
   onCuentaCreada,
   cuentaAEditar,
+  unidades: unidadesProp,
   onCuentaEliminada,
   onToast,
 }) => {
   const esModoEdicion = Boolean(cuentaAEditar);
+  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const obtenerUnidadesConPermiso = useAuthStore((s) => s.obtenerUnidadesConPermiso);
+  const esGlobalCuentas = tienePermisoGlobal(['caja.editar', 'caja.editar']);
+  const unidadesPermitidasIds = useMemo(
+    () => obtenerUnidadesConPermiso(['caja.editar', 'caja.editar']),
+    [asignaciones, obtenerUnidadesConPermiso],
+  );
 
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState<'CAJA_EFECTIVO' | 'BANCO'>('BANCO');
+  const [unidadId, setUnidadId] = useState<string>('');
+  const [unidadesCargadas, setUnidadesCargadas] = useState<
+    Array<{ id: number; nombre: string; activa?: boolean }>
+  >([]);
   const [activa, setActiva] = useState<boolean>(true);
   const [guardando, setGuardando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
@@ -43,19 +60,62 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!abierto) return;
+    if (Array.isArray(unidadesProp) && unidadesProp.length > 0) {
+      setUnidadesCargadas(unidadesProp);
+      return;
+    }
+    api
+      .get('/organizacion/unidades')
+      .then((res) => {
+        if (Array.isArray(res.data)) setUnidadesCargadas(res.data);
+      })
+      .catch(() => {
+        // Fallback desde asignaciones del usuario si no tiene organizacion.ver
+      });
+  }, [abierto, unidadesProp]);
+
+  const unidadesDisponibles = useMemo(() => {
+    const base = (
+      unidadesProp && unidadesProp.length > 0 ? unidadesProp : unidadesCargadas
+    ).filter((u) => u.activa !== false);
+
+    if (esGlobalCuentas) return base;
+
+    if (base.length > 0) {
+      const filtradas = base.filter((u) => unidadesPermitidasIds.includes(u.id));
+      if (filtradas.length > 0) return filtradas;
+    }
+
+    const desdeAsigs = new Map<number, string>();
+    for (const a of asignaciones) {
+      if (unidadesPermitidasIds.includes(a.unidadId)) {
+        desdeAsigs.set(a.unidadId, a.unidadNombre);
+      }
+    }
+    return Array.from(desdeAsigs.entries()).map(([id, nom]) => ({ id, nombre: nom }));
+  }, [unidadesProp, unidadesCargadas, esGlobalCuentas, unidadesPermitidasIds, asignaciones]);
+
+  useEffect(() => {
     if (abierto) {
       if (cuentaAEditar) {
         setNombre(cuentaAEditar.nombre);
         setTipo(cuentaAEditar.tipo);
+        setUnidadId(cuentaAEditar.unidadId ? String(cuentaAEditar.unidadId) : '');
         setActiva(cuentaAEditar.activa);
       } else {
         setNombre('');
         setTipo('BANCO');
+        setUnidadId(
+          !esGlobalCuentas && unidadesDisponibles.length > 0
+            ? String(unidadesDisponibles[0].id)
+            : '',
+        );
         setActiva(true);
       }
       setError(null);
     }
-  }, [abierto, cuentaAEditar]);
+  }, [abierto, cuentaAEditar, esGlobalCuentas, unidadesDisponibles]);
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto,
@@ -72,6 +132,16 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
       setError('Ingresá un nombre identificatorio para la cuenta (mínimo 2 caracteres).');
       return;
     }
+    if (!esGlobalCuentas && !unidadId) {
+      setError('Seleccioná la rama a la que pertenece esta cuenta.');
+      return;
+    }
+
+    const unidadIdPayload = esGlobalCuentas
+      ? unidadId
+        ? Number(unidadId)
+        : null
+      : Number(unidadId);
 
     setGuardando(true);
     setError(null);
@@ -81,6 +151,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
         const res = await api.patch(`/tesoreria/cuentas/${cuentaAEditar.id}`, {
           nombre: nombreLimpio,
           tipo,
+          unidadId: unidadIdPayload,
           activa,
         });
 
@@ -92,6 +163,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
         const res = await api.post('/tesoreria/cuentas', {
           nombre: nombreLimpio,
           tipo,
+          unidadId: unidadIdPayload,
         });
 
         if (onToast) {
@@ -215,6 +287,50 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                 <option value="BANCO">Cuenta Bancaria / Billetera Virtual</option>
                 <option value="CAJA_EFECTIVO">Caja Chica / Efectivo Físico</option>
               </Select>
+
+              {esGlobalCuentas ? (
+                <Select
+                  label="Alcance / Rama de la Cuenta"
+                  value={unidadId}
+                  onChange={(e) => setUnidadId(e.target.value)}
+                  disabled={guardando || eliminando}
+                  leftIcon={<Building2 className="w-4 h-4" />}
+                  helperText="Indicá si pertenece al grupo general o exclusivamente a una rama."
+                >
+                  <option value="">General del Grupo (Central)</option>
+                  {unidadesDisponibles.map((u) => (
+                    <option key={u.id} value={String(u.id)}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </Select>
+              ) : unidadesDisponibles.length > 1 ? (
+                <Select
+                  label="Rama de la Cuenta"
+                  required
+                  value={unidadId}
+                  onChange={(e) => setUnidadId(e.target.value)}
+                  disabled={guardando || eliminando}
+                  leftIcon={<Building2 className="w-4 h-4" />}
+                  helperText="Esta cuenta operará exclusivamente en la rama seleccionada."
+                >
+                  {unidadesDisponibles.map((u) => (
+                    <option key={u.id} value={String(u.id)}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                unidadesDisponibles.length === 1 && (
+                  <div className="p-3 rounded-xl bg-paper-2 border border-rule text-xs flex items-center justify-between text-ink-2">
+                    <span className="flex items-center gap-1.5 font-semibold">
+                      <Building2 className="w-4 h-4 text-brand" />
+                      <span>Alcance:</span>
+                    </span>
+                    <span className="font-bold text-ink">{unidadesDisponibles[0].nombre}</span>
+                  </div>
+                )
+              )}
 
               {esModoEdicion && (
                 <Select

@@ -1729,7 +1729,20 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
   });
 
   describe('Eventos Económicos y Entradas con QR (Fase 4)', () => {
-    const actor = { sub: 1 } as any;
+    const actor = {
+      sub: 1,
+      dni: '11111111',
+      requiereCambioClave: false,
+      asignaciones: [
+        {
+          unidadId: 1,
+          unidadNombre: 'Jefatura',
+          rol: 'Tesorero',
+          alcance: 'GLOBAL',
+          permisos: ['eventos.ver', 'eventos.editar', 'eventos.editar', 'caja.editar'],
+        },
+      ],
+    } as any;
 
     it('crearEvento: rechaza si el alcance es PROPIO', async () => {
       const mockPrisma = {} as any;
@@ -2433,24 +2446,57 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       const serviceFinalizado = new TesoreriaService({
         $transaction: vi.fn().mockImplementation((cb) => cb(txFinalizado)),
       } as any);
-      const qrRes = await serviceFinalizado.validarTicketQr({ sub: 1 } as any, alcanceGlobal, { tokenQr: token });
+      const actorValidador = {
+        sub: 10,
+        dni: '10000010',
+        requiereCambioClave: false,
+        asignaciones: [
+          {
+            unidadId: 1,
+            unidadNombre: 'Jefatura',
+            rol: 'Tesorero',
+            alcance: 'GLOBAL',
+            permisos: ['eventos.editar', 'eventos.editar'],
+          },
+        ],
+      } as any;
+      const qrRes = await serviceFinalizado.validarTicketQr(actorValidador, alcanceGlobal, { tokenQr: token });
       expect(qrRes.ok).toBe(false);
       expect(qrRes.estado).toBe('FINALIZADO');
     });
 
-    it('P0-4: bloquea consultas financieras globales y rubros con unidadId null para alcance UNIDAD', async () => {
+    it('P0-4: bloquea consultas financieras sobre cuentas globales o de otras ramas y habilita caja acotada para UNIDAD', async () => {
       const service = new TesoreriaService({
+        cuentaFinanciera: {
+          findMany: vi.fn().mockResolvedValue([
+            { id: 10, nombre: 'Caja Manada', tipo: 'CAJA_EFECTIVO', unidadId: 1, activa: true, unidad: { id: 1, nombre: 'Manada' } },
+          ]),
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja Central', activa: true, unidadId: null }),
+        },
+        movimientoFinanciero: {
+          groupBy: vi.fn().mockResolvedValue([{ cuentaId: 10, _sum: { montoIngreso: 1000, montoEgreso: 200 }, _count: { id: 2 } }]),
+          aggregate: vi.fn().mockResolvedValue({ _sum: { montoIngreso: 1000, montoEgreso: 200 } }),
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        rubroContable: { findMany: vi.fn().mockResolvedValue([]) },
+        pago: { findMany: vi.fn().mockResolvedValue([]) },
+        gasto: { findMany: vi.fn().mockResolvedValue([]) },
         $transaction: vi.fn().mockImplementation(async (cb) =>
           cb({
-            cuentaFinanciera: { findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja', activa: true }) },
+            cuentaFinanciera: { findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Caja Central', activa: true, unidadId: null }) },
             rubroContable: { findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'General', tipo: 'EGRESO', activo: true, unidadId: null }) },
           }),
         ),
       } as any);
 
-      await expect(service.listarCuentasFinancieras(alcanceUnidad)).rejects.toThrow(ForbiddenException);
+      const cuentasUnidad = await service.listarCuentasFinancieras(alcanceUnidad);
+      expect(cuentasUnidad).toHaveLength(1);
+      expect(cuentasUnidad[0].unidadId).toBe(1);
+
+      const cuadroUnidad = await service.obtenerCuadroResultados(alcanceUnidad, { anio: 2026 });
+      expect(cuadroUnidad.disponibilidadActual.totalDisponible).toBe(800);
+
       await expect(service.obtenerLibroDiario(alcanceUnidad, 1, {})).rejects.toThrow(ForbiddenException);
-      await expect(service.obtenerCuadroResultados(alcanceUnidad, { anio: 2026 })).rejects.toThrow(ForbiddenException);
       await expect(
         service.registrarGasto({ sub: 1 } as any, alcanceUnidad, { cuentaId: 1, rubroId: 1, monto: 100, descripcion: 'Test' }),
       ).rejects.toThrow(ForbiddenException);
@@ -2661,7 +2707,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       );
     });
 
-    it('P2-3: generarCargos usa tipoMiembro explícito en lugar de inferir por alcancePorDefecto', async () => {
+    it('P2-3: generarCargos filtra por tipoMiembro en Usuario (independiente del rol de permisos)', async () => {
       const findMany = vi.fn().mockResolvedValue([]);
       const service = new TesoreriaService({
         conceptoCuota: {
@@ -2680,8 +2726,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       const res = await service.generarCargos(alcanceGlobal, { conceptoId: 5 });
       expect(res.totalGenerados).toBe(0);
       const wherePassed = findMany.mock.calls[0][0].where;
-      expect(wherePassed.asignaciones.some.rol).toEqual({ tipoMiembro: 'EDUCADOR' });
-      expect(wherePassed.asignaciones.none.rol).toEqual({ tipoMiembro: 'PROTAGONISTA' });
+      expect(wherePassed.tipoMiembro).toBe('EDUCADOR');
     });
 
     it('P1-14 & P2-5: aplicarSaldoAFavor redondea con round2, usa batch lookup y omite updates redundantes', async () => {
@@ -2894,6 +2939,213 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
         ticketsRetirados: 3,
         porcentajeRetirado: 75,
       });
+    });
+
+    it('Etapa 2 (A2 & COD-08): caja por rama UNIDAD, bloqueo de secuestro de rubros/cuentas y validaciones de cuotas', async () => {
+      const alcanceManada: AlcanceAcceso = { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 99 };
+      const actorCobradorSinAjuste: any = {
+        sub: 99,
+        dni: '99111222',
+        requiereCambioClave: false,
+        asignaciones: [
+          {
+            unidadId: 1,
+            unidadNombre: 'Rama Manada',
+            rol: 'Educador',
+            alcance: 'UNIDAD',
+            permisos: ['cobranzas.ver', 'cobranzas.editar', 'caja.ver', 'caja.editar'],
+          },
+        ],
+      };
+
+      const txMock: any = {
+        cuentaFinanciera: {
+          findUnique: vi.fn(),
+          findFirst: vi.fn(),
+        },
+        rubroContable: {
+          findUnique: vi.fn(),
+        },
+        movimientoFinanciero: {
+          aggregate: vi.fn().mockResolvedValue({ _sum: { montoIngreso: '5000.00', montoEgreso: '0.00' } }),
+          create: vi.fn().mockResolvedValue({ id: 901 }),
+        },
+        gasto: {
+          create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 701, ...data })),
+        },
+      };
+
+      const mockPrisma: any = {
+        cuentaFinanciera: {
+          findFirst: vi.fn().mockResolvedValue(null),
+          findUnique: vi.fn(),
+          create: vi.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 20, ...data })),
+        },
+        unidadOrganizativa: {
+          findUnique: vi.fn().mockResolvedValue({ id: 1, nombre: 'Rama Manada', activa: true }),
+        },
+        rubroContable: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 5,
+            nombre: 'Mantenimiento',
+            tipo: 'EGRESO',
+            activo: false,
+            unidadId: null, // rubro general inactivo
+          }),
+        },
+        conceptoCuota: {
+          findUnique: vi.fn().mockResolvedValue({ id: 30, unidadId: 1, montoBase: 1000, excepciones: [] }),
+        },
+        usuario: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: 50,
+            activo: true,
+            asignaciones: [{ unidadId: 1 }],
+          }),
+        },
+        pago: {
+          findMany: vi.fn().mockResolvedValue([]),
+        },
+        $transaction: vi.fn(async (cb: any) => cb(txMock)),
+      };
+
+      const service = new TesoreriaService(mockPrisma);
+
+      // 1) A2: UNIDAD puede crear cuenta propia pero NO puede crear cuenta global (unidadId: null) ni de otra rama
+      await expect(
+        service.crearCuentaFinanciera(actorCobradorSinAjuste, alcanceManada, {
+          nombre: 'Caja Global Hack',
+          tipo: 'CAJA_EFECTIVO' as any,
+          unidadId: null,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(
+        service.crearCuentaFinanciera(actorCobradorSinAjuste, alcanceManada, {
+          nombre: 'Caja Otra Rama',
+          tipo: 'CAJA_EFECTIVO' as any,
+          unidadId: 2,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      const cuentaManada = await service.crearCuentaFinanciera(actorCobradorSinAjuste, alcanceManada, {
+        nombre: 'Caja Chica Manada',
+        tipo: 'CAJA_EFECTIVO' as any,
+      });
+      expect(cuentaManada.unidadId).toBe(1);
+
+      // 2) A2: UNIDAD puede registrar gasto en su propia cuenta usando un rubro general compartido (unidadId: null)
+      txMock.cuentaFinanciera.findUnique.mockResolvedValueOnce({
+        id: 20,
+        nombre: 'Caja Chica Manada',
+        unidadId: 1,
+        activa: true,
+      });
+      txMock.rubroContable.findUnique.mockResolvedValueOnce({
+        id: 8,
+        nombre: 'Comida e Insumos',
+        tipo: 'EGRESO',
+        activo: true,
+        unidadId: null,
+      });
+      const gastoManada = await service.registrarGasto(actorCobradorSinAjuste, alcanceManada, {
+        cuentaId: 20,
+        rubroId: 8,
+        monto: 1200,
+        descripcion: 'Fideos campamento',
+      });
+      expect(gastoManada.id).toBe(701);
+
+      // Pero UNIDAD sigue bloqueada si el rubro es de OTRA rama
+      txMock.cuentaFinanciera.findUnique.mockResolvedValueOnce({
+        id: 20,
+        nombre: 'Caja Chica Manada',
+        unidadId: 1,
+        activa: true,
+      });
+      txMock.rubroContable.findUnique.mockResolvedValueOnce({
+        id: 9,
+        nombre: 'Programa Rover',
+        tipo: 'EGRESO',
+        activo: true,
+        unidadId: 5,
+      });
+      await expect(
+        service.registrarGasto(actorCobradorSinAjuste, alcanceManada, {
+          cuentaId: 20,
+          rubroId: 9,
+          monto: 500,
+          descripcion: 'Rubro ajeno',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      // 3) A2: transferirEntreCuentas bloquea si destino está fuera de la unidad del actor
+      txMock.cuentaFinanciera.findUnique
+        .mockResolvedValueOnce({ id: 20, nombre: 'Caja Manada', unidadId: 1, activa: true })
+        .mockResolvedValueOnce({ id: 1, nombre: 'Banco Central', unidadId: null, activa: true });
+      await expect(
+        service.transferirEntreCuentas(actorCobradorSinAjuste, alcanceManada, {
+          origenCuentaId: 20,
+          destinoCuentaId: 1,
+          monto: 1000,
+          concepto: 'Transferencia prohibida',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      // 4) A2: crearRubroContable impide secuestrar rubro general inactivo desde UNIDAD
+      await expect(
+        service.crearRubroContable(alcanceManada, {
+          nombre: 'Mantenimiento',
+          tipo: 'EGRESO' as any,
+          unidadId: 1,
+        }),
+      ).rejects.toThrow(ConflictException);
+
+      // 5) COD-08: generarCargoIndividual exige cobranzas.editar/caja.editar si montoDescuento > 0
+      const actorPlanesSinCobranzasEditar: any = {
+        sub: 98,
+        dni: '98111222',
+        requiereCambioClave: false,
+        asignaciones: [
+          {
+            unidadId: 1,
+            unidadNombre: 'Rama Manada',
+            rol: 'Gestor Planes',
+            alcance: 'UNIDAD',
+            permisos: ['cobranzas.ver', 'planes.ver', 'planes.editar'],
+          },
+        ],
+      };
+      await expect(
+        service.generarCargoIndividual(actorPlanesSinCobranzasEditar, alcanceManada, {
+          usuarioId: 50,
+          monto: 2000,
+          montoDescuento: 500,
+          nombreConcepto: 'Beca indebida',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+
+      // 6) COD-08: generarCargos rechaza especificar dto.unidadId distinto de concepto.unidadId
+      await expect(
+        service.generarCargos({ tipo: 'GLOBAL' }, { conceptoId: 30, unidadId: 2 }),
+      ).rejects.toThrow(BadRequestException);
+
+      // 7) COD-08: listarPagos en alcance UNIDAD incluye usuarioIdPropio del actor
+      await service.listarPagos(alcanceManada);
+      expect(mockPrisma.pago.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            AND: [
+              {
+                OR: expect.arrayContaining([
+                  { usuarioId: 99 },
+                  { imputaciones: { some: { cargo: { usuarioId: 99 } } } },
+                ]),
+              },
+            ],
+          },
+        }),
+      );
     });
   });
 });

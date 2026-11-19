@@ -55,10 +55,7 @@ function estaOfflineCliente(): boolean {
 }
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('scout_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
+  // La autenticación viaja exclusivamente en cookie HttpOnly (withCredentials: true)
 
   const method = config.method?.toLowerCase() || 'get';
   const offline = estaOfflineCliente();

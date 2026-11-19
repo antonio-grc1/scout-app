@@ -21,7 +21,6 @@ export interface AsignacionHistorialUnidad {
   fechaInicio: string;
   fechaFin?: string | null;
   activo: boolean;
-  alcanceOverride?: string | null;
   miembro?: PersonaHistorialUnidad;
   usuario?: PersonaHistorialUnidad;
   rol: RolHistorialUnidad;

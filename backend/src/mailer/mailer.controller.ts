@@ -1,5 +1,5 @@
 import { Body, Controller, ForbiddenException, Get, HttpCode, Post, Put } from '@nestjs/common';
-import { Alcance, RequireAnyPermission } from '../common/decorators/auth.decorators.js';
+import { Alcance, RequirePermission } from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso } from '../common/types/auth.types.js';
 import {
@@ -20,14 +20,14 @@ export class MailerController {
     }
   }
 
-  @RequireAnyPermission('organizacion.editar')
+  @RequirePermission('organizacion.editar')
   @Get()
   obtener(@Alcance() alcance: AlcanceAcceso) {
     this.assertAlcanceGlobal(alcance);
     return this.mailer.obtenerConfiguracionPublica();
   }
 
-  @RequireAnyPermission('organizacion.editar')
+  @RequirePermission('organizacion.editar')
   @Put()
   guardar(
     @Alcance() alcance: AlcanceAcceso,
@@ -37,7 +37,7 @@ export class MailerController {
     return this.mailer.guardarConfiguracion(dto);
   }
 
-  @RequireAnyPermission('organizacion.editar')
+  @RequirePermission('organizacion.editar')
   @Post('probar')
   @HttpCode(200)
   probar(

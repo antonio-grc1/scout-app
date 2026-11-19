@@ -26,7 +26,6 @@ import {
   Shield,
   ShoppingBag,
   Sparkles,
-  Ticket,
   Truck,
   Upload,
   UserPlus,
@@ -122,7 +121,7 @@ const obtenerTextoDireccion = (campo: CampoOrden, dir: DireccionOrden): string =
 export const MiembrosPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { asignaciones } = useAuthStore();
+  const { usuario: usuarioActual, asignaciones, tienePermisoGlobal } = useAuthStore();
   const caps = useCapabilities();
   const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
   const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
@@ -130,7 +129,8 @@ export const MiembrosPage: React.FC = () => {
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
 
-  const esGlobal = caps.esGlobal;
+  const esGlobal = tienePermisoGlobal(['padron.ver', 'padron.editar']);
+  const puedeEjecutarEgreso = caps.canExecuteEgreso;
   const puedeVerPases = caps.canViewPases;
   const puedeEjecutarPases = caps.canExecutePases;
   const puedeVerCuotas = caps.canViewCuotas || caps.canSeeTesoreriaGestion;
@@ -396,10 +396,10 @@ export const MiembrosPage: React.FC = () => {
   const candidatosIds = useMemo(() => {
     return new Set(
       candidatosPase
-        .filter((c) => esGlobal || (!c.requiereAlcanceGlobal && c.tipo !== 'EGRESO'))
+        .filter((c) => puedeEjecutarEgreso || (!c.requiereAlcanceGlobal && c.tipo !== 'EGRESO'))
         .map((c) => c.usuario?.id),
     );
-  }, [candidatosPase, esGlobal]);
+  }, [candidatosPase, puedeEjecutarEgreso]);
 
   const handleAbrirFamiliasVoluntarias = async () => {
     if (!isOnline) {
@@ -809,8 +809,8 @@ export const MiembrosPage: React.FC = () => {
       return;
     }
     if (ejecutandoCamadaKey) return;
-    if (!esGlobal && (grupo.tipo === 'EGRESO' || grupo.requiereAlcanceGlobal)) {
-      mostrarToast('El pase a Educador solo puede realizarlo Jefatura.', 'error');
+    if (!puedeEjecutarEgreso && (grupo.tipo === 'EGRESO' || grupo.requiereAlcanceGlobal)) {
+      mostrarToast('El pase a Educador solo puede realizarlo un usuario con alcance global.', 'error');
       return;
     }
     const elegibles = grupo.miembros.filter((m) => !m.solicitudPendiente);
@@ -824,7 +824,7 @@ export const MiembrosPage: React.FC = () => {
     const destinoId =
       destinoPorCamada[grupo.key] ||
       grupo.unidadesDestino?.[0]?.id ||
-      (esGlobal
+      (puedeEjecutarEgreso
         ? unidades.find(
             (u) =>
               u.tipo === 'SIN_RAMA_APOYO' ||
@@ -881,7 +881,7 @@ export const MiembrosPage: React.FC = () => {
     };
   }, [miembros, entregasPorUsuario, alertasPorUsuario]);
 
-  // En escritorio (md+) abre Drawer 360°; en móvil (< md) navega a /miembros/:id
+  // En escritorio (md+) abre Drawer ; en móvil (< md) navega a /miembros/:id
   const abrirMiembro = useCallback(
     (id: number, tab: TabExpediente360 = 'datos') => {
       const esEscritorio =
@@ -996,12 +996,12 @@ export const MiembrosPage: React.FC = () => {
       icono: <ShoppingBag className="w-4 h-4 text-brand shrink-0" />,
       onClick: () => navigate('/eventos'),
     },
-    (caps.canSellEventos || caps.canCobrar) && {
-      key: 'qr-vales',
-      texto: 'QR Vales',
-      titulo: 'Escanear y validar vales o entradas QR de eventos económicos',
-      icono: <Ticket className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />,
-      onClick: () => abrirQr('evento'),
+    (caps.canUseQrScanner || puedeValidarFisico || caps.canSellEventos || caps.canCobrar) && {
+      key: 'escanear-qr',
+      texto: 'Escanear QR',
+      titulo: 'Escanear y validar QR de fichas médicas o vales de eventos',
+      icono: <QrCode className="w-4 h-4 text-brand shrink-0" />,
+      onClick: () => abrirQr('auto'),
     },
     puedeVerFichas && {
       key: 'familias',
@@ -1009,13 +1009,6 @@ export const MiembrosPage: React.FC = () => {
       titulo: 'Ver familias voluntarias y oficios',
       icono: <HeartHandshake className="w-4 h-4 text-rose-500 shrink-0" />,
       onClick: () => void handleAbrirFamiliasVoluntarias(),
-    },
-    puedeValidarFisico && {
-      key: 'qr-ficha',
-      texto: 'QR Ficha',
-      titulo: 'Validar entrega física de Ficha Médica escaneando el QR',
-      icono: <QrCode className="w-4 h-4 text-ink-2 shrink-0" />,
-      onClick: () => abrirQr('legajo'),
     },
   ].filter(Boolean) as {
     key: string;
@@ -1911,9 +1904,9 @@ export const MiembrosPage: React.FC = () => {
                     )}
 
                     {puedeEjecutarPases ? (
-                      !esGlobal && (g.tipo === 'EGRESO' || g.requiereAlcanceGlobal) ? (
+                      !puedeEjecutarEgreso && (g.tipo === 'EGRESO' || g.requiereAlcanceGlobal) ? (
                         <span className="text-[13px] font-bold text-amber-700 dark:text-amber-300 px-2">
-                          Requiere Jefatura
+                          Requiere alcance Global
                         </span>
                       ) : (
                         <button
@@ -2189,7 +2182,9 @@ export const MiembrosPage: React.FC = () => {
 
                       <td className="py-4 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center justify-end gap-2">
-                          {esPendienteFirma && puedeValidarFisico && (
+                          {esPendienteFirma &&
+                            puedeValidarFisico &&
+                            m.id !== usuarioActual?.id && (
                             <button
                               type="button"
                               disabled={Boolean(validandoId)}
@@ -2258,7 +2253,7 @@ export const MiembrosPage: React.FC = () => {
         </>
       )}
 
-      {/* Drawer 360° en escritorio */}
+      {/* Drawer  en escritorio */}
       <DrawerMiembro360
         usuarioId={miembroDrawerId}
         tabInicial={tabInicialDrawer}

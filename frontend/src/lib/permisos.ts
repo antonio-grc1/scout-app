@@ -1,14 +1,28 @@
-import { useAuthStore } from '../store/authStore';
+import {
+  asignacionOtorgaPermisoUI,
+  obtenerAlcancePermisoEnAsignacionUI,
+  useAuthStore,
+} from '../store/authStore';
 import {
   esRolAlcanceGlobal,
   esRolDeEducador,
   esRolDeProtagonista,
-  rolRequiereRama,
+  esRolJefe,
+  esRolRama,
+  esRolSinRama,
 } from './formatters';
+
+export type AlcanceRolUI = 'PROPIO' | 'UNIDAD' | 'GLOBAL';
+
+const PESO_ALCANCE: Record<AlcanceRolUI, number> = {
+  PROPIO: 1,
+  UNIDAD: 2,
+  GLOBAL: 3,
+};
 
 /**
  * Mapa central de qué permiso de panel habilita ver/editar cada módulo de la UI.
- * Basado en los 9 paneles con niveles Sin acceso | Solo lectura (.ver) | Edición (.editar).
+ * Basado en los 10 paneles con niveles Sin acceso | Solo lectura (.ver) | Edición (.editar).
  */
 const PERMISOS_EDICION: Record<string, Record<string, string[]>> = {
   miembro: {
@@ -39,7 +53,7 @@ const PERMISOS_EDICION: Record<string, Record<string, string[]>> = {
     gestionar: ['organizacion.editar'],
   },
   roles: {
-    gestionar: ['organizacion.editar'],
+    gestionar: ['roles.editar'],
   },
   tesoreria: {
     gestionar: ['caja.editar'],
@@ -48,7 +62,7 @@ const PERMISOS_EDICION: Record<string, Record<string, string[]>> = {
     conceptos: ['planes.editar', 'caja.editar'],
   },
   eventos: {
-    ver: ['eventos.ver', 'eventos.editar'],
+    ver: ['eventos.ver', 'eventos.editar', 'caja.editar'],
     vender: ['eventos.editar', 'caja.editar'],
     gestionar: ['eventos.editar', 'caja.editar'],
   },
@@ -62,10 +76,108 @@ const PERMISOS_LECTURA: Record<string, string[]> = {
   pase: ['pases.ver', 'pases.editar'],
   clave: ['padron.editar'],
   organizacion: ['organizacion.ver', 'organizacion.editar'],
-  roles: ['organizacion.ver', 'organizacion.editar'],
+  roles: ['roles.ver', 'roles.editar', 'organizacion.ver', 'organizacion.editar'],
   tesoreria: ['cobranzas.ver', 'cobranzas.editar', 'planes.ver', 'planes.editar', 'caja.ver', 'caja.editar'],
   eventos: ['eventos.ver', 'eventos.editar', 'caja.editar'],
 };
+
+export interface AsignacionScopeLike {
+  alcance: 'PROPIO' | 'UNIDAD' | 'GLOBAL';
+  unidadId?: number | null;
+  permisosAlcance?: Record<string, AlcanceRolUI>;
+}
+
+export interface AsignacionPermisosLike extends AsignacionScopeLike {
+  permisos?: readonly string[];
+}
+
+export function tienePermisoConAlcance(
+  asignaciones: readonly AsignacionPermisosLike[],
+  permisosRequeridos: string | readonly string[],
+  alcanceMinimo: AlcanceRolUI = 'PROPIO',
+): boolean {
+  const lista =
+    typeof permisosRequeridos === 'string' ? [permisosRequeridos] : permisosRequeridos;
+  const pesoMin = PESO_ALCANCE[alcanceMinimo] ?? 1;
+  return asignaciones.some((a) =>
+    lista.some((p) => {
+      const alc = obtenerAlcancePermisoEnAsignacionUI(a, p);
+      if (!alc) return false;
+      return (PESO_ALCANCE[alc] ?? 1) >= pesoMin;
+    }),
+  );
+}
+
+export function obtenerUnidadesConPermiso(
+  asignaciones: readonly AsignacionPermisosLike[],
+  permisosRequeridos: string | readonly string[],
+): number[] {
+  const lista =
+    typeof permisosRequeridos === 'string' ? [permisosRequeridos] : permisosRequeridos;
+  const ids = new Set<number>();
+  for (const a of asignaciones) {
+    if (
+      typeof a.unidadId === 'number' &&
+      Number.isFinite(a.unidadId) &&
+      lista.some((p) => obtenerAlcancePermisoEnAsignacionUI(a, p) === 'UNIDAD')
+    ) {
+      ids.add(a.unidadId);
+    }
+  }
+  return Array.from(ids);
+}
+
+export function actorDominaPermisosRol(
+  asignacionesActor: readonly AsignacionPermisosLike[],
+  rol: {
+    alcance?: string;
+    alcancePorDefecto?: string;
+    tipoMiembro?: string;
+    permisos?: readonly string[];
+    permisosAlcance?: Record<string, AlcanceRolUI>;
+  },
+  unidadDestinoId?: number | null,
+): boolean {
+  if (!asignacionesActor.length) return false;
+  const alcanceRol = (
+    String(rol.alcancePorDefecto || rol.alcance || 'PROPIO').toUpperCase()
+  ) as AlcanceRolUI;
+  const esProtagonista = alcanceRol === 'PROPIO' && esRolDeProtagonista(rol);
+
+  const tieneGlobal = asignacionesActor.some(
+    (a) =>
+      a.alcance === 'GLOBAL' ||
+      Object.values(a.permisosAlcance ?? {}).includes('GLOBAL'),
+  );
+  if (esProtagonista) {
+    if (tieneGlobal) return true;
+    const unidadesActor = obtenerUnidadesEnAlcanceIds(asignacionesActor);
+    if (unidadesActor.length === 0) return false;
+    return unidadDestinoId == null || unidadesActor.includes(unidadDestinoId);
+  }
+
+  if (alcanceRol === 'GLOBAL' && !tieneGlobal) return false;
+
+  if (!Array.isArray(rol.permisos)) {
+    return true;
+  }
+
+  for (const p of rol.permisos) {
+    const alcPerm = (rol.permisosAlcance?.[p] ?? alcanceRol) as AlcanceRolUI;
+    if (!tienePermisoConAlcance(asignacionesActor, p, alcPerm)) {
+      return false;
+    }
+    if (
+      alcPerm === 'UNIDAD' &&
+      unidadDestinoId != null &&
+      !tienePermisoConAlcance(asignacionesActor, p, 'GLOBAL') &&
+      !obtenerUnidadesConPermiso(asignacionesActor, p).includes(unidadDestinoId)
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
 
 export function tienePermisoEdicion(
   modulo: string,
@@ -73,37 +185,45 @@ export function tienePermisoEdicion(
   permisosUsuario: readonly string[],
 ): boolean {
   return (PERMISOS_EDICION[modulo]?.[campo] ?? []).some((p) =>
-    permisosUsuario.includes(p),
+    asignacionOtorgaPermisoUI(permisosUsuario, p),
   );
 }
 
 export const usePermisosUI = () => {
   const tienePermiso = useAuthStore((s) => s.tienePermiso);
-  // Suscribirse a asignaciones para re-renderizar cuando cambian los permisos del rol
-  useAuthStore((s) => s.asignaciones);
+  const asignaciones = useAuthStore((s) => s.asignaciones);
 
   const canEdit = (modulo: string, campo: string) =>
     (PERMISOS_EDICION[modulo]?.[campo] ?? []).some((p) => tienePermiso(p));
 
-  const canView = (modulo: string) => (PERMISOS_LECTURA[modulo] ?? []).some((p) => tienePermiso(p));
+  const canEditInScope = (
+    modulo: string,
+    campo: string,
+    alcanceMinimo: AlcanceRolUI = 'UNIDAD',
+  ) =>
+    tienePermisoConAlcance(
+      asignaciones,
+      PERMISOS_EDICION[modulo]?.[campo] ?? [],
+      alcanceMinimo,
+    );
 
-  return { canEdit, canView };
+  const canView = (modulo: string) =>
+    (PERMISOS_LECTURA[modulo] ?? []).some((p) => tienePermiso(p));
+
+  return { canEdit, canEditInScope, canView };
 };
 
 export function obtenerRutaInicialUsuario(opts: {
-  token: string | null;
+  autenticado?: boolean;
+  token?: string | null;
   requiereCambioClave: boolean;
   puedeVerPadron?: () => boolean;
   puedeAccederPanelGestion?: () => boolean;
 }): string {
-  if (!opts.token) return '/login';
+  const estaAutenticado = opts.autenticado ?? Boolean(opts.token);
+  if (!estaAutenticado) return '/login';
   if (opts.requiereCambioClave) return '/cambiar-clave';
   return '/inicio';
-}
-
-export interface AsignacionScopeLike {
-  alcance: 'PROPIO' | 'UNIDAD' | 'GLOBAL';
-  unidadId?: number | null;
 }
 
 /**
@@ -112,7 +232,10 @@ export interface AsignacionScopeLike {
 export function obtenerUnidadesEnAlcanceIds(asignaciones: readonly AsignacionScopeLike[]): number[] {
   const ids = new Set<number>();
   for (const a of asignaciones) {
-    if (a.alcance === 'UNIDAD' && typeof a.unidadId === 'number' && Number.isFinite(a.unidadId)) {
+    const tieneAlcanceUnidad =
+      a.alcance === 'UNIDAD' ||
+      Object.values(a.permisosAlcance ?? {}).includes('UNIDAD');
+    if (tieneAlcanceUnidad && typeof a.unidadId === 'number' && Number.isFinite(a.unidadId)) {
       ids.add(a.unidadId);
     }
   }
@@ -201,41 +324,51 @@ export interface PermisosPanelGlobal {
 }
 
 /**
- * Calcula qué pestañas y subpestañas del panel /global puede operar el usuario según permiso + alcance.
+ * Calcula qué módulos/pestañas puede operar el usuario según permiso + alcance (A2, A5, ARQ-02).
  */
 export function calcularPermisosPanelGlobal(opts: {
-  esGlobal: boolean;
-  tienePermiso: (p: string) => boolean;
-  asignaciones: readonly (AsignacionScopeLike & { permisos: readonly string[] })[];
+  asignaciones: readonly AsignacionPermisosLike[];
+  esGlobal?: boolean;
+  tienePermiso?: (p: string) => boolean;
 }): PermisosPanelGlobal {
-  const { esGlobal, tienePermiso, asignaciones } = opts;
+  const { asignaciones } = opts;
 
-  // Caja, Gastos y Balance operan sobre cuentas financieras centrales -> requieren alcance GLOBAL en backend
-  const puedeVerCaja =
-    esGlobal && (tienePermiso('caja.ver') || tienePermiso('caja.editar'));
-  const puedeVerGastos =
-    esGlobal && (tienePermiso('caja.ver') || tienePermiso('caja.editar'));
-  const puedeVerBalance =
-    esGlobal && (tienePermiso('caja.ver') || tienePermiso('caja.editar'));
+  // Caja, Gastos y Balance operan por rama para UNIDAD o sobre todo el grupo para GLOBAL (A2)
+  const puedeVerCaja = tienePermisoConAlcance(
+    asignaciones,
+    ['caja.ver', 'caja.editar'],
+    'UNIDAD',
+  );
+  const puedeVerGastos = tienePermisoConAlcance(
+    asignaciones,
+    ['caja.ver', 'caja.editar'],
+    'UNIDAD',
+  );
+  const puedeVerBalance = tienePermisoConAlcance(
+    asignaciones,
+    ['caja.ver', 'caja.editar'],
+    'UNIDAD',
+  );
 
-  const puedeVerEventos =
-    tienePermiso('eventos.ver') ||
-    tienePermiso('eventos.editar') ||
-    tienePermiso('caja.editar');
+  const puedeVerEventos = tienePermisoConAlcance(
+    asignaciones,
+    ['eventos.ver', 'eventos.editar', 'caja.editar'],
+    'UNIDAD',
+  );
 
-  const puedeVerPlanes =
-    tienePermiso('planes.ver') ||
-    tienePermiso('planes.editar') ||
-    tienePermiso('cobranzas.ver') ||
-    tienePermiso('caja.editar');
+  const puedeVerPlanes = tienePermisoConAlcance(
+    asignaciones,
+    ['planes.ver', 'planes.editar', 'cobranzas.ver', 'caja.editar'],
+    'UNIDAD',
+  );
 
   const puedeVerCampamentos = puedeVerPlanes;
 
-  const puedeVerFamilias =
-    tienePermiso('cobranzas.ver') ||
-    tienePermiso('cobranzas.editar') ||
-    tienePermiso('padron.editar') ||
-    tienePermiso('caja.editar');
+  const puedeVerFamilias = tienePermisoConAlcance(
+    asignaciones,
+    ['cobranzas.ver', 'cobranzas.editar', 'padron.editar', 'caja.editar'],
+    'UNIDAD',
+  );
 
   const puedeVerTesoreria =
     puedeVerCaja ||
@@ -246,16 +379,29 @@ export function calcularPermisosPanelGlobal(opts: {
     puedeVerCampamentos ||
     puedeVerFamilias;
 
-  const puedeVerColaboradores = tienePermiso('legajos.ver') || tienePermiso('legajos.editar');
+  const puedeVerColaboradores = tienePermisoConAlcance(
+    asignaciones,
+    ['legajos.ver', 'legajos.editar'],
+    'UNIDAD',
+  );
   const puedeVerOrganizacion =
-    tienePermiso('organizacion.ver') || tienePermiso('organizacion.editar');
+    tienePermisoConAlcance(asignaciones, ['organizacion.ver'], 'UNIDAD') ||
+    tienePermisoConAlcance(asignaciones, ['organizacion.editar'], 'GLOBAL');
   const puedeVerRoles =
-    tienePermiso('organizacion.ver') || tienePermiso('organizacion.editar');
-  const puedeVerPases = tienePermiso('pases.ver') || tienePermiso('pases.editar');
+    tienePermisoConAlcance(asignaciones, ['roles.ver', 'organizacion.ver'], 'UNIDAD') ||
+    tienePermisoConAlcance(asignaciones, ['roles.editar'], 'GLOBAL');
+  const puedeVerPases = tienePermisoConAlcance(
+    asignaciones,
+    ['pases.ver', 'pases.editar'],
+    'UNIDAD',
+  );
   const puedeVerPlantillas =
-    esGlobal && (tienePermiso('plantillas.ver') || tienePermiso('plantillas.editar'));
-  const puedeVerCorreo = asignaciones.some(
-    (a) => a.alcance === 'GLOBAL' && a.permisos.includes('organizacion.editar'),
+    tienePermisoConAlcance(asignaciones, ['plantillas.ver'], 'UNIDAD') ||
+    tienePermisoConAlcance(asignaciones, ['plantillas.editar'], 'GLOBAL');
+  const puedeVerCorreo = tienePermisoConAlcance(
+    asignaciones,
+    ['organizacion.editar'],
+    'GLOBAL',
   );
 
   return {
@@ -286,14 +432,18 @@ export const esUnidadSinRama = (u: { tipo?: string } | null | undefined): boolea
   Boolean(u && u.tipo === 'SIN_RAMA_APOYO');
 
 /**
- * Filtra roles asignables en altas o importaciones según el alcance del actor
- * y el tipo de unidades disponibles dentro de su alcance.
+ * Filtra roles asignables en altas o importaciones según el alcance del actor,
+ * su dominio de permisos (SEG-01), el estado activo y el tipo de unidad (ARQ-05).
  */
 export function filtrarRolesAsignablesPorAlcance<
   T extends {
+    activo?: boolean;
     alcance?: string;
     alcancePorDefecto?: string;
     requiereRama?: boolean;
+    tipoUnidad?: string;
+    permisos?: readonly string[];
+    permisosAlcance?: Record<string, AlcanceRolUI>;
     ambito?: string;
     categoria?: string;
     codigo?: string;
@@ -304,45 +454,61 @@ export function filtrarRolesAsignablesPorAlcance<
   roles: readonly T[],
   unidadesPermitidas: readonly { tipo?: string; ramaId?: number | null }[],
   esGlobal: boolean,
+  asignacionesActor?: readonly AsignacionPermisosLike[],
 ): T[] {
-  if (esGlobal) return [...roles];
+  const rolesActivos = roles.filter((r) => r.activo !== false);
+
+  if (esGlobal) {
+    return asignacionesActor
+      ? rolesActivos.filter((r) => actorDominaPermisosRol(asignacionesActor, r))
+      : [...rolesActivos];
+  }
 
   const tieneUnidadRama = unidadesPermitidas.some(esUnidadRama);
+  const tieneUnidadJefatura = unidadesPermitidas.some(esUnidadJefatura);
   const tieneUnidadSinRama = unidadesPermitidas.some((u) => !esUnidadRama(u));
 
-  return roles.filter((r) => {
+  return rolesActivos.filter((r) => {
     if (esRolAlcanceGlobal(r)) return false;
-    const reqRama = rolRequiereRama(r);
-    if (reqRama && !tieneUnidadRama) return false;
-    if (!reqRama && !tieneUnidadSinRama) return false;
+    // A3: roles creados con permisosAlcance por panel se asignan libremente a cualquier unidad en alcance
+    if (!r.permisosAlcance) {
+      if (esRolRama(r) && !tieneUnidadRama) return false;
+      if (esRolJefe(r) && !tieneUnidadJefatura) return false;
+      if (esRolSinRama(r) && !tieneUnidadSinRama) return false;
+    }
+    if (asignacionesActor && !actorDominaPermisosRol(asignacionesActor, r)) return false;
     return true;
   });
 }
 
 /**
  * Indica si un miembro posee alguna asignación activa de alcance GLOBAL.
- * En backend, un usuario sin alcance GLOBAL no puede modificar/resetear/pasar a un usuario GLOBAL.
  */
 export function miembroTieneAlcanceGlobal(miembro: {
   alcance?: string;
   asignaciones?: Array<{
     activo?: boolean;
     alcance?: string;
+    permisosAlcance?: Record<string, AlcanceRolUI>;
     rol?: { alcance?: string; ambito?: string; categoria?: string; codigo?: string; nombre?: string } | null;
   }>;
 } | null | undefined): boolean {
   if (!miembro) return false;
   if (miembro.alcance === 'GLOBAL') return true;
   return (miembro.asignaciones ?? []).some(
-    (a) => a.activo !== false && (a.alcance === 'GLOBAL' || esRolAlcanceGlobal(a.rol)),
+    (a) =>
+      a.activo !== false &&
+      (a.alcance === 'GLOBAL' ||
+        Object.values(a.permisosAlcance ?? {}).includes('GLOBAL') ||
+        esRolAlcanceGlobal(a.rol)),
   );
 }
 
 /**
- * Indica si el miembro tiene alguna asignación activa con rol de educador.
- * Solo un actor GLOBAL puede gestionar pases/asignaciones de educadores.
+ * Indica si el miembro pertenece a categoría EDUCADOR / adulto (prioriza `miembro.tipoMiembro` sobre `rol`).
  */
 export function miembroEsEducador(miembro: {
+  tipoMiembro?: string | null;
   asignaciones?: Array<{
     activo?: boolean;
     alcance?: string;
@@ -357,6 +523,8 @@ export function miembroEsEducador(miembro: {
   }>;
 } | null | undefined): boolean {
   if (!miembro) return false;
+  if (miembro.tipoMiembro === 'EDUCADOR') return true;
+  if (miembro.tipoMiembro === 'PROTAGONISTA') return false;
   return (miembro.asignaciones ?? []).some(
     (a) =>
       a.activo !== false &&
@@ -429,11 +597,13 @@ export function puedeCerrarAsignacionPorAlcance(
 export function filtrarRolesParaPase<
   T extends {
     alcance?: string;
+    alcancePorDefecto?: string;
     ambito?: string;
     categoria?: string;
     codigo?: string;
     nombre?: string;
     tipoMiembro?: string;
+    permisosAlcance?: Record<string, AlcanceRolUI>;
   },
 >(opts: {
   categoriaDestino: 'RAMA' | 'SIN_RAMA' | 'JEFATURA';
@@ -443,7 +613,11 @@ export function filtrarRolesParaPase<
   rolesRama: readonly T[];
   rolesSinRama: readonly T[];
   rolesJefatura: readonly T[];
+  todosRoles?: readonly T[];
 }): T[] {
+  if (opts.esGlobal && opts.todosRoles) {
+    return [...opts.todosRoles];
+  }
   if (!opts.esGlobal) {
     if (opts.categoriaDestino !== 'RAMA') return [];
     return opts.rolesRama.filter((r) => esRolDeProtagonista(r));

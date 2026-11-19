@@ -1,5 +1,5 @@
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Res, UseGuards } from '@nestjs/common';
-import type { CookieOptions, Response } from 'express';
+import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Req, Res, UseGuards } from '@nestjs/common';
+import type { CookieOptions, Request, Response } from 'express';
 import {
   Alcance,
   CurrentUser,
@@ -7,7 +7,7 @@ import {
   Public,
   RequirePermission,
 } from '../common/decorators/auth.decorators.js';
-import { AUTH_COOKIE_NAME } from '../common/guards/jwt-auth.guard.js';
+import { AUTH_COOKIE_NAME, extraerTokenDeRequest } from '../common/guards/jwt-auth.guard.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import {
@@ -20,7 +20,7 @@ import {
   type RecuperarClaveDto,
   type ResetearClaveDto,
 } from './auth.dto.js';
-import { AuthService } from './auth.service.js';
+import { AuthService, type SesionResponse } from './auth.service.js';
 import { LoginRateLimitGuard } from './login-rate-limit.guard.js';
 
 const AUTH_COOKIE_OPTIONS: CookieOptions = {
@@ -48,6 +48,15 @@ function clearAuthCookie(res: Response | undefined): void {
   }
 }
 
+function responderConCookie(res: Response | undefined, sesion: SesionResponse) {
+  setAuthCookie(res, sesion.accessToken);
+  return {
+    requiereCambioClave: sesion.requiereCambioClave,
+    usuario: sesion.usuario,
+    asignaciones: sesion.asignaciones,
+  };
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
@@ -61,14 +70,18 @@ export class AuthController {
     @Res({ passthrough: true }) res?: Response,
   ) {
     const sesion = await this.auth.login(dto);
-    setAuthCookie(res, sesion.accessToken);
-    return sesion;
+    return responderConCookie(res, sesion);
   }
 
   @Public()
   @Post('logout')
   @HttpCode(200)
-  logout(@Res({ passthrough: true }) res?: Response) {
+  async logout(
+    @Req() req?: Request,
+    @Res({ passthrough: true }) res?: Response,
+  ) {
+    const token = extraerTokenDeRequest(req);
+    await this.auth.logout(token);
     clearAuthCookie(res);
     return { ok: true };
   }
@@ -82,8 +95,7 @@ export class AuthController {
     @Res({ passthrough: true }) res?: Response,
   ) {
     const sesion = await this.auth.cambiarClave(user, dto);
-    setAuthCookie(res, sesion.accessToken);
-    return sesion;
+    return responderConCookie(res, sesion);
   }
 
   @PermitirClavePendiente()
@@ -95,8 +107,7 @@ export class AuthController {
     @Res({ passthrough: true }) res?: Response,
   ) {
     const sesion = await this.auth.cambiarClave(user, dto);
-    setAuthCookie(res, sesion.accessToken);
-    return sesion;
+    return responderConCookie(res, sesion);
   }
 
   @PermitirClavePendiente()
@@ -106,8 +117,7 @@ export class AuthController {
     @Res({ passthrough: true }) res?: Response,
   ) {
     const sesion = await this.auth.perfil(user);
-    setAuthCookie(res, sesion.accessToken);
-    return sesion;
+    return responderConCookie(res, sesion);
   }
 
   @PermitirClavePendiente()
@@ -117,8 +127,7 @@ export class AuthController {
     @Res({ passthrough: true }) res?: Response,
   ) {
     const sesion = await this.auth.perfil(user);
-    setAuthCookie(res, sesion.accessToken);
-    return sesion;
+    return responderConCookie(res, sesion);
   }
 
   @Public()

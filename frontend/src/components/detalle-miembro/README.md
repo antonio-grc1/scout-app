@@ -1,7 +1,7 @@
 # Detalle de Miembro (`detalle-miembro`)
 
 ## Overview
-Provides the modular tab views and timeline subcomponents used inside the 360° member dossier (`ExpedienteMiembro360` / `DrawerMiembro360` / `MiembroDetallePage`) to inspect and manage personal profile data, branch/role assignments, account security, medical/authorization forms, and treasury charges/payments.
+Provides the modular tab views and timeline subcomponents used inside the member dossier (`ExpedienteMiembro` / `DrawerMiembro` / `MiembroDetallePage`) to inspect and manage personal profile data, branch/role assignments, account security, medical/authorization forms, and treasury charges/payments.
 
 ## Interface
 - `[PestanaCuotasTesoreria.tsx:CargoEditando]` — Exported interface for inline editing of a member charge/fee (`id`, `nombreConcepto`, `esIndividual`, `montoOriginal`, `montoDescuento`, `fechaVencimiento`).

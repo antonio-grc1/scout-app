@@ -26,6 +26,7 @@ export interface PestanaPaseRolProps {
   rolesRama: any[];
   rolesSinRama: any[];
   rolesJefatura: any[];
+  todosRoles?: any[];
   onSeleccionarRama: (rama: any) => void;
   onEjecutarPase: () => Promise<void>;
   ejecutandoPase: boolean;
@@ -65,6 +66,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
   rolesRama,
   rolesSinRama,
   rolesJefatura,
+  todosRoles,
   onSeleccionarRama,
   onEjecutarPase,
   ejecutandoPase,
@@ -122,6 +124,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
         rolesRama,
         rolesSinRama,
         rolesJefatura,
+        todosRoles,
       }),
     [
       categoriaDestino,
@@ -131,6 +134,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
       rolesRama,
       rolesSinRama,
       rolesJefatura,
+      todosRoles,
     ],
   );
 

@@ -67,11 +67,11 @@ const RutaProtegida: React.FC<{
   allow?: (caps: Capabilities) => boolean;
   permitirCambioClave?: boolean;
 }> = ({ children, allow, permitirCambioClave }) => {
-  const token = useAuthStore((s) => s.token);
+  const autenticado = useAuthStore((s) => s.autenticado);
   const requiereCambioClave = useAuthStore((s) => s.requiereCambioClave);
   const caps = useCapabilities();
 
-  if (!token) {
+  if (!autenticado) {
     return <Navigate to="/login" replace />;
   }
 
@@ -118,7 +118,7 @@ const AuthNavigatorBridge: React.FC = () => {
 
   useEffect(() => {
     setOnAuthError(() => {
-      useAuthStore.getState().logout();
+      useAuthStore.getState().limpiarSesionLocal();
       if (window.location.pathname !== '/login') {
         navigate('/login', { replace: true });
       }
@@ -136,35 +136,35 @@ const AuthNavigatorBridge: React.FC = () => {
 
 export function App() {
   const {
-    token,
+    autenticado,
     requiereCambioClave,
     refrescarSesionDesdeServidor,
   } = useAuthStore();
 
   useEffect(() => {
-    if (!token) return;
+    if (!autenticado) return;
     void refrescarSesionDesdeServidor();
     const onFocus = () => {
       void refrescarSesionDesdeServidor();
     };
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [token, refrescarSesionDesdeServidor]);
+  }, [autenticado, refrescarSesionDesdeServidor]);
 
   useEffect(() => {
     const onOnline = () => {
       void queryClient.invalidateQueries();
-      if (token) {
+      if (autenticado) {
         void refrescarSesionDesdeServidor();
       }
     };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [token, refrescarSesionDesdeServidor]);
+  }, [autenticado, refrescarSesionDesdeServidor]);
 
   const rutaDefault = () =>
     obtenerRutaInicialUsuario({
-      token,
+      autenticado,
       requiereCambioClave,
     });
 
@@ -228,7 +228,7 @@ export function App() {
                 path="/miembros/:id"
                 element={
                   <RutaProtegida allow={(c) => c.canViewMiembros}>
-                    <AppShell title="Miembro 360°">
+                    <AppShell title="Miembro ">
                       <MiembroDetallePage />
                     </AppShell>
                   </RutaProtegida>

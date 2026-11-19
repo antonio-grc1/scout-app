@@ -143,12 +143,19 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
     }
   }, [abierto, cargoInicialId, cargosPendientes, saldoAFavorDisponible]);
 
-  // Cargar cuentas financieras activas (solo alcance GLOBAL)
-  const esGlobal = useAuthStore((s) => s.tieneGlobal());
+  // Cargar cuentas financieras activas (GLOBAL ve centrales/todas; UNIDAD ve cuentas de su rama - A2)
+  const puedeSeleccionarCuenta = useAuthStore((s) =>
+    s.tienePermisoUnidadOGlobal([
+      'cobranzas.editar',
+      'caja.editar',
+      'caja.ver',
+      'caja.editar',
+    ]),
+  );
   useEffect(() => {
     if (!abierto) return;
     setErrorCuentas(null);
-    if (!esGlobal) {
+    if (!puedeSeleccionarCuenta) {
       setCuentas([]);
       setCuentaId('');
       return;
@@ -166,7 +173,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           traducirErrorAmigable(err, 'No se pudieron cargar las cuentas financieras activas.'),
         );
       });
-  }, [abierto, esGlobal]);
+  }, [abierto, puedeSeleccionarCuenta]);
 
   // Seleccionar automáticamente la cuenta financiera según el método de pago
   useEffect(() => {
@@ -300,16 +307,16 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       return;
     }
 
-    if (esGlobal && montoEfectivoFinal > 0 && errorCuentas) {
+    if (puedeSeleccionarCuenta && montoEfectivoFinal > 0 && errorCuentas) {
       setError(errorCuentas);
       return;
     }
 
     const tieneCuentasParaMetodo =
-      esGlobal &&
+      puedeSeleccionarCuenta &&
       ((metodoPago === 'TRANSFERENCIA' && cuentas.some((c) => c.tipo === 'BANCO')) ||
         (metodoPago === 'EFECTIVO' && cuentas.some((c) => c.tipo === 'CAJA_EFECTIVO')));
-    if (esGlobal && montoEfectivoFinal > 0 && tieneCuentasParaMetodo && !cuentaId) {
+    if (puedeSeleccionarCuenta && montoEfectivoFinal > 0 && tieneCuentasParaMetodo && !cuentaId) {
       setError('Seleccioná la cuenta financiera donde ingresa el cobro.');
       return;
     }
@@ -321,7 +328,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
         usuarioId: miembro.id,
         montoTotal: montoEfectivoFinal,
         metodoPago,
-        cuentaId: esGlobal && cuentaId ? Number(cuentaId) : undefined,
+        cuentaId: puedeSeleccionarCuenta && cuentaId ? Number(cuentaId) : undefined,
         usarSaldoAFavor: saldoAFavorAUsar > 0,
         montoSaldoAFavor: saldoAFavorAUsar,
         referenciaComprobante: referenciaComprobante.trim() || undefined,
@@ -598,8 +605,8 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Selector o indicador de Cuenta Financiera según método de pago (solo alcance GLOBAL) */}
-          {esGlobal && montoEfectivoFinal > 0 && metodoPago === 'TRANSFERENCIA' && (
+          {/* Selector o indicador de Cuenta Financiera según método de pago */}
+          {puedeSeleccionarCuenta && montoEfectivoFinal > 0 && metodoPago === 'TRANSFERENCIA' && cuentas.some((c) => c.tipo === 'BANCO') && (
             <div className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2 animate-in fade-in">
               <label className="block text-[13px] font-bold text-ink-2 flex items-center gap-1.5">
                 <Landmark className="w-4 h-4 text-brand" />
@@ -617,9 +624,6 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                       {c.nombre} (Saldo: {formatearMoneda(c.saldoActual)})
                     </option>
                   ))}
-                {cuentas.filter((c) => c.tipo === 'BANCO').length === 0 && (
-                  <option value="">Banco Principal (por defecto)</option>
-                )}
               </select>
               <p className="text-xs text-ink-muted">
                 El cobro se acreditará como ingreso en el libro diario de esta cuenta bancaria.
@@ -627,7 +631,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
             </div>
           )}
 
-          {esGlobal && montoEfectivoFinal > 0 && metodoPago === 'EFECTIVO' && (
+          {puedeSeleccionarCuenta && montoEfectivoFinal > 0 && metodoPago === 'EFECTIVO' && cuentas.some((c) => c.tipo === 'CAJA_EFECTIVO') && (
             <div className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2 animate-in fade-in">
               <label className="block text-[13px] font-bold text-ink-2 flex items-center gap-1.5">
                 <Wallet className="w-4 h-4 text-brand" />

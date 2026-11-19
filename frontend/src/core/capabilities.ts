@@ -1,9 +1,14 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
-import { type AsignacionUsuario, useAuthStore } from '../store/authStore';
+import {
+  type AsignacionUsuario,
+  asignacionOtorgaPermisoUI,
+  useAuthStore,
+} from '../store/authStore';
 import {
   calcularPermisosPanelGlobal,
   obtenerUnidadesEnAlcanceIds,
+  tienePermisoConAlcance,
 } from '../lib/permisos';
 
 export type ScopeNivel = 'PROPIO' | 'UNIDAD' | 'GLOBAL';
@@ -80,8 +85,18 @@ export interface Capabilities {
 }
 
 export function computeCapabilities(asignaciones: readonly AsignacionUsuario[]): Capabilities {
-  const esGlobal = asignaciones.some((a) => a.alcance === 'GLOBAL');
-  const esUnidad = !esGlobal && asignaciones.some((a) => a.alcance === 'UNIDAD');
+  const esGlobal = asignaciones.some(
+    (a) =>
+      a.alcance === 'GLOBAL' ||
+      Object.values(a.permisosAlcance ?? {}).includes('GLOBAL'),
+  );
+  const esUnidad =
+    !esGlobal &&
+    asignaciones.some(
+      (a) =>
+        a.alcance === 'UNIDAD' ||
+        Object.values(a.permisosAlcance ?? {}).includes('UNIDAD'),
+    );
   const scope: ScopeNivel = esGlobal ? 'GLOBAL' : esUnidad ? 'UNIDAD' : 'PROPIO';
   const esPropio = scope === 'PROPIO';
 
@@ -96,17 +111,23 @@ export function computeCapabilities(asignaciones: readonly AsignacionUsuario[]):
       }
     }
     if (typeof a.unidadId === 'number' && Number.isFinite(a.unidadId) && !unitsMap.has(a.unidadId)) {
+      const alcanceUnidadVis =
+        a.alcance === 'UNIDAD' || Object.values(a.permisosAlcance ?? {}).includes('UNIDAD')
+          ? 'UNIDAD'
+          : a.alcance;
       unitsMap.set(a.unidadId, {
         id: a.unidadId,
         nombre: a.unidadNombre || `Unidad #${a.unidadId}`,
-        alcance: a.alcance,
+        alcance: alcanceUnidadVis,
       });
     }
   }
 
   const permisos = Array.from(permisosSet);
-  const hasPermiso = (permiso: string): boolean => permisosSet.has(permiso);
-  const hasAnyPermiso = (...reqs: string[]): boolean => reqs.some((p) => permisosSet.has(p));
+  const hasPermiso = (permiso: string): boolean =>
+    asignacionOtorgaPermisoUI(permisos, permiso);
+  const hasAnyPermiso = (...reqs: string[]): boolean =>
+    reqs.some((p) => asignacionOtorgaPermisoUI(permisos, p));
 
   const unidadesAsignadasIds = obtenerUnidadesEnAlcanceIds(asignaciones);
   const unidadesAsignadas = Array.from(unitsMap.values());
@@ -129,43 +150,63 @@ export function computeCapabilities(asignaciones: readonly AsignacionUsuario[]):
     asignaciones,
   });
 
-  // 1. Panel Padrón y Ficha de Miembro (unifica ver/editar datos, identidad, baja y clave)
-  const canViewMiembros = (esGlobal || esUnidad) && hasAnyPermiso('padron.ver', 'padron.editar');
-  const canEditMiembros = !esPropio && hasPermiso('padron.editar');
+  // 1. Panel Padrón y Ficha de Miembro (evaluado por permiso + alcance real ARQ-02)
+  const canViewMiembros = tienePermisoConAlcance(
+    asignaciones,
+    ['padron.ver', 'padron.editar'],
+    'UNIDAD',
+  );
+  const canEditMiembros = tienePermisoConAlcance(asignaciones, ['padron.editar'], 'UNIDAD');
   const canCreateMiembros = canEditMiembros;
   const canEditIdentidad = canEditMiembros;
   const canBajaMiembros = canEditMiembros;
   const canResetClave = canEditMiembros;
 
   // 2 & 3. Panel Legajos y Panel Plantillas PDF
-  const canManagePlantillas = esGlobal && hasPermiso('plantillas.editar');
+  const canManagePlantillas = tienePermisoConAlcance(
+    asignaciones,
+    ['plantillas.editar'],
+    'GLOBAL',
+  );
   const canViewLegajosModule =
-    !esPropio &&
-    (hasAnyPermiso('legajos.ver', 'legajos.editar') ||
-      (esGlobal && hasAnyPermiso('plantillas.ver', 'plantillas.editar')));
-  const canCompleteLegajos = hasPermiso('legajos.editar');
-  const canValidateQr = !esPropio && hasPermiso('legajos.editar');
+    tienePermisoConAlcance(asignaciones, ['legajos.ver', 'legajos.editar', 'plantillas.ver'], 'UNIDAD') ||
+    canManagePlantillas;
+  const canCompleteLegajos = tienePermisoConAlcance(asignaciones, ['legajos.editar'], 'PROPIO');
+  const canValidateQr = tienePermisoConAlcance(asignaciones, ['legajos.editar'], 'UNIDAD');
 
   // 4. Panel Pases y Progresión
-  const canViewPases = !esPropio && hasAnyPermiso('pases.ver', 'pases.editar');
-  const canExecutePases = !esPropio && hasPermiso('pases.editar');
-  const canExecuteEgreso = esGlobal && hasPermiso('pases.editar');
+  const canViewPases = tienePermisoConAlcance(
+    asignaciones,
+    ['pases.ver', 'pases.editar'],
+    'UNIDAD',
+  );
+  const canExecutePases = tienePermisoConAlcance(asignaciones, ['pases.editar'], 'UNIDAD');
+  const canExecuteEgreso = tienePermisoConAlcance(asignaciones, ['pases.editar'], 'GLOBAL');
 
-  // 5, 6 & 7. Paneles de Tesorería (Cobranzas, Planes, y Caja/Bancos/Balance)
+  // 5, 6 & 7. Paneles de Tesorería (Cobranzas, Planes y Caja/Bancos/Balance por rama A2)
   const canSeeCajaContabilidad = panelGlobal.puedeVerCaja;
-  const canRegistrarGastos = esGlobal && hasPermiso('caja.editar');
+  const canRegistrarGastos = tienePermisoConAlcance(asignaciones, ['caja.editar'], 'UNIDAD');
   const canSeeBalance = panelGlobal.puedeVerBalance;
-  const canGestionarRubros = esGlobal && hasPermiso('caja.editar');
+  const canGestionarRubros = tienePermisoConAlcance(asignaciones, ['caja.editar'], 'UNIDAD');
 
-  const canViewCuotas =
-    !esPropio &&
-    hasAnyPermiso('cobranzas.ver', 'cobranzas.editar', 'planes.ver', 'planes.editar', 'caja.ver', 'caja.editar');
-  const canCobrar = !esPropio && hasAnyPermiso('cobranzas.editar', 'caja.editar');
+  const canViewCuotas = tienePermisoConAlcance(
+    asignaciones,
+    ['cobranzas.ver', 'cobranzas.editar', 'planes.ver', 'planes.editar', 'caja.ver', 'caja.editar'],
+    'UNIDAD',
+  );
+  const canCobrar = tienePermisoConAlcance(
+    asignaciones,
+    ['cobranzas.editar', 'caja.editar'],
+    'UNIDAD',
+  );
   const canAjustarCuotas = canCobrar;
-  const canGestionarPlanes =
-    !esPropio && hasAnyPermiso('planes.editar', 'caja.editar');
+  const canGestionarPlanes = tienePermisoConAlcance(
+    asignaciones,
+    ['planes.editar', 'caja.editar'],
+    'UNIDAD',
+  );
   const canViewFamiliasTesoreria =
-    !esPropio && (panelGlobal.puedeVerFamilias || canViewCuotas || canCobrar);
+    panelGlobal.puedeVerFamilias || canViewCuotas || canCobrar;
 
   const canSeeTesoreriaGestion =
     canSeeCajaContabilidad ||
@@ -175,18 +216,33 @@ export function computeCapabilities(asignaciones: readonly AsignacionUsuario[]):
     canGestionarPlanes ||
     canViewFamiliasTesoreria;
 
-  // 8. Panel Eventos Económicos
-  const canViewEventos = hasAnyPermiso('eventos.ver', 'eventos.editar', 'caja.editar');
-  const canSellEventos = !esPropio && hasAnyPermiso('eventos.editar', 'caja.editar');
+  // 8. Panel Eventos Económicos (A1, A3)
+  const canViewEventos = tienePermisoConAlcance(
+    asignaciones,
+    ['eventos.ver', 'eventos.editar', 'caja.editar'],
+    'PROPIO',
+  );
+  const canSellEventos = tienePermisoConAlcance(
+    asignaciones,
+    ['eventos.editar', 'caja.editar'],
+    'UNIDAD',
+  );
   const canConfigureEventos = canSellEventos;
-  const canCreateGlobalEventos = esGlobal && hasAnyPermiso('eventos.editar', 'caja.editar');
+  const canCreateGlobalEventos = tienePermisoConAlcance(
+    asignaciones,
+    ['eventos.editar', 'caja.editar'],
+    'GLOBAL',
+  );
 
-  // 9. Panel Organización, Roles y Correo
-  const canViewOrganizacion =
-    !esPropio && hasAnyPermiso('organizacion.ver', 'organizacion.editar');
-  const canEditOrganizacion = esGlobal && hasPermiso('organizacion.editar');
-  const canViewRoles = canViewOrganizacion;
-  const canEditRoles = canEditOrganizacion;
+  // 9 & 10. Panel Organización, Roles y Correo (A5)
+  const canViewOrganizacion = panelGlobal.puedeVerOrganizacion;
+  const canEditOrganizacion = tienePermisoConAlcance(
+    asignaciones,
+    ['organizacion.editar'],
+    'GLOBAL',
+  );
+  const canViewRoles = panelGlobal.puedeVerRoles;
+  const canEditRoles = tienePermisoConAlcance(asignaciones, ['roles.editar'], 'GLOBAL');
   const canEditCorreo = panelGlobal.puedeVerCorreo;
 
   const canUseQrScanner = canValidateQr || canSellEventos;

@@ -4,20 +4,12 @@ import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import {
   agruparCandidatosPorFamilia,
-  esRolAlcanceGlobal,
   esRolDeProtagonista,
-  esRolJefe,
-  esRolRama,
-  esRolSinRama,
-  rolRequiereRama,
   type OpcionGrupoHermanos,
 } from '../lib/formatters';
 import {
-  esUnidadJefatura,
   esUnidadRama,
-  esUnidadSinRama,
   filtrarRolesAsignablesPorAlcance,
-  filtrarUnidadesPorAlcance,
 } from '../lib/permisos';
 import {
   X,
@@ -50,8 +42,12 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   unidadesDisponibles,
   rolesDisponibles,
 }) => {
-  const { tieneGlobal, asignaciones } = useAuthStore();
-  const esGlobal = tieneGlobal();
+  const { tienePermisoGlobal, obtenerUnidadesConPermiso, asignaciones } = useAuthStore();
+  const esGlobal = tienePermisoGlobal('padron.editar');
+  const unidadesCrearIds = useMemo(
+    () => obtenerUnidadesConPermiso('padron.editar'),
+    [obtenerUnidadesConPermiso, asignaciones],
+  );
   const [dni, setDni] = useState('');
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -66,6 +62,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   const [tutorTelefono, setTutorTelefono] = useState('');
   const [unidadId, setUnidadId] = useState<number | ''>('');
   const [rolId, setRolId] = useState<number | ''>('');
+  const [tipoMiembro, setTipoMiembro] = useState<'PROTAGONISTA' | 'EDUCADOR'>('PROTAGONISTA');
   const [domicilio, setDomicilio] = useState('');
   const [obraSocial, setObraSocial] = useState('');
 
@@ -103,136 +100,38 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   });
 
   const unidadesPermitidas = useMemo(
-    () => filtrarUnidadesPorAlcance(unidadesDisponibles, { esGlobal, asignaciones }),
-    [unidadesDisponibles, esGlobal, asignaciones],
+    () =>
+      esGlobal
+        ? unidadesDisponibles
+        : unidadesDisponibles.filter((u) => unidadesCrearIds.includes(u.id)),
+    [unidadesDisponibles, esGlobal, unidadesCrearIds],
   );
 
   const rolesPermitidos = useMemo(
-    () => filtrarRolesAsignablesPorAlcance(rolesDisponibles, unidadesPermitidas, esGlobal),
-    [rolesDisponibles, unidadesPermitidas, esGlobal],
+    () => filtrarRolesAsignablesPorAlcance(rolesDisponibles, unidadesPermitidas, esGlobal, asignaciones),
+    [rolesDisponibles, unidadesPermitidas, esGlobal, asignaciones],
   );
 
-  const unidadSeleccionada = useMemo(
-    () => unidadesPermitidas.find((u) => u.id === Number(unidadId)),
-    [unidadesPermitidas, unidadId],
-  );
-
-  const rolSeleccionado = useMemo(
-    () => rolesPermitidos.find((r) => r.id === Number(rolId)),
-    [rolesPermitidos, rolId],
-  );
-
-  const rolesFiltrados = useMemo(() => {
-    const list = rolesPermitidos;
-    if (unidadSeleccionada) {
-      if (esUnidadRama(unidadSeleccionada)) {
-        const deRama = list.filter(esRolRama);
-        return deRama.length > 0 ? deRama : list;
-      }
-      if (esUnidadSinRama(unidadSeleccionada)) {
-        const sinRama = list.filter((r) => !rolRequiereRama(r));
-        return sinRama.length > 0 ? sinRama : list;
-      }
-      if (esUnidadJefatura(unidadSeleccionada)) {
-        const jefe = list.filter(esRolJefe);
-        return jefe.length > 0 ? jefe : list.filter((r) => !rolRequiereRama(r));
-      }
-    }
-    return list;
-  }, [rolesPermitidos, unidadSeleccionada]);
-
-  const unidadesFiltradas = useMemo(() => {
-    if (rolSeleccionado) {
-      if (!rolRequiereRama(rolSeleccionado)) {
-        if (esRolAlcanceGlobal(rolSeleccionado)) {
-          const uJef = unidadesPermitidas.filter(esUnidadJefatura);
-          if (uJef.length > 0) return uJef;
-        }
-        const uSin = unidadesPermitidas.filter((u) => !esUnidadRama(u));
-        if (uSin.length > 0) return uSin;
-      } else {
-        const uRama = unidadesPermitidas.filter(esUnidadRama);
-        if (uRama.length > 0) return uRama;
-      }
-    }
-    return unidadesPermitidas;
-  }, [unidadesPermitidas, rolSeleccionado]);
+  // A3: Cualquier rol asignable puede combinarse con cualquier unidad en alcance
+  const rolesFiltrados = rolesPermitidos;
+  const unidadesFiltradas = unidadesPermitidas;
 
   const handleCambioUnidad = (nuevaUnidadId: number) => {
     setUnidadId(nuevaUnidadId);
-    const u = unidadesPermitidas.find((x) => x.id === nuevaUnidadId);
-    if (!u) return;
-
-    if (esUnidadRama(u)) {
-      const rActual = rolesPermitidos.find((r) => r.id === Number(rolId));
-      if (!rActual || !rolRequiereRama(rActual)) {
-        const prota =
-          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-          rolesPermitidos.find(esRolRama);
-        if (prota) setRolId(prota.id);
-      }
-    } else if (esUnidadSinRama(u)) {
-      const rSinRama =
-        rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
-      if (rSinRama) setRolId(rSinRama.id);
-    } else if (esUnidadJefatura(u)) {
-      const rJefe =
-        rolesPermitidos.find(esRolJefe) || rolesPermitidos.find((r) => !rolRequiereRama(r));
-      if (rJefe) setRolId(rJefe.id);
-    }
   };
 
   const handleCambioRol = (nuevoRolId: number) => {
     setRolId(nuevoRolId);
-    const r = rolesPermitidos.find((x) => x.id === nuevoRolId);
-    if (!r) return;
-
-    if (!rolRequiereRama(r)) {
-      if (esRolAlcanceGlobal(r)) {
-        const uJefatura =
-          unidadesPermitidas.find(esUnidadJefatura) ||
-          unidadesPermitidas.find((u) => !esUnidadRama(u));
-        setUnidadId(uJefatura ? uJefatura.id : '');
-      } else {
-        const uSinRama =
-          unidadesPermitidas.find(esUnidadSinRama) ||
-          unidadesPermitidas.find((u) => !esUnidadRama(u));
-        setUnidadId(uSinRama ? uSinRama.id : '');
-      }
-    } else {
-      const uActual = unidadesPermitidas.find((x) => x.id === Number(unidadId));
-      if (!uActual || !esUnidadRama(uActual)) {
-        const primerRama = unidadesPermitidas.find(esUnidadRama);
-        if (primerRama) setUnidadId(primerRama.id);
-      }
-    }
   };
 
   useEffect(() => {
     if (unidadesPermitidas.length > 0 && (!unidadId || !unidadesPermitidas.some((u) => u.id === Number(unidadId)))) {
-      const unitIni = unidadesPermitidas[0];
-      setUnidadId(unitIni.id);
-      if (esUnidadRama(unitIni)) {
-        const prota =
-          rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-          rolesPermitidos.find(esRolRama);
-        if (prota) {
-          setRolId(prota.id);
-          return;
-        }
-      } else if (esUnidadSinRama(unitIni)) {
-        const rSin = rolesPermitidos.find(esRolSinRama) || rolesPermitidos.find((r) => !rolRequiereRama(r));
-        if (rSin) {
-          setRolId(rSin.id);
-          return;
-        }
-      }
+      const primeraRama = unidadesPermitidas.find(esUnidadRama) || unidadesPermitidas[0];
+      setUnidadId(primeraRama.id);
     }
     if (rolesPermitidos.length > 0 && (!rolId || !rolesPermitidos.some((r) => r.id === Number(rolId)))) {
-      const prota =
-        rolesPermitidos.find((r) => esRolDeProtagonista(r) && rolRequiereRama(r)) ||
-        rolesPermitidos[0];
-      setRolId(prota ? prota.id : rolesPermitidos[0].id);
+      const prota = rolesPermitidos.find(esRolDeProtagonista) || rolesPermitidos[0];
+      setRolId(prota.id);
     }
   }, [unidadesPermitidas, rolesPermitidos, unidadId, rolId]);
 
@@ -295,8 +194,8 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rolId || (rolRequiereRama(rolSeleccionado) && !unidadId)) {
-      setError('Debe seleccionar una función y, si corresponde, su rama asignada.');
+    if (!rolId || !unidadId) {
+      setError('Debe seleccionar una unidad y el rol asignado en el sistema.');
       return;
     }
 
@@ -309,9 +208,10 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         fechaNacimiento,
+        tipoMiembro,
         emailContacto: emailContacto.trim() || undefined,
         telefonoContacto: telefonoContacto.trim() || undefined,
-        unidadId: unidadId ? Number(unidadId) : undefined,
+        unidadId: Number(unidadId),
         rolId: Number(rolId),
         hermanoDni: grupoConfirmado?.representante?.dni || undefined,
         copiarDatosHermano: Boolean(grupoConfirmado),
@@ -607,6 +507,48 @@ export const ModalAltaMiembro: React.FC<Props> = ({
             </div>
           </div>
 
+          {/* Categoría Scout en el grupo (independiente del rol de permisos) */}
+          <div className="space-y-1.5">
+            <label className="block font-semibold text-ink-2">Categoría en el Grupo *</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {(
+                [
+                  {
+                    id: 'PROTAGONISTA' as const,
+                    titulo: 'Protagonista / Beneficiario',
+                    desc: 'Utiliza ficha y cobros de beneficiario.',
+                  },
+                  {
+                    id: 'EDUCADOR' as const,
+                    titulo: 'Educador / Adulto',
+                    desc: 'Adulto, dirigente o colaborador con ficha y cuotas de educador.',
+                  },
+                ] as const
+              ).map((cat) => {
+                const activo = tipoMiembro === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setTipoMiembro(cat.id)}
+                    className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                      activo
+                        ? 'border-brand bg-brand/10 ring-1 ring-brand/40'
+                        : 'border-rule bg-surface hover:bg-paper-2'
+                    }`}
+                  >
+                    <span className="font-bold text-ink block text-xs sm:text-[13px]">
+                      {cat.titulo}
+                    </span>
+                    <span className="text-[11px] text-ink-muted block mt-0.5 leading-snug">
+                      {cat.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block font-semibold text-ink-2 mb-1">Rama / Sección *</label>
@@ -636,7 +578,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               </select>
             </div>
             <div>
-              <label className="block font-semibold text-ink-2 mb-1">Función en el Grupo *</label>
+              <label className="block font-semibold text-ink-2 mb-1">Rol y Permisos *</label>
               <select
                 value={rolId}
                 onChange={(e) => handleCambioRol(Number(e.target.value))}

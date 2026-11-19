@@ -338,7 +338,7 @@ export const InicioPage: React.FC = () => {
     }
 
     const candidatosFiltrados = candidatosPase.filter((c) => {
-      if (!caps.esGlobal && (c.requiereAlcanceGlobal || c.tipo === 'EGRESO')) return false;
+      if (!caps.canExecuteEgreso && (c.requiereAlcanceGlobal || c.tipo === 'EGRESO')) return false;
       if (activeUnitId === 'ALL') return true;
       return Number(c.unidadActual?.id ?? c.unidadId) === activeUnitId;
     });
@@ -360,7 +360,7 @@ export const InicioPage: React.FC = () => {
       pasesSugeridos: candidatosFiltrados.length,
       solicitudesPendientes: solicitudesPendientes.length,
     };
-  }, [miembrosEnFoco, entregasPorUsuario, candidatosPase, solicitudesPase, caps.esGlobal, activeUnitId]);
+  }, [miembrosEnFoco, entregasPorUsuario, candidatosPase, solicitudesPase, caps.canExecuteEgreso, activeUnitId]);
 
   const miembrosConAlertaMedica = useMemo(() => {
     const lista: Array<{
@@ -474,7 +474,7 @@ export const InicioPage: React.FC = () => {
     {
       to: '/miembros',
       title: 'Padrón de Miembros',
-      desc: 'Listado operativo, filtros, ficha 360° y altas.',
+      desc: 'Listado operativo, filtros, ficha y altas.',
       icon: <Users className="w-5 h-5 text-brand" />,
       show: caps.canViewMiembros,
     },
@@ -488,7 +488,7 @@ export const InicioPage: React.FC = () => {
     {
       to: '/pases',
       title: 'Progresiones y Pases',
-      desc: 'Camadas al 30/06 y bandeja de solicitudes.',
+      desc: 'Pases por camada y bandeja de solicitudes.',
       icon: <Repeat className="w-5 h-5 text-brand" />,
       show: caps.canViewPases,
     },
@@ -885,7 +885,7 @@ export const InicioPage: React.FC = () => {
                   <span className="truncate">
                     {statsGestion.solicitudesPendientes > 0
                       ? `${statsGestion.solicitudesPendientes} solicitud(es) pendiente(s)`
-                      : 'Cálculo por camadas 30/06'}
+                      : 'Cálculo por camadas'}
                   </span>
                   <span className="font-bold text-brand shrink-0">Gestionar →</span>
                 </div>

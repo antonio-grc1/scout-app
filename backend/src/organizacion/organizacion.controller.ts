@@ -10,23 +10,19 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { Alcance, RequireAnyPermission, RequirePermission } from '../common/decorators/auth.decorators.js';
+import { Alcance, CurrentUser, RequireAnyPermission, RequirePermission } from '../common/decorators/auth.decorators.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
-import type { AlcanceAcceso } from '../common/types/auth.types.js';
+import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import {
-  CrearPermisoSchema,
   CrearRamaSchema,
   CrearRolSchema,
   CrearUnidadSchema,
-  EditarPermisoSchema,
   EditarRamaSchema,
   EditarRolSchema,
   EditarUnidadSchema,
-  type CrearPermisoDto,
   type CrearRamaDto,
   type CrearRolDto,
   type CrearUnidadDto,
-  type EditarPermisoDto,
   type EditarRamaDto,
   type EditarRolDto,
   type EditarUnidadDto,
@@ -35,8 +31,8 @@ import { OrganizacionService } from './organizacion.service.js';
 
 const VER = 'organizacion.ver';
 const GESTIONAR = 'organizacion.editar';
-const GESTIONAR_ROLES = ['organizacion.editar'];
-const VER_ROLES = ['organizacion.ver'];
+const GESTIONAR_ROLES = 'roles.editar';
+const VER_ROLES = ['organizacion.ver', 'roles.ver', 'roles.editar', 'organizacion.editar'] as const;
 const incluirInactivas = new ParseBoolPipe({ optional: true });
 
 @Controller('organizacion')
@@ -46,8 +42,11 @@ export class OrganizacionController {
   // ---------------- Ramas ----------------
   @RequirePermission(VER)
   @Get('ramas')
-  listarRamas(@Query('incluirInactivas', incluirInactivas) inc?: boolean) {
-    return this.org.listarRamas(inc ?? false);
+  listarRamas(
+    @Alcance() a: AlcanceAcceso,
+    @Query('incluirInactivas', incluirInactivas) inc?: boolean,
+  ) {
+    return this.org.listarRamas(a, inc ?? false);
   }
 
   @RequirePermission(GESTIONAR)
@@ -79,8 +78,11 @@ export class OrganizacionController {
   // ---------------- Unidades ----------------
   @RequirePermission(VER)
   @Get('unidades')
-  listarUnidades(@Query('incluirInactivas', incluirInactivas) inc?: boolean) {
-    return this.org.listarUnidades(inc ?? false);
+  listarUnidades(
+    @Alcance() a: AlcanceAcceso,
+    @Query('incluirInactivas', incluirInactivas) inc?: boolean,
+  ) {
+    return this.org.listarUnidades(a, inc ?? false);
   }
 
   @RequirePermission(VER)
@@ -121,30 +123,38 @@ export class OrganizacionController {
   // ---------------- Roles ----------------
   @RequireAnyPermission(...VER_ROLES)
   @Get('roles')
-  listarRoles() {
-    return this.org.listarRoles();
+  listarRoles(
+    @Alcance() a: AlcanceAcceso,
+    @Query('incluirInactivos', incluirInactivas) inc?: boolean,
+  ) {
+    return this.org.listarRoles(a, inc ?? false);
   }
 
-  @RequireAnyPermission(...GESTIONAR_ROLES)
+  @RequirePermission(GESTIONAR_ROLES)
   @Post('roles')
-  crearRol(@Alcance() a: AlcanceAcceso, @Body(new ZodValidationPipe(CrearRolSchema)) dto: CrearRolDto) {
-    return this.org.crearRol(a, dto);
+  crearRol(
+    @CurrentUser() actor: AuthUser,
+    @Alcance() a: AlcanceAcceso,
+    @Body(new ZodValidationPipe(CrearRolSchema)) dto: CrearRolDto,
+  ) {
+    return this.org.crearRol(actor, a, dto);
   }
 
-  @RequireAnyPermission(...GESTIONAR_ROLES)
+  @RequirePermission(GESTIONAR_ROLES)
   @Patch('roles/:id')
   editarRol(
+    @CurrentUser() actor: AuthUser,
     @Alcance() a: AlcanceAcceso,
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(EditarRolSchema)) dto: EditarRolDto,
   ) {
-    return this.org.editarRol(a, id, dto);
+    return this.org.editarRol(actor, a, id, dto);
   }
 
-  @RequireAnyPermission(...GESTIONAR_ROLES)
+  @RequirePermission(GESTIONAR_ROLES)
   @Delete('roles/:id')
-  eliminarRol(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
-    return this.org.eliminarRol(a, id);
+  eliminarRol(@CurrentUser() actor: AuthUser, @Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.org.eliminarRol(actor, a, id);
   }
 
   // ---------------- Permisos ----------------
@@ -152,21 +162,5 @@ export class OrganizacionController {
   @Get('permisos')
   listarPermisos() {
     return this.org.listarPermisos();
-  }
-
-  @RequireAnyPermission(...GESTIONAR_ROLES)
-  @Post('permisos')
-  crearPermiso(@Alcance() a: AlcanceAcceso, @Body(new ZodValidationPipe(CrearPermisoSchema)) dto: CrearPermisoDto) {
-    return this.org.crearPermiso(a, dto);
-  }
-
-  @RequireAnyPermission(...GESTIONAR_ROLES)
-  @Patch('permisos/:id')
-  editarPermiso(
-    @Alcance() a: AlcanceAcceso,
-    @Param('id', ParseIntPipe) id: number,
-    @Body(new ZodValidationPipe(EditarPermisoSchema)) dto: EditarPermisoDto,
-  ) {
-    return this.org.editarPermiso(a, id, dto);
   }
 }

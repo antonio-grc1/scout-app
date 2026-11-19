@@ -72,9 +72,14 @@ export const TesoreriaPage: React.FC = () => {
   const navigate = useNavigate();
   const caps = useCapabilities();
   const asignaciones = useAuthStore((s) => s.asignaciones);
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
   const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const esGlobalCobranzas = tienePermisoGlobal(['cobranzas.editar', 'caja.editar']);
+  const esGlobalPlanes = tienePermisoGlobal(['planes.editar', 'caja.editar']);
+  const esGlobalFamilias = tienePermisoGlobal(['cobranzas.editar', 'padron.editar', 'caja.editar']);
 
   const puedeVerCobranzas =
     caps.canViewFamiliasTesoreria || caps.canViewCuotas || caps.canCobrar;
@@ -463,7 +468,7 @@ export const TesoreriaPage: React.FC = () => {
       plan.recaudacion?.totalRecaudado ?? plan.resumenRecaudacion?.totalRecaudado ?? 0,
     );
     setImpactoDialog({
-      titulo: 'Eliminar Plan de Cuota Mensual',
+      titulo: 'Eliminar Cobro Mensual',
       mensaje: `¿Confirmás eliminar "${plan.nombre}"?`,
       impacto:
         cobrado > 0
@@ -538,7 +543,7 @@ export const TesoreriaPage: React.FC = () => {
       con.recaudacion?.totalRecaudado ?? con.resumenRecaudacion?.totalRecaudado ?? 0,
     );
     setImpactoDialog({
-      titulo: 'Eliminar Cobro / Campamento',
+      titulo: 'Eliminar Cobro Puntual',
       mensaje: `¿Seguro que querés eliminar "${con.nombre}"?`,
       impacto:
         cobrado > 0
@@ -623,7 +628,7 @@ export const TesoreriaPage: React.FC = () => {
               </h1>
             </div>
             <p className="text-sm text-ink-muted">
-              Cobranzas familiares, planes mensuales, campamentos, libro diario y balance del grupo.
+              Cobranzas familiares, cobros mensuales, cobros puntuales, libro diario y balance del grupo.
             </p>
           </div>
 
@@ -671,16 +676,16 @@ export const TesoreriaPage: React.FC = () => {
             tone="brand"
           />
           <KpiCard
-            label="Planes mensuales"
+            label="Cobros Mensuales"
             value={cargando && planesMensuales.length === 0 ? '—' : planesFiltrados.length}
-            hint="Cuotas activas del ciclo"
+            hint="Planes activos del ciclo"
             icon={<Layers className="w-4 h-4" />}
             tone="info"
           />
           <KpiCard
-            label="Campamentos / Extras"
+            label="Cobros Puntuales"
             value={cargando && conceptos.length === 0 ? '—' : conceptosPuntuales.length}
-            hint="Cobros puntuales"
+            hint="Conceptos y eventos"
             icon={<Tent className="w-4 h-4" />}
             tone="warn"
           />
@@ -813,7 +818,7 @@ export const TesoreriaPage: React.FC = () => {
               const pct = Number(fam.porcentajeDescuentoHermanos ?? 0);
               const miembros: any[] = Array.isArray(fam.miembros) ? fam.miembros : [];
               const editablePorAlcance = puedeEditarFamiliaPorAlcance(fam, {
-                esGlobal: caps.esGlobal,
+                esGlobal: esGlobalFamilias,
                 unidadesEnAlcanceIds: caps.unidadesAsignadasIds,
               });
               const puedeEditarFamilia = puedeEditarDescuentoFamilia && editablePorAlcance;
@@ -849,7 +854,7 @@ export const TesoreriaPage: React.FC = () => {
                         const uId = asig?.unidadId ?? asig?.unidad?.id ?? null;
                         const uNombre = asig?.unidad?.nombre || 'Sin rama';
                         const enAlcanceUnidad =
-                          caps.esGlobal ||
+                          esGlobalCobranzas ||
                           (typeof uId === 'number' && caps.unidadesAsignadasIds.includes(uId));
 
                         return (
@@ -861,7 +866,7 @@ export const TesoreriaPage: React.FC = () => {
                               type="button"
                               onClick={() => navigate(`/miembros/${m.id}?tab=cuotas`)}
                               className="min-w-0 text-left flex-1 cursor-pointer group"
-                              title="Ver cuenta corriente en ficha 360°"
+                              title="Ver cuenta corriente en ficha"
                             >
                               <span className="text-[13px] font-bold text-ink group-hover:text-brand group-hover:underline block truncate">
                                 {m.nombre} {m.apellido}
@@ -943,13 +948,13 @@ export const TesoreriaPage: React.FC = () => {
       {/* SUB-TAB 2: PLANES Y CONCEPTOS */}
       {subTab === 'planes' && puedeVerPlanesYConceptos && (
         <div key="planes" className="space-y-6 s-anim-tab">
-          {/* Bloque A: Planes de Cuota Mensual */}
+          {/* Bloque A: Cobros Mensuales */}
           <section className="s-card rounded-2xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
                   <Layers className="w-5 h-5 text-brand" />
-                  <span>Planes de Cuota Mensual</span>
+                  <span>Cobros Mensuales</span>
                 </h2>
                 <p className="text-[13px] text-ink-muted mt-0.5">
                   Tocá cualquier mes para habilitar o desactivar su cobro en el ciclo.
@@ -966,7 +971,7 @@ export const TesoreriaPage: React.FC = () => {
                   }}
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>Nuevo Plan Mensual</span>
+                  <span>Nuevo Cobro Mensual</span>
                 </Button>
               )}
             </div>
@@ -983,7 +988,7 @@ export const TesoreriaPage: React.FC = () => {
                 const puedeEditarPlan =
                   puedeCrearConceptosYPlanes &&
                   puedeModificarPorAlcanceUnidad(plan.unidadId, {
-                    esGlobal: caps.esGlobal,
+                    esGlobal: esGlobalPlanes,
                     unidadesEnAlcanceIds: caps.unidadesAsignadasIds,
                   });
 
@@ -1071,7 +1076,7 @@ export const TesoreriaPage: React.FC = () => {
                           </div>
                           <div className="flex items-center justify-between text-xs text-ink-muted">
                             <span>
-                              {rec.cargosPagados} de {rec.totalCargos} cuotas al día
+                              {rec.cargosPagados} de {rec.totalCargos} cobros al día
                             </span>
                             <span className="font-bold text-ink">{rec.porcentajeCobrado}%</span>
                           </div>
@@ -1117,19 +1122,19 @@ export const TesoreriaPage: React.FC = () => {
 
               {planesFiltrados.length === 0 && !cargando && (
                 <div className="col-span-full py-8 text-center text-sm text-ink-muted">
-                  No hay planes de cuota mensual creados.
+                  No hay cobros mensuales creados.
                 </div>
               )}
             </div>
           </section>
 
-          {/* Bloque B: Campamentos y Conceptos Puntuales */}
+          {/* Bloque B: Cobros Puntuales */}
           <section className="s-card rounded-2xl p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
                   <Tent className="w-5 h-5 text-brand" />
-                  <span>Campamentos, Salidas y Conceptos Puntuales</span>
+                  <span>Cobros Puntuales</span>
                 </h2>
                 <p className="text-[13px] text-ink-muted mt-0.5">
                   Cobros especiales con destinatarios configurables y exenciones individuales.
@@ -1146,7 +1151,7 @@ export const TesoreriaPage: React.FC = () => {
                   }}
                 >
                   <Tent className="w-4 h-4" />
-                  <span>Nuevo Campamento / Cobro</span>
+                  <span>Nuevo Cobro Puntual</span>
                 </Button>
               )}
             </div>
@@ -1160,7 +1165,7 @@ export const TesoreriaPage: React.FC = () => {
                 const puedeEditarConcepto =
                   puedeCrearConceptosYPlanes &&
                   puedeModificarPorAlcanceUnidad(con.unidadId, {
-                    esGlobal: caps.esGlobal,
+                    esGlobal: esGlobalPlanes,
                     unidadesEnAlcanceIds: caps.unidadesAsignadasIds,
                   });
 
@@ -1272,7 +1277,7 @@ export const TesoreriaPage: React.FC = () => {
 
               {conceptosPuntuales.length === 0 && !cargando && (
                 <div className="col-span-full py-8 text-center text-sm text-ink-muted">
-                  No hay cobros de campamento ni conceptos especiales.
+                  No hay cobros puntuales creados.
                 </div>
               )}
             </div>
@@ -1402,7 +1407,7 @@ export const TesoreriaPage: React.FC = () => {
           setPlanAEditar(null);
         }}
         onGuardado={() => {
-          mostrarToast('Plan de cuota mensual guardado.');
+          mostrarToast('Cobro mensual guardado.');
           void cargarDatos();
         }}
       />

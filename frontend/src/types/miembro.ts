@@ -1,3 +1,5 @@
+export type TipoUnidad = 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO';
+
 export interface RamaDetalle {
   id: number;
   nombre: string;
@@ -10,7 +12,7 @@ export interface RamaDetalle {
 export interface UnidadDetalle {
   id: number;
   nombre: string;
-  tipo: 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO' | string;
+  tipo: TipoUnidad | string;
   activa?: boolean;
   ramaId?: number | null;
   rama?: RamaDetalle | null;
@@ -22,7 +24,11 @@ export interface RolDetalle {
   alcancePorDefecto?: string;
   tipoMiembro?: 'PROTAGONISTA' | 'EDUCADOR' | 'COLABORADOR' | string;
   requiereRama?: boolean;
+  tipoUnidad?: TipoUnidad | string;
+  esSistema?: boolean;
   activo?: boolean;
+  permisos?: string[];
+  permisosAlcance?: Record<string, 'PROPIO' | 'UNIDAD' | 'GLOBAL'>;
 }
 
 export interface AsignacionHistorial {
@@ -33,7 +39,6 @@ export interface AsignacionHistorial {
   fechaInicio: string;
   fechaFin?: string | null;
   activo: boolean;
-  alcanceOverride?: string | null;
   unidad: UnidadDetalle;
   rol: RolDetalle;
 }

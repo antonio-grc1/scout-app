@@ -37,9 +37,9 @@ export const PanelAdminRamas: React.FC<Props> = ({
   onRecargar,
   onToast,
 }) => {
-  const puedeGestionar = useAuthStore(
-    (s) => s.tieneGlobal() && s.tienePermiso('organizacion.editar'),
-  );
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const puedeGestionar = tienePermisoGlobal('organizacion.editar');
+  const puedeVerInactivas = tienePermisoGlobal(['organizacion.ver', 'organizacion.editar']);
 
   // Estado formulario de Rama (Crear / Editar)
   const [editandoRama, setEditandoRama] = useState<any | null>(null);
@@ -387,19 +387,21 @@ export const PanelAdminRamas: React.FC<Props> = ({
           <span className="px-3 py-1 rounded-xl border border-rule bg-paper-2 text-xs font-bold text-ink-2">
             {unidades.filter((u) => u.activa !== false).length} secciones
           </span>
-          <button
-            type="button"
-            onClick={() => onToggleMostrarInactivas(!mostrarInactivas)}
-            aria-pressed={mostrarInactivas}
-            className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold flex items-center gap-1.5 border transition cursor-pointer ${
-              mostrarInactivas
-                ? 'bg-ink text-paper border-ink'
-                : 'bg-paper-2 text-ink-2 border-rule'
-            }`}
-          >
-            {mostrarInactivas ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            <span>{mostrarInactivas ? 'Ocultar inactivas' : 'Ver inactivas'}</span>
-          </button>
+          {puedeVerInactivas && (
+            <button
+              type="button"
+              onClick={() => onToggleMostrarInactivas(!mostrarInactivas)}
+              aria-pressed={mostrarInactivas}
+              className={`min-h-[40px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+                mostrarInactivas
+                  ? 'bg-ink text-paper border-ink'
+                  : 'bg-paper-2 text-ink-2 border-rule'
+              }`}
+            >
+              {mostrarInactivas ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <span>{mostrarInactivas ? 'Ocultar inactivas' : 'Ver inactivas'}</span>
+            </button>
+          )}
         </div>
       </div>
 

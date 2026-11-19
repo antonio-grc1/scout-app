@@ -124,9 +124,11 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
     assert.equal(multiUnidadPropio.scope, 'UNIDAD');
     assert.equal(multiUnidadPropio.canCompleteLegajos, true);
     assert.equal(multiUnidadPropio.canViewMiembros, true);
-    // Permisos globales siguen bloqueados si el usuario no tiene asignación GLOBAL
-    assert.equal(multiUnidadPropio.canSeeCajaContabilidad, false);
+    // A2: Caja por rama habilita canSeeCajaContabilidad en UNIDAD, pero permisos GLOBAL-only siguen bloqueados
+    assert.equal(multiUnidadPropio.canSeeCajaContabilidad, true);
     assert.equal(multiUnidadPropio.canManagePlantillas, false);
+    assert.equal(multiUnidadPropio.canEditOrganizacion, false);
+    assert.equal(multiUnidadPropio.canEditRoles, false);
     assert.equal(multiUnidadPropio.unidadesAsignadas.length, 2);
 
     const multiConGlobal = computeCapabilities([
@@ -153,6 +155,8 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
     assert.equal(multiConGlobal.canSeeCajaContabilidad, true);
     assert.equal(multiConGlobal.canManagePlantillas, true);
     assert.equal(multiConGlobal.canEditOrganizacion, true);
+    // A5: organizacion.editar no otorga canEditRoles sin roles.editar
+    assert.equal(multiConGlobal.canEditRoles, false);
   });
 
   it('useActiveUnitStore resetea activeUnitId a ALL al cambiar de usuario en authStore', async () => {

@@ -39,7 +39,7 @@ export class PasesController {
     @Alcance() a: AlcanceAcceso,
     @Body(new ZodValidationPipe(PaseSchema)) dto: PaseDto,
   ) {
-    return this.pases.ejecutar(a, dto, u.sub);
+    return this.pases.ejecutar(a, dto, u);
   }
 
   @RequirePermission('pases.editar')
@@ -49,7 +49,7 @@ export class PasesController {
     @Alcance() a: AlcanceAcceso,
     @Body(new ZodValidationPipe(PasesLoteSchema)) dto: PasesLoteDto,
   ) {
-    return this.pases.ejecutarLote(a, dto, u.sub);
+    return this.pases.ejecutarLote(a, dto, u);
   }
 
   @RequirePermission('pases.editar')
@@ -60,7 +60,7 @@ export class PasesController {
     @Param('id', ParseIntPipe) id: number,
     @Body(new ZodValidationPipe(AprobarSolicitudPaseSchema)) dto: AprobarSolicitudPaseDto,
   ) {
-    return this.pases.aprobarSolicitud(a, id, dto, u.sub);
+    return this.pases.aprobarSolicitud(a, id, dto, u);
   }
 
   @RequirePermission('pases.editar')

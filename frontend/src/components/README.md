@@ -6,7 +6,7 @@ Provides the unified navigation shell (`layout/`), universal QR scanner (`qr/`),
 ## Interface
 - [Layout (`./layout/`)](./layout/AppShell.tsx) — `AppShell` (desktop sidebar + topbar with Active Unit selector and `Ctrl+K`, mobile bottom bar + FAB + "Más" drawer) and `CommandPaletteModal`.
 - [QR Scanner (`./qr/`)](./qr/QrScannerUniversalModal.tsx) — `QrScannerUniversalModal` unifying legajo hash verification and event ticket QR scanning with continuous door mode and inline pending-payment collection.
-- [Detalle de Miembro](./detalle-miembro/README.md) — Modular tabs and assignment timeline for `ExpedienteMiembro360` (`PestanaCuotasTesoreria`, `PestanaDatosMiembro`, `PestanaLegajosFichas`, `PestanaPaseRol`, `PestanaSeguridad`, `TrayectoriaMiembro`).
+- [Detalle de Miembro](./detalle-miembro/README.md) — Modular tabs and assignment timeline for `ExpedienteMiembro` (`PestanaCuotasTesoreria`, `PestanaDatosMiembro`, `PestanaLegajosFichas`, `PestanaPaseRol`, `PestanaSeguridad`, `TrayectoriaMiembro`).
 - [UI Primitives](./ui/README.md) — Reusable design-system primitives (`Button`, `BrandLogo`, `Badge`, `Input`, `Select`, `Textarea`, `BotonExportar`, `Drawer`, `ConfirmImpactDialog`, `KpiCard`, `SegmentedTabs`, `ToastGlobal`).
 - `[BannerOffline.tsx:BannerOffline]` — Sticky online/reconnected or offline/cached status banner using `useOfflineStore`.
 - `[BotonInstalarPwa.tsx:BotonInstalarPwa]` — PWA installation trigger and fallback guide modal via portal.

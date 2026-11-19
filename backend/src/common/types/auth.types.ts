@@ -1,7 +1,8 @@
-import type { AlcanceRol } from '@prisma/client';
+import type { AlcanceRol, TipoUnidad } from '@prisma/client';
 import type { Request } from 'express';
+import { PERMISOS_SISTEMA, type PermisoSistema } from '../scope/permisos-catalogo.js';
 
-/** Asignación activa tal como viaja dentro del JWT (AGENTS.md §6.1). */
+/** Asignación activa tal como viaja dentro del JWT / sesión hidratada (AGENTS.md §6.1). */
 export interface AsignacionToken {
   unidadId: number;
   unidadNombre: string;
@@ -9,16 +10,22 @@ export interface AsignacionToken {
   rol: string;
   tipoMiembro?: string;
   requiereRama?: boolean;
+  tipoUnidad?: TipoUnidad;
   alcance: AlcanceRol;
   permisos: string[];
+  permisosAlcance?: Record<string, AlcanceRol>;
 }
 
-/** Payload firmado en el JWT. */
-export interface JwtPayload {
+/** Claims mínimos firmados en el JWT liviano (el resto se hidrata desde BD). */
+export interface JwtTokenClaims {
   sub: number;
   dni: string;
-  requiereCambioClave: boolean;
   tokenVersion?: number;
+}
+
+/** Payload de usuario autenticado hidratado en cada request. */
+export interface JwtPayload extends JwtTokenClaims {
+  requiereCambioClave: boolean;
   asignaciones: AsignacionToken[];
 }
 
@@ -41,25 +48,4 @@ export interface AuthenticatedRequest extends Request {
   alcance?: AlcanceAcceso;
 }
 
-export const PERMISOS_SISTEMA = [
-  'padron.ver',
-  'padron.editar',
-  'legajos.ver',
-  'legajos.editar',
-  'plantillas.ver',
-  'plantillas.editar',
-  'pases.ver',
-  'pases.editar',
-  'cobranzas.ver',
-  'cobranzas.editar',
-  'planes.ver',
-  'planes.editar',
-  'caja.ver',
-  'caja.editar',
-  'eventos.ver',
-  'eventos.editar',
-  'organizacion.ver',
-  'organizacion.editar',
-] as const;
-
-export type PermisoSistema = (typeof PERMISOS_SISTEMA)[number];
+export { PERMISOS_SISTEMA, type PermisoSistema };

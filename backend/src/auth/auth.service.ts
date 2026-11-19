@@ -9,8 +9,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { AlcanceRol, type Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { filtroUsuariosPorAlcance } from '../common/scope/alcance.util.js';
-import type { AlcanceAcceso, AsignacionToken, AuthUser, JwtPayload } from '../common/types/auth.types.js';
+import { assertActorDominaObjetivo, filtroUsuariosPorAlcance } from '../common/scope/alcance.util.js';
+import type {
+  AlcanceAcceso,
+  AsignacionToken,
+  AuthUser,
+  JwtTokenClaims,
+} from '../common/types/auth.types.js';
 import { generarClaveTemporal } from '../common/utils/password.util.js';
 import { MailerService } from '../mailer/mailer.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -35,7 +40,7 @@ type UsuarioConAsignaciones = Prisma.UsuarioGetPayload<{ include: typeof INCLUDE
 export interface SesionResponse {
   accessToken: string;
   requiereCambioClave: boolean;
-  usuario: { id: number; dni: string; nombre: string; apellido: string };
+  usuario: { id: number; dni: string; nombre: string; apellido: string; tipoMiembro?: string };
   asignaciones: AsignacionToken[];
 }
 
@@ -166,20 +171,25 @@ export class AuthService {
 
     const objetivo = await this.prisma.usuario.findFirst({
       where: { AND: [{ id: usuarioId }, filtroUsuariosPorAlcance(alcance)] },
-      include: { asignaciones: { where: { activo: true }, include: { rol: true } } },
+      include: {
+        asignaciones: {
+          where: { activo: true },
+          include: { rol: { include: { permisos: { include: { permiso: true } } } } },
+        },
+      },
     });
     if (!objetivo) throw new NotFoundException('Usuario no encontrado en su alcance');
 
     if (alcance.tipo !== 'GLOBAL') {
       const esGlobal = objetivo.asignaciones.some(
-        (a) => (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.GLOBAL,
+        (a) => a.rol.alcancePorDefecto === AlcanceRol.GLOBAL,
       );
       if (esGlobal) throw new ForbiddenException('No puede resetear la clave de un usuario con alcance global');
 
       if (alcance.tipo === 'UNIDAD') {
         const tieneOtrasUnidades = objetivo.asignaciones.some(
           (a) =>
-            (a.alcanceOverride ?? a.rol.alcancePorDefecto) === AlcanceRol.UNIDAD &&
+            a.rol.alcancePorDefecto === AlcanceRol.UNIDAD &&
             !alcance.unidadIds.includes(a.unidadId),
         );
         if (tieneOtrasUnidades) {
@@ -189,6 +199,12 @@ export class AuthService {
         }
       }
     }
+
+    assertActorDominaObjetivo(
+      actor,
+      objetivo.asignaciones,
+      'No puede resetear la clave de un usuario con permisos o alcance superiores a los suyos',
+    );
 
     const claveTemporal = generarClaveTemporal();
     const emailDestino = objetivo.emailContacto?.trim() || null;
@@ -264,6 +280,33 @@ export class AuthService {
     };
   }
 
+  /** Revoca el token actual incrementando `tokenVersion` del usuario cuando la cookie es válida. */
+  async logout(token: string | null): Promise<void> {
+    if (!token) return;
+    try {
+      const claims = await this.jwt.verifyAsync<JwtTokenClaims>(token);
+      if (!claims || typeof claims.sub !== 'number' || !Number.isInteger(claims.sub) || claims.sub <= 0) {
+        return;
+      }
+      if (this.prisma.usuario?.updateMany) {
+        await this.prisma.usuario.updateMany({
+          where: {
+            id: claims.sub,
+            ...(typeof claims.tokenVersion === 'number' ? { tokenVersion: claims.tokenVersion } : {}),
+          },
+          data: { tokenVersion: { increment: 1 } },
+        });
+      } else if (this.prisma.usuario?.update) {
+        await this.prisma.usuario.update({
+          where: { id: claims.sub },
+          data: { tokenVersion: { increment: 1 } },
+        });
+      }
+    } catch {
+      // Token inválido o expirado: la cookie se limpia igualmente sin bloquear el cierre de sesión
+    }
+  }
+
   /** Datos actualizados del usuario autenticado. */
   async perfil(user: AuthUser) {
     const usuario = await this.prisma.usuario.findUnique({
@@ -276,15 +319,13 @@ export class AuthService {
 
   private async emitirSesion(usuario: UsuarioConAsignaciones): Promise<SesionResponse> {
     const asignaciones = this.mapearAsignaciones(usuario);
-    const payload: JwtPayload = {
+    const claims: JwtTokenClaims = {
       sub: usuario.id,
       dni: usuario.dni,
-      requiereCambioClave: usuario.requiereCambioClave,
       tokenVersion: usuario.tokenVersion ?? 1,
-      asignaciones,
     };
     return {
-      accessToken: await this.jwt.signAsync(payload),
+      accessToken: await this.jwt.signAsync(claims),
       requiereCambioClave: usuario.requiereCambioClave,
       usuario: this.datosPublicos(usuario),
       asignaciones,
@@ -293,20 +334,46 @@ export class AuthService {
 
   private mapearAsignaciones(usuario: UsuarioConAsignaciones): AsignacionToken[] {
     return usuario.asignaciones
-      .filter((a) => a.unidad.activa)
-      .map((a) => ({
-        unidadId: a.unidadId,
-        unidadNombre: a.unidad.nombre,
-        rolId: a.rol.id,
-        rol: a.rol.nombre,
-        tipoMiembro: a.rol.tipoMiembro ?? 'EDUCADOR',
-        requiereRama: a.rol.requiereRama ?? true,
-        alcance: a.alcanceOverride ?? a.rol.alcancePorDefecto,
-        permisos: a.rol.permisos.map((rp) => rp.permiso.clave),
-      }));
+      .filter((a) => a.unidad.activa && a.rol.activo !== false)
+      .map((a) => {
+        const permisos = a.rol.permisos.map((rp) => rp.permiso.clave);
+        const permisosAlcance = Object.fromEntries(
+          a.rol.permisos.map((rp) => [
+            rp.permiso.clave,
+            (rp as { alcance?: AlcanceRol | null }).alcance ?? a.rol.alcancePorDefecto,
+          ]),
+        ) as Record<string, AlcanceRol>;
+        return {
+          unidadId: a.unidadId,
+          unidadNombre: a.unidad.nombre,
+          rolId: a.rol.id,
+          rol: a.rol.nombre,
+          tipoMiembro:
+            (usuario as { tipoMiembro?: string | null }).tipoMiembro ??
+            a.rol.tipoMiembro ??
+            'EDUCADOR',
+          requiereRama: a.rol.requiereRama ?? true,
+          tipoUnidad: a.rol.tipoUnidad,
+          alcance: a.rol.alcancePorDefecto,
+          permisos,
+          permisosAlcance,
+        };
+      });
   }
 
-  private datosPublicos(u: { id: number; dni: string; nombre: string; apellido: string }) {
-    return { id: u.id, dni: u.dni, nombre: u.nombre, apellido: u.apellido };
+  private datosPublicos(u: {
+    id: number;
+    dni: string;
+    nombre: string;
+    apellido: string;
+    tipoMiembro?: string | null;
+  }) {
+    return {
+      id: u.id,
+      dni: u.dni,
+      nombre: u.nombre,
+      apellido: u.apellido,
+      ...(u.tipoMiembro ? { tipoMiembro: u.tipoMiembro } : {}),
+    };
   }
 }

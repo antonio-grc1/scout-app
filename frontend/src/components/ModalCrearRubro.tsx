@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../api/client';
+import { useAuthStore } from '../store/authStore';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { useModalOverlay } from '../hooks/useModalOverlay';
-import { X, Tag, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { X, Tag, PlusCircle, Pencil, Trash2, Building2 } from 'lucide-react';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 
@@ -12,6 +13,7 @@ export interface RubroAEditarItem {
   id: number;
   nombre: string;
   tipo: 'INGRESO' | 'EGRESO';
+  unidadId?: number | null;
   permiteDescuentoDefault?: boolean;
   activo?: boolean;
 }
@@ -20,7 +22,7 @@ export interface ModalCrearRubroProps {
   abierto: boolean;
   tipoDefault?: 'INGRESO' | 'EGRESO';
   onCerrar: () => void;
-  onRubroCreado: (rubro: { id: number; nombre: string; tipo: 'INGRESO' | 'EGRESO' }) => void;
+  onRubroCreado: (rubro: { id: number; nombre: string; tipo: 'INGRESO' | 'EGRESO'; unidadId?: number | null }) => void;
   rubroAEditar?: RubroAEditarItem | null;
   onRubroEliminado?: (rubro: RubroAEditarItem) => void;
   onToast?: (texto: string, tipo?: 'exito' | 'error') => void;
@@ -36,9 +38,26 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
   onToast,
 }) => {
   const esModoEdicion = Boolean(rubroAEditar);
+  const asignaciones = useAuthStore((s) => s.asignaciones);
+  const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  const obtenerUnidadesConPermiso = useAuthStore((s) => s.obtenerUnidadesConPermiso);
+  const permisosRubros = [
+    'caja.editar',
+    'planes.editar',
+    'caja.editar',
+  ] as const;
+  const esGlobalRubros = tienePermisoGlobal(permisosRubros);
+  const unidadesPermitidasIds = useMemo(
+    () => obtenerUnidadesConPermiso(permisosRubros),
+    [asignaciones, obtenerUnidadesConPermiso],
+  );
 
   const [nombre, setNombre] = useState('');
   const [tipo, setTipo] = useState<'INGRESO' | 'EGRESO'>(tipoDefault);
+  const [unidadId, setUnidadId] = useState<string>('');
+  const [unidadesCargadas, setUnidadesCargadas] = useState<
+    Array<{ id: number; nombre: string; activa?: boolean }>
+  >([]);
   const [permiteDescuentoDefault, setPermiteDescuentoDefault] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [eliminando, setEliminando] = useState(false);
@@ -52,19 +71,53 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
   });
 
   useEffect(() => {
+    if (!abierto) return;
+    api
+      .get('/organizacion/unidades')
+      .then((res) => {
+        if (Array.isArray(res.data)) setUnidadesCargadas(res.data);
+      })
+      .catch(() => {
+        // Fallback desde asignaciones del actor si no tiene organizacion.ver
+      });
+  }, [abierto]);
+
+  const unidadesDisponibles = useMemo(() => {
+    const base = unidadesCargadas.filter((u) => u.activa !== false);
+    if (esGlobalRubros) return base;
+    if (base.length > 0) {
+      const filtradas = base.filter((u) => unidadesPermitidasIds.includes(u.id));
+      if (filtradas.length > 0) return filtradas;
+    }
+    const desdeAsigs = new Map<number, string>();
+    for (const a of asignaciones) {
+      if (unidadesPermitidasIds.includes(a.unidadId)) {
+        desdeAsigs.set(a.unidadId, a.unidadNombre);
+      }
+    }
+    return Array.from(desdeAsigs.entries()).map(([id, nom]) => ({ id, nombre: nom }));
+  }, [unidadesCargadas, esGlobalRubros, unidadesPermitidasIds, asignaciones]);
+
+  useEffect(() => {
     if (abierto) {
       if (rubroAEditar) {
         setNombre(rubroAEditar.nombre);
         setTipo(rubroAEditar.tipo);
+        setUnidadId(rubroAEditar.unidadId ? String(rubroAEditar.unidadId) : '');
         setPermiteDescuentoDefault(Boolean(rubroAEditar.permiteDescuentoDefault));
       } else {
         setNombre('');
         setTipo(tipoDefault);
+        setUnidadId(
+          !esGlobalRubros && unidadesDisponibles.length > 0
+            ? String(unidadesDisponibles[0].id)
+            : '',
+        );
         setPermiteDescuentoDefault(tipoDefault === 'INGRESO');
       }
       setError(null);
     }
-  }, [abierto, tipoDefault, rubroAEditar]);
+  }, [abierto, tipoDefault, rubroAEditar, esGlobalRubros, unidadesDisponibles]);
 
   if (!abierto) return null;
 
@@ -74,6 +127,16 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
       setError('El nombre de la categoría es obligatorio');
       return;
     }
+    if (!esGlobalRubros && !unidadId) {
+      setError('Seleccioná la rama a la que pertenece este rubro.');
+      return;
+    }
+
+    const unidadIdPayload = esGlobalRubros
+      ? unidadId
+        ? Number(unidadId)
+        : null
+      : Number(unidadId);
 
     try {
       setGuardando(true);
@@ -82,12 +145,14 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
       if (esModoEdicion && rubroAEditar) {
         const nombreAnterior = rubroAEditar.nombre;
         const descuentoAnterior = rubroAEditar.permiteDescuentoDefault;
+        const unidadAnterior = rubroAEditar.unidadId ?? null;
         const nombreNuevo = nombre.trim();
         const descuentoNuevo = tipo === 'INGRESO' ? permiteDescuentoDefault : false;
 
         const res = await api.patch(`/tesoreria/rubros/${rubroAEditar.id}`, {
           nombre: nombreNuevo,
           permiteDescuentoDefault: descuentoNuevo,
+          ...(esGlobalRubros ? { unidadId: unidadIdPayload } : { unidadId: unidadIdPayload }),
         });
         onRubroCreado(res.data);
         onCerrar();
@@ -99,6 +164,9 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
               const resUndo = await api.patch(`/tesoreria/rubros/${rubroAEditar.id}`, {
                 nombre: nombreAnterior,
                 permiteDescuentoDefault: descuentoAnterior,
+                ...(unidadAnterior !== null || esGlobalRubros
+                  ? { unidadId: unidadAnterior }
+                  : {}),
               });
               onRubroCreado(resUndo.data);
               useToastStore.getState().mostrarToast(`Rubro restaurado a "${nombreAnterior}".`);
@@ -112,6 +180,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
         const res = await api.post('/tesoreria/rubros', {
           nombre: nombre.trim(),
           tipo,
+          unidadId: unidadIdPayload,
           permiteDescuentoDefault: tipo === 'INGRESO' ? permiteDescuentoDefault : false,
         });
         if (onToast) onToast(`Rubro "${nombre.trim()}" creado.`);
@@ -147,6 +216,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
               const res = await api.post('/tesoreria/rubros', {
                 nombre: rubroAEliminar.nombre,
                 tipo: rubroAEliminar.tipo,
+                unidadId: rubroAEliminar.unidadId ?? null,
                 permiteDescuentoDefault: rubroAEliminar.permiteDescuentoDefault,
               });
               if (onRubroCreado && res.data?.id) onRubroCreado(res.data);
@@ -261,6 +331,56 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                 required
               />
             </div>
+
+            {esGlobalRubros ? (
+              <div>
+                <label className="text-xs font-bold text-ink block mb-1">
+                  Alcance / Rama
+                </label>
+                <select
+                  value={unidadId}
+                  onChange={(e) => setUnidadId(e.target.value)}
+                  disabled={guardando || eliminando}
+                  className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
+                >
+                  <option value="">General del Grupo</option>
+                  {unidadesDisponibles.map((u) => (
+                    <option key={u.id} value={String(u.id)}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : unidadesDisponibles.length > 1 ? (
+              <div>
+                <label className="text-xs font-bold text-ink block mb-1">
+                  Rama del Rubro *
+                </label>
+                <select
+                  value={unidadId}
+                  onChange={(e) => setUnidadId(e.target.value)}
+                  disabled={guardando || eliminando}
+                  required
+                  className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
+                >
+                  {unidadesDisponibles.map((u) => (
+                    <option key={u.id} value={String(u.id)}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              unidadesDisponibles.length === 1 && (
+                <div className="p-2.5 rounded-xl bg-paper-2 border border-rule text-xs flex items-center justify-between text-ink-2">
+                  <span className="flex items-center gap-1.5 font-semibold">
+                    <Building2 className="w-3.5 h-3.5 text-brand" />
+                    <span>Alcance:</span>
+                  </span>
+                  <span className="font-bold text-ink">{unidadesDisponibles[0].nombre}</span>
+                </div>
+              )
+            )}
 
             {tipo === 'INGRESO' && (
               <label className="flex items-start gap-2.5 p-3.5 rounded-xl bg-paper-2 border border-rule cursor-pointer">
