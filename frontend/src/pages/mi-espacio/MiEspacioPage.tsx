@@ -138,6 +138,7 @@ export const MiEspacioPage: React.FC = () => {
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [formDirty, setFormDirty] = useState(false);
   const [formResetNonce, setFormResetNonce] = useState(0);
+  const [cambiandoDocumentoId, setCambiandoDocumentoId] = useState<number | null>(null);
   const obtenerValoresRef = useRef<(() => Record<string, unknown>) | null>(null);
   const datosPreviewVivoRef = useRef<Record<string, unknown> | undefined>(undefined);
 
@@ -539,24 +540,33 @@ export const MiEspacioPage: React.FC = () => {
 
   const handleCambiarDocumento = async (p: any) => {
     const targetUserId = precarga?.usuario?.id || usuario?.id;
-    if (!targetUserId || !p || p.id === plantillaSeleccionada?.id) return;
+    if (!targetUserId || !p) return;
+    if (p.id === plantillaSeleccionada?.id) {
+      // Volver al documento actual cancela un cambio en curso.
+      plantillaSeleccionadaIdRef.current = p.id;
+      setCambiandoDocumentoId(null);
+      return;
+    }
     if (!confirmarDescartarCambios()) return;
+    // Primero se traen precarga y borrador del documento nuevo; recién después se cambia la
+    // plantilla, así el formulario se monta con sus propios valores y no con los del anterior.
     plantillaSeleccionadaIdRef.current = p.id;
-    setPlantillaSeleccionada(p);
-    setFormDirty(false);
+    setCambiandoDocumentoId(p.id);
     const ciclo = p.cicloAnio || obtenerCicloAnioActual();
+    let nuevaPrecarga: any;
     try {
       const resPrecarga = await api.get(
         `/legajos/miembro/${targetUserId}/plantilla/${p.id}/precarga?cicloAnio=${ciclo}`,
       );
-      setPrecarga(resPrecarga.data);
+      nuevaPrecarga = resPrecarga.data;
     } catch {
       const ent = entregasMiembro.find((e) => e.plantillaId === p.id) || null;
-      setPrecarga((prev: any) => ({
-        ...(prev || { usuario: usuario, datosFamiliaresSugeridos: {} }),
+      nuevaPrecarga = {
+        usuario: precarga?.usuario || usuario,
+        datosFamiliaresSugeridos: precarga?.datosFamiliaresSugeridos || {},
         plantilla: p,
         ultimaEntrega: ent,
-      }));
+      };
     }
     const borradorGuardado = await obtenerBorradorLegajoLocal({
       ownerUserId: usuario?.id,
@@ -564,7 +574,13 @@ export const MiEspacioPage: React.FC = () => {
       plantillaId: p.id,
       cicloAnio: ciclo,
     });
+    // Si mientras tanto el usuario eligió otro documento, descartar esta respuesta.
+    if (plantillaSeleccionadaIdRef.current !== p.id) return;
+    setPrecarga(nuevaPrecarga);
     setBorradorLocal(borradorGuardado);
+    setPlantillaSeleccionada(p);
+    setFormDirty(false);
+    setCambiandoDocumentoId(null);
   };
 
   const handleSincronizarBorradorLocal = async () => {
@@ -1035,12 +1051,17 @@ export const MiEspacioPage: React.FC = () => {
                           key={p.id}
                           type="button"
                           onClick={() => void handleCambiarDocumento(p)}
+                          aria-pressed={activa}
+                          aria-busy={cambiandoDocumentoId === p.id}
                           className={`min-h-[42px] px-3.5 py-2 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
                             activa
                               ? 'bg-brand text-brand-contrast border-brand font-bold'
                               : 'bg-paper-2 text-ink border-rule hover:border-brand/50 font-semibold'
                           }`}
                         >
+                          {cambiandoDocumentoId === p.id && (
+                            <Loader2 className="w-4 h-4 animate-spin shrink-0" aria-hidden="true" />
+                          )}
                           <span className="text-[13px] truncate max-w-[220px]">{p.titulo}</span>
                           <span
                             className={`px-2 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${

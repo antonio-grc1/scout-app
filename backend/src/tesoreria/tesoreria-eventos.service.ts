@@ -909,6 +909,12 @@ export class TesoreriaEventosService {
       }
 
       const nuevaCuentaId = dto.cuentaId !== undefined ? dto.cuentaId : pedido.cuentaId;
+      if (!nuevaCuentaId && pedido.estado === EstadoPedidoEvento.PAGADO && pedido.gananciaAcreditada) {
+        // Revertir el cobro dejaría acreditada en saldo a favor una ganancia de un pedido no pagado.
+        throw new BadRequestException(
+          'La ganancia de este pedido ya fue acreditada al vendedor: no se puede revertir el cobro.',
+        );
+      }
       const nuevoTotal = dto.items ? centavosADecimal(totalVentaCts) : centavosADecimal(aCentavos(pedido.total));
       const nuevoEstado = nuevaCuentaId ? EstadoPedidoEvento.PAGADO : EstadoPedidoEvento.PENDIENTE;
 

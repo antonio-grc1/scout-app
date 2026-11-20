@@ -373,7 +373,8 @@ export const EventoWorkspacePage: React.FC = () => {
 
       if (p.gananciaAcreditada) {
         row.gananciaAcreditada += g;
-      } else if (todosRetirados && g >= 0) {
+      } else if (todosRetirados && g >= 0 && p.estado === 'PAGADO') {
+        // El backend solo acredita pedidos PAGADOS con todos sus vales retirados.
         row.pedidosListosAcreditar += 1;
         row.gananciaListaParaAcreditar += g;
       } else {
@@ -1530,7 +1531,7 @@ export const EventoWorkspacePage: React.FC = () => {
                 <span>Pre-flight de Liquidación a Saldo a Favor</span>
               </h2>
               <p className="text-[13px] text-ink-muted leading-relaxed">
-                Revisá el detalle por vendedor scout antes de acreditar ganancias. Solo se liquidan pedidos cuyos vales QR ya fueron retirados.
+                Revisá el detalle por vendedor scout antes de acreditar ganancias. Solo se liquidan pedidos pagados cuyos vales QR ya fueron retirados.
               </p>
             </div>
 
@@ -1566,7 +1567,7 @@ export const EventoWorkspacePage: React.FC = () => {
                     <tr className="border-b border-rule bg-paper-2 text-xs uppercase tracking-wider text-ink-muted">
                       <th className="py-3.5 px-4 font-bold">Scout Vendedor</th>
                       <th className="py-3.5 px-4 font-bold text-center">Pedidos Totales</th>
-                      <th className="py-3.5 px-4 font-bold text-center">Pend. Retiro QR</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Pend. pago o retiro</th>
                       <th className="py-3.5 px-4 font-bold text-center">Listos p/ Liquidar</th>
                       <th className="py-3.5 px-4 font-bold text-right">Ya Acreditado</th>
                       <th className="py-3.5 px-4 font-bold text-right">A Acreditar Hoy</th>

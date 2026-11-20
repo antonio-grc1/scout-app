@@ -8,6 +8,8 @@ export interface UseHtml5QrScannerOptions {
   onDecode: (decodedText: string) => void | Promise<void>;
   mensajeErrorCamara?: string;
   onErrorCamara?: () => void;
+  /** Cambiar este valor fuerza a reiniciar la cámara (p. ej. tras un escaneo fallido). */
+  reinicioKey?: number;
 }
 
 export function useHtml5QrScanner({
@@ -17,6 +19,7 @@ export function useHtml5QrScanner({
   onDecode,
   mensajeErrorCamara = 'No se pudo acceder a la cámara.',
   onErrorCamara,
+  reinicioKey = 0,
 }: UseHtml5QrScannerOptions) {
   const [iniciandoCamara, setIniciandoCamara] = useState(false);
   const [errorCamara, setErrorCamara] = useState<string | null>(null);
@@ -131,7 +134,7 @@ export function useHtml5QrScanner({
       cancelado = true;
       void detenerCamara();
     };
-  }, [containerId, activo, qrboxSize, mensajeErrorCamara, detenerCamara]);
+  }, [containerId, activo, qrboxSize, mensajeErrorCamara, detenerCamara, reinicioKey]);
 
   return {
     iniciandoCamara,

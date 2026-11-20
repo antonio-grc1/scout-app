@@ -105,6 +105,21 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
 
   const esModoEdicion = Boolean(eventoAEditar);
 
+  // El backend rechaza reemplazar productos si el evento ya tiene pedidos o está cerrado.
+  const cantidadPedidosEvento = Number(
+    eventoAEditar?.metricas?.cantidadPedidos ||
+      eventoAEditar?._count?.pedidos ||
+      eventoAEditar?.pedidos?.length ||
+      0,
+  );
+  const productosBloqueados =
+    esModoEdicion &&
+    (cantidadPedidosEvento > 0 ||
+      eventoAEditar?.estado === 'FINALIZADO' ||
+      eventoAEditar?.estado === 'CANCELADO');
+  // Snapshot de los productos al abrir, para enviar `items` solo si cambiaron.
+  const [itemsIniciales, setItemsIniciales] = useState<string>('');
+
   useEffect(() => {
     if (abierto) {
       if (eventoAEditar) {
@@ -124,8 +139,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
         setCuentaId(cId ? String(cId) : '');
 
         if (Array.isArray(eventoAEditar.items) && eventoAEditar.items.length > 0) {
-          setItems(
-            eventoAEditar.items.map((it) => ({
+          const listaInicial: ItemForm[] = eventoAEditar.items.map((it) => ({
               nombre: it.nombre || '',
               descripcion: it.descripcion || '',
               precioVenta: String(it.precioVenta ?? ''),
@@ -135,9 +149,11 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                   ? String(it.gananciaUnitaria)
                   : '',
               stockTotal: it.stockTotal ? String(it.stockTotal) : '',
-            })),
-          );
+            }));
+          setItems(listaInicial);
+          setItemsIniciales(JSON.stringify(listaInicial));
         } else {
+          setItemsIniciales('');
           setItems([
             {
               nombre: '',
@@ -232,7 +248,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
       return;
     }
 
-    if (items.some((it) => !it.nombre.trim() || Number(it.precioVenta) <= 0)) {
+    if (!productosBloqueados && items.some((it) => !it.nombre.trim() || Number(it.precioVenta) <= 0)) {
       setError('Todos los productos deben tener un nombre y un precio de venta mayor a $0');
       return;
     }
@@ -266,8 +282,11 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
         lugarEntrega: lugarEntrega.trim() || undefined,
         rubroId: rubroId ? Number(rubroId) : undefined,
         cuentaId: cuentaId ? Number(cuentaId) : undefined,
-        items: itemsPayload,
       };
+      const itemsCambiaron = !esModoEdicion || JSON.stringify(items) !== itemsIniciales;
+      if (!productosBloqueados && itemsCambiaron) {
+        Object.assign(payload, { items: itemsPayload });
+      }
 
       if (esModoEdicion && eventoAEditar) {
         await api.patch(`/tesoreria/eventos/${eventoAEditar.id}`, payload);
@@ -524,13 +543,23 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                   Por cada unidad vendida se calcula la ganancia automática para el scout
                 </span>
               </div>
-              <Button type="button" variant="secondary" size="sm" onClick={agregarItem} className="gap-1.5">
-                <PlusCircle className="w-4 h-4" />
-                <span>Agregar Producto</span>
-              </Button>
+              {!productosBloqueados && (
+                <Button type="button" variant="secondary" size="sm" onClick={agregarItem} className="gap-1.5">
+                  <PlusCircle className="w-4 h-4" />
+                  <span>Agregar Producto</span>
+                </Button>
+              )}
             </div>
 
-            <div className="space-y-3">
+            {productosBloqueados && (
+              <p role="note" className="s-badge-info rounded-xl px-3.5 py-2.5 text-[13px] font-semibold">
+                {cantidadPedidosEvento > 0
+                  ? `Este evento ya tiene ${cantidadPedidosEvento} pedido${cantidadPedidosEvento === 1 ? '' : 's'}: los productos y precios no se pueden modificar. Podés cambiar el resto de los datos y el estado.`
+                  : 'El evento está cerrado: los productos y precios no se pueden modificar.'}
+              </p>
+            )}
+
+            <fieldset disabled={productosBloqueados} className="space-y-3 min-w-0 disabled:opacity-70">
               {items.map((it, idx) => {
                 const pVenta = Number(it.precioVenta) || 0;
                 const pCosto = Number(it.costoUnitario) || 0;
@@ -619,7 +648,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                   </div>
                 );
               })}
-            </div>
+            </fieldset>
           </div>
 
           <div className="pt-3.5 flex items-center justify-between gap-2 border-t border-rule shrink-0">

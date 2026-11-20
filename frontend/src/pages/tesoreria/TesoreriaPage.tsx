@@ -299,8 +299,9 @@ export const TesoreriaPage: React.FC = () => {
           },
         });
         if (!cancelado) {
-          const lista = Array.isArray(res.data?.datos)
-            ? res.data.datos
+          // GET /miembros responde { items, total, pagina, porPagina }
+          const lista = Array.isArray(res.data?.items)
+            ? res.data.items
             : Array.isArray(res.data)
               ? res.data
               : [];
@@ -430,6 +431,7 @@ export const TesoreriaPage: React.FC = () => {
   };
 
   const handleToggleMesPlan = (plan: any, mesNum: number) => {
+    if (sincronizandoPlanKey?.startsWith(`${plan.id}-`)) return;
     const mesesActuales: number[] = Array.isArray(plan.mesesHabilitadosJson)
       ? plan.mesesHabilitadosJson
       : [];
@@ -1025,11 +1027,16 @@ export const TesoreriaPage: React.FC = () => {
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => {
                           const activo = mesesHabilitados.includes(num);
                           const cargandoMes = sincronizandoPlanKey === `${plan.id}-${num}`;
+                          // Bloquear todo el plan mientras sincroniza: dos toques seguidos partirían
+                          // del mismo mesesHabilitadosJson y el segundo pisaría al primero.
+                          const planSincronizando = Boolean(
+                            sincronizandoPlanKey?.startsWith(`${plan.id}-`),
+                          );
                           return (
                             <button
                               key={num}
                               type="button"
-                              disabled={!puedeEditarPlan || cargandoMes}
+                              disabled={!puedeEditarPlan || planSincronizando}
                               onClick={() => puedeEditarPlan && handleToggleMesPlan(plan, num)}
                               className={`min-h-[42px] py-1 px-0.5 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-0.5 border ${
                                 !puedeEditarPlan ? 'cursor-default' : 'cursor-pointer'

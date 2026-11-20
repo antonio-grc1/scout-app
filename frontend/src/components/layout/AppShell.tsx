@@ -86,6 +86,18 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
     [caps, unidadesOrg],
   );
 
+  // Agrupa el selector por rama (ramas y secciones se llaman parecido y una lista plana confunde)
+  const gruposUnidades = useMemo(() => {
+    if (!visibleUnits.some((u) => u.grupo)) return null;
+    const mapa = new Map<string, typeof visibleUnits>();
+    for (const u of visibleUnits) {
+      const g = u.grupo || 'Otras unidades';
+      if (!mapa.has(g)) mapa.set(g, []);
+      mapa.get(g)!.push(u);
+    }
+    return Array.from(mapa.entries());
+  }, [visibleUnits]);
+
   // Asegurar que activeUnitId sea válido cuando cambia el alcance o las unidades
   useEffect(() => {
     if (visibleUnits.length <= 1 && activeUnitId !== 'ALL') {
@@ -349,11 +361,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                 <option value="ALL">
                   {caps.esGlobal ? 'Todo el grupo' : 'Todas mis unidades'}
                 </option>
-                {visibleUnits.map((u) => (
-                  <option key={u.id} value={String(u.id)}>
-                    {u.nombre}
-                  </option>
-                ))}
+                {gruposUnidades
+                  ? gruposUnidades.map(([grupo, unidades]) => (
+                      <optgroup key={grupo} label={grupo}>
+                        {unidades.map((u) => (
+                          <option key={u.id} value={String(u.id)}>
+                            {u.nombre}
+                            {u.miembrosActivos === 0 ? ' (sin miembros)' : ''}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))
+                  : visibleUnits.map((u) => (
+                      <option key={u.id} value={String(u.id)}>
+                        {u.nombre}
+                      </option>
+                    ))}
               </select>
             )}
           </div>

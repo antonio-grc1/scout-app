@@ -36,6 +36,7 @@ export interface PedidoAEditar {
     cantidad: number;
   }>;
   algunoRetirado?: boolean;
+  gananciaAcreditada?: boolean;
   tickets?: Array<{
     id: number;
     estado: string;
@@ -108,6 +109,9 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
   const safeItems = Array.isArray(itemsEvento) ? itemsEvento : [];
   const esModoEdicion = Boolean(pedidoAEditar);
+  const pedidoYaPagado = esModoEdicion && pedidoAEditar?.estado === 'PAGADO';
+  // Si la ganancia ya se acreditó al vendedor, revertir el cobro dejaría saldo a favor sin respaldo.
+  const bloquearVolverAPendiente = pedidoYaPagado && Boolean(pedidoAEditar?.gananciaAcreditada);
   const valesRetirados = Boolean(
     pedidoAEditar?.algunoRetirado ||
       pedidoAEditar?.tickets?.some((t) => t.estado === 'UTILIZADO'),
@@ -129,11 +133,16 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           (pedidoAEditar.metodoPago === 'EFECTIVO' || pedidoAEditar.metodoPago === 'TRANSFERENCIA')
         ) {
           setMetodoPago(pedidoAEditar.metodoPago);
-        } else if (pedidoAEditar.preferirCobro && puedeImputarCuenta) {
+        } else if (
+          (pedidoAEditar.preferirCobro || pedidoAEditar.estado === 'PAGADO') &&
+          puedeImputarCuenta
+        ) {
+          // Un pedido ya pagado (con método no estándar) se mantiene cobrado al editarlo.
           setMetodoPago('EFECTIVO');
         } else {
-          // Para GLOBAL pre-selecciona EFECTIVO para cobro directo; para UNIDAD/PROPIO mantiene PENDIENTE (A3)
-          setMetodoPago(puedeImputarCuenta ? 'EFECTIVO' : 'PENDIENTE');
+          // Editar un pedido pendiente (p. ej. corregir el nombre) no debe cobrarlo por defecto:
+          // solo se cobra si el usuario elige explícitamente un método de pago.
+          setMetodoPago('PENDIENTE');
         }
         if (pedidoAEditar.cuentaId) {
           setCuentaId(String(pedidoAEditar.cuentaId));
@@ -348,7 +357,9 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         cuentaId:
           puedeImputarCuenta && metodoPago !== 'PENDIENTE' && cuentaId
             ? Number(cuentaId)
-            : undefined,
+            : puedeImputarCuenta && metodoPago === 'PENDIENTE' && pedidoYaPagado
+              ? null // null explícito: el backend revierte el cobro y vuelve el pedido a PENDIENTE
+              : undefined,
         observaciones: observaciones.trim() || undefined,
       };
 
@@ -722,7 +733,13 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 <button
                   type="button"
                   onClick={() => setMetodoPago('PENDIENTE')}
-                  className={`min-h-[42px] py-2 px-3 rounded-xl border text-[13px] font-bold transition cursor-pointer text-center ${
+                  disabled={bloquearVolverAPendiente}
+                  title={
+                    bloquearVolverAPendiente
+                      ? 'La ganancia de este pedido ya se acreditó: no se puede revertir el cobro.'
+                      : undefined
+                  }
+                  className={`min-h-[42px] py-2 px-3 rounded-xl border text-[13px] font-bold transition cursor-pointer text-center disabled:opacity-50 disabled:cursor-not-allowed ${
                     metodoPago === 'PENDIENTE'
                       ? 'bg-amber-100 dark:bg-amber-950 border-amber-400 text-amber-900 dark:text-amber-100'
                       : 'bg-surface border-rule text-ink-muted'

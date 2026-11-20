@@ -321,6 +321,26 @@ useAuthStore.subscribe((state) => {
 export interface VisibleUnitOption {
   id: number;
   nombre: string;
+  /** Rama o categoría a la que pertenece (para agrupar el selector). */
+  grupo?: string;
+  /** Cantidad de asignaciones activas, si el backend la informa. */
+  miembrosActivos?: number;
+}
+
+interface UnidadOrgLike {
+  id: number | string;
+  nombre: string;
+  activa?: boolean;
+  tipo?: string;
+  rama?: { nombre?: string | null } | null;
+  _count?: { asignaciones?: number };
+}
+
+function grupoDeUnidad(u: UnidadOrgLike): string {
+  if (u.rama?.nombre) return `Rama ${u.rama.nombre}`;
+  if (u.tipo === 'JEFATURA') return 'Jefatura';
+  if (u.tipo === 'SIN_RAMA_APOYO') return 'Sin rama / Apoyo';
+  return 'Otras unidades';
 }
 
 /**
@@ -328,12 +348,18 @@ export interface VisibleUnitOption {
  */
 export function obtenerUnidadesVisibles(
   caps: Pick<Capabilities, 'esGlobal' | 'unidadesAsignadas'>,
-  unidadesOrg?: readonly { id: number | string; nombre: string; activa?: boolean }[],
+  unidadesOrg?: readonly UnidadOrgLike[],
 ): VisibleUnitOption[] {
   if (caps.esGlobal && Array.isArray(unidadesOrg) && unidadesOrg.length > 0) {
     return unidadesOrg
       .filter((u) => u.activa !== false)
-      .map((u) => ({ id: Number(u.id), nombre: String(u.nombre) }));
+      .map((u) => ({
+        id: Number(u.id),
+        nombre: String(u.nombre),
+        grupo: grupoDeUnidad(u),
+        miembrosActivos:
+          typeof u._count?.asignaciones === 'number' ? u._count.asignaciones : undefined,
+      }));
   }
   const unidadesGestion = caps.unidadesAsignadas.filter((u) => u.alcance === 'UNIDAD');
   const lista = unidadesGestion.length > 0 ? unidadesGestion : caps.unidadesAsignadas;

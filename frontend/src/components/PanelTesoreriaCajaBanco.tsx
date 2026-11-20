@@ -1542,6 +1542,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         <ModalRegistrarGasto
           abierto={modalGastoAbierto}
           gastoAEditar={gastoAEditar}
+          cuentaIdInicial={cuentaSeleccionadaId}
           onCerrar={() => {
             setModalGastoAbierto(false);
             setGastoAEditar(null);

@@ -1451,6 +1451,12 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
+        // Enter en un input dispara submit implícito: fuera del último paso solo avanza,
+        // para no finalizar (y descargar) un legajo precargado por accidente.
+        if (pasoActivo < secciones.length - 1) {
+          handleSiguientePaso();
+          return;
+        }
         void handleFinalizarFirma();
       }}
       className="space-y-4 scroll-mt-20"
@@ -1624,7 +1630,8 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                   </button>
                 )}
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => void handleFinalizarFirma()}
                   disabled={cargando}
                   className="text-ink-2 hover:text-ink font-bold text-[13px] flex items-center gap-1.5 transition-colors py-1.5 px-3 rounded-lg hover:bg-paper-2 cursor-pointer disabled:opacity-50"
                 >

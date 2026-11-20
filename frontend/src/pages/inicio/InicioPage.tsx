@@ -936,7 +936,7 @@ export const InicioPage: React.FC = () => {
             </h2>
             {caps.canSeeTesoreriaGestion && (
               <Link
-                to="/tesoreria?sub=cuadro-resultados"
+                to="/tesoreria?sub=balance"
                 className="text-sm font-bold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
               >
                 <span>Ver cuadro completo</span>

@@ -57,7 +57,11 @@ export const PasesPage: React.FC = () => {
       const [resCandidatos, resSolicitudes, resUnidades] = await Promise.all([
         api.get('/pases/candidatos', { params }),
         api.get('/pases/solicitudes').catch(() => ({ data: [] })),
-        api.get('/organizacion/unidades'),
+        // El catálogo de unidades solo enriquece nombres de destino; los usuarios de UNIDAD
+        // no tienen organizacion.ver (403), así que no debe bloquear la carga de candidatos.
+        caps.canViewOrganizacion
+          ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] }),
       ]);
 
       setCandidatos(Array.isArray(resCandidatos.data) ? resCandidatos.data : []);
@@ -73,7 +77,7 @@ export const PasesPage: React.FC = () => {
     } finally {
       setCargando(false);
     }
-  }, [activeUnitId, fechaReferencia]);
+  }, [activeUnitId, fechaReferencia, caps.canViewOrganizacion]);
 
   useEffect(() => {
     void cargarDatos();
@@ -212,7 +216,7 @@ export const PasesPage: React.FC = () => {
             </div>
           ))}
         </div>
-      ) : (
+      ) : error && candidatos.length === 0 ? null : (
         <PanelPasesPorCamada
           candidatos={candidatos}
           unidades={unidades}

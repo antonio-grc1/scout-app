@@ -29,6 +29,8 @@ export interface ModalRegistrarGastoProps {
   onCerrar: () => void;
   onGastoRegistrado: (mensaje: string) => void;
   gastoAEditar?: GastoAEditarItem | null;
+  /** Cuenta preseleccionada (p. ej. la del libro diario abierto). */
+  cuentaIdInicial?: number | null;
 }
 
 export interface RubroItem {
@@ -53,6 +55,7 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
   onCerrar,
   onGastoRegistrado,
   gastoAEditar,
+  cuentaIdInicial,
 }) => {
   const esModoEdicion = Boolean(gastoAEditar);
   const asignaciones = useAuthStore((s) => s.asignaciones);
@@ -110,7 +113,9 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
         if (rubrosList.length > 0 && !rubroId) {
           setRubroId(rubrosList[0].id);
         }
-        if (cuentasList.length > 0 && !cuentaId) {
+        if (cuentaIdInicial && cuentasList.some((c: CuentaItem) => c.id === cuentaIdInicial)) {
+          setCuentaId(cuentaIdInicial);
+        } else if (cuentasList.length > 0 && !cuentaId) {
           setCuentaId(cuentasList[0].id);
         }
       }
@@ -133,11 +138,12 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
         setMonto('');
         setDescripcion('');
         setComprobanteNro('');
+        if (cuentaIdInicial) setCuentaId(cuentaIdInicial);
       }
       setError(null);
       cargarCuentasYRubros();
     }
-  }, [abierto, gastoAEditar]);
+  }, [abierto, gastoAEditar, cuentaIdInicial]);
 
   if (!abierto) return null;
 

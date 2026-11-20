@@ -149,6 +149,8 @@ export const QrScannerUniversalModal: React.FC = () => {
   const scanInProgressRef = useRef<boolean>(false);
   const scanResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const enviandoCobroRef = useRef<boolean>(false);
+  // Se incrementa para reencender la cámara cuando un escaneo no deja tarjeta de resultado.
+  const [reinicioCamara, setReinicioCamara] = useState(0);
 
   const limpiarCooldown = useCallback(() => {
     if (scanResetTimerRef.current !== null) {
@@ -239,7 +241,7 @@ export const QrScannerUniversalModal: React.FC = () => {
   );
 
   const procesarLegajo = useCallback(
-    async (raw: string) => {
+    async (raw: string): Promise<boolean> => {
       setCargando(true);
       setError(null);
       setExito(null);
@@ -248,10 +250,12 @@ export const QrScannerUniversalModal: React.FC = () => {
         const res = await api.get(`/legajos/qr/verificar/${encodeURIComponent(raw)}`);
         setResultadoLegajo(res.data);
         playFeedbackTone(880);
+        return true;
       } catch (err) {
         playFeedbackTone(220);
         setError(traducirErrorAmigable(err, 'Código QR o DNI sin ficha registrada.'));
         setResultadoLegajo(null);
+        return false;
       } finally {
         setCargando(false);
       }
@@ -260,11 +264,11 @@ export const QrScannerUniversalModal: React.FC = () => {
   );
 
   const procesarEvento = useCallback(
-    async (raw: string) => {
+    async (raw: string): Promise<boolean> => {
       if (!isOnline) {
         mostrarToast('Necesitás conexión a internet para canjear vales en puerta.', 'advertencia');
         scanInProgressRef.current = false;
-        return;
+        return false;
       }
 
       setCargando(true);
@@ -315,6 +319,8 @@ export const QrScannerUniversalModal: React.FC = () => {
         setCargando(false);
         setCodigoManual('');
       }
+      // Siempre queda una tarjeta de resultado (ok o error) con "Escanear otro código".
+      return true;
     },
     [
       isOnline,
@@ -328,33 +334,33 @@ export const QrScannerUniversalModal: React.FC = () => {
   );
 
   const procesarCodigo = useCallback(
-    async (codigoBruto: string) => {
+    /** Devuelve true si quedó una tarjeta de resultado en pantalla. */
+    async (codigoBruto: string): Promise<boolean> => {
       const raw = codigoBruto.trim();
       if (!raw) {
         setError('Ingresá o escaneá un código válido.');
         scanInProgressRef.current = false;
-        return;
+        return false;
       }
 
       if (scope === 'legajo' || (!puedeEvento && puedeLegajo)) {
-        await procesarLegajo(raw);
+        const ok = await procesarLegajo(raw);
         if (continuo) programarResetScan();
-        return;
+        return ok;
       }
 
       if (scope === 'evento' || (!puedeLegajo && puedeEvento)) {
-        await procesarEvento(raw);
-        return;
+        return procesarEvento(raw);
       }
 
       // Auto-detección cuando tiene ambos permisos
       const pareceLegajo = /^\d{6,10}$/.test(raw) || /^[0-9a-f]{64}$/i.test(raw);
       if (pareceLegajo) {
-        await procesarLegajo(raw);
+        const ok = await procesarLegajo(raw);
         if (continuo) programarResetScan();
-      } else {
-        await procesarEvento(raw);
+        return ok;
       }
+      return procesarEvento(raw);
     },
     [scope, puedeEvento, puedeLegajo, procesarLegajo, procesarEvento, continuo, programarResetScan],
   );
@@ -368,13 +374,19 @@ export const QrScannerUniversalModal: React.FC = () => {
     onErrorCamara: () => {
       setModo('manual');
     },
+    reinicioKey: reinicioCamara,
     onDecode: async (decodedText) => {
       if (scanInProgressRef.current) return;
       scanInProgressRef.current = true;
       if (!continuo) {
         await detenerCamara();
       }
-      await procesarCodigo(decodedText);
+      const mostroResultado = await procesarCodigo(decodedText);
+      if (!continuo && !mostroResultado) {
+        // Sin tarjeta de resultado (p. ej. QR inválido u offline): liberar y reencender la cámara.
+        scanInProgressRef.current = false;
+        setReinicioCamara((n) => n + 1);
+      }
     },
   });
 
@@ -516,6 +528,7 @@ export const QrScannerUniversalModal: React.FC = () => {
     setResultadoLegajo(null);
     setResultadoEvento(null);
     setCodigoManual('');
+    setReinicioCamara((n) => n + 1);
   };
 
   const cfgEstadoLegajo = resultadoLegajo
