@@ -14,7 +14,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
-    "start:render": "prisma migrate deploy && node dist/main.js",
+    "start:render": "prisma migrate deploy && tsx prisma/seed-plantillas.ts && node dist/main.js",
     "lint": "oxlint --type-aware src/ test/",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -26,6 +26,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
+    "prisma:seed:plantillas": "tsx prisma/seed-plantillas.ts",
     "prisma:studio": "prisma studio",
     "db:local": "tsx scripts/start-local-db.ts"
   },
