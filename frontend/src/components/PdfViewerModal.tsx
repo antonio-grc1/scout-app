@@ -313,10 +313,12 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
             <button
               type="button"
               onClick={onDescargar}
+              aria-label="Descargar PDF"
+              title="Descargar PDF"
               className="min-h-[40px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden xs:inline">Descargar</span>
+              <span className="hidden sm:inline">Descargar</span>
             </button>
           )}
 

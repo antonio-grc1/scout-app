@@ -12,7 +12,10 @@ import {
   Syringe,
   Car,
   UserCheck,
+  Utensils,
+  Pill,
 } from 'lucide-react';
+import { extraerInfoMedicaMiembro } from '../lib/alertasMedicas';
 import { obtenerCicloAnioActual } from '../lib/formatters';
 
 const PdfViewerModal = lazy(() =>
@@ -21,7 +24,8 @@ const PdfViewerModal = lazy(() =>
 
 interface VisorFichaMiembroProps {
   miembro: any;
-  entrega?: any | null;
+  entrega?: any | any[] | null;
+  plantillas?: any[];
   pdfPreviewUrl?: string | null;
   ocultarModalPdf?: boolean;
   onCerrarPdfPreview?: () => void;
@@ -42,6 +46,7 @@ const esVerdadero = (val: unknown): boolean =>
 export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   miembro,
   entrega,
+  plantillas,
   pdfPreviewUrl,
   ocultarModalPdf = false,
   onCerrarPdfPreview,
@@ -49,127 +54,36 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
 }) => {
   const [seccion, setSeccion] = useState<SeccionVista>('salud');
 
-  // Combinamos los datos del snapshot de la entrega con los datos fijos del usuario
+  // Combinamos los datos del snapshot de la(s) entrega(s) con los datos fijos del usuario
   const datos: Record<string, any> = {
     ...(miembro?.datosFijosJson || {}),
-    ...(entrega?.respuestasSnapshotJson || {}),
   };
+  if (Array.isArray(entrega)) {
+    const ordenadas = [...entrega].sort((a, b) => Number(a?.id ?? 0) - Number(b?.id ?? 0));
+    for (const ent of ordenadas) {
+      if (ent?.respuestasSnapshotJson && typeof ent.respuestasSnapshotJson === 'object') {
+        Object.assign(datos, ent.respuestasSnapshotJson);
+      }
+    }
+  } else if (entrega?.respuestasSnapshotJson && typeof entrega.respuestasSnapshotJson === 'object') {
+    Object.assign(datos, entrega.respuestasSnapshotJson);
+  }
 
   const tieneDatosCargados =
-    Boolean(entrega?.respuestasSnapshotJson) ||
+    (Array.isArray(entrega)
+      ? entrega.some((e) => Boolean(e?.respuestasSnapshotJson))
+      : Boolean(entrega?.respuestasSnapshotJson)) ||
     Object.keys(miembro?.datosFijosJson || {}).length > 0;
 
-  // Recopilación de alertas médicas activas para vista rápida de emergencia
-  const alertasMedicas: { titulo: string; detalle?: string; critico?: boolean }[] = [];
+  const infoMedica = extraerInfoMedicaMiembro(miembro, entrega, plantillas);
+  const alertasMedicas = infoMedica.alertas;
+  const situacionesPuntuales = infoMedica.situacionesClinicas;
 
-  if (esVerdadero(datos.sufre_alergia) || datos.alergias || datos.sufre_alergia_detalle) {
-    alertasMedicas.push({
-      titulo: 'Alergias',
-      detalle: valorTexto(datos.sufre_alergia_detalle || datos.alergias, 'Sí (sin detalle especificado)'),
-      critico: true,
-    });
-  }
-  if (esVerdadero(datos.toma_medicacion) || datos.toma_medicacion_detalle) {
-    alertasMedicas.push({
-      titulo: 'Toma medicación',
-      detalle: valorTexto(datos.toma_medicacion_detalle, 'Sí'),
-      critico: true,
-    });
-  }
-  if (esVerdadero(datos.enfermedad_cronica) || datos.enfermedad_cronica_detalle) {
-    alertasMedicas.push({
-      titulo: 'Enfermedad crónica',
-      detalle: valorTexto(datos.enfermedad_cronica_detalle, 'Sí'),
-      critico: true,
-    });
-  }
-  if (esVerdadero(datos.requiere_tratamiento) || datos.requiere_tratamiento_detalle) {
-    alertasMedicas.push({
-      titulo: 'Tratamiento médico activo',
-      detalle: valorTexto(datos.requiere_tratamiento_detalle, 'Sí'),
-      critico: true,
-    });
-  }
-  if (esVerdadero(datos.esta_anticoagulado) || datos.anticoagulado_droga) {
-    alertasMedicas.push({
-      titulo: 'Anticoagulado/a',
-      detalle: valorTexto(datos.anticoagulado_droga, 'Sí'),
-      critico: true,
-    });
-  }
-  if (esVerdadero(datos.regimen_dietario) || datos.regimen_dietario_detalle) {
-    alertasMedicas.push({
-      titulo: 'Dieta / Régimen alimentario',
-      detalle: valorTexto(datos.regimen_dietario_detalle, 'Sí'),
-    });
-  }
-  if (esVerdadero(datos.tiene_cud)) {
-    alertasMedicas.push({
-      titulo: 'Posee CUD (Certificado de Discapacidad)',
-      detalle: valorTexto(datos.ne_diagnostico || datos.ne_cud_vencimiento_prestacion, 'Sí'),
-    });
-  }
-  if (esVerdadero(datos.ataques_panico_ansiedad) || datos.ataques_panico_frecuencia) {
-    alertasMedicas.push({
-      titulo: 'Ataques de pánico / ansiedad',
-      detalle: valorTexto(datos.ataques_panico_frecuencia, 'Sí'),
-    });
-  }
-  if (esVerdadero(datos.diagnostico_salud_mental) || datos.diagnostico_salud_mental_detalle) {
-    alertasMedicas.push({
-      titulo: 'Diagnóstico de salud mental',
-      detalle: valorTexto(datos.diagnostico_salud_mental_detalle, 'Sí'),
-    });
-  }
-  if (esVerdadero(datos.recibe_tratamiento_salud_mental) || datos.recibe_tratamiento_salud_mental_detalle) {
-    alertasMedicas.push({
-      titulo: 'Tratamiento de salud mental',
-      detalle: valorTexto(datos.recibe_tratamiento_salud_mental_detalle, 'Sí'),
-    });
-  }
-  if (esVerdadero(datos.miedo_fobia_excesivo) || datos.miedo_fobia_detalle) {
-    alertasMedicas.push({
-      titulo: 'Miedo o fobia puntual',
-      detalle: valorTexto(datos.miedo_fobia_detalle, 'Sí'),
-    });
-  }
-  if (
-    datos.sit_cualquier_actividad_fisica === false ||
-    datos.sit_actividad_fisica_no_especifique
-  ) {
-    alertasMedicas.push({
-      titulo: 'Restricción de actividad física',
-      detalle: valorTexto(datos.sit_actividad_fisica_no_especifique, 'No puede realizar cualquier actividad'),
-      critico: true,
-    });
-  }
-
-  // Situaciones clínicas puntuales marcadas como verdaderas
-  const situacionesPuntuales: string[] = [];
-  if (esVerdadero(datos.sit_hemorragias_nasales)) situacionesPuntuales.push('Hemorragias nasales');
-  if (esVerdadero(datos.sit_sangrado_encias)) situacionesPuntuales.push('Sangrado de encías');
-  if (esVerdadero(datos.sit_dolor_cabeza)) situacionesPuntuales.push('Dolor de cabeza frecuente');
-  if (esVerdadero(datos.sit_presion_alta)) situacionesPuntuales.push('Presión alta');
-  if (esVerdadero(datos.sit_presion_baja)) situacionesPuntuales.push('Presión baja');
-  if (esVerdadero(datos.sit_transfusiones)) situacionesPuntuales.push('Recibió transfusiones');
-  if (esVerdadero(datos.sit_convulsiones)) situacionesPuntuales.push('Antecedente de convulsiones');
-  if (esVerdadero(datos.sit_cirugias_ultimo_anio)) situacionesPuntuales.push('Cirugía en el último año');
-  if (esVerdadero(datos.sit_internaciones_ultimo_anio)) situacionesPuntuales.push('Internación en el último año');
-
-  const telEmergencia1 =
-    datos.tel_emergencia_1 ||
-    datos.telefono_urgencias ||
-    datos.madre_telefono ||
-    miembro?.telefonoContacto ||
-    '';
-  const telEmergencia2 = datos.tel_emergencia_2 || datos.padre_telefono || '';
-
-  const grupoSanguineo = datos.grupo_sanguineo
-    ? `${datos.grupo_sanguineo} ${datos.factor_rh || ''}`.trim()
-    : 'Sin especificar';
-
-  const obraSocial = valorTexto(datos.obra_social);
-  const afiliadoObraSocial = valorTexto(datos.obra_social_afiliado, '');
+  const telEmergencia1 = infoMedica.telEmergencia1 || '';
+  const telEmergencia2 = infoMedica.telEmergencia2 || '';
+  const grupoSanguineo = infoMedica.grupoSanguineo || 'Sin especificar';
+  const obraSocial = infoMedica.obraSocial || '—';
+  const afiliadoObraSocial = infoMedica.afiliadoObraSocial || '';
 
   // Personas autorizadas a retirar
   const personasRetiro = [1, 2, 3]
@@ -291,7 +205,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
             <button
               type="button"
               onClick={() => setSeccion('apoyos')}
-              className={`min-h-[42px] px-3 py-1.5 rounded-lg text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 seccion === 'apoyos'
                   ? 'bg-brand text-brand-contrast font-bold'
                   : 'text-ink-muted'
@@ -348,15 +262,15 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                   {telEmergencia1 ? (
                     <a
                       href={`tel:${telEmergencia1}`}
-                      className="min-h-[48px] px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/30/70 flex items-center justify-between gap-2 text-ink font-bold text-sm"
+                      className="min-h-[48px] px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/40 flex items-center justify-between gap-2 text-ink font-bold text-sm"
                     >
                       <div>
-                        <span className="text-xs text-brand block">
+                        <span className="text-xs text-brand-ink block">
                           Emergencia 1
                         </span>
                         <span>{telEmergencia1}</span>
                       </div>
-                      <Phone className="w-4 h-4 text-brand shrink-0" />
+                      <Phone className="w-4 h-4 text-brand-ink shrink-0" />
                     </a>
                   ) : (
                     <div className="p-3 rounded-xl bg-paper-2 text-[13px] text-ink-muted">
@@ -367,18 +281,140 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                   {telEmergencia2 && (
                     <a
                       href={`tel:${telEmergencia2}`}
-                      className="min-h-[48px] px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/30/70 flex items-center justify-between gap-2 text-ink font-bold text-sm"
+                      className="min-h-[48px] px-4 py-2.5 rounded-xl bg-brand/10 border border-brand/40 flex items-center justify-between gap-2 text-ink font-bold text-sm"
                     >
                       <div>
-                        <span className="text-xs text-brand block">
+                        <span className="text-xs text-brand-ink block">
                           Emergencia 2
                         </span>
                         <span>{telEmergencia2}</span>
                       </div>
-                      <Phone className="w-4 h-4 text-brand shrink-0" />
+                      <Phone className="w-4 h-4 text-brand-ink shrink-0" />
                     </a>
                   )}
                 </div>
+              </div>
+
+              {/* Bloques Estructurados: Régimen Alimentario, Alergias y Medicación */}
+              <div className="grid grid-cols-1 gap-2.5">
+                <div
+                  className={`p-3.5 rounded-2xl border space-y-2 ${
+                    infoMedica.tieneDieta
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/70'
+                      : 'bg-paper-2 border-rule'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-[13px] font-extrabold text-ink">
+                    <Utensils className="w-4 h-4 text-brand shrink-0" />
+                    <span>Régimen Alimentario / Comidas</span>
+                  </div>
+                  {infoMedica.tieneDieta ? (
+                    <div className="space-y-1.5">
+                      {infoMedica.dietasLabels.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {infoMedica.dietasLabels.map((lbl) => (
+                            <span
+                              key={lbl}
+                              className="px-2.5 py-0.5 rounded-full bg-brand text-brand-contrast text-xs font-bold"
+                            >
+                              {lbl}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {infoMedica.dietaDetalle && (
+                        <p className="text-[13px] font-semibold text-ink-2">
+                          {infoMedica.dietaDetalle}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-ink-muted">Sin restricciones alimentarias declaradas.</p>
+                  )}
+                </div>
+
+                {(infoMedica.tieneAlergia || infoMedica.tomaMedicacion || infoMedica.tieneCondicionCronica) && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {infoMedica.tieneAlergia && (
+                      <div className="p-3.5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-rose-900 dark:text-rose-100">
+                          <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                          <span>Alergias</span>
+                        </div>
+                        {infoMedica.alergiasLabels.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {infoMedica.alergiasLabels.map((lbl) => (
+                              <span
+                                key={lbl}
+                                className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[11px] font-bold"
+                              >
+                                {lbl}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {infoMedica.alergiasDetalle && (
+                          <p className="text-xs font-semibold text-rose-900/90 dark:text-rose-100/90">
+                            {infoMedica.alergiasDetalle}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {(infoMedica.tomaMedicacion || infoMedica.tieneCondicionCronica) && (
+                      <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/70 space-y-2">
+                        <div className="flex items-center gap-1.5 text-[13px] font-extrabold text-ink">
+                          <Pill className="w-4 h-4 text-amber-600 shrink-0" />
+                          <span>Medicación y Condiciones</span>
+                        </div>
+                        {infoMedica.tomaMedicacion && (
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-bold uppercase text-ink-muted block">
+                              Medicación
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {infoMedica.medicacionLabels.map((lbl) => (
+                                <span
+                                  key={lbl}
+                                  className="px-2 py-0.5 rounded-md bg-brand text-brand-contrast text-[11px] font-bold"
+                                >
+                                  {lbl}
+                                </span>
+                              ))}
+                            </div>
+                            {infoMedica.medicacionDetalle && (
+                              <p className="text-xs font-semibold text-ink-2">
+                                {infoMedica.medicacionDetalle}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {infoMedica.tieneCondicionCronica && (
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-bold uppercase text-ink-muted block">
+                              Condición crónica
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {infoMedica.condicionesLabels.map((lbl) => (
+                                <span
+                                  key={lbl}
+                                  className="px-2 py-0.5 rounded-md bg-surface border border-rule text-ink text-[11px] font-bold"
+                                >
+                                  {lbl}
+                                </span>
+                              ))}
+                            </div>
+                            {infoMedica.condicionesDetalle && (
+                              <p className="text-xs font-semibold text-ink-2">
+                                {infoMedica.condicionesDetalle}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Alertas Médicas y Condiciones Declaradas */}
@@ -394,7 +430,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                         className={`p-3.5 rounded-xl border flex items-start gap-2.5 ${
                           al.critico
                             ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/80 text-rose-950 dark:text-rose-100'
-                            : 'bg-brand/10 border-brand/30/80 text-ink'
+                            : 'bg-brand/10 border-brand/40 text-ink'
                         }`}
                       >
                         <AlertTriangle
@@ -513,7 +549,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div>
-                        <span className="text-xs font-semibold text-brand block">
+                        <span className="text-xs font-semibold text-brand-ink block">
                           {fam.rol}
                         </span>
                         <span className="text-[15px] font-extrabold text-ink">
@@ -580,16 +616,22 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                 <div
                   className={`p-4 rounded-2xl border flex items-center gap-3 ${
                     esVerdadero(datos.ret_autoriza_retirarse_solo)
-                      ? 'bg-brand/10 border-brand/30'
-                      : 'bg-brand/10 border-brand/30'
+                      ? 's-badge-warn'
+                      : 'bg-paper-2 border-rule'
                   }`}
                 >
-                  <Car className="w-5 h-5 text-brand shrink-0" />
+                  <Car
+                    className={`w-5 h-5 shrink-0 ${
+                      esVerdadero(datos.ret_autoriza_retirarse_solo)
+                        ? 'text-amber-700 dark:text-amber-300'
+                        : 'text-brand-ink'
+                    }`}
+                  />
                   <div className="text-[13px]">
                     <span className="text-xs font-semibold opacity-85 block">
                       Retiro al finalizar actividades
                     </span>
-                    <span className="font-extrabold text-ink">
+                    <span className="font-extrabold">
                       {esVerdadero(datos.ret_autoriza_retirarse_solo)
                         ? 'Puede retirarse SOLO/A'
                         : 'NO se retira solo (Solo con autorizados)'}
@@ -652,7 +694,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                         {p.telefono && (
                           <a
                             href={`tel:${p.telefono}`}
-                            className="min-h-[40px] px-3.5 rounded-xl bg-brand/10 text-brand font-bold text-[13px] flex items-center gap-1.5 shrink-0"
+                            className="min-h-[40px] px-3.5 rounded-xl bg-brand/10 text-brand-ink font-bold text-[13px] flex items-center gap-1.5 shrink-0"
                           >
                             <Phone className="w-4 h-4" />
                             <span>{p.telefono}</span>
@@ -735,8 +777,8 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                       </div>
                     )}
                     {datos.comunicacion_educador_necesaria && (
-                      <div className="p-3 rounded-xl bg-brand/10/30 border border-brand/30">
-                        <span className="text-xs font-bold text-brand block">
+                      <div className="p-3 rounded-xl bg-brand/10 border border-brand/40">
+                        <span className="text-xs font-bold text-brand-ink block">
                           Pedido de comunicación con educadores:
                         </span>
                         <span className="font-bold text-ink">
@@ -759,7 +801,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                 </span>
                 {esVerdadero(datos.completar_ficha_adultos) ? (
                   <div>
-                    <span className="font-bold text-brand block">
+                    <span className="font-bold text-brand-ink block">
                       ✓ Familia disponible para colaborar ({valorTexto(datos.adulto_nombre, 'Familiar')})
                     </span>
                     {datos.adulto_profesion && (

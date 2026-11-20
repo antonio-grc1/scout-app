@@ -54,7 +54,7 @@ export const ToastGlobal: React.FC = () => {
   return (
     <div
       key={toast.id}
-      className="s-anim-toast-in fixed bottom-20 sm:bottom-5 left-3 right-3 sm:left-auto sm:right-5 sm:w-full sm:max-w-sm z-50 pointer-events-none"
+      className="s-anim-toast-in fixed bottom-22 md:bottom-5 left-3 right-3 sm:left-auto sm:right-5 sm:w-full sm:max-w-sm z-50 pointer-events-none"
       role="status"
       aria-live="polite"
     >

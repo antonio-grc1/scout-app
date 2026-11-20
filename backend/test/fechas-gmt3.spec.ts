@@ -21,7 +21,7 @@ describe('Husos horarios y fechas oficiales (GMT-3)', () => {
     expect(res.protagonista_fecha_nac).toBe('01 / 05 / 2015');
     expect(res.salud_fecha_nac).toBe('01 / 05 / 2015');
     expect(res.menor_nac_dia_p3).toBe('01');
-    expect(res.menor_nac_mes_p3).toBe('05');
+    expect(res.menor_nac_mes_p3).toBe('Mayo');
     expect(res.menor_nac_anio_p3).toBe('2015');
     expect(res.ret_menor_nac).toBe('01 / 05 / 2015');
   });

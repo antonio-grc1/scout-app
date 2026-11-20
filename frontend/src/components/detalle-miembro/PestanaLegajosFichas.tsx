@@ -7,9 +7,11 @@ import { VisorFichaMiembro } from '../VisorFichaMiembro';
 export interface PestanaLegajosFichasProps {
   miembro: any;
   entregas: any[];
+  plantillasAplicables?: any[];
   editandoFicha: boolean;
   setEditandoFicha: (val: boolean) => void;
   plantillaActiva: any;
+  onSeleccionarPlantilla?: (plantilla: any) => void;
   precargaFicha: any;
   guardando: boolean;
   validandoFichaId: number | null;
@@ -20,6 +22,8 @@ export interface PestanaLegajosFichasProps {
   cargandoFichaEditor: boolean;
   puedeValidarFisico: boolean;
   puedeCompletarFicha: boolean;
+  enDrawer?: boolean;
+  onPreviewPdf?: (datosActuales: Record<string, unknown>) => void;
   onGuardarFichaEducador: (
     datos: Record<string, unknown>,
     finalizarParaFirma: boolean,
@@ -34,9 +38,11 @@ export interface PestanaLegajosFichasProps {
 export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
   miembro,
   entregas,
+  plantillasAplicables = [],
   editandoFicha,
   setEditandoFicha,
   plantillaActiva,
+  onSeleccionarPlantilla,
   precargaFicha,
   guardando,
   validandoFichaId,
@@ -47,6 +53,8 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
   cargandoFichaEditor,
   puedeValidarFisico,
   puedeCompletarFicha,
+  enDrawer = false,
+  onPreviewPdf,
   onGuardarFichaEducador,
   onValidarFisicoDirecto,
   onVerPdfEducador,
@@ -57,20 +65,21 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
   if (editandoFicha && plantillaActiva && precargaFicha) {
     return (
       <div className="space-y-3.5">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-extrabold text-ink-2">
-            Completando Ficha {obtenerCicloAnioActual()}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-extrabold text-ink-2 truncate">
+            {plantillaActiva.titulo || `Completando Ficha ${obtenerCicloAnioActual()}`}
           </span>
           <button
             type="button"
             onClick={() => setEditandoFicha(false)}
-            className="min-h-[40px] px-3.5 rounded-xl bg-paper-3 text-ink-2 font-bold text-[13px] cursor-pointer"
+            className="min-h-[40px] px-3.5 rounded-xl bg-paper-3 text-ink-2 font-bold text-[13px] cursor-pointer shrink-0"
           >
             Volver al resumen
           </button>
         </div>
 
         <DynamicFormRenderer
+          key={`${plantillaActiva.id}-${miembro?.id}`}
           esquema={plantillaActiva.esquemaCamposJson as EsquemaCampos}
           valoresIniciales={{
             protagonista_telefono: precargaFicha.usuario?.telefonoContacto || '',
@@ -82,6 +91,8 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
             ...(precargaFicha.usuario?.datosFijosJson || {}),
             ...(precargaFicha.ultimaEntrega?.respuestasSnapshotJson || {}),
           }}
+          enDrawer={enDrawer}
+          onPreviewPdf={onPreviewPdf}
           onSubmit={onGuardarFichaEducador}
           cargando={guardando}
         />
@@ -89,18 +100,62 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
     );
   }
 
-  const ent = entregas[0] || null;
+  const plantillaSeleccionada =
+    plantillaActiva || (plantillasAplicables.length > 0 ? plantillasAplicables[0] : null);
+
+  const ent =
+    plantillaSeleccionada && plantillasAplicables.length > 0
+      ? entregas.find((e) => e.plantillaId === plantillaSeleccionada.id) || null
+      : entregas[0] || null;
+
   const estadoKey = ent?.estado || 'SIN_FICHA';
   const cfgEstado = ESTADO_FICHA_CONFIG[estadoKey] || ESTADO_FICHA_CONFIG.SIN_FICHA;
   const esPendiente = ent?.estado === 'PENDIENTE_FIRMA_FISICA';
 
   return (
     <div className="space-y-3">
+      {plantillasAplicables.length > 1 && onSeleccionarPlantilla && (
+        <div className="p-3 bg-paper-2 rounded-2xl border border-rule space-y-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-muted block">
+            Documentos del Miembro ({plantillasAplicables.length})
+          </span>
+          <div className="flex flex-wrap gap-1.5">
+            {plantillasAplicables.map((p) => {
+              const activa = p.id === plantillaSeleccionada?.id;
+              const entregaDoc = entregas.find((e) => e.plantillaId === p.id);
+              const estDoc = entregaDoc?.estado || 'SIN_FICHA';
+              const estCfg = ESTADO_FICHA_CONFIG[estDoc] || ESTADO_FICHA_CONFIG.SIN_FICHA;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onSeleccionarPlantilla(p)}
+                  className={`min-h-[38px] px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    activa
+                      ? 'bg-brand text-brand-contrast border-brand'
+                      : 'bg-surface text-ink border-rule hover:border-brand/50'
+                  }`}
+                >
+                  <span className="truncate max-w-[190px]">{p.titulo}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${
+                      activa ? 'bg-surface text-ink border-transparent' : estCfg.badgeClass
+                    }`}
+                  >
+                    {estCfg.shortLabel}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="p-4 bg-surface rounded-2xl border border-rule space-y-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1.5">
             <span className="font-extrabold text-ink text-[15px] block">
-              Ficha Médica y Autorizaciones {obtenerCicloAnioActual()}
+              {plantillaSeleccionada?.titulo || `Ficha Médica y Autorizaciones ${obtenerCicloAnioActual()}`}
             </span>
             <div className="flex items-center gap-2 flex-wrap">
               <span
@@ -110,7 +165,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
               </span>
             </div>
             {ent?.validadoPor && (
-              <span className="block text-xs text-brand font-bold pt-0.5">
+              <span className="block text-xs text-brand-ink font-bold pt-0.5">
                 ✓ Papel recibido por {ent.validadoPor.nombre} {ent.validadoPor.apellido}
               </span>
             )}
@@ -137,12 +192,12 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
             type="button"
             disabled={generandoVistaPrevia}
             onClick={() => onVerPdfEducador(ent)}
-            className="min-h-[46px] px-4 rounded-xl bg-brand/10 hover:bg-brand/15 text-brand border border-brand/30 font-extrabold text-[13px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+            className="min-h-[46px] px-4 rounded-xl bg-brand-soft/70 hover:bg-brand-soft text-brand-ink border border-brand/40 font-extrabold text-[13px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
           >
             {generandoVistaPrevia ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Eye className="w-4 h-4 text-brand" />
+              <Eye className="w-4 h-4 text-brand-ink" />
             )}
             <span>Ver Planilla PDF</span>
           </button>
@@ -171,7 +226,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
               {cargandoFichaEditor ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Pencil className="w-4 h-4 text-brand" />
+                <Pencil className="w-4 h-4 text-brand-ink" />
               )}
               <span>{ent ? 'Editar Ficha' : 'Rellenar Ficha'}</span>
             </button>
@@ -182,7 +237,8 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
       {/* Visualización Completa de la Ficha en Pantalla (Sin Descarga) */}
       <VisorFichaMiembro
         miembro={miembro}
-        entrega={ent}
+        entrega={ent || entregas}
+        plantillas={plantillasAplicables}
         pdfPreviewUrl={pdfPreviewUrl}
         ocultarModalPdf={ocultarModalPdf}
         onCerrarPdfPreview={onCerrarPdfPreview}

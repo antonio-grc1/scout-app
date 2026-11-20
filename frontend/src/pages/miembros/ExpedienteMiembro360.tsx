@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -17,7 +17,7 @@ import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
-import { useCapabilities } from '../../core/capabilities';
+import { computeCapabilities } from '../../core/capabilities';
 import { ModalCobrarDeuda } from '../../components/ModalCobrarDeuda';
 import { ModalGenerarDeudaManual } from '../../components/ModalGenerarDeudaManual';
 import { ModalEditarFamilia } from '../../components/ModalEditarFamilia';
@@ -46,6 +46,7 @@ import {
   esRolJefe,
   esRolRama,
   esRolSinRama,
+  filtrarPlantillasParaMiembro,
   formatearMoneda,
   obtenerAsignacionesActivas,
   obtenerCicloAnioActual,
@@ -102,6 +103,7 @@ interface ConfirmInlineConfig {
 export interface ExpedienteMiembro360Props {
   usuarioId: number;
   tabInicial?: TabExpediente360;
+  enDrawer?: boolean;
   onTabChange?: (tab: TabExpediente360) => void;
   onCerrar?: () => void;
   onActualizado?: () => void;
@@ -115,6 +117,7 @@ const CARGOS_VACIOS: any[] = [];
 export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   usuarioId,
   tabInicial = 'datos',
+  enDrawer = false,
   onTabChange,
   onCerrar,
   onActualizado,
@@ -130,7 +133,6 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     obtenerUnidadesConPermiso,
     refrescarSesionDesdeServidor,
   } = useAuthStore();
-  const caps = useCapabilities();
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
   const { canEdit, canView } = usePermisosUI();
@@ -193,10 +195,12 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const [generandoVistaPrevia, setGenerandoVistaPrevia] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [editandoFicha, setEditandoFicha] = useState(false);
+  const [plantillasAplicables, setPlantillasAplicables] = useState<any[]>([]);
   const [plantillaActiva, setPlantillaActiva] = useState<any | null>(null);
   const [precargaFicha, setPrecargaFicha] = useState<any | null>(null);
   const [cargandoFichaEditor, setCargandoFichaEditor] = useState(false);
   const [alerta, setAlerta] = useState<{ tipo: 'exito' | 'error'; texto: string } | null>(null);
+  const datosPreviewVivoRef = useRef<Record<string, unknown> | undefined>(undefined);
 
   // Sub-vista inline para mantener máximo 1 overlay (cero portales apilados)
   const [subVista, setSubVista] = useState<SubVistaExpediente>(null);
@@ -234,6 +238,9 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     obraSocial: '',
     telefonoUrgencias: '',
     alergias: '',
+    alergiasTipos: [],
+    regimenDietarioTipos: [],
+    regimenDietarioDetalle: '',
     activo: true,
   });
 
@@ -342,13 +349,16 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   };
 
   const cargarDatos = useCallback(
-    async (id: number) => {
-      setCargando(true);
+    async (id: number, opts?: { silencioso?: boolean }) => {
+      if (!opts?.silencioso) {
+        setCargando(true);
+      }
       try {
         const [
           resMiembro,
           resCuenta,
           resEntregas,
+          resPlantillas,
           resUnidades,
           resRoles,
           resCandidatos,
@@ -357,6 +367,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           api.get(`/miembros/${id}`),
           api.get(`/tesoreria/estado-cuenta/${id}`).catch(() => null),
           api.get(`/legajos/entregas?usuarioId=${id}`).catch(() => null),
+          api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({ data: [] })),
           api.get('/organizacion/unidades').catch(() => ({ data: [] })),
           api.get('/organizacion/roles').catch(() => ({ data: [] })),
           api.get('/pases/candidatos').catch(() => ({ data: [] })),
@@ -367,6 +378,22 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         setMiembro(m);
         if (resCuenta) setEstadoCuenta(resCuenta.data);
         if (resEntregas) setEntregas(resEntregas.data);
+
+        let listaPlantillas: any[] = Array.isArray(resPlantillas?.data) ? resPlantillas.data : [];
+        if (listaPlantillas.length === 0) {
+          const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
+          listaPlantillas = Array.isArray(resTodas?.data) ? resTodas.data : [];
+        }
+        const aplicables = filtrarPlantillasParaMiembro(listaPlantillas, m);
+        const disponibles = aplicables.length > 0 ? aplicables : listaPlantillas;
+        setPlantillasAplicables(disponibles);
+        if (disponibles.length > 0) {
+          setPlantillaActiva((prev: any) =>
+            prev && disponibles.some((p) => p.id === prev.id)
+              ? disponibles.find((p) => p.id === prev.id)
+              : seleccionarPlantillaPorMiembro(disponibles, m) || disponibles[0],
+          );
+        }
 
         // Fallback sintético de organización cuando /organizacion/* devuelve [] para roles sin permiso organizacion.ver
         let unidadesResueltas: any[] = Array.isArray(resUnidades.data) ? resUnidades.data : [];
@@ -380,7 +407,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               mapaU.set(a.unidad.id, a.unidad);
             }
           }
-          for (const u of caps.unidadesAsignadas) {
+          const unidadesAsignadas = computeCapabilities(
+            useAuthStore.getState().asignaciones,
+          ).unidadesAsignadas;
+          for (const u of unidadesAsignadas) {
             if (!mapaU.has(u.id)) {
               mapaU.set(u.id, { id: u.id, nombre: u.nombre, activa: true });
             }
@@ -436,7 +466,17 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           domicilio: m.datosFijosJson?.domicilio || '',
           obraSocial: m.datosFijosJson?.obra_social || '',
           telefonoUrgencias: m.datosFijosJson?.telefono_urgencias || '',
-          alergias: m.datosFijosJson?.alergias || '',
+          alergias: m.datosFijosJson?.sufre_alergia_detalle || m.datosFijosJson?.alergias || '',
+          alergiasTipos: Array.isArray(m.datosFijosJson?.alergias_tipos)
+            ? m.datosFijosJson.alergias_tipos
+            : [],
+          regimenDietarioTipos: Array.isArray(m.datosFijosJson?.regimen_dietario_tipos)
+            ? m.datosFijosJson.regimen_dietario_tipos
+            : [],
+          regimenDietarioDetalle:
+            m.datosFijosJson?.regimen_dietario_detalle ||
+            m.datosFijosJson?.dieta_especial_detalle ||
+            '',
           activo: m.activo ?? true,
         });
 
@@ -522,13 +562,14 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         setCargando(false);
       }
     },
-    [caps.unidadesAsignadas],
+    [],
   );
 
   useEffect(() => {
     setAlerta(null);
     setClaveTemporalGenerada(null);
     setEditandoFicha(false);
+    setPlantillasAplicables([]);
     setPlantillaActiva(null);
     setSubVista(null);
     void cargarDatos(usuarioId);
@@ -548,6 +589,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
       URL.revokeObjectURL(pdfPreviewUrl);
       setPdfPreviewUrl(null);
     }
+    datosPreviewVivoRef.current = undefined;
     if (subVista === 'pdf') setSubVista(null);
   };
 
@@ -576,7 +618,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             ? miembro.datosFijosJson
             : {};
 
-        const camposEditados: Record<string, string> = {
+        const camposEditados: Record<string, unknown> = {
           protagonista_telefono: formData.telefonoContacto.trim(),
           madre_nombres: formData.madreNombres.trim(),
           madre_telefono: formData.madreTelefono.trim(),
@@ -588,11 +630,25 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           obra_social: formData.obraSocial.trim(),
           telefono_urgencias: formData.telefonoUrgencias.trim(),
           alergias: formData.alergias.trim(),
+          sufre_alergia_detalle: formData.alergias.trim(),
+          alergias_tipos: formData.alergiasTipos,
+          sufre_alergia:
+            formData.alergiasTipos.length > 0 || Boolean(formData.alergias.trim()),
+          regimen_dietario_tipos: formData.regimenDietarioTipos,
+          regimen_dietario_detalle: formData.regimenDietarioDetalle.trim(),
+          regimen_dietario:
+            formData.regimenDietarioTipos.length > 0 ||
+            Boolean(formData.regimenDietarioDetalle.trim()),
         };
 
         const datosFijosMergeados: Record<string, any> = { ...datosFijosPrevios };
         for (const [k, v] of Object.entries(camposEditados)) {
-          if (v !== '' || datosFijosPrevios[k] !== undefined) {
+          if (
+            typeof v === 'boolean' ||
+            Array.isArray(v) ||
+            v !== '' ||
+            datosFijosPrevios[k] !== undefined
+          ) {
             datosFijosMergeados[k] = v;
           }
         }
@@ -1215,15 +1271,25 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     }
   };
 
-  const generarBytesPdfMiembro = async (ent?: any): Promise<Uint8Array> => {
-    const plantilla = plantillaActiva || (await obtenerPlantillaActiva(miembro));
+  const generarBytesPdfMiembro = async (
+    ent?: any,
+    respuestasCustom?: Record<string, unknown>,
+  ): Promise<Uint8Array> => {
+    const plantilla =
+      (ent?.plantillaId
+        ? plantillasAplicables.find((p) => p.id === ent.plantillaId)
+        : null) ||
+      plantillaActiva ||
+      (await obtenerPlantillaActiva(miembro));
     const mapeo: MapeoPdf = plantilla?.mapeoPdfJson || { pdfBaseUrl: '', campos: {} };
     const ramaNombre = obtenerRolPrincipal(miembro)?.unidad?.nombre || '';
-    const respuestasBase = ent?.respuestasSnapshotJson || {
-      protagonista_telefono: miembro.telefonoContacto || '',
-      protagonista_domicilio: miembro.datosFijosJson?.domicilio || '',
-      ...(miembro.datosFijosJson || {}),
-    };
+    const respuestasBase =
+      respuestasCustom ||
+      ent?.respuestasSnapshotJson || {
+        protagonista_telefono: miembro.telefonoContacto || '',
+        protagonista_domicilio: miembro.datosFijosJson?.domicilio || '',
+        ...(miembro.datosFijosJson || {}),
+      };
 
     return await generarFichaPdf(
       mapeo,
@@ -1238,15 +1304,20 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         telefonoContacto: miembro.telefonoContacto,
       },
       ent?.versionImpresion || 1,
+      plantilla?.esquemaCamposJson,
     );
   };
 
-  const handleVerPdfEducador = async (ent?: any) => {
+  const handleVerPdfEducador = async (
+    ent?: any,
+    respuestasCustom?: Record<string, unknown>,
+  ) => {
     if (!miembro) return;
     setGenerandoVistaPrevia(true);
     setAlerta(null);
     try {
-      const pdfBytes = await generarBytesPdfMiembro(ent);
+      datosPreviewVivoRef.current = respuestasCustom;
+      const pdfBytes = await generarBytesPdfMiembro(ent, respuestasCustom);
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
       setPdfPreviewUrl(crearUrlPdfBlob(pdfBytes));
       setSubVista('pdf');
@@ -1260,11 +1331,14 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     }
   };
 
-  const handleDescargarPdfEducador = async (ent?: any) => {
+  const handleDescargarPdfEducador = async (
+    ent?: any,
+    respuestasCustom?: Record<string, unknown>,
+  ) => {
     if (!miembro) return;
     setDescargandoPdfId(ent?.id ?? -1);
     try {
-      const pdfBytes = await generarBytesPdfMiembro(ent);
+      const pdfBytes = await generarBytesPdfMiembro(ent, respuestasCustom);
       descargarPdfBlob(pdfBytes, `Ficha_${miembro.apellido}_${miembro.nombre}.pdf`);
       setAlerta({ tipo: 'exito', texto: 'PDF descargado.' });
     } catch (err) {
@@ -1335,6 +1409,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             telefonoContacto: miembro.telefonoContacto,
           },
           entrega.versionImpresion,
+          plantillaActiva.esquemaCamposJson,
         );
         descargarPdfBlob(pdfBytes, `Ficha_${miembro.apellido}_${miembro.nombre}.pdf`);
         setAlerta({ tipo: 'exito', texto: 'Ficha guardada y PDF descargado.' });
@@ -1344,12 +1419,13 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
       }
 
       onActualizado?.();
-      void cargarDatos(miembro.id);
+      void cargarDatos(miembro.id, { silencioso: true });
     } catch (err) {
       setAlerta({
         tipo: 'error',
         texto: traducirErrorAmigable(err, 'No se pudo guardar la ficha.'),
       });
+      throw err;
     } finally {
       setGuardando(false);
     }
@@ -1359,8 +1435,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const saldoAFavor = Number(estadoCuenta?.resumen?.saldoAFavor ?? 0);
   const cfgRama = miembro ? obtenerConfigRama(miembro, unidades) : null;
   const infoMedica = useMemo(
-    () => (miembro ? extraerInfoMedicaMiembro(miembro, entregas?.[0]) : null),
-    [miembro, entregas],
+    () => (miembro ? extraerInfoMedicaMiembro(miembro, entregas, plantillasAplicables) : null),
+    [miembro, entregas, plantillasAplicables],
   );
 
   const tabsItems = useMemo<SegmentedTabItem<TabExpediente360>[]>(() => {
@@ -1566,8 +1642,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         </div>
       )}
 
-      {/* Pestañas o Sub-vista Inline (nunca apila modales) */}
-      {subVista ? (
+      {/* Pestañas o Sub-vista Inline (nunca apila modales; mantiene montadas las pestañas para no perder ediciones en vivo) */}
+      {subVista && (
         <div className="space-y-3.5">
           <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-rule">
             <button
@@ -1705,7 +1781,9 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 subtitulo={`Legajo Anual ${obtenerCicloAnioActual()}`}
                 embedded={true}
                 onCerrar={cerrarVistaPreviaPdf}
-                onDescargar={() => void handleDescargarPdfEducador(entregas?.[0])}
+                onDescargar={() =>
+                  void handleDescargarPdfEducador(entregas?.[0], datosPreviewVivoRef.current)
+                }
               />
             </Suspense>
           )}
@@ -1757,9 +1835,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             </div>
           )}
         </div>
-      ) : (
-        <>
-          <div className="pb-1 border-b border-rule">
+      )}
+
+      <div className={subVista ? 'hidden' : 'space-y-4'}>
+        <div className="pb-1 border-b border-rule">
             <SegmentedTabs
               items={tabsItems}
               activeId={tab}
@@ -1866,9 +1945,14 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 <PestanaLegajosFichas
                   miembro={miembro}
                   entregas={entregas}
+                  plantillasAplicables={plantillasAplicables}
                   editandoFicha={editandoFicha}
                   setEditandoFicha={setEditandoFicha}
                   plantillaActiva={plantillaActiva}
+                  onSeleccionarPlantilla={(p) => {
+                    setPlantillaActiva(p);
+                    setEditandoFicha(false);
+                  }}
                   precargaFicha={precargaFicha}
                   guardando={guardando}
                   validandoFichaId={validandoFichaId}
@@ -1879,6 +1963,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   cargandoFichaEditor={cargandoFichaEditor}
                   puedeValidarFisico={puedeValidarFisico}
                   puedeCompletarFicha={puedeCompletarFicha}
+                  enDrawer={enDrawer}
+                  onPreviewPdf={(datos) => void handleVerPdfEducador(undefined, datos)}
                   onGuardarFichaEducador={handleGuardarFichaEducador}
                   onValidarFisicoDirecto={handleValidarFisicoDirecto}
                   onVerPdfEducador={handleVerPdfEducador}
@@ -1941,8 +2027,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               )}
             </div>
           ) : null}
-        </>
-      )}
+      </div>
     </div>
   );
 };

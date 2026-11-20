@@ -356,28 +356,41 @@ describe('C4: merge no destructivo de datosFijosJson en importación', () => {
 
 describe('C6: sanitización WinAnsi y generación PDF con Unicode', () => {
   it('sanitiza emojis y símbolos no-WinAnsi preservando tildes y puntuación española', async () => {
-    const { sanitizarTextoWinAnsi, buildOfficialPdf } = await vite.ssrLoadModule(
-      '/src/services/officialPdfBuilder.ts',
+    const { sanitizarTextoWinAnsi, generarPdfPorSecciones } = await vite.ssrLoadModule(
+      '/src/services/pdfGenerator.ts',
     );
 
     const limpio = sanitizarTextoWinAnsi('Córdoba – Nº 196 • áéíóúñ € 🚀 ≥ 10 ≤ 20 ✓\nLínea 2');
     assert.equal(limpio, 'Córdoba – Nº 196 • áéíóúñ €  >= 10 <= 20 [x] Línea 2');
 
-    const pdfBytes: Uint8Array = await buildOfficialPdf(
+    const pdfBytes: Uint8Array = await generarPdfPorSecciones(
       {
-        protagonista_nombre: 'Sofía 🚀',
-        protagonista_apellido: 'Pérez ≥',
+        tituloDocumento: 'Autorización Scout 2026 🚀',
+        membrete: 'AUTORIZACION_OFICIAL',
+        secciones: [
+          {
+            id: 'datos',
+            titulo: 'Datos del Protagonista',
+            textoLegal: 'Autorizo a {{nombre_completo}} con domicilio en {{domicilio}}.',
+            campos: [
+              { key: 'alergias_detalle', label: 'Alergias', type: 'text' },
+              { key: 'observaciones', label: 'Observaciones', type: 'textarea' },
+            ],
+          },
+        ],
+      },
+      {
+        protagonista_nombre_completo: 'PÉREZ, Sofía 🚀',
         protagonista_domicilio: 'Calle Falsa 123 • Córdoba\nDepto B',
         alergias_detalle: 'Ninguna ✓ α β γ',
         observaciones: 'Traer medicación ≤ 2 dosis 👍',
       },
+      'TEST-UNICODE-001',
       {
-        usuario: {
-          nombre: 'Sofía',
-          apellido: 'Pérez',
-          dni: '45123456',
-          ramaNombre: 'Manada',
-        },
+        nombre: 'Sofía',
+        apellido: 'Pérez',
+        dni: '45123456',
+        ramaNombre: 'Manada',
       },
     );
 

@@ -645,19 +645,7 @@ export function obtenerRolesSecundarios(miembro: any): any[] {
   return activas.filter((a: any) => a.id !== principal?.id);
 }
 
-/**
- * Selecciona automáticamente la plantilla de legajo adecuada según la naturaleza dinámica del rol, rama y edad:
- * - Rol de naturaleza EDUCADOR -> LEGAJO_EDUCADORES_2026
- * - Protagonista mayor de 18 años (o en rama con edad >= 18) -> LEGAJO_ROVERS_2026
- * - Protagonista menor de 18 años -> LEGAJO_MENORES_2026
- */
-export function seleccionarPlantillaPorMiembro(
-  plantillas: any[],
-  miembro: any,
-  asignacionesFallback?: any[],
-): any | null {
-  if (!Array.isArray(plantillas) || plantillas.length === 0) return null;
-
+function resolverContextoMiembroPlantilla(miembro: any, asignacionesFallback?: any[]) {
   const asig =
     obtenerRolPrincipal(miembro) ||
     miembro?.asignaciones?.[0] ||
@@ -673,26 +661,153 @@ export function seleccionarPlantillaPorMiembro(
         unidadTipo === 'JEFATURA' ||
         unidadTipo === 'SIN_RAMA_APOYO'));
 
-  if (esEducador) {
-    const pEdu =
-      plantillas.find((p) => p.codigo === 'LEGAJO_EDUCADORES_2026') ||
-      plantillas.find((p) => String(p.codigo).startsWith('LEGAJO_EDUCADORES_'));
-    if (pEdu) return pEdu;
-  }
-
   const edad = calcularEdad(miembro?.fechaNacimiento);
   const esMayorEdad = edadMinRama >= 18 || (edad !== null && edad >= 18);
 
-  if (esMayorEdad) {
-    const pRov =
-      plantillas.find((p) => p.codigo === 'LEGAJO_ROVERS_2026') ||
-      plantillas.find((p) => String(p.codigo).startsWith('LEGAJO_ROVERS_'));
-    if (pRov) return pRov;
-  }
+  return { esEducador, edad, esMayorEdad };
+}
 
+export function resolverDestinatarioPlantilla(p: any): string {
+  const explicito = p?.esquemaCamposJson?.destinatario;
+  if (typeof explicito === 'string' && explicito) return explicito.toUpperCase();
+  const codigo = String(p?.codigo || '');
+  if (codigo.startsWith('LEGAJO_EDUCADORES_')) return 'EDUCADORES';
+  if (codigo.startsWith('LEGAJO_ROVERS_')) return 'MAYORES';
+  if (codigo.startsWith('LEGAJO_MENORES_')) return 'MENORES';
+  return 'TODOS';
+}
+
+export function esPlantillaPrincipal(p: any): boolean {
+  if (typeof p?.esquemaCamposJson?.esPrincipal === 'boolean') {
+    return p.esquemaCamposJson.esPrincipal;
+  }
+  const codigo = String(p?.codigo || '');
   return (
-    plantillas.find((p) => p.codigo === 'LEGAJO_MENORES_2026') ||
-    plantillas.find((p) => String(p.codigo).startsWith('LEGAJO_MENORES_')) ||
-    plantillas[0]
+    codigo.startsWith('LEGAJO_MENORES_') ||
+    codigo.startsWith('LEGAJO_ROVERS_') ||
+    codigo.startsWith('LEGAJO_EDUCADORES_')
   );
+}
+
+/**
+ * Devuelve todas las plantillas activas aplicables a un miembro según los metadatos declarativos
+ * de `esquemaCamposJson` (`destinatario`, `edadMinima`, `edadMaxima`, `tipoMiembro`, `esPrincipal`)
+ * con fallback retrocompatible por prefijo de código solo cuando la plantilla carece de metadatos.
+ */
+export function filtrarPlantillasParaMiembro(
+  plantillas: any[],
+  miembro: any,
+  asignacionesFallback?: any[],
+): any[] {
+  if (!Array.isArray(plantillas) || plantillas.length === 0) return [];
+
+  const { esEducador, edad, esMayorEdad } = resolverContextoMiembroPlantilla(
+    miembro,
+    asignacionesFallback,
+  );
+
+  const aplicables = plantillas.filter((p) => {
+    if (!p || p.activa === false) return false;
+    const esquema = p.esquemaCamposJson || {};
+    const destinatario = resolverDestinatarioPlantilla(p);
+
+    if (destinatario === 'EDUCADORES' && !esEducador) return false;
+    if (destinatario === 'MAYORES' && (esEducador || !esMayorEdad)) return false;
+    if (destinatario === 'MENORES' && (esEducador || esMayorEdad)) return false;
+
+    if (esquema.tipoMiembro === 'EDUCADOR' && !esEducador) return false;
+    if (esquema.tipoMiembro === 'PROTAGONISTA' && esEducador) return false;
+
+    if (typeof esquema.edadMinima === 'number' && edad !== null && edad < esquema.edadMinima) {
+      return false;
+    }
+    if (typeof esquema.edadMaxima === 'number' && edad !== null && edad > esquema.edadMaxima) {
+      return false;
+    }
+
+    return true;
+  });
+
+  return aplicables.sort((a, b) => {
+    const pA = esPlantillaPrincipal(a) ? 0 : 1;
+    const pB = esPlantillaPrincipal(b) ? 0 : 1;
+    if (pA !== pB) return pA - pB;
+
+    const oA =
+      typeof a?.esquemaCamposJson?.orden === 'number' ? a.esquemaCamposJson.orden : 999;
+    const oB =
+      typeof b?.esquemaCamposJson?.orden === 'number' ? b.esquemaCamposJson.orden : 999;
+    if (oA !== oB) return oA - oB;
+
+    const dA = resolverDestinatarioPlantilla(a) === 'TODOS' ? 1 : 0;
+    const dB = resolverDestinatarioPlantilla(b) === 'TODOS' ? 1 : 0;
+    if (dA !== dB) return dA - dB;
+
+    return Number(a?.id ?? 0) - Number(b?.id ?? 0);
+  });
+}
+
+/**
+ * Selecciona la plantilla principal de legajo adecuada según los metadatos declarativos
+ * de la plantilla (y con fallback retrocompatible para plantillas legacy).
+ */
+export function seleccionarPlantillaPorMiembro(
+  plantillas: any[],
+  miembro: any,
+  asignacionesFallback?: any[],
+): any | null {
+  if (!Array.isArray(plantillas) || plantillas.length === 0) return null;
+  const aplicables = filtrarPlantillasParaMiembro(plantillas, miembro, asignacionesFallback);
+  return aplicables[0] || plantillas[0] || null;
+}
+
+export const MATERIALES_CONSTRUCCION = [
+  { key: 'chapas', label: 'Chapas de Cinc' },
+  { key: 'puntales', label: 'Puntales de Madera' },
+  { key: 'tablas', label: 'Tablas Grandes' },
+  { key: 'paneles', label: 'Paneles terciados' },
+  { key: 'postes', label: 'Postes de Madera' },
+  { key: 'clavos', label: 'Clavos y Tornillos' },
+  { key: 'alambrado', label: 'Alambrado' },
+  { key: 'alambre_fardo', label: 'Alambre de Fardo' },
+  { key: 'ladrillos', label: 'Ladrillos' },
+  { key: 'cemento', label: 'Cemento' },
+  { key: 'pala', label: 'Pala' },
+  { key: 'serrucho', label: 'Serrucho o sierra' },
+  { key: 'pinzas', label: 'Pinzas o tenazas' },
+  { key: 'destornilladores', label: 'Destornilladores' },
+] as const;
+
+export const MATERIALES_CAMPAMENTO = [
+  { key: 'carpas', label: 'Carpas' },
+  { key: 'tablones', label: 'Tablones o mesas' },
+  { key: 'lonas', label: 'Lonas' },
+  { key: 'media_sombras', label: 'Media sombras' },
+  { key: 'sogas', label: 'Sogas o Soguines' },
+  { key: 'estacas', label: 'Estacas' },
+  { key: 'cajones', label: 'Cajones' },
+  { key: 'tachos', label: 'Tachos' },
+  { key: 'bidones', label: 'Bidones para Agua' },
+  { key: 'bancos', label: 'Bancos o sillas' },
+  { key: 'quemadores', label: 'Quemadores cocina' },
+  { key: 'utensilios', label: 'Utensilios de cocina' },
+  { key: 'otros_camp', label: 'Otros materiales' },
+] as const;
+
+export function resumirMaterialesAdultos(data: Record<string, unknown>) {
+  const activos = (
+    items: readonly { key: string; label: string }[],
+    sufijo: 'prestamo' | 'donacion',
+  ) =>
+    items
+      .filter((item) => Boolean(data[`mat_${item.key}_${sufijo}`]))
+      .map((item) => item.label)
+      .join(', ');
+
+  return {
+    mat_construccion_prestamo: activos(MATERIALES_CONSTRUCCION, 'prestamo'),
+    mat_construccion_donacion: activos(MATERIALES_CONSTRUCCION, 'donacion'),
+    mat_campamento_prestamo: activos(MATERIALES_CAMPAMENTO, 'prestamo'),
+    mat_campamento_donacion: activos(MATERIALES_CAMPAMENTO, 'donacion'),
+  };
 }

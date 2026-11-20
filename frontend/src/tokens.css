@@ -29,6 +29,7 @@
   --color-brand-contrast: #090a0f;            /* High-contrast dark charcoal on amber */
   --color-brand-soft: #fef3c7;
   --color-brand-soft-ink: #78350f;
+  --color-brand-ink: #92400e;                  /* Amber 800 — >= 6:1 sobre papel/superficies claras */
   --color-paper: #f6f6f2;                     /* Base application canvas */
   --color-paper-2: #eeede7;                   /* Secondary container background */
   --color-paper-3: #e4e2da;                   /* Tertiary subtle background */
@@ -44,6 +45,7 @@
   --color-ink-muted: #52525b;                 /* Muted text >= 7:1 contrast on light canvas */
   --color-muted: var(--color-ink-muted);
   --color-rule: rgba(24, 24, 27, 0.11);       /* Crisp subtle hairline divider */
+  --color-rule-strong: rgba(24, 24, 27, 0.24); /* Borde legible para inputs y controles táctiles */
   --color-accent: var(--color-brand);
   --color-accent-ink: var(--color-brand-contrast);
   --color-focus: var(--color-brand);
@@ -78,6 +80,7 @@
   --color-brand-contrast: #09090b;
   --color-brand-soft: rgba(251, 191, 36, 0.16);
   --color-brand-soft-ink: #fde68a;
+  --color-brand-ink: #fbbf24;                  /* Amber 400 — >= 10:1 sobre superficies oscuras */
   --color-paper: #0c0e13;                     /* Deep charcoal canvas */
   --color-paper-2: #13161e;                   /* Secondary dark container */
   --color-paper-3: #1b1f2b;                   /* Tertiary dark container */
@@ -93,6 +96,7 @@
   --color-ink-muted: #a1a1aa;                 /* Zinc 400 muted text */
   --color-muted: var(--color-ink-muted);
   --color-rule: rgba(255, 255, 255, 0.10);
+  --color-rule-strong: rgba(255, 255, 255, 0.22);
   --color-accent: var(--color-brand);
   --color-accent-ink: var(--color-brand-contrast);
   --color-focus: var(--color-brand);

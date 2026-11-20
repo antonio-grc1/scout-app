@@ -78,6 +78,8 @@ export type ChipFiltroMiembros =
   | 'ALERTA_MEDICA'
   | 'BAJAS';
 
+export type SubFiltroAlertaMedica = 'TODAS' | 'DIETA' | 'ALERGIA' | 'MEDICACION' | 'RESTRICCION';
+
 const FILTROS_VALIDOS: readonly ChipFiltroMiembros[] = [
   'TODOS',
   'FALTA_FICHA',
@@ -173,6 +175,7 @@ export const MiembrosPage: React.FC = () => {
   const [chipActivo, setChipActivo] = useState<ChipFiltroMiembros>(() =>
     parseFiltroParam(searchParams.get('filtro')),
   );
+  const [subFiltroMedico, setSubFiltroMedico] = useState<SubFiltroAlertaMedica>('TODAS');
   const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
@@ -209,6 +212,9 @@ export const MiembrosPage: React.FC = () => {
   const seleccionarChip = useCallback(
     (nuevoChip: ChipFiltroMiembros) => {
       setChipActivo(nuevoChip);
+      if (nuevoChip !== 'ALERTA_MEDICA') {
+        setSubFiltroMedico('TODAS');
+      }
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev);
@@ -384,14 +390,24 @@ export const MiembrosPage: React.FC = () => {
     return mapa;
   }, [entregas]);
 
-  // Alertas médicas precalculadas por usuario
+  const entregasPorUsuarioLista = useMemo(() => {
+    const mapa = new Map<number, any[]>();
+    for (const ent of entregas) {
+      const lista = mapa.get(ent.usuarioId) || [];
+      lista.push(ent);
+      mapa.set(ent.usuarioId, lista);
+    }
+    return mapa;
+  }, [entregas]);
+
+  // Alertas médicas precalculadas por usuario (consolida todos los documentos del ciclo)
   const alertasPorUsuario = useMemo(() => {
     const mapa = new Map<number, ReturnType<typeof extraerInfoMedicaMiembro>>();
     for (const m of miembros) {
-      mapa.set(m.id, extraerInfoMedicaMiembro(m, entregasPorUsuario.get(m.id)));
+      mapa.set(m.id, extraerInfoMedicaMiembro(m, entregasPorUsuarioLista.get(m.id)));
     }
     return mapa;
-  }, [miembros, entregasPorUsuario]);
+  }, [miembros, entregasPorUsuarioLista]);
 
   const candidatosIds = useMemo(() => {
     return new Set(
@@ -588,8 +604,25 @@ export const MiembrosPage: React.FC = () => {
       if (chipActivo === 'PASE_SUGERIDO' && !candidatosIds.has(m.id)) {
         return false;
       }
-      if (chipActivo === 'ALERTA_MEDICA' && !alertasPorUsuario.get(m.id)?.tieneAlertas) {
-        return false;
+      if (chipActivo === 'ALERTA_MEDICA') {
+        const infoMed = alertasPorUsuario.get(m.id);
+        if (!infoMed?.tieneAlertas) return false;
+        if (subFiltroMedico === 'DIETA' && !infoMed.tieneDieta) return false;
+        if (subFiltroMedico === 'ALERGIA' && !infoMed.tieneAlergia) return false;
+        if (
+          subFiltroMedico === 'MEDICACION' &&
+          !infoMed.tomaMedicacion &&
+          !infoMed.tieneCondicionCronica
+        ) {
+          return false;
+        }
+        if (
+          subFiltroMedico === 'RESTRICCION' &&
+          !infoMed.tieneRestriccionFisica &&
+          !infoMed.tieneCud
+        ) {
+          return false;
+        }
       }
 
       const camadaMiembro = calcularCamada(m.fechaNacimiento);
@@ -711,6 +744,7 @@ export const MiembrosPage: React.FC = () => {
     seccionesFiltro,
     rolesFiltro,
     chipActivo,
+    subFiltroMedico,
     camadasFiltro,
     busqueda,
     entregasPorUsuario,
@@ -935,6 +969,14 @@ export const MiembrosPage: React.FC = () => {
         if (entrega?.estado === 'VALIDADO_FISICAMENTE') return 'Validada Físicamente';
         if (entrega) return 'Completada / Pendiente';
         return 'Sin Entregar';
+      },
+    },
+    {
+      header: 'Régimen Alimentario',
+      formatear: (m) => {
+        const info = alertasPorUsuario.get(m.id);
+        if (!info) return '';
+        return [...info.dietasLabels, info.dietaDetalle].filter(Boolean).join(' — ');
       },
     },
     {
@@ -1826,6 +1868,38 @@ export const MiembrosPage: React.FC = () => {
         )}
       </div>
 
+      {/* Sub-filtros de alerta médica / alimentación */}
+      {chipActivo === 'ALERTA_MEDICA' && (
+        <div className="flex flex-wrap items-center gap-2 s-card rounded-2xl px-4 py-2.5">
+          <span className="text-xs font-black uppercase tracking-wider text-ink-muted mr-1">
+            Categoría médica:
+          </span>
+          {(
+            [
+              { id: 'TODAS', label: 'Todas las alertas' },
+              { id: 'DIETA', label: 'Régimen / Dieta' },
+              { id: 'ALERGIA', label: 'Alergias' },
+              { id: 'MEDICACION', label: 'Medicación / Crónicas' },
+              { id: 'RESTRICCION', label: 'Restricciones / CUD' },
+            ] as const
+          ).map((sf) => (
+            <button
+              key={sf.id}
+              type="button"
+              onClick={() => setSubFiltroMedico(sf.id)}
+              aria-pressed={subFiltroMedico === sf.id}
+              className={`min-h-[34px] px-3 py-1 rounded-full text-xs font-bold border transition cursor-pointer ${
+                subFiltroMedico === sf.id
+                  ? 'bg-rose-600 text-white border-rose-600'
+                  : 'bg-paper-2 text-ink-2 border-rule hover:bg-paper-3'
+              }`}
+            >
+              {sf.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Solicitudes de pase pendientes entre secciones */}
       {puedeVerPases &&
         solicitudesPase.length > 0 &&
@@ -1992,6 +2066,7 @@ export const MiembrosPage: React.FC = () => {
               onClick={() => {
                 setBusqueda('');
                 seleccionarChip('TODOS');
+                setSubFiltroMedico('TODAS');
                 setSeccionesFiltro([]);
                 setRolesFiltro([]);
                 setCamadasFiltro([]);

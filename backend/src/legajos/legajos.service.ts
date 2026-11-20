@@ -12,7 +12,9 @@ import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
 import { anioActual, calcularEdad } from '../common/utils/fechas.util.js';
 import {
   CLAVES_FAMILIARES_CONTACTO_COMPARTIBLES,
+  extraerClavesPersistiblesEsquema,
   sanitizarJsonPlano,
+  validarDestinatarioPlantilla,
 } from '../common/utils/plantillas.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
@@ -35,31 +37,70 @@ export const CAMPOS_DATOS_FIJOS_PERMITIDOS = new Set([
   'menor_nacionalidad',
   'grupo_sanguineo',
   'factor_rh',
+  'peso_kg',
+  'talla_m',
   'alergias',
   'alergias_detalle',
+  'sufre_alergia',
+  'alergias_tipos',
+  'sufre_alergia_detalle',
   'enfermedades_cronicas',
   'enfermedades_cronicas_detalle',
+  'enfermedad_cronica',
+  'condiciones_medicas_tipos',
+  'enfermedad_cronica_detalle',
   'medicacion_habitual',
   'medicacion_habitual_detalle',
+  'toma_medicacion',
+  'medicacion_tipos',
+  'toma_medicacion_detalle',
   'tratamientos_actuales',
+  'requiere_tratamiento',
+  'requiere_tratamiento_detalle',
   'dieta_especial',
   'dieta_especial_detalle',
+  'regimen_dietario',
+  'regimen_dietario_tipos',
+  'regimen_dietario_detalle',
+  'tiene_cud',
+  'esta_anticoagulado',
+  'anticoagulado_droga',
+  'sit_cualquier_actividad_fisica',
+  'sit_actividad_fisica_no_especifique',
   'vacunas_completas',
   'observaciones_medicas',
   'telefono_urgencias_medicas',
+  'tel_emergencia_1',
+  'tel_emergencia_2',
   'medico_cabecera_nombre',
   'medico_cabecera_telefono',
   'emergencia_nombre',
   'emergencia_vinculo',
   'emergencia_telefono',
   'madre_nombres',
+  'madre_dni',
+  'madre_domicilio',
+  'madre_convive',
+  'madre_email',
   'madre_telefono',
   'madre_profesion',
+  'madre_estado_civil',
   'padre_nombres',
+  'padre_dni',
+  'padre_domicilio',
+  'padre_convive',
+  'padre_email',
   'padre_telefono',
   'padre_profesion',
+  'padre_estado_civil',
   'tutor_nombres',
+  'tutor_dni',
+  'tutor_domicilio',
+  'tutor_convive',
+  'tutor_email',
   'tutor_telefono',
+  'tutor_profesion',
+  'tutor_estado_civil',
   'tutor_vinculo',
 ]);
 
@@ -248,20 +289,12 @@ export class LegajosService {
 
     const edad = calcularEdad(usuario.fechaNacimiento);
 
-    if (plantilla.codigo.startsWith('LEGAJO_MENORES_') && edad >= 18) {
-      throw new BadRequestException(
-        'La plantilla de Menores es exclusiva para menores de 18 años. Debe completar la plantilla de Rovers o Educadores.',
-      );
-    }
-    if (plantilla.codigo.startsWith('LEGAJO_ROVERS_') && edad < 18) {
-      throw new BadRequestException(
-        'La plantilla Rover es exclusivamente para miembros mayores de edad.',
-      );
-    }
-    if (plantilla.codigo.startsWith('LEGAJO_EDUCADORES_') && edad < 18) {
-      throw new BadRequestException(
-        'La plantilla de Educadores es para dirigentes y educadores adultos.',
-      );
+    const errorDestinatario = validarDestinatarioPlantilla(plantilla, {
+      edad,
+      esEducador: usuario.tipoMiembro === 'EDUCADOR',
+    });
+    if (errorDestinatario) {
+      throw new BadRequestException(errorDestinatario);
     }
 
     // Sanitizar respuestas eliminando propiedades de prototipo recursivamente
@@ -346,13 +379,25 @@ export class LegajosService {
             },
           });
 
-      // Si se pidió actualizar datos fijos, sincronizar únicamente campos permitidos
+      // Si se pidió actualizar datos fijos, sincronizar campos permitidos y los declarados en el esquema
       if (dto.actualizarDatosFijos) {
+        const clavesPermitidas = extraerClavesPersistiblesEsquema(
+          plantilla.esquemaCamposJson,
+          CAMPOS_DATOS_FIJOS_PERMITIDOS,
+        );
         const datosActuales = (usuario.datosFijosJson ?? {}) as Record<string, unknown>;
         const filtrados: Record<string, unknown> = {};
         for (const [k, v] of Object.entries(respuestasSanitizadas)) {
-          if (CAMPOS_DATOS_FIJOS_PERMITIDOS.has(k)) {
-            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || v === null) {
+          if (clavesPermitidas.has(k)) {
+            const esArrayPlano =
+              Array.isArray(v) && v.every((x) => typeof x === 'string' || typeof x === 'number');
+            if (
+              typeof v === 'string' ||
+              typeof v === 'number' ||
+              typeof v === 'boolean' ||
+              v === null ||
+              esArrayPlano
+            ) {
               filtrados[k] = v;
             }
           }

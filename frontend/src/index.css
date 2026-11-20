@@ -11,6 +11,7 @@
   --color-brand-contrast: var(--color-brand-contrast);
   --color-brand-soft: var(--color-brand-soft);
   --color-brand-soft-ink: var(--color-brand-soft-ink);
+  --color-brand-ink: var(--color-brand-ink);
   --color-paper: var(--color-paper);
   --color-paper-2: var(--color-paper-2);
   --color-paper-3: var(--color-paper-3);
@@ -25,6 +26,7 @@
   --color-ink-muted: var(--color-ink-muted);
   --color-muted: var(--color-muted);
   --color-rule: var(--color-rule);
+  --color-rule-strong: var(--color-rule-strong);
   --color-accent: var(--color-accent);
   --color-accent-ink: var(--color-accent-ink);
   --color-focus: var(--color-focus);
@@ -157,7 +159,7 @@
 .s-input {
   background-color: var(--color-surface);
   color: var(--color-ink);
-  border: var(--s-border-width) solid var(--color-rule);
+  border: var(--s-border-width) solid var(--color-rule-strong);
   transition: border-color 160ms ease, box-shadow 180ms ease, background-color 160ms ease;
 }
 

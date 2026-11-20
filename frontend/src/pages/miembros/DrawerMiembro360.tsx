@@ -53,6 +53,7 @@ export const DrawerMiembro360: React.FC<DrawerMiembro360Props> = ({
       <ExpedienteMiembro360
         usuarioId={usuarioId}
         tabInicial={tabInicial}
+        enDrawer={true}
         onTabChange={setTabActual}
         onCerrar={onCerrar}
         onActualizado={onActualizado}

@@ -1,5 +1,9 @@
 import React from 'react';
-import { Users, Save, Trash2 } from 'lucide-react';
+import { Check, HeartPulse, Save, Trash2, Users, Utensils } from 'lucide-react';
+import {
+  OPCIONES_ALERGIA_ESTANDAR,
+  OPCIONES_DIETA_ESTANDAR,
+} from '../../lib/alertasMedicas';
 import { TrayectoriaMiembro } from './TrayectoriaMiembro';
 import { puedeDesvincularIntegrantePorAlcance } from '../../lib/permisos';
 
@@ -21,6 +25,9 @@ export interface FormDatosMiembro {
   obraSocial: string;
   telefonoUrgencias: string;
   alergias: string;
+  alergiasTipos: string[];
+  regimenDietarioTipos: string[];
+  regimenDietarioDetalle: string;
   activo: boolean;
 }
 
@@ -111,7 +118,6 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
     { key: 'telefonoUrgencias', label: 'Teléfono de Urgencias', editable: puedeEditarContacto, type: 'tel', placeholder: 'Alternativo para emergencias' },
     { key: 'domicilio', label: 'Domicilio', editable: puedeEditarContacto, placeholder: 'Calle y número' },
     { key: 'obraSocial', label: 'Obra Social / Prepaga', editable: puedeEditarContacto, placeholder: 'OSDE, Apross, etc.', full: true },
-    { key: 'alergias', label: 'Alergias o Cuidados Médicos', editable: puedeEditarContacto, placeholder: 'Alergias, medicación habitual o dieta especial', full: true, multiline: true },
   ];
 
   const claseInput =
@@ -208,6 +214,143 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
           );
         })}
       </div>
+
+      {/* Salud y Régimen Alimentario Rápido */}
+      {(puedeEditarContacto ||
+        formData.regimenDietarioTipos.length > 0 ||
+        formData.regimenDietarioDetalle ||
+        formData.alergiasTipos.length > 0 ||
+        formData.alergias) && (
+        <div className="p-4 rounded-2xl bg-paper-2 border border-rule space-y-3.5">
+          <div className="flex items-center gap-2">
+            <HeartPulse className="w-4 h-4 text-brand shrink-0" />
+            <span className="font-bold text-sm text-ink">
+              Salud y Régimen Alimentario Rápido
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <span className="text-xs font-bold text-ink-2 flex items-center gap-1.5">
+              <Utensils className="w-3.5 h-3.5 text-brand" />
+              <span>Régimen de comidas / Dieta</span>
+            </span>
+            {puedeEditarContacto ? (
+              <div className="flex flex-wrap gap-1.5">
+                {OPCIONES_DIETA_ESTANDAR.map((op) => {
+                  const activo = formData.regimenDietarioTipos.includes(op.value);
+                  return (
+                    <button
+                      key={op.value}
+                      type="button"
+                      onClick={() => {
+                        const next = activo
+                          ? formData.regimenDietarioTipos.filter((v) => v !== op.value)
+                          : [...formData.regimenDietarioTipos, op.value];
+                        setFormData({ ...formData, regimenDietarioTipos: next });
+                      }}
+                      className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
+                        activo
+                          ? 'bg-brand text-brand-contrast border-brand'
+                          : 'bg-surface text-ink-2 border-rule hover:border-brand/50'
+                      }`}
+                    >
+                      {activo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      <span>{op.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : formData.regimenDietarioTipos.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {formData.regimenDietarioTipos.map((v) => {
+                  const lbl = OPCIONES_DIETA_ESTANDAR.find((o) => o.value === v)?.label || v;
+                  return (
+                    <span
+                      key={v}
+                      className="px-2.5 py-1 rounded-lg bg-brand/10 text-brand text-xs font-bold border border-brand/25"
+                    >
+                      {lbl}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+            {puedeEditarContacto ? (
+              <input
+                type="text"
+                placeholder="Detalle de dieta u observaciones alimentarias..."
+                value={formData.regimenDietarioDetalle}
+                onChange={(e) =>
+                  setFormData({ ...formData, regimenDietarioDetalle: e.target.value })
+                }
+                className={claseInput}
+              />
+            ) : formData.regimenDietarioDetalle ? (
+              <p className="text-[14px] font-semibold text-ink">{formData.regimenDietarioDetalle}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-rule">
+            <span className="block text-xs font-bold text-ink-2">
+              Categorías de alergias y detalle médico
+            </span>
+            {puedeEditarContacto ? (
+              <div className="flex flex-wrap gap-1.5">
+                {OPCIONES_ALERGIA_ESTANDAR.map((op) => {
+                  const activo = formData.alergiasTipos.includes(op.value);
+                  return (
+                    <button
+                      key={op.value}
+                      type="button"
+                      onClick={() => {
+                        const next = activo
+                          ? formData.alergiasTipos.filter((v) => v !== op.value)
+                          : [...formData.alergiasTipos, op.value];
+                        setFormData({ ...formData, alergiasTipos: next });
+                      }}
+                      className={`min-h-[38px] px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer inline-flex items-center gap-1.5 ${
+                        activo
+                          ? 'bg-rose-600 text-white border-rose-600'
+                          : 'bg-surface text-ink-2 border-rule hover:border-rose-400'
+                      }`}
+                    >
+                      {activo && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                      <span>{op.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : formData.alergiasTipos.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {formData.alergiasTipos.map((v) => {
+                  const lbl = OPCIONES_ALERGIA_ESTANDAR.find((o) => o.value === v)?.label || v;
+                  return (
+                    <span
+                      key={v}
+                      className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800"
+                    >
+                      {lbl}
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+            {puedeEditarContacto ? (
+              <textarea
+                rows={2}
+                placeholder="Detalle de alergias o cuidados médicos..."
+                value={formData.alergias}
+                onChange={(e) => setFormData({ ...formData, alergias: e.target.value })}
+                className={claseInput}
+              />
+            ) : formData.alergias ? (
+              <p className="text-[14px] font-semibold text-ink whitespace-pre-wrap break-words">
+                {formData.alergias}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      )}
 
       {/* Grupo Familiar */}
       <div className="p-4 rounded-2xl bg-brand/10 border border-brand/30 space-y-3">

@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -25,10 +25,19 @@ import {
   ShoppingBag,
   Sparkles,
   Ticket,
+  Trash2,
+  UploadCloud,
   User,
   Users,
+  WifiOff,
 } from 'lucide-react';
 import { api } from '../../api/client';
+import {
+  eliminarBorradorLegajoLocal,
+  guardarBorradorLegajoLocal,
+  obtenerBorradorLegajoLocal,
+  type BorradorLegajoLocal,
+} from '../../core/offline/campamentoSync';
 import { useAuthStore } from '../../store/authStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
@@ -44,6 +53,7 @@ import {
   METODO_PAGO_LABELS,
   calcularEdad,
   esErrorOffline,
+  filtrarPlantillasParaMiembro,
   formatearFechaLargaUTC,
   formatearMoneda,
   obtenerCicloAnioActual,
@@ -99,6 +109,7 @@ export const MiEspacioPage: React.FC = () => {
 
   const cambiarTab = (nuevoTab: TabMiEspacio) => {
     if (nuevoTab === tabActiva) return;
+    if (tabActiva === 'legajo' && formDirty && !confirmarDescartarCambios()) return;
     setTabActiva(nuevoTab);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -112,14 +123,40 @@ export const MiEspacioPage: React.FC = () => {
   };
 
   // Estados de Legajo + Cuotas
+  const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
+  const [entregasMiembro, setEntregasMiembro] = useState<any[]>([]);
   const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<any | null>(null);
+  const plantillaSeleccionadaIdRef = useRef<number | null>(null);
   const [precarga, setPrecarga] = useState<any | null>(null);
+  const [borradorLocal, setBorradorLocal] = useState<BorradorLegajoLocal | null>(null);
+  const [sincronizandoBorrador, setSincronizandoBorrador] = useState(false);
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [guardandoLegajo, setGuardandoLegajo] = useState(false);
   const [generandoVistaPrevia, setGenerandoVistaPrevia] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
+  const [formDirty, setFormDirty] = useState(false);
+  const [formResetNonce, setFormResetNonce] = useState(0);
+  const obtenerValoresRef = useRef<(() => Record<string, unknown>) | null>(null);
+  const datosPreviewVivoRef = useRef<Record<string, unknown> | undefined>(undefined);
+
+  const confirmarDescartarCambios = () => {
+    if (!formDirty) return true;
+    return window.confirm(
+      'Tenés cambios sin guardar en tu legajo. ¿Querés continuar y descartarlos?',
+    );
+  };
+
+  useEffect(() => {
+    if (!formDirty || tabActiva !== 'legajo') return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [formDirty, tabActiva]);
 
   // Estados de Eventos y Pedidos (SIN auto-selección; sincronizado con ?evento= para soportar botón Atrás)
   const [misPedidos, setMisPedidos] = useState<any[]>([]);
@@ -220,7 +257,7 @@ export const MiEspacioPage: React.FC = () => {
   const [verNueva, setVerNueva] = useState(false);
   const [verConfirmar, setVerConfirmar] = useState(false);
 
-  const inicializarMiEspacio = useCallback(async () => {
+  const inicializarMiEspacio = useCallback(async (opts?: { silencioso?: boolean }) => {
     const usuarioActual = useAuthStore.getState().usuario;
     const asignacionesActuales = useAuthStore.getState().asignaciones;
     const targetUserId = usuarioActual?.id;
@@ -231,7 +268,9 @@ export const MiEspacioPage: React.FC = () => {
       return;
     }
 
-    setCargandoInicial(true);
+    if (!opts?.silencioso) {
+      setCargandoInicial(true);
+    }
     setErrorCarga(null);
 
     try {
@@ -240,11 +279,14 @@ export const MiEspacioPage: React.FC = () => {
         .then((res) => setEstadoCuenta(res.data))
         .catch(() => {});
 
-      const [resPlantillas, resMiembro] = await Promise.all([
+      const [resPlantillas, resMiembro, resEntregas] = await Promise.all([
         api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({
           data: [],
         })),
         api.get(`/miembros/${targetUserId}`).catch(() => ({ data: null })),
+        api
+          .get(`/legajos/entregas?usuarioId=${targetUserId}&cicloAnio=${obtenerCicloAnioActual()}`)
+          .catch(() => ({ data: [] })),
       ]);
 
       let listaPlantillas: any[] = Array.isArray(resPlantillas.data) ? resPlantillas.data : [];
@@ -253,9 +295,12 @@ export const MiEspacioPage: React.FC = () => {
         listaPlantillas = Array.isArray(resTodas.data) ? resTodas.data : [];
       }
 
+      setEntregasMiembro(Array.isArray(resEntregas.data) ? resEntregas.data : []);
       const perfilMiembro = resMiembro.data || usuarioActual;
 
       if (listaPlantillas.length === 0) {
+        setPlantillasDisponibles([]);
+        setBorradorLocal(null);
         if (!useOfflineStore.getState().isOnline) {
           setErrorCarga(
             'Estás sin conexión y aún no se guardaron los formularios en este dispositivo.',
@@ -267,9 +312,20 @@ export const MiEspacioPage: React.FC = () => {
         return;
       }
 
+      const aplicables = filtrarPlantillasParaMiembro(
+        listaPlantillas,
+        perfilMiembro,
+        asignacionesActuales,
+      );
+      const disponibles = aplicables.length > 0 ? aplicables : listaPlantillas;
+      setPlantillasDisponibles(disponibles);
+
+      const idPrevio = plantillaSeleccionadaIdRef.current;
       const plantilla =
-        seleccionarPlantillaPorMiembro(listaPlantillas, perfilMiembro, asignacionesActuales) ||
-        listaPlantillas[0];
+        (idPrevio ? disponibles.find((p) => p.id === idPrevio) : null) ||
+        seleccionarPlantillaPorMiembro(disponibles, perfilMiembro, asignacionesActuales) ||
+        disponibles[0];
+      plantillaSeleccionadaIdRef.current = plantilla.id;
       setPlantillaSeleccionada(plantilla);
 
       const ciclo = plantilla.cicloAnio || obtenerCicloAnioActual();
@@ -287,7 +343,17 @@ export const MiEspacioPage: React.FC = () => {
           datosFamiliaresSugeridos: {},
         };
       }
+      const borradorGuardado = await obtenerBorradorLegajoLocal({
+        ownerUserId: usuarioActual.id,
+        usuarioId: targetUserId,
+        plantillaId: plantilla.id,
+        cicloAnio: ciclo,
+      });
       setPrecarga(datosPrecarga);
+      setBorradorLocal(borradorGuardado);
+      if (!opts?.silencioso) {
+        setFormDirty(false);
+      }
     } catch (err) {
       if (esErrorOffline(err)) {
         if (usuarioActual) {
@@ -387,6 +453,7 @@ export const MiEspacioPage: React.FC = () => {
       URL.revokeObjectURL(pdfPreviewUrl);
       setPdfPreviewUrl(null);
     }
+    datosPreviewVivoRef.current = undefined;
   };
 
   const obtenerDatosUsuarioPdf = () => ({
@@ -401,22 +468,33 @@ export const MiEspacioPage: React.FC = () => {
     telefonoContacto: precarga?.usuario?.telefonoContacto,
   });
 
-  const valoresFormularioIniciales = {
-    protagonista_telefono: precarga?.usuario?.telefonoContacto || '',
-    protagonista_domicilio:
-      (precarga?.usuario?.datosFijosJson as any)?.protagonista_domicilio ||
-      (precarga?.usuario?.datosFijosJson as any)?.domicilio ||
-      '',
-    ...(precarga?.datosFamiliaresSugeridos || {}),
-    ...(precarga?.usuario?.datosFijosJson || {}),
-    ...(precarga?.ultimaEntrega?.respuestasSnapshotJson || {}),
-  };
+  const valoresFormularioIniciales = useMemo(
+    () => ({
+      protagonista_telefono: precarga?.usuario?.telefonoContacto || '',
+      protagonista_domicilio:
+        (precarga?.usuario?.datosFijosJson as any)?.protagonista_domicilio ||
+        (precarga?.usuario?.datosFijosJson as any)?.domicilio ||
+        '',
+      ...(precarga?.datosFamiliaresSugeridos || {}),
+      ...(precarga?.usuario?.datosFijosJson || {}),
+      ...(precarga?.ultimaEntrega?.respuestasSnapshotJson || {}),
+      ...(borradorLocal?.respuestas || {}),
+    }),
+    [precarga, borradorLocal],
+  );
 
-  const generarBytesPdfPropio = async (): Promise<Uint8Array> => {
+  const generarBytesPdfPropio = async (
+    respuestasCustom?: Record<string, unknown>,
+  ): Promise<Uint8Array> => {
     const entrega = precarga?.ultimaEntrega;
     const mapeo: MapeoPdf = plantillaSeleccionada?.mapeoPdfJson || { pdfBaseUrl: '', campos: {} };
     const usuarioParaPdf = obtenerDatosUsuarioPdf();
-    const respuestas = entrega?.respuestasSnapshotJson || valoresFormularioIniciales;
+    const respuestas =
+      respuestasCustom ||
+      obtenerValoresRef.current?.() ||
+      borradorLocal?.respuestas ||
+      entrega?.respuestasSnapshotJson ||
+      valoresFormularioIniciales;
 
     return await generarFichaPdf(
       mapeo,
@@ -424,14 +502,16 @@ export const MiEspacioPage: React.FC = () => {
       entrega?.hashVerificacion || `FICHA-${usuarioParaPdf.dni}-${obtenerCicloAnioActual()}`,
       usuarioParaPdf,
       entrega?.versionImpresion || 1,
+      plantillaSeleccionada?.esquemaCamposJson,
     );
   };
 
-  const handleVerCopiaPdf = async () => {
+  const handleVerCopiaPdf = async (datosActuales?: Record<string, unknown>) => {
     if (!plantillaSeleccionada) return;
     setGenerandoVistaPrevia(true);
     try {
-      const pdfBytes = await generarBytesPdfPropio();
+      datosPreviewVivoRef.current = datosActuales;
+      const pdfBytes = await generarBytesPdfPropio(datosActuales);
       if (pdfPreviewUrl) URL.revokeObjectURL(pdfPreviewUrl);
       setPdfPreviewUrl(crearUrlPdfBlob(pdfBytes));
     } catch (err) {
@@ -441,12 +521,13 @@ export const MiEspacioPage: React.FC = () => {
     }
   };
 
-  const handleDescargarCopiaPdf = async () => {
+  const handleDescargarCopiaPdf = async (datosCustom?: Record<string, unknown>) => {
     if (!plantillaSeleccionada) return;
     setGuardandoLegajo(true);
     try {
       const usuarioParaPdf = obtenerDatosUsuarioPdf();
-      const pdfBytes = await generarBytesPdfPropio();
+      const vivos = datosCustom || obtenerValoresRef.current?.();
+      const pdfBytes = await generarBytesPdfPropio(vivos);
       descargarPdfBlob(pdfBytes, `Ficha_${usuarioParaPdf.apellido}_${usuarioParaPdf.nombre}.pdf`);
       mostrarToast('PDF descargado listo para imprimir.', 'exito');
     } catch (err) {
@@ -456,30 +537,144 @@ export const MiEspacioPage: React.FC = () => {
     }
   };
 
-  const handleSubmitFormulario = async (
-    datos: Record<string, unknown>,
-    finalizarParaFirma: boolean,
-  ) => {
+  const handleCambiarDocumento = async (p: any) => {
+    const targetUserId = precarga?.usuario?.id || usuario?.id;
+    if (!targetUserId || !p || p.id === plantillaSeleccionada?.id) return;
+    if (!confirmarDescartarCambios()) return;
+    plantillaSeleccionadaIdRef.current = p.id;
+    setPlantillaSeleccionada(p);
+    setFormDirty(false);
+    const ciclo = p.cicloAnio || obtenerCicloAnioActual();
+    try {
+      const resPrecarga = await api.get(
+        `/legajos/miembro/${targetUserId}/plantilla/${p.id}/precarga?cicloAnio=${ciclo}`,
+      );
+      setPrecarga(resPrecarga.data);
+    } catch {
+      const ent = entregasMiembro.find((e) => e.plantillaId === p.id) || null;
+      setPrecarga((prev: any) => ({
+        ...(prev || { usuario: usuario, datosFamiliaresSugeridos: {} }),
+        plantilla: p,
+        ultimaEntrega: ent,
+      }));
+    }
+    const borradorGuardado = await obtenerBorradorLegajoLocal({
+      ownerUserId: usuario?.id,
+      usuarioId: targetUserId,
+      plantillaId: p.id,
+      cicloAnio: ciclo,
+    });
+    setBorradorLocal(borradorGuardado);
+  };
+
+  const handleSincronizarBorradorLocal = async () => {
+    if (!borradorLocal || !plantillaSeleccionada) return;
     if (!isOnline) {
       mostrarToast(
-        'Estás sin conexión. Conectate a internet para enviar tu legajo.',
+        'Seguís sin conexión a internet. Apenas recuperes señal vas a poder sincronizar el borrador.',
         'advertencia',
       );
       return;
     }
+    setSincronizandoBorrador(true);
+    try {
+      await api.post('/legajos/entregas', {
+        usuarioId: borradorLocal.usuarioId,
+        plantillaId: borradorLocal.plantillaId,
+        cicloAnio: borradorLocal.cicloAnio,
+        respuestas: borradorLocal.respuestas,
+        finalizarParaFirma: false,
+        actualizarDatosFijos: true,
+      });
+      await eliminarBorradorLegajoLocal({
+        ownerUserId: usuario?.id,
+        usuarioId: borradorLocal.usuarioId,
+        plantillaId: borradorLocal.plantillaId,
+        cicloAnio: borradorLocal.cicloAnio,
+      });
+      setBorradorLocal(null);
+      setFormDirty(false);
+      mostrarToast('Borrador local sincronizado con el servidor.', 'exito');
+      await inicializarMiEspacio({ silencioso: true });
+    } catch (err) {
+      mostrarToast(traducirErrorAmigable(err, 'No se pudo sincronizar el borrador local.'), 'error');
+    } finally {
+      setSincronizandoBorrador(false);
+    }
+  };
+
+  const handleDescartarBorradorLocal = async () => {
+    if (!borradorLocal) return;
+    await eliminarBorradorLegajoLocal({
+      ownerUserId: usuario?.id,
+      usuarioId: borradorLocal.usuarioId,
+      plantillaId: borradorLocal.plantillaId,
+      cicloAnio: borradorLocal.cicloAnio,
+    });
+    setBorradorLocal(null);
+    setFormDirty(false);
+    setFormResetNonce((k) => k + 1);
+    mostrarToast('Borrador local descartado.', 'info');
+  };
+
+  const handleSubmitFormulario = async (
+    datos: Record<string, unknown>,
+    finalizarParaFirma: boolean,
+  ) => {
     const targetUserId = precarga?.usuario?.id || usuario?.id;
     if (!targetUserId || !plantillaSeleccionada) return;
-    setGuardandoLegajo(true);
+    const cicloPlantilla = plantillaSeleccionada.cicloAnio || obtenerCicloAnioActual();
 
+    if (!isOnline || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      setGuardandoLegajo(true);
+      try {
+        const guardado = await guardarBorradorLegajoLocal({
+          ownerUserId: usuario?.id,
+          usuarioId: targetUserId,
+          plantillaId: plantillaSeleccionada.id,
+          cicloAnio: cicloPlantilla,
+          respuestas: datos,
+        });
+        setBorradorLocal(guardado);
+        setFormDirty(false);
+        if (finalizarParaFirma) {
+          mostrarToast(
+            'Avance guardado en este dispositivo (pendiente de sincronizar). Necesitás señal para emitir el PDF oficial con QR.',
+            'advertencia',
+            6000,
+          );
+        } else {
+          mostrarToast(
+            'Sin conexión: borrador guardado localmente (pendiente de sincronizar).',
+            'info',
+            5000,
+          );
+        }
+      } finally {
+        setGuardandoLegajo(false);
+      }
+      return;
+    }
+
+    setGuardandoLegajo(true);
     try {
       const res = await api.post('/legajos/entregas', {
         usuarioId: targetUserId,
         plantillaId: plantillaSeleccionada.id,
-        cicloAnio: plantillaSeleccionada.cicloAnio || obtenerCicloAnioActual(),
+        cicloAnio: cicloPlantilla,
         respuestas: datos,
         finalizarParaFirma,
         actualizarDatosFijos: true,
       });
+
+      await eliminarBorradorLegajoLocal({
+        ownerUserId: usuario?.id,
+        usuarioId: targetUserId,
+        plantillaId: plantillaSeleccionada.id,
+        cicloAnio: cicloPlantilla,
+      });
+      setBorradorLocal(null);
+      setFormDirty(false);
 
       const entrega = res.data;
 
@@ -492,6 +687,7 @@ export const MiEspacioPage: React.FC = () => {
           entrega.hashVerificacion,
           usuarioParaPdf,
           entrega.versionImpresion,
+          plantillaSeleccionada.esquemaCamposJson,
         );
         descargarPdfBlob(pdfBytes, `Ficha_${usuarioParaPdf.apellido}_${usuarioParaPdf.nombre}.pdf`);
         mostrarToast('¡Listo! Imprimí y entregá el papel firmado a tu educador.', 'exito');
@@ -499,9 +695,27 @@ export const MiEspacioPage: React.FC = () => {
         mostrarToast('Avance guardado.', 'exito');
       }
 
-      await inicializarMiEspacio();
+      await inicializarMiEspacio({ silencioso: true });
     } catch (err) {
-      mostrarToast(traducirErrorAmigable(err, 'No se pudo guardar el formulario.'), 'error');
+      if (esErrorOffline(err)) {
+        const guardado = await guardarBorradorLegajoLocal({
+          ownerUserId: usuario?.id,
+          usuarioId: targetUserId,
+          plantillaId: plantillaSeleccionada.id,
+          cicloAnio: cicloPlantilla,
+          respuestas: datos,
+        });
+        setBorradorLocal(guardado);
+        setFormDirty(false);
+        mostrarToast(
+          'Sin señal: tu avance quedó guardado localmente (pendiente de sincronizar).',
+          'advertencia',
+          5000,
+        );
+      } else {
+        mostrarToast(traducirErrorAmigable(err, 'No se pudo guardar el formulario.'), 'error');
+        throw err;
+      }
     } finally {
       setGuardandoLegajo(false);
     }
@@ -703,21 +917,21 @@ export const MiEspacioPage: React.FC = () => {
             <div className="flex items-center gap-2.5 shrink-0">
               <button
                 type="button"
-                onClick={handleVerCopiaPdf}
+                onClick={() => void handleVerCopiaPdf()}
                 disabled={generandoVistaPrevia}
                 className="s-btn-sec s-touch flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {generandoVistaPrevia ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Eye className="w-4 h-4 text-brand" />
+                  <Eye className="w-4 h-4 text-brand-ink" />
                 )}
                 <span>Ver Ficha</span>
               </button>
 
               <button
                 type="button"
-                onClick={handleDescargarCopiaPdf}
+                onClick={() => void handleDescargarCopiaPdf()}
                 disabled={guardandoLegajo}
                 className="s-btn-brand s-touch flex-1 sm:flex-initial px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
@@ -758,7 +972,7 @@ export const MiEspacioPage: React.FC = () => {
               <p className="text-base font-bold text-ink">{errorCarga}</p>
               <button
                 type="button"
-                onClick={inicializarMiEspacio}
+                onClick={() => void inicializarMiEspacio()}
                 className="s-btn-brand s-touch px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4" />
@@ -766,12 +980,93 @@ export const MiEspacioPage: React.FC = () => {
               </button>
             </div>
           ) : plantillaSeleccionada && precarga ? (
-            <DynamicFormRenderer
-              esquema={plantillaSeleccionada.esquemaCamposJson as EsquemaCampos}
-              valoresIniciales={valoresFormularioIniciales}
-              onSubmit={handleSubmitFormulario}
-              cargando={guardandoLegajo}
-            />
+            <div className="space-y-4">
+              {borradorLocal && (
+                <div className="s-badge-warn rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-2.5 text-[13px] leading-relaxed">
+                    <WifiOff className="w-4 h-4 shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block">Borrador local pendiente de sincronizar</strong>
+                      <span>
+                        {isOnline
+                          ? 'Tenés cambios guardados en este dispositivo sin conexión. Sincronizalos para enviarlos.'
+                          : 'Guardado en este dispositivo sin señal. Apenas recuperes conexión vas a poder sincronizarlo.'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {isOnline && (
+                      <button
+                        type="button"
+                        disabled={sincronizandoBorrador}
+                        onClick={() => void handleSincronizarBorradorLocal()}
+                        className="s-btn-brand min-h-[38px] px-3.5 py-2 rounded-xl text-[13px] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <UploadCloud className="w-4 h-4" />
+                        <span>Sincronizar ahora</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={sincronizandoBorrador}
+                      onClick={() => void handleDescartarBorradorLocal()}
+                      className="s-btn-sec min-h-[38px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Descartar</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {plantillasDisponibles.length > 1 && (
+                <div className="s-card rounded-2xl p-4 space-y-2.5">
+                  <span className="text-xs font-bold uppercase tracking-wide text-ink-muted block">
+                    Documentos asignados ({plantillasDisponibles.length})
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {plantillasDisponibles.map((p) => {
+                      const activa = p.id === plantillaSeleccionada.id;
+                      const ent = entregasMiembro.find((e) => e.plantillaId === p.id);
+                      const est = ent?.estado || 'SIN_FICHA';
+                      const estCfg = ESTADO_FICHA_CONFIG[est] || ESTADO_FICHA_CONFIG.SIN_FICHA;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => void handleCambiarDocumento(p)}
+                          className={`min-h-[42px] px-3.5 py-2 rounded-xl border text-left transition cursor-pointer flex items-center gap-2 ${
+                            activa
+                              ? 'bg-brand text-brand-contrast border-brand font-bold'
+                              : 'bg-paper-2 text-ink border-rule hover:border-brand/50 font-semibold'
+                          }`}
+                        >
+                          <span className="text-[13px] truncate max-w-[220px]">{p.titulo}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${
+                              activa ? 'bg-surface text-ink border-transparent' : estCfg.badgeClass
+                            }`}
+                          >
+                            {estCfg.shortLabel}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <DynamicFormRenderer
+                key={`${plantillaSeleccionada.id}-${formResetNonce}`}
+                esquema={plantillaSeleccionada.esquemaCamposJson as EsquemaCampos}
+                valoresIniciales={valoresFormularioIniciales}
+                onSubmit={handleSubmitFormulario}
+                onPreviewPdf={(datos) => void handleVerCopiaPdf(datos)}
+                onDirtyChange={setFormDirty}
+                obtenerValoresRef={obtenerValoresRef}
+                cargando={guardandoLegajo || generandoVistaPrevia}
+              />
+            </div>
           ) : null}
         </div>
       )}
@@ -1680,7 +1975,11 @@ export const MiEspacioPage: React.FC = () => {
         abierto={Boolean(pdfPreviewUrl)}
         onCerrar={cerrarVistaPreviaPdf}
         titulo={`Vista Previa: ${apellidoVisible}, ${nombreVisible}`}
-        subtitulo={plantillaSeleccionada?.nombre || `Planilla Oficial ${cicloActual}`}
+        subtitulo={
+          plantillaSeleccionada?.titulo ||
+          plantillaSeleccionada?.nombre ||
+          `Planilla Oficial ${cicloActual}`
+        }
         mode="sheet"
         allowFullscreen={true}
         maxWidthClass="sm:max-w-4xl"
@@ -1697,10 +1996,14 @@ export const MiEspacioPage: React.FC = () => {
             <PdfViewerModal
               url={pdfPreviewUrl}
               titulo={`Vista Previa: ${apellidoVisible}, ${nombreVisible}`}
-              subtitulo={plantillaSeleccionada?.nombre || `Planilla Oficial ${cicloActual}`}
+              subtitulo={
+                plantillaSeleccionada?.titulo ||
+                plantillaSeleccionada?.nombre ||
+                `Planilla Oficial ${cicloActual}`
+              }
               embedded={true}
               onCerrar={cerrarVistaPreviaPdf}
-              onDescargar={handleDescargarCopiaPdf}
+              onDescargar={() => void handleDescargarCopiaPdf(datosPreviewVivoRef.current)}
             />
           </Suspense>
         )}

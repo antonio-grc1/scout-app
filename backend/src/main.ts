@@ -1,10 +1,13 @@
 import { NestFactory } from '@nestjs/core';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module.js';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter.js';
 import { env } from './config/env.js';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(json({ limit: '10mb' }));
+  app.use(urlencoded({ extended: true, limit: '10mb' }));
   app.setGlobalPrefix('api');
   app.useGlobalFilters(new PrismaExceptionFilter());
   const normalizarOrigen = (o: string) => o.trim().replace(/\/+$/, '');
