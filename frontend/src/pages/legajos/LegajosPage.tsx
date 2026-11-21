@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -697,7 +697,11 @@ export const LegajosPage: React.FC = () => {
     }
   };
 
+  const generandoPdfRef = useRef(false);
   const handleVerPdfMiembro = async (miembro: any, entrega: any) => {
+    if (generandoPdfRef.current) return; // evita doble toque mientras se genera
+    generandoPdfRef.current = true;
+    mostrarToast('Generando PDF…', 'exito');
     try {
       const plantilla =
         plantillas.find((p) => p.id === entrega?.plantillaId) ||
@@ -727,6 +731,8 @@ export const LegajosPage: React.FC = () => {
       setPdfPreviewUrl(crearUrlPdfBlob(bytes));
     } catch (err) {
       mostrarToast(traducirErrorAmigable(err, 'No se pudo generar el PDF.'), 'error');
+    } finally {
+      generandoPdfRef.current = false;
     }
   };
 

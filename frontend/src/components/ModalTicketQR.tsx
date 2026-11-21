@@ -292,7 +292,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
               <div
                 className="relative group cursor-pointer"
                 onClick={entrarPantallaCompleta}
-                title="Hacé clic para ver la entrada en pantalla completa"
+                title="Tocá para ver la entrada en pantalla completa"
               >
                 <img
                   src={qrUrl}

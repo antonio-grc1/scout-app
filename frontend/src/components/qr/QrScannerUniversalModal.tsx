@@ -1129,7 +1129,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           )}
 
           {exito && (
-            <div className="s-badge-ok rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
+            <div role="status" className="s-badge-ok rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{exito}</span>
             </div>

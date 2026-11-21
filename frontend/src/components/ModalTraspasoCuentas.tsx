@@ -264,6 +264,12 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
               </div>
             </div>
 
+            {cuentasActivas.length < 2 && (
+              <p role="note" className="text-[13px] font-semibold text-ink-muted">
+                Para traspasar necesitás al menos dos cuentas activas. Creá otra cuenta desde Caja, Bancos y Gastos.
+              </p>
+            )}
+
             {/* Advertencia de saldo si aplica */}
             {saldoInsuficiente && (
               <div

@@ -116,7 +116,17 @@ export function useHtml5QrScanner({
           if (cancelado) return;
           console.warn('No se pudo acceder a la cámara:', err);
           scannerRef.current = null;
-          setErrorCamara(mensajeErrorCamara);
+          const nombreError = String((err as { name?: string } | null)?.name ?? err ?? '');
+          const contextoInseguro = typeof window !== 'undefined' && window.isSecureContext === false;
+          setErrorCamara(
+            contextoInseguro
+              ? 'La cámara solo funciona en una conexión segura (https). Usá la carga manual.'
+              : /NotAllowed|Permission/i.test(nombreError)
+                ? 'Permiso de cámara denegado. Habilitalo en los ajustes del navegador o usá la carga manual.'
+                : /NotFound|Overconstrained|DevicesNotFound/i.test(nombreError)
+                  ? 'No se encontró una cámara en este dispositivo. Usá la carga manual.'
+                  : mensajeErrorCamara,
+          );
           onErrorCamaraRef.current?.();
         } finally {
           if (!cancelado) {

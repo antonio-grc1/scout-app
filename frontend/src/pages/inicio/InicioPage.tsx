@@ -875,7 +875,9 @@ export const InicioPage: React.FC = () => {
                   <span className="truncate">
                     Total: {formatearMoneda(statsGestion.deudaAcumulada)}
                   </span>
-                  <span className="font-bold text-brand shrink-0">Cobrar →</span>
+                  {statsGestion.miembrosConDeuda > 0 && (
+                    <span className="font-bold text-brand shrink-0">Cobrar →</span>
+                  )}
                 </div>
               </Link>
             )}

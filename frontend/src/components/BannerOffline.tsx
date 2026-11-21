@@ -29,7 +29,7 @@ export const BannerOffline: React.FC = () => {
     const timestampEfectivo = lastCachedAt || obtenerUltimoTimestampCache();
     const textoFecha = timestampEfectivo
       ? formatearFechaHora(new Date(timestampEfectivo).toISOString())
-      : formatearFechaHora(new Date().toISOString());
+      : null;
 
     return (
       <div
@@ -39,7 +39,7 @@ export const BannerOffline: React.FC = () => {
       >
         <WifiOff className="w-4 h-4 shrink-0" aria-hidden="true" />
         <span className="truncate">
-          <strong>Sin conexión:</strong> mostrando los últimos datos guardados ({textoFecha}).
+          <strong>Sin conexión:</strong> mostrando los últimos datos guardados{textoFecha ? ` (${textoFecha})` : ''}.
         </span>
       </div>
     );

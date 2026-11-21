@@ -1295,7 +1295,7 @@ export const MiEspacioPage: React.FC = () => {
                         <span className="font-bold text-ink block truncate">{conceptosTexto}</span>
                         <span className="text-xs text-ink-muted">
                           {formatearFecha(pago.fechaPago)} ·{' '}
-                          {METODO_PAGO_LABELS[pago.metodoPago] || 'Efectivo'}
+                          {METODO_PAGO_LABELS[pago.metodoPago] || pago.metodoPago || 'Sin especificar'}
                         </span>
                       </div>
                       <span className="font-extrabold text-ink s-tabular shrink-0">
@@ -1541,7 +1541,7 @@ export const MiEspacioPage: React.FC = () => {
                   <ShoppingBag className="w-9 h-9 text-ink-muted mx-auto" />
                   <p className="text-sm font-medium text-ink-muted max-w-sm mx-auto">
                     {eventoSeleccionado.estado === 'PUBLICADO'
-                      ? 'Aún no registraste ventas para este evento. Hacé clic en "Cargar Nueva Venta" para sumar ganancia a tu saldo.'
+                      ? 'Aún no registraste ventas para este evento. Tocá "Cargar Nueva Venta" para sumar ganancia a tu saldo.'
                       : 'No tenés pedidos registrados en este evento finalizado.'}
                   </p>
                 </div>

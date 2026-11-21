@@ -167,7 +167,7 @@ export const Login: React.FC = () => {
                   </p>
                 </div>
 
-                {error && (
+                {error && rateLimitSecs === 0 && (
                   <div
                     role="alert"
                     className="s-badge-err p-3.5 rounded-xl text-sm font-semibold flex items-center gap-2"
@@ -282,7 +282,7 @@ export const Login: React.FC = () => {
                         setError(null);
                         setMensajeRecupero(null);
                       }}
-                      className="text-sm font-bold text-brand hover:underline cursor-pointer"
+                      className="min-h-[44px] inline-flex items-center text-sm font-bold text-brand hover:underline cursor-pointer"
                     >
                       ¿Olvidaste tu contraseña?
                     </button>
