@@ -376,9 +376,14 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
   const [paginaActual, setPaginaActual] = useState(1);
   const [cargandoPreview, setCargandoPreview] = useState(false);
   const [previewNonce, setPreviewNonce] = useState(0);
+  // B6-14: "foto" del contenido editable al abrir (o al elegir el punto de partida) para
+  // avisar si se cierra con cambios. Se toma en el render posterior al reseteo de estado.
+  const [baselineNonce, setBaselineNonce] = useState(0);
+  const baselineRef = useRef<{ nonce: number; firma: string }>({ nonce: -1, firma: '' });
 
   useEffect(() => {
     if (!abierto) return;
+    setBaselineNonce((n) => n + 1);
     const anioActual = obtenerCicloAnioActual();
 
     if (modoCrear && plantillaBaseDuplicar) {
@@ -486,6 +491,48 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
     setTabBuilder('portada');
     setMostrarPickerInicial(false);
     setPreviewNonce((n) => n + 1);
+    setBaselineNonce((n) => n + 1);
+  };
+
+  const firmaContenido = useMemo(
+    () =>
+      JSON.stringify([
+        tituloDoc,
+        versionDoc,
+        cicloAnioDoc,
+        activaDoc,
+        destinatarioDoc,
+        esPrincipalDoc,
+        modoDocumento,
+        esquema,
+        // El PDF subido puede pesar varios MB: se compara por largo para no serializarlo en cada render.
+        { ...mapeo, pdfBaseDataUrl: mapeo.pdfBaseDataUrl?.length ?? 0 },
+      ]),
+    [tituloDoc, versionDoc, cicloAnioDoc, activaDoc, destinatarioDoc, esPrincipalDoc, modoDocumento, esquema, mapeo],
+  );
+
+  useEffect(() => {
+    if (baselineRef.current.nonce !== baselineNonce) {
+      baselineRef.current = { nonce: baselineNonce, firma: firmaContenido };
+    }
+  }, [baselineNonce, firmaContenido]);
+
+  const cerrarEditor = () => {
+    if (guardando) return;
+    const hayCambios = !mostrarPickerInicial && firmaContenido !== baselineRef.current.firma;
+    if (!hayCambios) {
+      onCerrar();
+      return;
+    }
+    pedirConfirmacion(
+      {
+        titulo: 'Cambios sin guardar',
+        mensaje: 'Hiciste cambios en este documento que todavía no guardaste. Si cerrás, se pierden.',
+        textoConfirmar: 'Descartar cambios',
+        tipoImpacto: 'warn',
+      },
+      onCerrar,
+    );
   };
 
   const construirRespuestasEjemplo = useCallback((esq: EsquemaCampos): Record<string, unknown> => {
@@ -1139,7 +1186,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
     {dialogoConfirmacion}
     <Drawer
       abierto={abierto}
-      onCerrar={onCerrar}
+      onCerrar={cerrarEditor}
       titulo={
         mostrarPickerInicial
           ? 'Crear Nuevo Documento'
@@ -1160,7 +1207,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
       bloqueado={guardando}
       footer={
         mostrarPickerInicial ? (
-          <Button type="button" variant="secondary" onClick={onCerrar}>
+          <Button type="button" variant="secondary" onClick={cerrarEditor}>
             Cancelar
           </Button>
         ) : (
@@ -1175,7 +1222,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
               Abrir PDF en pestaña
             </Button>
             <div className="flex-1" />
-            <Button type="button" variant="secondary" onClick={onCerrar} disabled={guardando}>
+            <Button type="button" variant="secondary" onClick={cerrarEditor} disabled={guardando}>
               Cancelar
             </Button>
             <Button

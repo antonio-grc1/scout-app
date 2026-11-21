@@ -126,10 +126,8 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
       onCerrar();
     } catch (err: any) {
       const msg = traducirErrorAmigable(err, 'No se pudo realizar el traspaso entre cuentas.');
+      // El error ya se muestra dentro del modal (que sigue abierto): sin toast duplicado.
       setError(msg);
-      if (onToast) {
-        onToast(msg, 'error');
-      }
     } finally {
       setEnviando(false);
     }

@@ -17,6 +17,7 @@ import { CambiarClave } from './pages/CambiarClave';
 import { InicioPage } from './pages/inicio/InicioPage';
 import { AppShell } from './components/layout/AppShell';
 import { ToastGlobal } from './components/ui/ToastGlobal';
+import { DialogoDescartarCambios } from './components/DialogoDescartarCambios';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { BannerOffline } from './components/BannerOffline';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -328,6 +329,7 @@ export function App() {
             </Routes>
           </Suspense>
           <ToastGlobal />
+          <DialogoDescartarCambios />
         </BrowserRouter>
       </QueryClientProvider>
     </ErrorBoundary>

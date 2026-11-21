@@ -23,7 +23,7 @@ import {
   type BorradorLegajoLocal,
 } from '../../core/offline/campamentoSync';
 import { useAuthStore } from '../../store/authStore';
-import { useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
+import { pedirConfirmacionDescarte, useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useConfirmar } from '../../hooks/useConfirmar';
 import { useToastStore } from '../../store/toastStore';
@@ -246,9 +246,9 @@ export const CompletarLegajoPage: React.FC = () => {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, [formDirty]);
 
-  const confirmarDescartarCambios = () => {
+  const confirmarDescartarCambios = async () => {
     if (!formDirty) return true;
-    return window.confirm(
+    return pedirConfirmacionDescarte(
       'Tenés cambios sin guardar en el formulario. ¿Querés continuar y descartarlos?',
     );
   };
@@ -554,9 +554,7 @@ export const CompletarLegajoPage: React.FC = () => {
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <Link
             to={rutaVolver}
-            onClick={(e) => {
-              if (!confirmarDescartarCambios()) e.preventDefault();
-            }}
+            // La confirmación de salida con cambios la hace el AppShell al interceptar el link.
             className="s-btn-sec min-h-[40px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5"
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />
@@ -568,8 +566,8 @@ export const CompletarLegajoPage: React.FC = () => {
               type="button"
               variant="secondary"
               size="sm"
-              onClick={() => {
-                if (confirmarDescartarCambios()) void cargarDatos();
+              onClick={async () => {
+                if (await confirmarDescartarCambios()) void cargarDatos();
               }}
               disabled={cargando}
               leftIcon={<RefreshCw className={`w-4 h-4 ${cargando ? 'animate-spin' : ''}`} />}
@@ -651,9 +649,9 @@ export const CompletarLegajoPage: React.FC = () => {
                     aria-pressed={activa}
                     key={p.id}
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (p.id === plantillaSeleccionada?.id) return;
-                      if (!confirmarDescartarCambios()) return;
+                      if (!(await confirmarDescartarCambios())) return;
                       setSearchParams((prev) => {
                         const next = new URLSearchParams(prev);
                         next.set('plantillaId', String(p.id));

@@ -41,7 +41,7 @@ import {
   type BorradorLegajoLocal,
 } from '../../core/offline/campamentoSync';
 import { useAuthStore } from '../../store/authStore';
-import { useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
+import { pedirConfirmacionDescarte, useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
 import { useCapabilities } from '../../core/capabilities';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useConfirmar } from '../../hooks/useConfirmar';
@@ -122,9 +122,9 @@ export const MiEspacioPage: React.FC = () => {
     }
   }, [searchParams, tabActiva, puedeVerPedidos]);
 
-  const cambiarTab = (nuevoTab: TabMiEspacio) => {
+  const cambiarTab = async (nuevoTab: TabMiEspacio) => {
     if (nuevoTab === tabActiva) return;
-    if (tabActiva === 'legajo' && formDirty && !confirmarDescartarCambios()) return;
+    if (tabActiva === 'legajo' && formDirty && !(await confirmarDescartarCambios())) return;
     // Al salir del legajo (ya confirmado) los cambios se descartan: no seguir marcándolo sucio.
     if (tabActiva === 'legajo') setFormDirty(false);
     setTabActiva(nuevoTab);
@@ -168,9 +168,9 @@ export const MiEspacioPage: React.FC = () => {
   const obtenerValoresRef = useRef<(() => Record<string, unknown>) | null>(null);
   const datosPreviewVivoRef = useRef<Record<string, unknown> | undefined>(undefined);
 
-  const confirmarDescartarCambios = () => {
+  const confirmarDescartarCambios = async () => {
     if (!formDirty) return true;
-    return window.confirm(
+    return pedirConfirmacionDescarte(
       'Tenés cambios sin guardar en tu legajo. ¿Querés continuar y descartarlos?',
     );
   };
@@ -598,7 +598,7 @@ export const MiEspacioPage: React.FC = () => {
       setCambiandoDocumentoId(null);
       return;
     }
-    if (!confirmarDescartarCambios()) return;
+    if (!(await confirmarDescartarCambios())) return;
     // Primero se traen precarga y borrador del documento nuevo; recién después se cambia la
     // plantilla, así el formulario se monta con sus propios valores y no con los del anterior.
     plantillaSeleccionadaIdRef.current = p.id;

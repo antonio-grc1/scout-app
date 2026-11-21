@@ -2432,10 +2432,8 @@ export const MiembrosPage: React.FC = () => {
         usuarioId={miembroDrawerId}
         tabInicial={tabInicialDrawer}
         onCerrar={() => setMiembroDrawerId(null)}
-        onActualizado={() => {
-          void cargarDatos(true);
-          mostrarToast('Cambios guardados.', 'exito');
-        }}
+        // El expediente ya confirma cada acción con su propio aviso: acá solo se refresca la lista.
+        onActualizado={() => void cargarDatos(true)}
         onEliminado={(msg) => {
           void cargarDatos(true);
           mostrarToast(msg, 'exito');

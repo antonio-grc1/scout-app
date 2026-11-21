@@ -35,7 +35,7 @@ import { BotonInstalarPwa } from '../BotonInstalarPwa';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { QrScannerUniversalModal } from '../qr/QrScannerUniversalModal';
 import { useQrModalStore } from '../../core/qrModalStore';
-import { confirmarSalidaSiHayCambios } from '../../store/cambiosSinGuardarStore';
+import { confirmarSalidaSiHayCambios, hayCambiosSinGuardar } from '../../store/cambiosSinGuardarStore';
 
 export const InsideAppShellContext = React.createContext(false);
 export const useInsideAppShell = () => React.useContext(InsideAppShellContext);
@@ -207,8 +207,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
     useQrModalStore.getState().abrirQr();
   };
 
-  const handleLogout = () => {
-    if (!confirmarSalidaSiHayCambios()) return;
+  const handleLogout = async () => {
+    if (!(await confirmarSalidaSiHayCambios())) return;
     logout();
     navigate('/login', { replace: true });
   };
@@ -220,10 +220,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
     if (!link || link.target === '_blank' || link.origin !== window.location.origin) return;
     const destino = link.pathname + link.search;
     if (destino === window.location.pathname + window.location.search) return;
-    if (!confirmarSalidaSiHayCambios()) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    if (!hayCambiosSinGuardar()) return;
+    // El diálogo es asíncrono: se frena el click y se navega recién si la persona confirma.
+    e.preventDefault();
+    e.stopPropagation();
+    void confirmarSalidaSiHayCambios().then((ok) => {
+      if (ok) navigate(destino);
+    });
   };
 
   // Barra inferior móvil (4 tabs + FAB central). Solo enlaza rutas permitidas y no repite destinos.
@@ -459,7 +462,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                     fabModo === 'qr'
                       ? handleOpenQr
                       : () => {
-                          if (confirmarSalidaSiHayCambios()) navigate('/eventos');
+                          void confirmarSalidaSiHayCambios().then((ok) => {
+                            if (ok) navigate('/eventos');
+                          });
                         }
                   }
                   aria-label={fabModo === 'qr' ? 'Abrir escáner QR' : 'Ver Eventos'}
@@ -529,8 +534,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
               <button
                 key={it.id}
                 type="button"
-                onClick={() => {
-                  if (!confirmarSalidaSiHayCambios()) return;
+                onClick={async () => {
+                  if (!(await confirmarSalidaSiHayCambios())) return;
                   setMobileMoreOpen(false);
                   navigate(it.to);
                 }}

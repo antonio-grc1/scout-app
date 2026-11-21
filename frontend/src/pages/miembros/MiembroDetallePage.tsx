@@ -77,7 +77,6 @@ export const MiembroDetallePage: React.FC = () => {
           usuarioId={usuarioId}
           tabInicial={tabInicial}
           onTabChange={handleTabChange}
-          onActualizado={() => mostrarToast('Expediente actualizado.', 'exito')}
           onEliminado={(msg) => {
             mostrarToast(msg, 'exito');
             navigate('/miembros', { replace: true });
