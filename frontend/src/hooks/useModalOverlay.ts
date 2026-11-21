@@ -7,6 +7,8 @@ interface ModalStackEntry {
   isClosing: boolean;
   setClosedByPopState: (val: boolean) => void;
   cerrarConEsc: boolean;
+  /** Acción de Esc si difiere de cerrar (p. ej. volver de una subvista). */
+  escape: () => void;
 }
 
 const modalStack: ModalStackEntry[] = [];
@@ -90,7 +92,7 @@ if (typeof window !== 'undefined') {
         if (top.cerrarConEsc && !top.isBlocked()) {
           e.preventDefault();
           e.stopPropagation();
-          top.close();
+          top.escape();
         }
         return;
       }
@@ -124,6 +126,8 @@ export interface UseModalOverlayOptions {
   cerrarConEsc?: boolean;
   cerrarAlClickAfuera?: boolean;
   manejarHistorial?: boolean;
+  /** Si se pasa, Esc ejecuta esto en vez de cerrar (la X y el fondo siguen cerrando). */
+  onEscape?: () => void;
 }
 
 export function useModalOverlay({
@@ -136,7 +140,10 @@ export function useModalOverlay({
   cerrarConEsc = true,
   cerrarAlClickAfuera = true,
   manejarHistorial = true,
+  onEscape,
 }: UseModalOverlayOptions = {}) {
+  const escapeRef = useRef(onEscape);
+  escapeRef.current = onEscape;
   const activo = abierto ?? isOpen ?? true;
   const cerrarCallback = onCerrar ?? onClose;
   const tieneCallback = Boolean(cerrarCallback);
@@ -188,6 +195,9 @@ export function useModalOverlay({
       isClosing: false,
       close: () => {
         callbackRef.current?.();
+      },
+      escape: () => {
+        (escapeRef.current ?? callbackRef.current)?.();
       },
       isBlocked: () => Boolean(bloqueadoRef.current),
       setClosedByPopState: (val: boolean) => {

@@ -190,7 +190,14 @@ const SALUD_CLAVES_CONOCIDAS = new Set(SALUD_GRUPOS.flatMap((g) => g.keys));
 function interpolarTextoLegalPreview(
   plantillaTexto: string,
   datos: Record<string, unknown>,
+  etiquetas: Map<string, string> = new Map(),
 ): string {
+  // Sin dato: un espacio para completar (con la etiqueta del campo si se conoce) en vez de
+  // mostrar la clave técnica, p. ej. "[autorizante_nombre]".
+  const hueco = (rawKey: string) => {
+    const etiqueta = etiquetas.get(rawKey.trim());
+    return etiqueta ? `______ (${etiqueta})` : '______';
+  };
   const resolver = (rawKey: string): unknown => {
     const k = rawKey.trim();
     if (k in datos && datos[k] !== undefined && datos[k] !== '') return datos[k];
@@ -212,10 +219,10 @@ function interpolarTextoLegalPreview(
 
   return plantillaTexto.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, rawKey: string) => {
     const val = resolver(rawKey);
-    if (Array.isArray(val)) return val.length > 0 ? val.join(', ') : `[${rawKey.trim()}]`;
+    if (Array.isArray(val)) return val.length > 0 ? val.join(', ') : hueco(rawKey);
     if (typeof val === 'boolean') return val ? 'SÍ' : 'NO';
     const str = String(val ?? '').trim();
-    return str || `[${rawKey.trim()}]`;
+    return str || hueco(rawKey);
   });
 }
 
@@ -312,6 +319,13 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
   const secciones = esquema.secciones || [];
   const seccionActual = secciones[pasoActivo] || secciones[0];
+  const etiquetasCampos = useMemo(
+    () =>
+      new Map(
+        secciones.flatMap((s) => (s.campos || []).map((c) => [c.key, c.label] as [string, string])),
+      ),
+    [secciones],
+  );
 
   // Mapa rápido de campos de la sección actual por key
   const camposPorKey = useMemo(() => {
@@ -653,7 +667,10 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                   key={opt.value}
                   type="button"
                   aria-pressed={activo}
-                  onClick={() => actualizarCampo(campo.key, opt.value)}
+                  // En campos opcionales, tocar la opción elegida la desmarca.
+                  onClick={() =>
+                    actualizarCampo(campo.key, activo && !esRequerido ? '' : opt.value)
+                  }
                   className={`flex-1 min-w-[82px] min-h-[46px] px-3.5 py-2 rounded-xl font-bold text-[13px] transition flex items-center justify-center gap-1.5 cursor-pointer border ${
                     activo
                       ? 'bg-brand text-brand-contrast border-brand font-bold'
@@ -1449,7 +1466,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
         <p className="text-sm font-bold text-ink">
           Esta plantilla aún no tiene secciones ni campos configurados.
         </p>
-        <p className="text-xs">Agregale secciones y campos desde Legajos → Plantillas y Editor PDF.</p>
+        <p className="text-xs">
+          Avisale a la jefatura del grupo para que configure este documento.
+        </p>
       </div>
     );
   }
@@ -1594,7 +1613,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
               <span>Declaración / Texto del Documento</span>
             </div>
             <p className="whitespace-pre-line text-ink">
-              {interpolarTextoLegalPreview(seccionActual.textoLegal, formData)}
+              {interpolarTextoLegalPreview(seccionActual.textoLegal, formData, etiquetasCampos)}
             </p>
           </div>
         )}

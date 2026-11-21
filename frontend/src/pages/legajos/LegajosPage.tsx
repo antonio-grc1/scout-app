@@ -85,6 +85,7 @@ const PdfViewerModal = lazy(() =>
 type TabLegajos = 'cumplimiento' | 'salud' | 'colaboradores' | 'plantillas';
 type FiltroEstadoEntrega =
   | 'TODOS'
+  | 'PENDIENTES' // Sin ficha + Borrador (lo que cuenta la KPI "Sin ficha / Borrador")
   | 'SIN_FICHA'
   | 'BORRADOR'
   | 'LISTO_PARA_FIRMA'
@@ -413,7 +414,11 @@ export const LegajosPage: React.FC = () => {
   const registrosCumplimiento = useMemo(() => {
     const q = normalizarTextoBusqueda(busquedaCumplimiento);
     return filasBaseCumplimiento.filter((row) => {
-      if (filtroEstado !== 'TODOS' && row.estado !== filtroEstado) return false;
+      if (filtroEstado === 'PENDIENTES') {
+        if (row.estado !== 'SIN_FICHA' && row.estado !== 'BORRADOR') return false;
+      } else if (filtroEstado !== 'TODOS' && row.estado !== filtroEstado) {
+        return false;
+      }
       if (!q) return true;
       const full = normalizarTextoBusqueda(`${row.miembro.nombre} ${row.miembro.apellido}`);
       const inv = normalizarTextoBusqueda(`${row.miembro.apellido} ${row.miembro.nombre}`);
@@ -514,7 +519,9 @@ export const LegajosPage: React.FC = () => {
     let conAlergia = 0;
     let conMedicacionOCond = 0;
     let conRestriccionOCud = 0;
+    let conDietaOAlergia = 0;
     for (const row of registrosSaludBase) {
+      if (row.info.tieneDieta || row.info.tieneAlergia) conDietaOAlergia++;
       if (row.info.tieneDieta) conDieta++;
       if (row.info.tieneAlergia) conAlergia++;
       if (row.info.tomaMedicacion || row.info.tieneCondicionCronica) conMedicacionOCond++;
@@ -526,6 +533,7 @@ export const LegajosPage: React.FC = () => {
       conAlergia,
       conMedicacionOCond,
       conRestriccionOCud,
+      conDietaOAlergia,
     };
   }, [registrosSaludBase]);
 
@@ -909,7 +917,8 @@ export const LegajosPage: React.FC = () => {
         id: 'salud',
         label: 'Salud y Alimentación',
         icon: <HeartPulse className="w-3.5 h-3.5" />,
-        badge: kpisSalud.conDieta + kpisSalud.conAlergia,
+        // Personas con dieta o alergia (antes sumaba ambas y contaba doble a quien tenía las dos).
+        badge: kpisSalud.conDietaOAlergia,
       },
       {
         id: 'colaboradores',
@@ -1039,8 +1048,8 @@ export const LegajosPage: React.FC = () => {
               hint="Requiere completar"
               tone="warn"
               icon={<AlertCircle className="w-4 h-4" />}
-              onClick={() => setFiltroEstado('SIN_FICHA')}
-              active={filtroEstado === 'SIN_FICHA'}
+              onClick={() => setFiltroEstado('PENDIENTES')}
+              active={filtroEstado === 'PENDIENTES'}
             />
           </div>
 
@@ -1060,6 +1069,7 @@ export const LegajosPage: React.FC = () => {
                     <button
                       key={f.id}
                       type="button"
+                      aria-pressed={filtroEstado === f.id}
                       onClick={() => setFiltroEstado(f.id)}
                       className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold border cursor-pointer transition ${
                         filtroEstado === f.id ? 's-btn-brand border-brand' : 's-btn-sec text-ink-2'
@@ -1275,10 +1285,11 @@ export const LegajosPage: React.FC = () => {
               hint={`${kpisSalud.total} activos en ${obtenerNombreUnidadActiva(activeUnitId, caps)}`}
               tone="brand"
               icon={<Utensils className="w-4 h-4" />}
+              // Usa el mismo filtro que el chip "Con régimen especial" (antes eran dos filtros distintos).
               onClick={() =>
-                setFiltroSaludCat((prev) => (prev === 'DIETA' ? 'TODOS' : 'DIETA'))
+                setFiltroDietaSalud((prev) => (prev === 'CUALQUIERA' ? 'TODAS' : 'CUALQUIERA'))
               }
-              active={filtroSaludCat === 'DIETA'}
+              active={filtroDietaSalud === 'CUALQUIERA'}
             />
             <KpiCard
               label="Con alergias"
@@ -1355,6 +1366,7 @@ export const LegajosPage: React.FC = () => {
                     <button
                       key={op.value}
                       type="button"
+                      aria-pressed={filtroDietaSalud === op.value}
                       onClick={() =>
                         setFiltroDietaSalud((prev) => (prev === op.value ? 'TODAS' : op.value))
                       }
@@ -1386,6 +1398,7 @@ export const LegajosPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setBusquedaSalud('')}
+                        aria-label="Borrar búsqueda"
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
                       >
                         <X className="w-4 h-4" />
@@ -1399,7 +1412,6 @@ export const LegajosPage: React.FC = () => {
                     aria-label="Filtrar por categoría clínica"
                   >
                     <option value="TODOS">Todas las categorías</option>
-                    <option value="DIETA">Con régimen alimentario</option>
                     <option value="ALERGIA">Cualquier alergia</option>
                     <option value="ALERGIA_ALIMENTOS">Alergia a alimentos</option>
                     <option value="ALERGIA_MEDICAMENTOS">Alergia a medicamentos</option>
@@ -1428,6 +1440,26 @@ export const LegajosPage: React.FC = () => {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 shrink-0">
+                  {(filtroDietaSalud !== 'TODAS' ||
+                    filtroSaludCat !== 'TODOS' ||
+                    filtroGrupoSanguineo !== 'TODOS' ||
+                    soloNovedadesSalud ||
+                    busquedaSalud) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFiltroDietaSalud('TODAS');
+                        setFiltroSaludCat('TODOS');
+                        setFiltroGrupoSanguineo('TODOS');
+                        setSoloNovedadesSalud(false);
+                        setBusquedaSalud('');
+                      }}
+                      className="s-btn-sec min-h-[40px] px-3.5 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Limpiar filtros
+                    </button>
+                  )}
                   <label className="flex items-center gap-2 text-xs font-bold text-ink cursor-pointer select-none">
                     <input
                       type="checkbox"

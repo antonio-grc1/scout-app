@@ -154,6 +154,8 @@ export const MiEspacioPage: React.FC = () => {
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [guardandoLegajo, setGuardandoLegajo] = useState(false);
+  // Estado propio de la descarga: antes reutilizaba guardandoLegajo y bloqueaba el envío del formulario.
+  const [descargandoPdf, setDescargandoPdf] = useState(false);
   const [generandoVistaPrevia, setGenerandoVistaPrevia] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [formDirty, setFormDirty] = useState(false);
@@ -350,7 +352,17 @@ export const MiEspacioPage: React.FC = () => {
         perfilMiembro,
         asignacionesActuales,
       );
-      const disponibles = aplicables.length > 0 ? aplicables : listaPlantillas;
+      // Antes, si ninguno aplicaba se ofrecían todos (p. ej. el legajo de educadores a una familia).
+      if (aplicables.length === 0) {
+        setPlantillasDisponibles([]);
+        setBorradorLocal(null);
+        setErrorCarga(
+          'No hay formularios asignados a tu perfil en este ciclo. Si creés que falta alguno, consultá con tus educadores.',
+        );
+        setCargandoInicial(false);
+        return;
+      }
+      const disponibles = aplicables;
       setPlantillasDisponibles(disponibles);
 
       const idPrevio = plantillaSeleccionadaIdRef.current;
@@ -575,7 +587,7 @@ export const MiEspacioPage: React.FC = () => {
 
   const handleDescargarCopiaPdf = async (datosCustom?: Record<string, unknown>) => {
     if (!plantillaSeleccionada) return;
-    setGuardandoLegajo(true);
+    setDescargandoPdf(true);
     try {
       const usuarioParaPdf = obtenerDatosUsuarioPdf();
       const vivos = datosCustom || obtenerValoresRef.current?.();
@@ -585,7 +597,7 @@ export const MiEspacioPage: React.FC = () => {
     } catch (err) {
       mostrarToast(traducirErrorAmigable(err, 'No se pudo generar el PDF.'), 'error');
     } finally {
-      setGuardandoLegajo(false);
+      setDescargandoPdf(false);
     }
   };
 
@@ -1015,10 +1027,10 @@ export const MiEspacioPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => void handleDescargarCopiaPdf()}
-                disabled={guardandoLegajo}
+                disabled={descargandoPdf || guardandoLegajo}
                 className="s-btn-brand s-touch flex-1 sm:flex-initial px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                {guardandoLegajo ? (
+                {descargandoPdf ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Download className="w-4 h-4" />

@@ -17,6 +17,8 @@ export interface DrawerProps {
   maxWidthClass?: string;
   allowFullscreen?: boolean;
   bloqueado?: boolean;
+  /** Esc ejecuta esto en vez de cerrar (p. ej. volver de una subvista interna). */
+  onEscape?: () => void;
   bodyClassName?: string;
   className?: string;
 }
@@ -33,6 +35,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   maxWidthClass = 'sm:max-w-xl',
   allowFullscreen = false,
   bloqueado = false,
+  onEscape,
   bodyClassName,
   className,
 }) => {
@@ -42,6 +45,7 @@ export const Drawer: React.FC<DrawerProps> = ({
     abierto,
     onCerrar,
     bloqueado,
+    onEscape,
   });
 
   if (!abierto) return null;

@@ -324,6 +324,18 @@ export const InicioPage: React.FC = () => {
     return mapa;
   }, [entregas]);
 
+  // Todas las entregas de cada persona: las alertas médicas se consolidan entre documentos,
+  // igual que en /miembros?filtro=ALERTA_MEDICA (antes se usaba una sola y los conteos diferían).
+  const entregasListaPorUsuario = useMemo(() => {
+    const mapa = new Map<number, any[]>();
+    for (const ent of entregas) {
+      const lista = mapa.get(ent.usuarioId) || [];
+      lista.push(ent);
+      mapa.set(ent.usuarioId, lista);
+    }
+    return mapa;
+  }, [entregas]);
+
   const statsGestion = useMemo(() => {
     let legajosPendientes = 0;
     let miembrosConDeuda = 0;
@@ -376,7 +388,7 @@ export const InicioPage: React.FC = () => {
 
     for (const m of miembrosEnFoco) {
       const entrega = entregasPorUsuario.get(m.id);
-      const info = extraerInfoMedicaMiembro(m, entrega);
+      const info = extraerInfoMedicaMiembro(m, entregasListaPorUsuario.get(m.id));
       if (!info.tieneAlertas) continue;
       const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
       const cfg = obtenerConfigRama(m, unidadesOrg);
@@ -397,7 +409,7 @@ export const InicioPage: React.FC = () => {
         'es',
       );
     });
-  }, [miembrosEnFoco, entregasPorUsuario, unidadesOrg]);
+  }, [miembrosEnFoco, entregasPorUsuario, entregasListaPorUsuario, unidadesOrg]);
 
   const criticasMedicasTotal = useMemo(
     () => miembrosConAlertaMedica.filter((x) => x.info.criticasCount > 0).length,
@@ -1033,6 +1045,8 @@ export const InicioPage: React.FC = () => {
           setTelefonosEmergencia(null);
           setDrawerAlertasAbierto(false);
         }}
+        // En la subvista de teléfonos, Esc vuelve al listado médico en vez de cerrar todo.
+        onEscape={telefonosEmergencia ? () => setTelefonosEmergencia(null) : undefined}
         titulo={
           telefonosEmergencia
             ? `Llamar · ${telefonosEmergencia.miembro.nombre} ${telefonosEmergencia.miembro.apellido}`

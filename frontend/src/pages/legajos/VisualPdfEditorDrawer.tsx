@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  AlertTriangle,
   ExternalLink,
   FileCheck2,
   FilePlus2,
@@ -375,6 +376,9 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
   const [numPages, setNumPages] = useState(0);
   const [paginaActual, setPaginaActual] = useState(1);
   const [cargandoPreview, setCargandoPreview] = useState(false);
+  // Error de la vista previa en línea: como se regenera mientras se escribe, un toast por
+  // intento llenaba la pantalla de avisos repetidos.
+  const [errorPreview, setErrorPreview] = useState<string | null>(null);
   const [previewNonce, setPreviewNonce] = useState(0);
   // B6-14: "foto" del contenido editable al abrir (o al elegir el punto de partida) para
   // avisar si se cierra con cambios. Se toma en el render posterior al reseteo de estado.
@@ -752,11 +756,12 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
         }
         loadedDoc = doc;
         setPdfDoc(doc);
+        setErrorPreview(null);
         setNumPages(doc.numPages);
         setPaginaActual((prev) => Math.min(Math.max(1, prev), doc.numPages));
       } catch (err) {
         if (!cancelado) {
-          onToast(traducirErrorAmigable(err, 'No se pudo generar la vista previa PDF.'), 'error');
+          setErrorPreview(traducirErrorAmigable(err, 'No se pudo generar la vista previa PDF.'));
         }
       } finally {
         if (!cancelado) setCargandoPreview(false);
@@ -2097,6 +2102,12 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
               </div>
             </div>
 
+            {errorPreview && (
+              <div role="status" className="s-badge-warn rounded-xl p-3 text-[13px] font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{errorPreview}</span>
+              </div>
+            )}
             <div className="overflow-auto rounded-2xl border border-rule bg-paper-3 p-3 flex justify-center min-h-[460px] max-h-[75vh]">
               {cargandoPreview && !pdfDoc ? (
                 <div className="flex flex-col items-center justify-center gap-2.5 text-ink-muted py-16">
