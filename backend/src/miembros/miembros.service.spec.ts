@@ -128,6 +128,48 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     expect(res.nombre).toBe('Juan Modificado');
   });
 
+  const actorUnidad = (permisos: string[]): AuthUser => ({
+    sub: 88,
+    dni: '88888888',
+    requiereCambioClave: false,
+    asignaciones: [{ unidadId: 1, unidadNombre: 'Manada', rol: 'Dirigente', alcance: 'UNIDAD', permisos }],
+  });
+  const alcanceUnidad1: AlcanceAcceso = { tipo: 'UNIDAD', unidadIds: [1] };
+
+  it('rechaza cambiar alergias o dieta de otro miembro sin legajos.editar', async () => {
+    const prisma = crearMockPrisma();
+    prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
+    const service = new MiembrosService(prisma);
+    await expect(
+      service.editar(actorUnidad(['padron.ver', 'padron.editar']), alcanceUnidad1, 10, {
+        datosFijosJson: { domicilio: 'Calle 123', alergias_tipos: ['MANI'] },
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(prisma.usuario.update).not.toHaveBeenCalled();
+  });
+
+  it('permite cambiar alergias con padron.editar y legajos.editar sobre la unidad', async () => {
+    const prisma = crearMockPrisma();
+    prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
+    prisma.usuario.update.mockResolvedValueOnce(usuarioObjetivo);
+    const service = new MiembrosService(prisma);
+    await service.editar(actorUnidad(['padron.ver', 'padron.editar', 'legajos.editar']), alcanceUnidad1, 10, {
+      datosFijosJson: { domicilio: 'Calle 123', alergias_tipos: ['MANI'] },
+    });
+    expect(prisma.usuario.update).toHaveBeenCalled();
+  });
+
+  it('no exige legajos.editar si los datos fijos no tocan salud', async () => {
+    const prisma = crearMockPrisma();
+    prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);
+    prisma.usuario.update.mockResolvedValueOnce(usuarioObjetivo);
+    const service = new MiembrosService(prisma);
+    await service.editar(actorUnidad(['padron.ver', 'padron.editar']), alcanceUnidad1, 10, {
+      datosFijosJson: { domicilio: 'Calle 456' },
+    });
+    expect(prisma.usuario.update).toHaveBeenCalled();
+  });
+
   it('no exige permiso de edición sobre un campo si el valor enviado es idéntico al actual', async () => {
     const prisma = crearMockPrisma();
     prisma.usuario.findFirst.mockResolvedValueOnce(usuarioObjetivo);

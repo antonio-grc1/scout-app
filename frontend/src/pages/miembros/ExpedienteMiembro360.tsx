@@ -274,6 +274,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     canEdit('miembro', 'identidad') && (!targetEsGlobal || esGlobalPadron);
   const puedeEditarContacto =
     canEdit('miembro', 'contacto') && (!targetEsGlobal || esGlobalPadron);
+  // Alergias y dieta (datos de salud): además de editar contacto, exigen legajos.editar
+  // sobre el miembro, salvo en el propio perfil. El backend aplica la misma regla.
+  const puedeEditarSalud =
+    puedeEditarContacto && (esMismoUsuario || tienePermisoUnidadOGlobal('legajos.editar'));
   const puedeDarBaja =
     canEdit('miembro', 'estado') && (!targetEsGlobal || tieneBajaGlobal) && !esMismoUsuario;
   const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
@@ -1923,6 +1927,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                   desvinculandoMiembroId={desvinculandoMiembroId}
                   puedeEditarIdentidad={puedeEditarIdentidad}
                   puedeEditarContacto={puedeEditarContacto}
+                  puedeEditarSalud={puedeEditarSalud}
                   puedeDarBaja={puedeDarBaja}
                   puedeEditarMiembro={puedeEditarMiembro}
                   puedeGestionarTesoreria={puedeGestionarTesoreria}

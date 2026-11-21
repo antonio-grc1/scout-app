@@ -42,6 +42,8 @@ export interface PestanaDatosMiembroProps {
   desvinculandoMiembroId: number | null;
   puedeEditarIdentidad: boolean;
   puedeEditarContacto: boolean;
+  /** Alergias y dieta son datos de salud: requieren además legajos.editar. */
+  puedeEditarSalud: boolean;
   puedeDarBaja: boolean;
   puedeEditarMiembro: boolean;
   puedeGestionarTesoreria?: boolean;
@@ -67,6 +69,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   desvinculandoMiembroId,
   puedeEditarIdentidad,
   puedeEditarContacto,
+  puedeEditarSalud,
   puedeDarBaja,
   puedeEditarMiembro,
   puedeGestionarTesoreria,
@@ -221,7 +224,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
       </div>
 
       {/* Salud y Régimen Alimentario Rápido */}
-      {(puedeEditarContacto ||
+      {(puedeEditarSalud ||
         formData.regimenDietarioTipos.length > 0 ||
         formData.regimenDietarioDetalle ||
         formData.alergiasTipos.length > 0 ||
@@ -239,7 +242,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
               <Utensils className="w-3.5 h-3.5 text-brand" />
               <span>Régimen de comidas / Dieta</span>
             </span>
-            {puedeEditarContacto ? (
+            {puedeEditarSalud ? (
               <div className="flex flex-wrap gap-1.5">
                 {OPCIONES_DIETA_ESTANDAR.map((op) => {
                   const activo = formData.regimenDietarioTipos.includes(op.value);
@@ -281,7 +284,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                 })}
               </div>
             ) : null}
-            {puedeEditarContacto ? (
+            {puedeEditarSalud ? (
               <input
                 type="text"
                 placeholder="Detalle de dieta u observaciones alimentarias..."
@@ -300,7 +303,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             <span className="block text-xs font-bold text-ink-2">
               Categorías de alergias y detalle médico
             </span>
-            {puedeEditarContacto ? (
+            {puedeEditarSalud ? (
               <div className="flex flex-wrap gap-1.5">
                 {OPCIONES_ALERGIA_ESTANDAR.map((op) => {
                   const activo = formData.alergiasTipos.includes(op.value);
@@ -342,7 +345,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                 })}
               </div>
             ) : null}
-            {puedeEditarContacto ? (
+            {puedeEditarSalud ? (
               <textarea
                 rows={2}
                 placeholder="Detalle de alergias o cuidados médicos..."

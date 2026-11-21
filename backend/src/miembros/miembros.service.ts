@@ -58,6 +58,18 @@ function normalizarSinTildes(valor: unknown): string {
 }
 
 /** Proyección segura: NUNCA incluye passwordHash. */
+/** Claves de `datosFijosJson` con datos de salud (alergias y dieta) que exigen `legajos.editar`. */
+const CLAVES_SALUD_DATOS_FIJOS = new Set([
+  'alergias',
+  'alergias_tipos',
+  'sufre_alergia',
+  'sufre_alergia_detalle',
+  'regimen_dietario',
+  'regimen_dietario_tipos',
+  'regimen_dietario_detalle',
+  'dieta_especial_detalle',
+]);
+
 export const MIEMBRO_SELECT = {
   id: true,
   dni: true,
@@ -791,6 +803,27 @@ export class MiembrosService {
       }
       if (sinPermiso.length) {
         throw new ForbiddenException(`No tiene permiso para modificar: ${sinPermiso.join(', ')}`);
+      }
+      // Alergias y dieta son datos de salud (ficha médica): además de padron.editar,
+      // cambiarlos en otro miembro exige legajos.editar con alcance sobre él.
+      if (dto.datosFijosJson && typeof dto.datosFijosJson === 'object') {
+        const actualJson = (objetivo.datosFijosJson ?? {}) as Record<string, unknown>;
+        const tocaSalud = Object.entries(dto.datosFijosJson as Record<string, unknown>).some(
+          ([k, v]) =>
+            CLAVES_SALUD_DATOS_FIJOS.has(k) && JSON.stringify(v ?? null) !== JSON.stringify(actualJson[k] ?? null),
+        );
+        if (tocaSalud) {
+          const alcanceSalud = resolverAlcance(actor, 'legajos.editar');
+          const cubreSalud =
+            alcanceSalud?.tipo === 'GLOBAL' ||
+            (alcanceSalud?.tipo === 'UNIDAD' &&
+              unidadesObjetivo.some((uId) => alcanceSalud.unidadIds.includes(uId)));
+          if (!cubreSalud) {
+            throw new ForbiddenException(
+              'Las alergias y la dieta son datos de salud: modificarlas requiere el permiso de legajos.',
+            );
+          }
+        }
       }
       if (alcance.tipo !== 'GLOBAL' && objetivoTieneGlobal) {
         throw new ForbiddenException('No puede modificar a un usuario con alcance global');
