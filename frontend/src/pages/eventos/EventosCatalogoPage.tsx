@@ -126,6 +126,8 @@ export const EventosCatalogoPage: React.FC = () => {
     return eventos.reduce(
       (acc, ev) => {
         if (ev.estado === 'PUBLICADO') acc.activos += 1;
+        // Borradores y cancelados no suman a recaudación, ganancia ni vales.
+        if (ev.estado === 'BORRADOR' || ev.estado === 'CANCELADO') return acc;
         acc.totalVenta += Number(ev.metricas?.totalVenta || 0);
         acc.totalGanancia += Number(ev.metricas?.totalGanancia || 0);
         acc.ticketsRetirados += Number(ev.metricas?.ticketsRetirados || 0);

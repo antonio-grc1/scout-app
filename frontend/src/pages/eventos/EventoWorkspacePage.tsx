@@ -1755,6 +1755,8 @@ export const EventoWorkspacePage: React.FC = () => {
         onGuardado={() => {
           void cargarTodo();
         }}
+        // Recargar un evento eliminado dejaba una pantalla de error: se vuelve al catálogo.
+        onEliminado={() => navigate('/eventos', { replace: true })}
         eventoAEditar={evento}
         onToast={(texto, tipo) => mostrarToast(texto, tipo === 'error' ? 'error' : 'exito')}
       />

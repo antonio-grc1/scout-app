@@ -44,13 +44,21 @@ export const PanelAdminRamas: React.FC<Props> = ({
   // Estado formulario de Rama (Crear / Editar)
   const [editandoRama, setEditandoRama] = useState<any | null>(null);
   const [creandoRama, setCreandoRama] = useState(false);
-  const [formRama, setFormRama] = useState({
+  // Los numéricos aceptan '' mientras se edita: vaciar el campo ya no lo convierte en 0.
+  const [formRama, setFormRama] = useState<{
+    nombre: string;
+    edadMinima: number | '';
+    edadMaxima: number | '';
+    ordenProgresion: number | '';
+    crearSeccionAutomatica: boolean;
+  }>({
     nombre: '',
     edadMinima: 7,
     edadMaxima: 10,
     ordenProgresion: 1,
     crearSeccionAutomatica: true,
   });
+  const aNumeroOVacio = (valor: string): number | '' => (valor === '' ? '' : Number(valor));
   const [guardandoRama, setGuardandoRama] = useState(false);
   const [procesandoRamaId, setProcesandoRamaId] = useState<number | null>(null);
 
@@ -144,15 +152,26 @@ export const PanelAdminRamas: React.FC<Props> = ({
           const nombreSeccion = nombreRama.toLowerCase().startsWith('rama ')
             ? nombreRama
             : `Rama ${nombreRama}`;
-          await api
+          const seccionCreada = await api
             .post('/organizacion/unidades', {
               nombre: nombreSeccion,
               tipo: 'SECCION_RAMA',
               ramaId: res.data.id,
             })
-            .catch(() => null);
+            .then(() => true)
+            .catch(() => false);
+          // Antes decía "creada" aunque la sección automática hubiera fallado.
+          if (!seccionCreada) {
+            onToast(
+              `Rama "${nombreRama}" creada, pero no se pudo crear su sección "${nombreSeccion}". Creala desde "Nueva sección".`,
+              'error',
+            );
+          } else {
+            onToast(`Rama "${nombreRama}" y su sección creadas.`);
+          }
+        } else {
+          onToast(`Rama "${formRama.nombre.trim()}" creada.`);
         }
-        onToast(`Rama "${formRama.nombre.trim()}" creada.`);
       }
       setCreandoRama(false);
       setEditandoRama(null);
@@ -739,7 +758,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                       max={99}
                       required
                       value={formRama.edadMinima}
-                      onChange={(e) => setFormRama({ ...formRama, edadMinima: Number(e.target.value) })}
+                      onChange={(e) => setFormRama({ ...formRama, edadMinima: aNumeroOVacio(e.target.value) })}
                       className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                     />
                   </div>
@@ -754,12 +773,14 @@ export const PanelAdminRamas: React.FC<Props> = ({
                       max={99}
                       required
                       value={formRama.edadMaxima}
-                      onChange={(e) => setFormRama({ ...formRama, edadMaxima: Number(e.target.value) })}
+                      onChange={(e) => setFormRama({ ...formRama, edadMaxima: aNumeroOVacio(e.target.value) })}
                       className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                     />
-                    <span className="text-xs text-ink-muted mt-1 block">
-                      Sugiere pase al cumplir {Number(formRama.edadMaxima) + 1} años.
-                    </span>
+                    {formRama.edadMaxima !== '' && (
+                      <span className="text-xs text-ink-muted mt-1 block">
+                        Sugiere pase al cumplir {Number(formRama.edadMaxima) + 1} años.
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -774,7 +795,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     required
                     value={formRama.ordenProgresion}
                     onChange={(e) =>
-                      setFormRama({ ...formRama, ordenProgresion: Number(e.target.value) })
+                      setFormRama({ ...formRama, ordenProgresion: aNumeroOVacio(e.target.value) })
                     }
                     className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                   />

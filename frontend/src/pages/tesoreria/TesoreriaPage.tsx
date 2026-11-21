@@ -1438,8 +1438,8 @@ export const TesoreriaPage: React.FC = () => {
               setFamiliaDrawerAbierta(false);
               setFamiliaAEditar(null);
             }}
-            onGuardado={() => {
-              mostrarToast('Grupo familiar y descuento actualizados.');
+            onGuardado={(mensaje) => {
+              mostrarToast(mensaje);
               void cargarDatos();
             }}
           />

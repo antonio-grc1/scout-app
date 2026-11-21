@@ -48,6 +48,9 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
           setAbierto(true);
         }}
         title="Elegir a quién llamar"
+        aria-label={
+          telefonos.length > 1 ? `Llamar: elegir entre ${telefonos.length} teléfonos` : 'Llamar'
+        }
         className={
           className ||
           'min-h-[42px] min-w-[42px] px-2.5 rounded-xl bg-paper-2 hover:bg-brand/10 text-ink-2 hover:text-brand flex items-center justify-center gap-1 transition-colors ml-auto cursor-pointer'
@@ -55,7 +58,8 @@ export const BotonLlamarMiembro: React.FC<Props> = ({ miembro, entrega, classNam
       >
         <Phone className="w-4 h-4" />
         {telefonos.length > 1 && (
-          <span className="text-xs font-extrabold">{telefonos.length}</span>
+          // Solo el número ("3") no explicaba qué era.
+          <span className="text-xs font-extrabold">{telefonos.length} tel.</span>
         )}
       </button>
 

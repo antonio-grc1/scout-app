@@ -1758,7 +1758,7 @@ export const MiembrosPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setSeccionesFiltro((prev) => prev.filter((x) => x !== id))}
-                  className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
+                  className="hover:bg-brand/20 min-w-[32px] min-h-[32px] -my-1.5 -mr-2 inline-flex items-center justify-center rounded-lg cursor-pointer"
                   aria-label={`Quitar filtro ${u.nombre}`}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -1779,7 +1779,7 @@ export const MiembrosPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setRolesFiltro((prev) => prev.filter((x) => x !== id))}
-                  className="hover:bg-indigo-200 dark:hover:bg-indigo-900 p-0.5 rounded cursor-pointer"
+                  className="hover:bg-indigo-200 dark:hover:bg-indigo-900 min-w-[32px] min-h-[32px] -my-1.5 -mr-2 inline-flex items-center justify-center rounded-lg cursor-pointer"
                   aria-label={`Quitar filtro ${r.nombre}`}
                 >
                   <X className="w-3.5 h-3.5" />
@@ -1797,7 +1797,7 @@ export const MiembrosPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setCamadasFiltro((prev) => prev.filter((x) => x !== anio))}
-                className="hover:bg-brand/20 p-0.5 rounded cursor-pointer"
+                className="hover:bg-brand/20 min-w-[32px] min-h-[32px] -my-1.5 -mr-2 inline-flex items-center justify-center rounded-lg cursor-pointer"
                 aria-label={`Quitar filtro Camada ${anio}`}
               >
                 <X className="w-3.5 h-3.5" />
@@ -2125,7 +2125,40 @@ export const MiembrosPage: React.FC = () => {
       ) : miembrosFiltrados.length === 0 ? (
         <div className="s-card rounded-2xl p-10 text-center space-y-3">
           <Users className="w-10 h-10 text-ink-muted opacity-40 mx-auto" />
-          <p className="text-base font-bold text-ink">No encontramos personas con este filtro</p>
+          {(() => {
+            const hayFiltros = Boolean(
+              busqueda ||
+                chipActivo !== 'TODOS' ||
+                seccionesFiltro.length > 0 ||
+                rolesFiltro.length > 0 ||
+                camadasFiltro.length > 0,
+            );
+            if (hayFiltros || miembros.length > 0) {
+              return <p className="text-base font-bold text-ink">No encontramos personas con este filtro</p>;
+            }
+            // Padrón vacío (sin filtros): ofrecer el alta directamente.
+            return (
+              <>
+                <p className="text-base font-bold text-ink">Todavía no hay miembros en el padrón</p>
+                {caps.canCreateMiembros && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isOnline) {
+                        mostrarToast('Sin conexión. Conectate para registrar un miembro.', 'advertencia');
+                        return;
+                      }
+                      setModalAltaAbierto(true);
+                    }}
+                    className="s-btn-brand min-h-[44px] px-5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Nuevo miembro</span>
+                  </button>
+                )}
+              </>
+            );
+          })()}
           {(busqueda ||
             chipActivo !== 'TODOS' ||
             seccionesFiltro.length > 0 ||
@@ -2478,10 +2511,9 @@ export const MiembrosPage: React.FC = () => {
           embedded={true}
           onOcupadoChange={setImportacionEnCurso}
           onCerrar={() => setModalImportarAbierto(false)}
-          onImportado={() => {
-            void cargarDatos(true);
-            mostrarToast('Padrón actualizado tras la importación.', 'exito');
-          }}
+          // El modal ya muestra el resumen (creados, actualizados, errores): sin toast que
+          // diga "actualizado" aunque no se haya creado nada.
+          onImportado={() => void cargarDatos(true)}
           unidadesDisponibles={unidades}
           rolesDisponibles={roles}
           miembrosExistentes={miembros}

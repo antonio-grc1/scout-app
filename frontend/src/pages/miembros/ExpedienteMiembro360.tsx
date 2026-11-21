@@ -1778,9 +1778,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               embedded={true}
               familia={familiaActual}
               onCerrar={() => setSubVista(null)}
-              onGuardado={() => {
-                setSubVista(null);
-                setAlerta({ tipo: 'exito', texto: 'Descuento familiar actualizado.' });
+              // El modal cierra la subvista cuando corresponde (al guardar o disolver); al
+              // quitar a un integrante queda abierta para seguir editando.
+              onGuardado={(mensaje) => {
+                setAlerta({ tipo: 'exito', texto: mensaje });
                 if (miembro) void cargarDatos(miembro.id);
                 onActualizado?.();
               }}

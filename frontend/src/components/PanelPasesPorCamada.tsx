@@ -299,6 +299,8 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                   ) : (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
                       {g.unidadesDestino.length > 1 && (
+                        <label className="flex flex-col gap-1 text-xs font-bold text-ink-muted">
+                        <span>Sección destino</span>
                         <select
                           value={destinoLote}
                           onChange={(e) =>
@@ -311,10 +313,11 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                         >
                           {g.unidadesDestino.map((u) => (
                             <option key={u.id} value={u.id}>
-                              Sección destino: {formatearNombreUnidadDestino(u, g.tipo)}
+                              {formatearNombreUnidadDestino(u, g.tipo)}
                             </option>
                           ))}
                         </select>
+                        </label>
                       )}
 
                       <button

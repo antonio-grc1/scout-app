@@ -439,10 +439,14 @@ export const QrScannerUniversalModal: React.FC = () => {
       );
 
       if (continuo) {
-        setTimeout(() => {
+        // Mismo temporizador que limpia el cierre del modal: antes quedaba suelto y podía
+        // tocar estado después de cerrar.
+        limpiarCooldown();
+        scanResetTimerRef.current = setTimeout(() => {
           setResultadoLegajo(null);
           setExito(null);
           scanInProgressRef.current = false;
+          scanResetTimerRef.current = null;
         }, 1200);
       }
     } catch (err) {
@@ -949,9 +953,9 @@ export const QrScannerUniversalModal: React.FC = () => {
             </div>
           )}
 
-          {/* Resultado Legajo */}
+          {/* Resultado Legajo (aria-live: el lector anuncia el resultado del escaneo) */}
           {resultadoLegajo && (
-            <div className="s-card rounded-2xl p-4 space-y-3">
+            <div className="s-card rounded-2xl p-4 space-y-3" role="status" aria-live="polite">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-brand-soft text-brand-soft-ink flex items-center justify-center shrink-0">
@@ -1025,6 +1029,8 @@ export const QrScannerUniversalModal: React.FC = () => {
           {/* Resultado Ticket Evento */}
           {resultadoEvento && (
             <div
+              role="status"
+              aria-live="polite"
               className={`rounded-2xl p-4 space-y-3 border ${
                 resultadoEvento.ok
                   ? 's-badge-ok'

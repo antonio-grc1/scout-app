@@ -584,6 +584,8 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                         {/* Cabecera del Ciclo (Botón Colapsable) */}
                         <button
                           type="button"
+                          aria-expanded={!colapsado}
+                          aria-controls={`historial-ciclo-${ciclo}`}
                           onClick={() => toggleCiclo(ciclo)}
                           className="w-full p-4 flex items-center justify-between text-left hover:bg-paper-3/60 transition cursor-pointer"
                         >
@@ -613,7 +615,10 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
 
                         {/* Contenido expandible del ciclo */}
                         {!colapsado && (
-                          <div className="p-4 pt-0 space-y-4 border-t border-rule/60 mt-1">
+                          <div
+                            id={`historial-ciclo-${ciclo}`}
+                            className="p-4 pt-0 space-y-4 border-t border-rule/60 mt-1"
+                          >
                             {/* Subsección: Educadores a cargo */}
                             <div className="space-y-2 mt-3">
                               <div className="flex items-center gap-1.5 text-[13px] font-bold text-ink-2">
@@ -769,8 +774,14 @@ const FilaMiembroHistorial: React.FC<FilaMiembroProps> = ({
   const iniciales = obtenerIniciales(persona.nombre, persona.apellido);
 
   const inicio = formatearFechaUTC(asig.fechaInicio);
-  const fin = asig.fechaFin ? formatearFechaUTC(asig.fechaFin) : 'Actualidad';
   const asignacionActiva = asig.activo && !asig.fechaFin;
+  // "Actualidad" solo si sigue vigente: una asignación finalizada sin fecha de cierre
+  // mostraba "— Actualidad" junto al badge "Finalizada".
+  const fin = asig.fechaFin
+    ? formatearFechaUTC(asig.fechaFin)
+    : asignacionActiva
+      ? 'Actualidad'
+      : 'sin fecha de cierre';
 
   return (
     <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-surface border border-rule hover:border-brand/30 transition shadow-2xs">

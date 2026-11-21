@@ -16,7 +16,8 @@ interface Props {
     miembros?: any[];
   } | null;
   onCerrar: () => void;
-  onGuardado: () => void;
+  /** Recibe el mensaje de la acción realizada (guardar, quitar a alguien, disolver). */
+  onGuardado: (mensaje: string) => void;
   embedded?: boolean;
 }
 
@@ -84,7 +85,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
         nombreFamilia: nombreFamilia.trim(),
         porcentajeDescuentoHermanos: porcentajeDescuento,
       });
-      onGuardado();
+      onGuardado('Grupo familiar y descuento actualizados.');
       onCerrar();
     } catch (err: any) {
       setError(traducirErrorAmigable(err, 'No se pudo actualizar el grupo familiar.'));
@@ -98,9 +99,15 @@ export const ModalEditarFamilia: React.FC<Props> = ({
     setError(null);
     try {
       const res = await api.post('/tesoreria/familias/desvincular-hermano', { usuarioId });
+      const quitado = miembrosLocal.find((m) => m.id === usuarioId);
       const restantes = miembrosLocal.filter((m) => m.id !== usuarioId);
       setMiembrosLocal(restantes);
-      onGuardado();
+      // La subvista sigue abierta salvo que el grupo haya quedado vacío.
+      onGuardado(
+        quitado
+          ? `${quitado.nombre} ${quitado.apellido} fue quitado del grupo familiar.`
+          : 'Integrante quitado del grupo familiar.',
+      );
       if (res.data?.grupoEliminado || restantes.length === 0) {
         onCerrar();
       }
@@ -116,7 +123,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
     setError(null);
     try {
       await api.delete(`/tesoreria/familias/${familia.id}`);
-      onGuardado();
+      onGuardado('Grupo familiar disuelto.');
       onCerrar();
     } catch (err: any) {
       setError(traducirErrorAmigable(err, 'No se pudo disolver el grupo familiar.'));

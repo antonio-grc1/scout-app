@@ -48,6 +48,8 @@ export interface ModalCrearEventoEconomicoProps {
   abierto: boolean;
   onCerrar: () => void;
   onGuardado: () => void;
+  /** Tras eliminar el evento (si no se pasa, se llama a onGuardado). */
+  onEliminado?: () => void;
   eventoAEditar?: EventoAEditar | null;
   onToast?: (texto: string, tipo?: 'exito' | 'error') => void;
 }
@@ -65,6 +67,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
   abierto,
   onCerrar,
   onGuardado,
+  onEliminado,
   eventoAEditar = null,
   onToast,
 }) => {
@@ -334,7 +337,8 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
       await api.delete(`/tesoreria/eventos/${eventoAEliminar.id}`);
       setModalConfirmarEliminar(false);
       onCerrar();
-      onGuardado();
+      if (onEliminado) onEliminado();
+      else onGuardado();
 
       const sinPedidos =
         (eventoAEliminar.metricas?.cantidadPedidos ||

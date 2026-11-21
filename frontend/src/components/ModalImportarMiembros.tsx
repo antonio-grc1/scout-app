@@ -114,24 +114,33 @@ function normalizarFechaNacimiento(valor: unknown): string | null {
   return null;
 }
 
-function encontrarValorPorColumna(fila: Record<string, any>, clavesPosibles: string[]): any {
-  for (const [key, value] of Object.entries(fila)) {
-    const keyNorm = key
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]/g, '');
+const normalizarColumna = (texto: string) =>
+  texto
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
 
-    for (const clave of clavesPosibles) {
-      const claveNorm = clave
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]/g, '');
-      if (keyNorm === claveNorm || keyNorm.includes(claveNorm)) {
-        return value;
-      }
-    }
+// Columnas de otra persona ("DNI Madre", "Teléfono Padre"): no deben tomarse como datos del miembro.
+const PALABRAS_OTRA_PERSONA = ['madre', 'padre', 'tutor', 'responsable', 'hermano', 'emergencia'];
+
+function encontrarValorPorColumna(fila: Record<string, any>, clavesPosibles: string[]): any {
+  const columnas = Object.entries(fila).map(([key, value]) => ({ keyNorm: normalizarColumna(key), value }));
+  const claves = clavesPosibles.map(normalizarColumna);
+
+  // 1) Coincidencia exacta, en cualquier columna.
+  for (const claveNorm of claves) {
+    const exacta = columnas.find((c) => c.keyNorm === claveNorm);
+    if (exacta) return exacta.value;
+  }
+  // 2) Coincidencia parcial, salvo columnas que hablan de otra persona.
+  for (const claveNorm of claves) {
+    const parcial = columnas.find(
+      (c) =>
+        c.keyNorm.includes(claveNorm) &&
+        !PALABRAS_OTRA_PERSONA.some((p) => c.keyNorm.includes(p) && !claveNorm.includes(p)),
+    );
+    if (parcial) return parcial.value;
   }
   return '';
 }

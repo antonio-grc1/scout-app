@@ -84,7 +84,7 @@ export const OrganizacionPage: React.FC = () => {
       const next = new URLSearchParams(prev);
       next.set('tab', nueva);
       return next;
-    });
+    }, { replace: true }); // cambiar de pestaña no debería llenar el historial del botón Atrás
   };
 
   const [ramas, setRamas] = useState<any[]>([]);
