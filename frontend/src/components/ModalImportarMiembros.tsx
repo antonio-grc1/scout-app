@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { traducirErrorAmigable } from '../lib/formatters';
 import {
   X,
   Upload,
@@ -552,7 +553,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
       } catch (err: any) {
         errores.push({
           fila: f,
-          mensaje: err.response?.data?.message || err.message || 'Error al guardar registro.',
+          mensaje: traducirErrorAmigable(err, 'No se pudo guardar este registro.'),
         });
       }
     }

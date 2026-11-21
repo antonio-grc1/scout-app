@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { traducirErrorAmigable } from '../lib/formatters';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
@@ -254,7 +255,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         cerrarModal();
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear el miembro.');
+      setError(traducirErrorAmigable(err, 'No se pudo crear el miembro.'));
     } finally {
       setCargando(false);
     }

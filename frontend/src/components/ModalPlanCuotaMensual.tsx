@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { traducirErrorAmigable } from '../lib/formatters';
 import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
@@ -232,7 +233,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
       onCerrar();
     } catch (err: any) {
       console.error('Error al guardar plan de cuota mensual', err);
-      setError(err.response?.data?.message || 'Error al guardar el cobro mensual');
+      setError(traducirErrorAmigable(err, 'No se pudo guardar el cobro mensual.'));
     } finally {
       setGuardando(false);
     }

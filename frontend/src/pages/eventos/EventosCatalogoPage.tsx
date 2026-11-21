@@ -16,7 +16,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { api } from '../../api/client';
-import { useCapabilities } from '../../core/capabilities';
+import { useActiveUnitStore, useCapabilities } from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
 import { useToastStore } from '../../store/toastStore';
 import {
@@ -60,6 +60,7 @@ type FiltroEstadoEvento = 'TODOS' | 'PUBLICADOS' | 'FINALIZADOS' | 'BORRADORES';
 export const EventosCatalogoPage: React.FC = () => {
   const navigate = useNavigate();
   const caps = useCapabilities();
+  const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
   const abrirQr = useQrModalStore((s) => s.abrirQr);
   const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
@@ -178,6 +179,11 @@ export const EventosCatalogoPage: React.FC = () => {
 
   return (
     <div className="space-y-5 s-anim-view">
+      {activeUnitId !== 'ALL' && (
+        <p className="text-[13px] text-ink-muted px-0.5" role="note">
+          Los eventos se muestran para todo tu alcance: no se filtran por la sección elegida arriba.
+        </p>
+      )}
       {/* Cabecera del Módulo */}
       <div className="s-card rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1.5 min-w-0 flex-1">

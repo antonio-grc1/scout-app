@@ -72,10 +72,7 @@ export const Login: React.FC = () => {
       const status = err?.response?.status;
       if (status === 429) {
         setRateLimitSecs(30);
-        setError(
-          err?.response?.data?.message ||
-            'Demasiados intentos seguidos. Esperá unos segundos antes de volver a intentar.',
-        );
+        setError('Demasiados intentos seguidos. Esperá unos segundos antes de volver a intentar.');
       } else if (!err?.response) {
         setError(
           traducirErrorAmigable(
@@ -84,7 +81,7 @@ export const Login: React.FC = () => {
           ),
         );
       } else {
-        setError(err?.response?.data?.message || 'DNI o contraseña incorrectos.');
+        setError(traducirErrorAmigable(err, 'DNI o contraseña incorrectos.'));
       }
     } finally {
       setCargando(false);

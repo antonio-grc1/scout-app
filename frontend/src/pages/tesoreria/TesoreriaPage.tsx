@@ -1328,6 +1328,11 @@ export const TesoreriaPage: React.FC = () => {
       )}
 
       {/* SUB-TAB 3: CAJA, BANCOS Y GASTOS (Solo GLOBAL) */}
+      {activeUnitId !== 'ALL' && (subTab === 'caja-gastos' || subTab === 'balance') && (
+        <p className="text-[13px] text-ink-muted px-0.5" role="note">
+          Esta vista muestra todo tu alcance: no se filtra por la sección elegida arriba.
+        </p>
+      )}
       {subTab === 'caja-gastos' && puedeVerCajaOGastos && (
         <div key="caja-gastos" className="space-y-4 s-anim-tab">
           {caps.canSeeCajaContabilidad && caps.canRegistrarGastos && (
