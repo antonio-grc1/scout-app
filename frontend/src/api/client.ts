@@ -4,6 +4,7 @@ import {
   guardarEnCache,
   obtenerDeCache,
   limpiarCacheApi,
+  esperarCacheLista,
 } from '../lib/offlineCache';
 import { useOfflineStore } from '../store/offlineStore';
 import { useToastStore } from '../store/toastStore';
@@ -118,7 +119,7 @@ api.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     const config = error.config || (error.__isOfflineFastFail ? error.config : null);
     const esGet = config?.method?.toLowerCase() === 'get';
 
@@ -131,6 +132,8 @@ api.interceptors.response.use(
       (typeof navigator !== 'undefined' && navigator.onLine === false);
 
     if (esGet && esErrorRed) {
+      // Al abrir la app sin conexión, la lectura de IndexedDB puede no haber terminado todavía.
+      await esperarCacheLista();
       const cached = obtenerDeCache(config.url, config.params);
       if (cached) {
         useOfflineStore.getState().marcarUsoCache(cached.timestamp);

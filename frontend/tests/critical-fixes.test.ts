@@ -58,6 +58,7 @@ describe('C1 & C2: offlineCache y authStore', () => {
     offlineCache.guardarEnCache('/auth/me', null, { accessToken: 'secret-jwt', usuario: { id: 1 } });
     assert.equal(localStorage.getItem('scout_cache_v1:/auth/login'), null);
     assert.equal(localStorage.getItem('scout_cache_v1:/auth/me'), null);
+    assert.equal(offlineCache.obtenerDeCache('/auth/login'), null);
 
     // Fallback de /auth/me debe reflejar scout_cambio_clave === 'true'
     localStorage.setItem('scout_user', JSON.stringify({ id: 7, dni: '123', nombre: 'Ana', apellido: 'Paz' }));
@@ -104,22 +105,39 @@ describe('C1 & C2: offlineCache y authStore', () => {
     assert.equal(estadoCuenta.data.resumen.saldoAFavor, 500);
   });
 
-  it('expira entradas de cache mayores al TTL configurado', async () => {
+  it('migra el caché viejo de localStorage: descarta lo vencido y no deja copias (B7-15)', async () => {
     localStorage.clear();
     const offlineCache = await vite.ssrLoadModule('/src/lib/offlineCache.ts');
+    offlineCache.limpiarCacheApi();
 
-    const clave = offlineCache.generarClaveCache('/tesoreria/cuentas');
+    const claveVencida = offlineCache.generarClaveCache('/tesoreria/cuentas');
+    const claveVigente = offlineCache.generarClaveCache('/organizacion/ramas');
     localStorage.setItem(
-      clave,
+      claveVencida,
       JSON.stringify({
         data: [{ id: 1, nombre: 'Caja' }],
         timestamp: Date.now() - (offlineCache.CACHE_TTL_MS + 10_000),
       }),
     );
+    localStorage.setItem(
+      claveVigente,
+      JSON.stringify({ data: [{ id: 2, nombre: 'Manada' }], timestamp: Date.now() }),
+    );
 
-    const resultado = offlineCache.obtenerDeCache('/tesoreria/cuentas');
-    assert.equal(resultado, null);
-    assert.equal(localStorage.getItem(clave), null);
+    offlineCache.migrarCacheLegadaDesdeLocalStorage();
+
+    assert.equal(offlineCache.obtenerDeCache('/tesoreria/cuentas'), null);
+    assert.equal(offlineCache.obtenerDeCache('/organizacion/ramas')?.data?.[0]?.nombre, 'Manada');
+    assert.equal(localStorage.getItem(claveVencida), null);
+    assert.equal(localStorage.getItem(claveVigente), null);
+  });
+
+  it('guardarEnCache no escribe datos en localStorage (B7-15)', async () => {
+    localStorage.clear();
+    const offlineCache = await vite.ssrLoadModule('/src/lib/offlineCache.ts');
+    offlineCache.guardarEnCache('/miembros', null, { items: [{ id: 1, dni: '30111222' }] });
+    assert.ok(offlineCache.obtenerDeCache('/miembros'));
+    assert.equal(localStorage.length, 0);
   });
 
   it('authStore limpia cache al cambiar de usuario y no pisa requiereCambioClave desde cache', async () => {
@@ -136,7 +154,7 @@ describe('C1 & C2: offlineCache y authStore', () => {
     });
 
     offlineCache.guardarEnCache('/tesoreria/cuentas', null, [{ id: 1 }]);
-    assert.ok(localStorage.getItem('scout_cache_v1:/tesoreria/cuentas'));
+    assert.ok(offlineCache.obtenerDeCache('/tesoreria/cuentas'));
 
     // Mockear api.get devolviendo respuesta desde cache sin requiereCambioClave
     const origGet = api.get.bind(api);
@@ -164,7 +182,7 @@ describe('C1 & C2: offlineCache y authStore', () => {
       requiereCambioClave: false,
       asignaciones: [],
     });
-    assert.equal(localStorage.getItem('scout_cache_v1:/tesoreria/cuentas'), null);
+    assert.equal(offlineCache.obtenerDeCache('/tesoreria/cuentas'), null);
   });
 });
 

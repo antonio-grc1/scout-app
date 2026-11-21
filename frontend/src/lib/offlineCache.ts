@@ -135,8 +135,51 @@ export async function hidratarCacheDesdeIndexedDB(): Promise<void> {
   }
 }
 
-if (typeof indexedDB !== 'undefined') {
-  void hidratarCacheDesdeIndexedDB();
+/**
+ * B7-15: el caché ya no se guarda en localStorage (texto plano, sin vencimiento propio y legible
+ * por cualquier script de la página). Las entradas que hayan quedado de versiones anteriores se
+ * pasan a memoria + IndexedDB (si no vencieron) y se borran de localStorage.
+ */
+export function migrarCacheLegadaDesdeLocalStorage(): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    const claves: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(PREFIJO_CACHE)) claves.push(k);
+    }
+    const ahora = Date.now();
+    for (const k of claves) {
+      try {
+        const item = JSON.parse(localStorage.getItem(k) || '') as ItemCache<unknown>;
+        if (!estaExpirado(item, ahora)) {
+          const actual = memoriaCache.get(k);
+          if (!actual || item.timestamp > actual.timestamp) {
+            memoriaCache.set(k, item);
+            void putItemIndexedDB(k, item);
+          }
+        }
+      } catch {
+        // Entrada corrupta: se descarta.
+      }
+      localStorage.removeItem(k);
+    }
+  } catch {
+    // localStorage no disponible (modo privado / bloqueado)
+  }
+}
+
+migrarCacheLegadaDesdeLocalStorage();
+const hidratacionInicial: Promise<void> =
+  typeof indexedDB !== 'undefined' ? hidratarCacheDesdeIndexedDB() : Promise.resolve();
+
+/**
+ * Resuelve cuando el espejo en memoria terminó de cargarse desde IndexedDB. El cliente HTTP lo
+ * espera antes de responder desde caché sin conexión (al abrir la app offline, la primera
+ * petición puede llegar antes de que termine la lectura).
+ */
+export function esperarCacheLista(): Promise<void> {
+  return hidratacionInicial;
 }
 
 export function obtenerTamanoMemoriaCache(): number {
@@ -166,27 +209,16 @@ export function generarClaveCache(url?: string, params?: Record<string, unknown>
 }
 
 /**
- * Guarda un elemento en memoria + IndexedDB y mantiene copia best-effort en localStorage.
+ * Guarda un elemento en memoria + IndexedDB (sin copia en localStorage, ver B7-15).
  */
 function guardarItemCrudo<T = unknown>(clave: string, data: T, timestamp: number): void {
   const item: ItemCache<T> = { data, timestamp };
   memoriaCache.set(clave, item);
   void putItemIndexedDB(clave, item);
-
-  try {
-    localStorage.setItem(clave, JSON.stringify(item));
-  } catch {
-    try {
-      purgarCachesAntiguos();
-      localStorage.setItem(clave, JSON.stringify(item));
-    } catch {
-      // Si localStorage supera los 5 MB, la entrada queda igualmente persistida en memoria e IndexedDB
-    }
-  }
 }
 
 /**
- * Guarda la respuesta en localStorage y pre-indexa automáticamente
+ * Guarda la respuesta en el caché offline y pre-indexa automáticamente
  * elementos secundarios (miembros individuales, entregas por usuario, plantillas)
  * para que estén disponibles sin conexión sin necesidad de abrirlos uno por uno.
  */
@@ -201,7 +233,7 @@ export function guardarEnCache<T = unknown>(
   const now = Date.now();
 
   // Guardar la consulta principal (/miembros/:id se resuelve vía fallback desde la lista cacheada
-  // sin duplicar hasta 2000 claves individuales síncronas en localStorage)
+  // sin duplicar hasta 2000 claves individuales)
   guardarItemCrudo(clave, data, now);
 
   // 2. Si guardamos la lista de entregas (/legajos/entregas), pre-indexar por cada usuarioId
@@ -233,7 +265,7 @@ export function guardarEnCache<T = unknown>(
 }
 
 /**
- * Obtiene la respuesta guardada en caché (memoria / IndexedDB / localStorage).
+ * Obtiene la respuesta guardada en caché (memoria respaldada por IndexedDB).
  * Si no encuentra la clave exacta, realiza una búsqueda inteligente de respaldo:
  * - Para /miembros/:id busca el miembro dentro de la lista de miembros guardada.
  * - Para /legajos/entregas?usuarioId=:id busca las entregas del usuario en la lista de entregas guardada.
@@ -247,37 +279,14 @@ export function obtenerDeCache<T = unknown>(
   if (!url) return null;
   const clave = generarClaveCache(url, params);
 
-  // 1. Intento directo por clave exacta (sincronizado entre localStorage y memoria)
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(clave) : null;
-    if (raw) {
-      const parsed = JSON.parse(raw) as ItemCache<T>;
-      if (!estaExpirado(parsed)) {
-        const memItem = memoriaCache.get(clave) as ItemCache<T> | undefined;
-        if (memItem && !estaExpirado(memItem) && memItem.timestamp >= parsed.timestamp) {
-          return memItem;
-        }
-        memoriaCache.set(clave, parsed);
-        return parsed;
-      }
-      localStorage.removeItem(clave);
-      memoriaCache.delete(clave);
-      void deleteItemIndexedDB(clave);
-    } else {
-      const memItem = memoriaCache.get(clave) as ItemCache<T> | undefined;
-      if (memItem) {
-        if (!estaExpirado(memItem)) {
-          return memItem;
-        }
-        memoriaCache.delete(clave);
-        void deleteItemIndexedDB(clave);
-      }
-    }
-  } catch {
-    const memItem = memoriaCache.get(clave) as ItemCache<T> | undefined;
-    if (memItem && !estaExpirado(memItem)) {
+  // 1. Intento directo por clave exacta (espejo en memoria de IndexedDB)
+  const memItem = memoriaCache.get(clave) as ItemCache<T> | undefined;
+  if (memItem) {
+    if (!estaExpirado(memItem)) {
       return memItem;
     }
+    memoriaCache.delete(clave);
+    void deleteItemIndexedDB(clave);
   }
 
   // 2. Búsqueda inteligente de respaldo (Fallback por entidad)
@@ -559,7 +568,7 @@ function resolverFallbackInteligente<T>(
 }
 
 /**
- * Busca en localStorage la entrada cacheada correspondiente a una ruta base exacta
+ * Busca en el caché la entrada correspondiente a una ruta base exacta
  * (sin coincidir por subcadena con sub-rutas como `/miembros/:id` al buscar `/miembros`),
  * descartando entradas expiradas y priorizando listados sin filtros o más completos.
  */
@@ -583,33 +592,6 @@ function buscarListaEnCache<D>(rutaBase: string): ItemCache<D> | null {
     }
   }
 
-  if (typeof localStorage !== 'undefined') {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k || !k.startsWith(PREFIJO_CACHE)) continue;
-
-      const sinPrefijo = k.slice(PREFIJO_CACHE.length);
-      const rutaKey = sinPrefijo.split('?')[0];
-      if (rutaKey !== rutaBase) continue;
-
-      try {
-        const parsed = JSON.parse(localStorage.getItem(k) || '') as ItemCache<D>;
-        if (estaExpirado(parsed, ahora)) {
-          clavesExpiradas.push(k);
-          candidatos.delete(k);
-          continue;
-        }
-        if (!parsed?.data) continue;
-        const existente = candidatos.get(k);
-        if (!existente || parsed.timestamp > existente.timestamp) {
-          candidatos.set(k, parsed);
-          memoriaCache.set(k, parsed);
-        }
-      } catch {
-        continue;
-      }
-    }
-  }
 
   let mejorCandidato: { item: ItemCache<D>; sinQuery: boolean; peso: number } | null = null;
   for (const [k, parsed] of candidatos.entries()) {
@@ -635,11 +617,6 @@ function buscarListaEnCache<D>(rutaBase: string): ItemCache<D> | null {
   for (const k of clavesExpiradas) {
     memoriaCache.delete(k);
     void deleteItemIndexedDB(k);
-    try {
-      localStorage.removeItem(k);
-    } catch {
-      // Ignorar
-    }
   }
 
   return mejorCandidato?.item ?? null;
@@ -681,28 +658,11 @@ export function obtenerUltimoTimestampCache(): number | null {
       maxTimestamp = item.timestamp;
     }
   }
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith(PREFIJO_CACHE)) {
-        try {
-          const item = JSON.parse(localStorage.getItem(k) || '');
-          if (item?.timestamp && (maxTimestamp === null || item.timestamp > maxTimestamp)) {
-            maxTimestamp = item.timestamp;
-          }
-        } catch {
-          continue;
-        }
-      }
-    }
-  } catch {
-    // Ignorar si localStorage no está disponible
-  }
   return maxTimestamp;
 }
 
 /**
- * Elimina todas las entradas de caché de la API en memoria, IndexedDB y localStorage.
+ * Elimina todas las entradas de caché de la API en memoria e IndexedDB (y restos viejos en localStorage).
  */
 export function limpiarCacheApi(): void {
   memoriaCache.clear();
@@ -723,27 +683,3 @@ export function limpiarCacheApi(): void {
   }
 }
 
-/**
- * Elimina las entradas de caché más antiguas en caso de alcanzar la cuota.
- */
-function purgarCachesAntiguos(): void {
-  const items: { key: string; timestamp: number }[] = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith(PREFIJO_CACHE)) {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(k) || '{}');
-        items.push({ key: k, timestamp: parsed.timestamp || 0 });
-      } catch {
-        items.push({ key: k, timestamp: 0 });
-      }
-    }
-  }
-
-  // Ordenar por más viejo primero y borrar la mitad
-  items.sort((a, b) => a.timestamp - b.timestamp);
-  const aBorrar = Math.max(1, Math.floor(items.length / 2));
-  for (let i = 0; i < aBorrar && i < items.length; i++) {
-    localStorage.removeItem(items[i].key);
-  }
-}

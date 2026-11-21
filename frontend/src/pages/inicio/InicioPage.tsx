@@ -637,10 +637,17 @@ export const InicioPage: React.FC = () => {
                 {progresoSync.mensaje} ({progresoSync.porcentaje}%)
               </span>
             ) : ultimoSync ? (
-              <span className="text-ink-muted truncate">
-                <strong className="text-ink">Datos de campamento listos:</strong>{' '}
-                {ultimoSync.totalMiembros} miembros y {ultimoSync.totalEntregas} fichas guardadas (
-                {formatearSyncFecha(ultimoSync.sincronizadoEn)}).
+              <span className="text-ink-muted min-w-0">
+                <span className="block truncate">
+                  <strong className="text-ink">Datos de campamento listos:</strong>{' '}
+                  {ultimoSync.totalMiembros} miembros y {ultimoSync.totalEntregas} fichas guardadas (
+                  {formatearSyncFecha(ultimoSync.sincronizadoEn)}).
+                </span>
+                {/* B7-15: incluye datos personales y de salud guardados en este dispositivo. */}
+                <span className="block text-xs mt-0.5">
+                  Incluye datos personales y de salud. Quedan en este dispositivo hasta 24 h y se
+                  borran al cerrar sesión: cerrala si el equipo es compartido.
+                </span>
               </span>
             ) : null}
           </div>
