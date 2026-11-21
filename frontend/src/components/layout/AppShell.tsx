@@ -15,7 +15,6 @@ import {
   Search,
   LogOut,
   Menu,
-  KeyRound,
   WifiOff,
   Palette,
 } from 'lucide-react';
@@ -58,7 +57,7 @@ interface NavItem {
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
-  const { usuario, logout, requiereCambioClave } = useAuthStore();
+  const { usuario, logout } = useAuthStore();
   const isOnline = useOfflineStore((s) => s.isOnline);
   const openCustomizer = useThemeStore((s) => s.openCustomizer);
   const caps = useCapabilities();
@@ -326,16 +325,6 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
 
       {/* Columna Principal */}
       <div className="flex-1 flex flex-col min-w-0">
-        {requiereCambioClave && (
-          <div className="bg-brand text-brand-contrast px-4 py-2.5 text-sm font-bold flex items-center justify-center gap-2">
-            <KeyRound className="w-4 h-4 shrink-0" />
-            <span>Actualizá tu contraseña inicial para operar con normalidad.</span>
-            <Link to="/cambiar-clave" className="underline font-extrabold">
-              Cambiar ahora
-            </Link>
-          </div>
-        )}
-
         {/* Topbar Desktop & Mobile */}
         <header className="s-glass-bar sticky top-0 z-30 border-b border-rule px-4 sm:px-6 py-3 min-h-[64px] flex items-center justify-between gap-3">
           {/* Izquierda: Mobile Branding / Desktop Ctrl+K & Selector Unidad */}

@@ -17,7 +17,6 @@ Provides the unified navigation shell (`layout/`), universal QR scanner (`qr/`),
 - `[ModalCargarPedidoEvento.tsx:ModalCargarPedidoEvento]` — Event order creation/edition modal preserving `'PENDIENTE'` payment state when editing.
 - `[ModalCobrarDeuda.tsx:ModalCobrarDeuda]` — Partial/full debt collection form/drawer applying `Saldo a Favor` and surplus credit.
 - `[ModalCobroCampamento.tsx:ModalCobroCampamento]` — Camp and special charge concept creator/editor.
-- `[ModalConcepto.tsx:ModalConcepto]` — Treasury charge concept modal (`CUOTA_GRUPO`, `CAMPAMENTO`, `EVENTO`, `INSCRIPCION`, `OTRO`).
 - `[ModalConfirmacion.tsx:ModalConfirmacion]` — Confirmation and alert modal.
 - `[ModalCrearCuentaFinanciera.tsx:ModalCrearCuentaFinanciera]` — Financial account CRUD modal.
 - `[ModalCrearEventoEconomico.tsx:ModalCrearEventoEconomico]` — Economic event & item catalog CRUD modal.

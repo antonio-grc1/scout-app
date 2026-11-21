@@ -316,9 +316,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     (r) => esGlobalPases || !esRolAlcanceGlobal(r),
   );
 
-  const rolesSinRama = rolesActivosDominados.filter(
-    (r) => esGlobalPases || !esRolAlcanceGlobal(r),
-  );
+  // Con o sin rama el conjunto asignable es el mismo (antes eran dos filtros idénticos)
+  const rolesSinRama = rolesRama;
 
   const rolesJefatura = esGlobalPases ? rolesActivosDominados : [];
 
