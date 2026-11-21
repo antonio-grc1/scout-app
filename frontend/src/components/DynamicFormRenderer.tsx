@@ -512,6 +512,13 @@ export const DynamicFormRenderer: React.FC<Props> = ({
     } else if (res.primeraClaveError?.startsWith('ret_persona2_')) {
       setPersonasRetiroVisibles((n) => Math.max(n, 2));
     }
+    if (res.primeraClaveError) {
+      const clave = res.primeraClaveError;
+      setTimeout(() => {
+        const el = document.getElementById(clave) ?? document.querySelector<HTMLElement>('[aria-describedby="' + clave + '-error"]');
+        el?.focus({ preventScroll: false });
+      }, 80);
+    }
     setErrorValidacion(
       res.mensajeResumen || 'Completá los campos obligatorios marcados con * antes de continuar.',
     );
@@ -585,12 +592,12 @@ export const DynamicFormRenderer: React.FC<Props> = ({
         <div key={campo.key} className="space-y-2 md:col-span-2">
           <label className="block text-sm font-bold text-ink-2">
             {labelLimpio}{' '}
-            {esRequerido && <span className="text-rose-600 dark:text-rose-400">*</span>}
+            {esRequerido && <span aria-hidden="true" className="text-rose-600 dark:text-rose-400">*</span>}
           </label>
           {opciones.length === 0 ? (
             <p className="text-xs text-ink-muted">Sin opciones configuradas para este selector.</p>
           ) : (
-            <div className="flex flex-wrap gap-2" role="group" aria-label={labelLimpio}>
+            <div className="flex flex-wrap gap-2" role="group" aria-label={labelLimpio} aria-invalid={error ? "true" : undefined} aria-describedby={error ? errorId : undefined}>
               {opciones.map((opt) => {
                 const activo = seleccionados.includes(opt.value);
                 return (
@@ -636,9 +643,9 @@ export const DynamicFormRenderer: React.FC<Props> = ({
         <div key={campo.key} className="space-y-1.5">
           <label className="block text-sm font-bold text-ink-2">
             {labelLimpio}{' '}
-            {esRequerido && <span className="text-rose-600 dark:text-rose-400">*</span>}
+            {esRequerido && <span aria-hidden="true" className="text-rose-600 dark:text-rose-400">*</span>}
           </label>
-          <div className="flex flex-wrap gap-2" role="group" aria-label={labelLimpio}>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={labelLimpio} aria-invalid={error ? "true" : undefined} aria-describedby={error ? errorId : undefined}>
             {opcionesChips.map((opt) => {
               const activo = valorActual === opt.value;
               return (
@@ -740,7 +747,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           >
             <span className="text-sm sm:text-[15px] font-bold text-ink leading-snug">
               {labelLimpio}{' '}
-              {esRequerido && <span className="text-rose-600 dark:text-rose-400">*</span>}
+              {esRequerido && <span aria-hidden="true" className="text-rose-600 dark:text-rose-400">*</span>}
             </span>
 
             <span
@@ -948,12 +955,13 @@ export const DynamicFormRenderer: React.FC<Props> = ({
         <div key={campo.key} className="space-y-1.5 md:col-span-2">
           <label htmlFor={campo.key} className="block text-sm font-bold text-ink-2">
             {labelLimpio}{' '}
-            {esRequerido && <span className="text-rose-600 dark:text-rose-400">*</span>}
+            {esRequerido && <span aria-hidden="true" className="text-rose-600 dark:text-rose-400">*</span>}
           </label>
           <textarea
             id={campo.key}
             rows={2}
             aria-invalid={error ? 'true' : undefined}
+            aria-required={esRequerido || undefined}
             aria-describedby={error ? errorId : undefined}
             placeholder={obtenerPlaceholderCampo(campo)}
             {...register(campo.key, {
@@ -994,7 +1002,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
       <div key={campo.key} className="space-y-1.5">
         <label htmlFor={campo.key} className="block text-sm font-bold text-ink-2">
           {labelLimpio}{' '}
-          {esRequerido && <span className="text-rose-600 dark:text-rose-400">*</span>}
+          {esRequerido && <span aria-hidden="true" className="text-rose-600 dark:text-rose-400">*</span>}
         </label>
         <input
           type={campo.type || 'text'}
@@ -1002,6 +1010,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           disabled={deshabilitado}
           inputMode={inputModeCampo}
           aria-invalid={error ? 'true' : undefined}
+            aria-required={esRequerido || undefined}
           aria-describedby={error ? errorId : undefined}
           placeholder={obtenerPlaceholderCampo(campo)}
           {...register(campo.key, {

@@ -481,3 +481,6 @@ Lista por cada pestaña, modal o ventana. Los ítems ya cubiertos en B0–B7 se 
 - No se probó en dispositivos reales (iOS/Android): teclado virtual, cámara del QR, instalación de la PWA y descargas de PDF.
 - No se probó con lector de pantalla real (NVDA/VoiceOver). Los hallazgos de B4 salen del código y del DOM.
 - Varias severidades del bloque B1 dependen de que el backend no bloquee la acción. En algunos casos el backend sí la bloquea (B1-05, B1-06): ahí el problema es de UX (botones que siempre fallan), no de seguridad.
+
+
+> **B4 (cierre):** DynamicFormRenderer: asteriscos `aria-hidden`, `aria-required` en inputs/textarea, grupos de chips con `aria-invalid`/`aria-describedby` al error, y foco automático al primer campo inválido. Los selectores de sección (Visor de ficha, historial) quedan como grupos de botones con `aria-pressed` (semántica válida; no son tabs con paneles).
