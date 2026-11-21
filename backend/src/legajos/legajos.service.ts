@@ -24,6 +24,37 @@ import type {
   ListarEntregasQueryDto,
 } from './legajos.dto.js';
 
+/**
+ * Campos que devuelve la verificación de QR/código/DNI de una ficha. Antes incluía `updatedAt`,
+ * que EntregaFormulario no tiene: Prisma rechazaba la consulta y toda verificación respondía 400.
+ * Exportado para que un test lo contraste con el schema real.
+ */
+export const SELECT_DETALLE_ENTREGA_QR = {
+  id: true,
+  cicloAnio: true,
+  estado: true,
+  hashVerificacion: true,
+  fechaValidacionFisica: true,
+  plantillaId: true,
+  usuarioId: true,
+  validadoPorUsuarioId: true,
+  plantilla: { select: { id: true, codigo: true, titulo: true, version: true } },
+  usuario: {
+    select: {
+      id: true,
+      dni: true,
+      nombre: true,
+      apellido: true,
+      activo: true,
+      asignaciones: {
+        where: { activo: true },
+        select: { unidadId: true, unidad: { select: { id: true, nombre: true } } },
+      },
+    },
+  },
+  validadoPor: { select: { id: true, nombre: true, apellido: true } },
+} satisfies Prisma.EntregaFormularioSelect;
+
 export const CAMPOS_DATOS_FIJOS_PERMITIDOS = new Set([
   'protagonista_domicilio',
   'protagonista_telefono',
@@ -462,32 +493,7 @@ export class LegajosService {
 
     if (!limpio) return null;
 
-    const selectDetalle = {
-      id: true,
-      cicloAnio: true,
-      estado: true,
-      hashVerificacion: true,
-      fechaValidacionFisica: true,
-      plantillaId: true,
-      usuarioId: true,
-      validadoPorUsuarioId: true,
-      updatedAt: true,
-      plantilla: { select: { id: true, codigo: true, titulo: true, version: true } },
-      usuario: {
-        select: {
-          id: true,
-          dni: true,
-          nombre: true,
-          apellido: true,
-          activo: true,
-          asignaciones: {
-            where: { activo: true },
-            select: { unidadId: true, unidad: { select: { id: true, nombre: true } } },
-          },
-        },
-      },
-      validadoPor: { select: { id: true, nombre: true, apellido: true } },
-    };
+    const selectDetalle = SELECT_DETALLE_ENTREGA_QR;
 
     const exacta = await this.prisma.entregaFormulario.findFirst({
       where: { hashVerificacion: { equals: limpio, mode: 'insensitive' } },

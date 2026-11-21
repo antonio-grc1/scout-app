@@ -231,3 +231,23 @@ describe('Legajos - Plantillas dinámicas y selectores estructurados', () => {
     expect(updateArg.data.datosFijosJson.solo_evento).toBeUndefined();
   });
 });
+
+describe('SELECT_DETALLE_ENTREGA_QR (verificación de QR)', () => {
+  it('solo pide campos que existen en el schema de Prisma', async () => {
+    const { Prisma } = await import('@prisma/client');
+    const { SELECT_DETALLE_ENTREGA_QR } = await import('./legajos.service.js');
+    const modelos = new Map(Prisma.dmmf.datamodel.models.map((m) => [m.name, m]));
+
+    const revisar = (modelo: string, select: Record<string, unknown>, ruta: string) => {
+      const def = modelos.get(modelo);
+      expect(def, `modelo ${modelo}`).toBeTruthy();
+      for (const [campo, valor] of Object.entries(select)) {
+        const f = def!.fields.find((x) => x.name === campo);
+        expect(f, `${ruta}.${campo} no existe en ${modelo}`).toBeTruthy();
+        const sub = (valor as { select?: Record<string, unknown> })?.select;
+        if (sub) revisar(f!.type, sub, `${ruta}.${campo}`);
+      }
+    };
+    revisar('EntregaFormulario', SELECT_DETALLE_ENTREGA_QR, 'EntregaFormulario');
+  });
+});
