@@ -268,8 +268,9 @@ export const OrganizacionPage: React.FC = () => {
             onToggleMostrarInactivas={setMostrarInactivas}
             onRecargar={async () => {
               await cargarDatos();
-              // El selector de unidad del AppShell e Inicio comparten esta caché.
+              // AppShell, Inicio, Tesorería y el Expediente comparten estas cachés.
               void queryClient.invalidateQueries({ queryKey: ['unidades-org'] });
+              void queryClient.invalidateQueries({ queryKey: ['organizacion-ramas'] });
             }}
             onToast={mostrarToast}
           />
@@ -284,6 +285,7 @@ export const OrganizacionPage: React.FC = () => {
             onRecargar={async () => {
               await cargarDatos();
               await refrescarSesionDesdeServidor();
+              void queryClient.invalidateQueries({ queryKey: ['organizacion-roles'] });
             }}
             onToast={mostrarToast}
           />

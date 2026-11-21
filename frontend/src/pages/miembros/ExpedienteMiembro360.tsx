@@ -13,6 +13,7 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useOfflineStore } from '../../store/offlineStore';
@@ -359,6 +360,28 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     return false;
   };
 
+  const queryClient = useQueryClient();
+  /**
+   * Catálogos que no dependen del miembro (unidades, roles, ramas, plantillas): se toman de la
+   * caché de react-query (5 min) y se comparten con Inicio/Tesorería, en vez de volver a bajarlos
+   * cada vez que se abre un expediente. Devuelve la forma `{ data }` que usa cargarDatos.
+   */
+  const obtenerCatalogo = useCallback(
+    async (clave: string, url: string): Promise<{ data: any[] }> => {
+      const usuarioActualId = useAuthStore.getState().usuario?.id;
+      const data = await queryClient.fetchQuery({
+        queryKey: [clave, usuarioActualId],
+        staleTime: 5 * 60 * 1000,
+        queryFn: async () => {
+          const res = await api.get(url);
+          return Array.isArray(res.data) ? (res.data as any[]) : [];
+        },
+      });
+      return { data };
+    },
+    [queryClient],
+  );
+
   const cargarDatos = useCallback(
     async (id: number, opts?: { silencioso?: boolean }) => {
       if (!opts?.silencioso) {
@@ -381,16 +404,19 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           api.get(`/tesoreria/estado-cuenta/${id}`).catch(() => null),
           // Solo el ciclo actual: sin filtro se mezclaban fichas y alertas de años anteriores.
           api.get(`/legajos/entregas?usuarioId=${id}&cicloAnio=${obtenerCicloAnioActual()}`).catch(() => null),
-          api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({ data: [] })),
+          obtenerCatalogo(
+            `legajos-plantillas-${obtenerCicloAnioActual()}`,
+            `/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`,
+          ).catch(() => ({ data: [] })),
           capsCarga.canViewOrganizacion
-            ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
+            ? obtenerCatalogo('unidades-org', '/organizacion/unidades').catch(() => ({ data: [] }))
             : Promise.resolve({ data: [] }),
           capsCarga.canViewRoles
-            ? api.get('/organizacion/roles').catch(() => ({ data: [] }))
+            ? obtenerCatalogo('organizacion-roles', '/organizacion/roles').catch(() => ({ data: [] }))
             : Promise.resolve({ data: [] }),
           api.get('/pases/candidatos').catch(() => ({ data: [] })),
           capsCarga.canViewOrganizacion
-            ? api.get('/organizacion/ramas').catch(() => ({ data: [] }))
+            ? obtenerCatalogo('organizacion-ramas', '/organizacion/ramas').catch(() => ({ data: [] }))
             : Promise.resolve({ data: [] }),
         ]);
 
@@ -405,7 +431,9 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
 
         let listaPlantillas: any[] = Array.isArray(resPlantillas?.data) ? resPlantillas.data : [];
         if (listaPlantillas.length === 0) {
-          const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
+          const resTodas = await obtenerCatalogo('legajos-plantillas-todas', '/legajos/plantillas').catch(
+            () => ({ data: [] }),
+          );
           listaPlantillas = Array.isArray(resTodas?.data) ? resTodas.data : [];
         }
         const aplicables = filtrarPlantillasParaMiembro(listaPlantillas, m);
@@ -586,7 +614,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         setCargando(false);
       }
     },
-    [],
+    [obtenerCatalogo],
   );
 
   useEffect(() => {

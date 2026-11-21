@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   AlertTriangle,
@@ -130,6 +131,7 @@ type FiltroMaterial = 'TODOS' | 'CAMPAMENTO' | 'CONSTRUCCION' | 'CUALQUIERA';
 
 export const LegajosPage: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const caps = useCapabilities();
   const usuarioActual = useAuthStore((s) => s.usuario);
@@ -2024,6 +2026,10 @@ export const LegajosPage: React.FC = () => {
         }
         onGuardado={async () => {
           await Promise.all([cargarPlantillasAdmin(), cargarCumplimiento()]);
+          // El Expediente cachea las plantillas (legajos-plantillas-*): que tome la versión nueva.
+          void queryClient.invalidateQueries({
+            predicate: (query) => String(query.queryKey[0]).startsWith('legajos-plantillas'),
+          });
         }}
         onToast={(texto, tipo) => mostrarToast(texto, tipo === 'error' ? 'error' : 'exito')}
       />
