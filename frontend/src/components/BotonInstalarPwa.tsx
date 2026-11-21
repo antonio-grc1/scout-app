@@ -36,7 +36,9 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
 
   const esIos =
     typeof navigator !== 'undefined' &&
-    /iphone|ipad|ipod/i.test(navigator.userAgent);
+    (/iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      // iPadOS 13+ se identifica como Mac pero tiene pantalla táctil
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
 
   useEffect(() => {
     const checkStandalone = () => {
@@ -101,7 +103,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
         <button
           type="button"
           onClick={handleClickInstalar}
-          title="Descargar e instalar la App en tu celular"
+          title="Instalar la App en este dispositivo"
           className="min-h-[42px] px-3.5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm flex items-center gap-2 shadow-2xs transition-colors cursor-pointer shrink-0"
         >
           <Download className="w-4 h-4 shrink-0" />
@@ -128,7 +130,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
             className="min-h-[46px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
           >
             <Download className="w-4 h-4" />
-            <span>Descargar en Celular</span>
+            <span>Instalar App</span>
           </button>
         </div>
       )}

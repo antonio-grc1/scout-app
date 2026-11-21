@@ -825,7 +825,7 @@ export const InicioPage: React.FC = () => {
         <section className="space-y-3">
           <div className="flex items-center justify-between gap-2 px-0.5">
             <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted">
-              Resumen actual ({statsGestion.totalActivos} activos)
+              Resumen actual ({cargandoGestion ? '…' : statsGestion.totalActivos} activos)
             </h2>
             {cargandoGestion && (
               <span className="text-xs font-semibold text-ink-muted inline-flex items-center gap-1.5">
@@ -848,7 +848,7 @@ export const InicioPage: React.FC = () => {
                   <Clock className="w-[18px] h-[18px] text-amber-500 shrink-0" />
                 </div>
                 <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular text-ink">
-                  {statsGestion.legajosPendientes}
+                  {cargandoGestion ? '—' : statsGestion.legajosPendientes}
                 </div>
                 <div className="text-xs sm:text-[13px] text-ink-muted flex items-center justify-between gap-2">
                   <span className="truncate">Sin validación física {ciclo}</span>
@@ -869,7 +869,7 @@ export const InicioPage: React.FC = () => {
                   <CreditCard className="w-[18px] h-[18px] text-rose-500 shrink-0" />
                 </div>
                 <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular text-ink">
-                  {statsGestion.miembrosConDeuda}
+                  {cargandoGestion ? '—' : statsGestion.miembrosConDeuda}
                 </div>
                 <div className="text-xs sm:text-[13px] text-ink-muted flex items-center justify-between gap-2">
                   <span className="truncate">
@@ -898,7 +898,7 @@ export const InicioPage: React.FC = () => {
                   <Repeat className="w-[18px] h-[18px] text-brand shrink-0" />
                 </div>
                 <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular text-ink">
-                  {statsGestion.pasesSugeridos}
+                  {cargandoGestion ? '—' : statsGestion.pasesSugeridos}
                 </div>
                 <div className="text-xs sm:text-[13px] text-ink-muted flex items-center justify-between gap-2">
                   <span className="truncate">

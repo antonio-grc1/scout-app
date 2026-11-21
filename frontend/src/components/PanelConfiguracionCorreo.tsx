@@ -79,6 +79,15 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
 
   const handleGuardar = async (e: React.FormEvent) => {
     e.preventDefault();
+    const puertoNum = Number(port);
+    if (habilitado && !host.trim()) {
+      onToast('Indicá el servidor SMTP (host) para habilitar el envío de correos.', 'error');
+      return;
+    }
+    if (port.trim() && (!Number.isInteger(puertoNum) || puertoNum < 1 || puertoNum > 65535)) {
+      onToast('El puerto debe ser un número entre 1 y 65535.', 'error');
+      return;
+    }
     setGuardando(true);
     setResultadoPrueba(null);
     try {

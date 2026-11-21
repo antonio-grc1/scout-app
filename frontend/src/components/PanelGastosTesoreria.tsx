@@ -246,7 +246,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       {/* Tarjetas de Resumen de Egresos */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         <div className="p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
-          <span className="text-[13px] font-semibold text-ink-muted">Total Gastos (Período)</span>
+          <span className="text-[13px] font-semibold text-ink-muted">Total de gastos registrados</span>
           <div className="mt-2.5 flex items-baseline justify-between gap-2">
             {cargando ? (
               <>

@@ -284,10 +284,21 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
   if (!abierto) return null;
 
+  // Máximo que se puede pedir de un producto: stock disponible más lo que este mismo pedido ya reservaba
+  const maximoPermitido = (it: { id: number; stockDisponible: number | null }): number => {
+    if (it.stockDisponible === null || it.stockDisponible === undefined) return Infinity;
+    const reservado = Array.isArray(pedidoAEditar?.detalles)
+      ? (pedidoAEditar.detalles.find((d: any) => d.itemId === it.id)?.cantidad ?? 0)
+      : 0;
+    return Math.max(0, Number(it.stockDisponible) + Number(reservado));
+  };
+
   const handleCambiarCantidad = (itemId: number, delta: number) => {
+    const item = safeItems.find((x) => x.id === itemId);
+    const tope = item ? maximoPermitido(item) : Infinity;
     setCantidades((prev) => {
       const actual = prev[itemId] || 0;
-      const nuevo = Math.max(0, actual + delta);
+      const nuevo = Math.min(tope, Math.max(0, actual + delta));
       return { ...prev, [itemId]: nuevo };
     });
   };
@@ -682,9 +693,16 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                         <button
                           type="button"
                           onClick={() => handleCambiarCantidad(it.id, 1)}
-                          disabled={valesRetirados}
+                          disabled={valesRetirados || cant >= maximoPermitido(it)}
                           className="w-9 h-9 rounded-xl bg-surface border border-rule text-ink flex items-center justify-center hover:bg-paper-3 disabled:opacity-30 cursor-pointer"
-                          title={valesRetirados ? 'No se puede modificar: vales ya retirados' : undefined}
+                          title={
+                            valesRetirados
+                              ? 'No se puede modificar: vales ya retirados'
+                              : cant >= maximoPermitido(it)
+                                ? 'Sin más stock disponible'
+                                : undefined
+                          }
+                          aria-label={`Sumar ${it.nombre ?? 'producto'}`}
                         >
                           <Plus className="w-4 h-4" />
                         </button>
