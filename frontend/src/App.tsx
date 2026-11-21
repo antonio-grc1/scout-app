@@ -1,9 +1,11 @@
 import React, { useEffect, lazy, Suspense } from 'react';
 import {
-  BrowserRouter,
+  createBrowserRouter,
+  RouterProvider,
   Routes,
   Route,
   Navigate,
+  useBlocker,
   useNavigate,
   useSearchParams,
 } from 'react-router-dom';
@@ -18,6 +20,7 @@ import { InicioPage } from './pages/inicio/InicioPage';
 import { AppShell } from './components/layout/AppShell';
 import { ToastGlobal } from './components/ui/ToastGlobal';
 import { DialogoDescartarCambios } from './components/DialogoDescartarCambios';
+import { pedirConfirmacionDescarte, useCambiosSinGuardarStore } from './store/cambiosSinGuardarStore';
 import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { BannerOffline } from './components/BannerOffline';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -120,6 +123,7 @@ const AuthNavigatorBridge: React.FC = () => {
   useEffect(() => {
     setOnAuthError(() => {
       useAuthStore.getState().limpiarSesionLocal();
+      useCambiosSinGuardarStore.getState().setPendiente(false);
       if (window.location.pathname !== '/login') {
         navigate('/login', { replace: true });
       }
@@ -135,12 +139,218 @@ const AuthNavigatorBridge: React.FC = () => {
   return null;
 };
 
+/**
+ * B2-21: con el router de datos, `useBlocker` frena cualquier navegación a otra página
+ * (links, navigate(), botón Atrás del navegador o del celular) mientras la vista marcó cambios
+ * sin guardar, y pregunta con el diálogo estándar. Los cambios de query (?tab=) no se frenan:
+ * cada vista los confirma por su cuenta.
+ */
+const BloqueoCambiosSinGuardar: React.FC = () => {
+  const pendiente = useCambiosSinGuardarStore((s) => s.pendiente);
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      pendiente && currentLocation.pathname !== nextLocation.pathname,
+  );
+
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    let vigente = true;
+    void pedirConfirmacionDescarte().then((ok) => {
+      if (!vigente) return;
+      if (ok) {
+        useCambiosSinGuardarStore.getState().setPendiente(false);
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [blocker]);
+
+  return null;
+};
+
+/** Árbol de rutas de la app (igual que antes con BrowserRouter), montado bajo el router de datos. */
+const RaizApp: React.FC = () => {
+  const autenticado = useAuthStore((s) => s.autenticado);
+  const requiereCambioClave = useAuthStore((s) => s.requiereCambioClave);
+  const rutaDefault = () =>
+    obtenerRutaInicialUsuario({
+      autenticado,
+      requiereCambioClave,
+    });
+
+  return (
+    <>
+      <BloqueoCambiosSinGuardar />
+      <AuthNavigatorBridge />
+      <BannerOffline />
+      <ThemeCustomizerModal />
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center bg-paper text-ink-muted text-sm font-semibold">
+            Cargando…
+          </div>
+        }
+      >
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/cambiar-clave"
+            element={
+              <RutaProtegida permitirCambioClave={true}>
+                <CambiarClave />
+              </RutaProtegida>
+            }
+          />
+
+          {/* Rutas unificadas por dominio dentro de AppShell */}
+          <Route
+            path="/inicio"
+            element={
+              <RutaProtegida>
+                <AppShell title="Inicio">
+                  <InicioPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/mi-espacio"
+            element={
+              <RutaProtegida>
+                <AppShell title="Mi Espacio">
+                  <MiEspacioPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/miembros"
+            element={
+              <RutaProtegida allow={(c) => c.canViewMiembros}>
+                <AppShell title="Miembros">
+                  <MiembrosPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/miembros/:id"
+            element={
+              <RutaProtegida allow={(c) => c.canViewMiembros}>
+                <AppShell title="Miembro">
+                  <MiembroDetallePage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/legajos"
+            element={
+              <RutaProtegida allow={(c) => c.canViewLegajosModule}>
+                <AppShell title="Legajos">
+                  <LegajosPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/legajos/completar"
+            element={
+              <RutaProtegida allow={(c) => c.canCompleteLegajos || c.canViewLegajosModule}>
+                <AppShell title="Completar Legajo">
+                  <CompletarLegajoPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/pases"
+            element={
+              <RutaProtegida allow={(c) => c.canViewPases}>
+                <AppShell title="Pases">
+                  <PasesPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/tesoreria"
+            element={
+              <RutaProtegida allow={(c) => c.canSeeTesoreriaGestion}>
+                <AppShell title="Tesorería">
+                  <TesoreriaPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/eventos"
+            element={
+              <RutaProtegida allow={(c) => c.canViewEventos}>
+                <AppShell title="Eventos">
+                  <EventosCatalogoPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/eventos/:id"
+            element={
+              <RutaProtegida allow={(c) => c.canViewEventos}>
+                <AppShell title="Evento">
+                  <EventoWorkspacePage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/organizacion"
+            element={
+              <RutaProtegida
+                allow={(c) =>
+                  c.canViewOrganizacion || c.canViewRoles || c.canEditCorreo
+                }
+              >
+                <AppShell title="Organización">
+                  <OrganizacionPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+
+          {/* Redirecciones temporales desde rutas legacy */}
+          <Route path="/autogestion" element={<Navigate to="/mi-espacio" replace />} />
+          <Route path="/perfil" element={<Navigate to="/mi-espacio?tab=perfil" replace />} />
+          <Route path="/rama" element={<Navigate to="/miembros" replace />} />
+          <Route path="/unidad" element={<Navigate to="/miembros" replace />} />
+          <Route path="/padron" element={<Navigate to="/miembros" replace />} />
+          <Route
+            path="/global"
+            element={
+              <RutaProtegida>
+                <GlobalLegacyRedirect />
+              </RutaProtegida>
+            }
+          />
+
+          <Route path="*" element={<Navigate to={rutaDefault()} replace />} />
+        </Routes>
+      </Suspense>
+      <ToastGlobal />
+      <DialogoDescartarCambios />
+    </>
+  );
+};
+
+// Router de datos (necesario para useBlocker). Una sola ruta comodín conserva el <Routes> existente.
+const router = createBrowserRouter([{ path: '*', element: <RaizApp /> }]);
+
 export function App() {
-  const {
-    autenticado,
-    requiereCambioClave,
-    refrescarSesionDesdeServidor,
-  } = useAuthStore();
+  const { autenticado, refrescarSesionDesdeServidor } = useAuthStore();
 
   useEffect(() => {
     if (!autenticado) return;
@@ -163,174 +373,10 @@ export function App() {
     return () => window.removeEventListener('online', onOnline);
   }, [autenticado, refrescarSesionDesdeServidor]);
 
-  const rutaDefault = () =>
-    obtenerRutaInicialUsuario({
-      autenticado,
-      requiereCambioClave,
-    });
-
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <AuthNavigatorBridge />
-          <BannerOffline />
-          <ThemeCustomizerModal />
-          <Suspense
-            fallback={
-              <div className="min-h-screen flex items-center justify-center bg-paper text-ink-muted text-sm font-semibold">
-                Cargando…
-              </div>
-            }
-          >
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route
-                path="/cambiar-clave"
-                element={
-                  <RutaProtegida permitirCambioClave={true}>
-                    <CambiarClave />
-                  </RutaProtegida>
-                }
-              />
-
-              {/* Rutas unificadas por dominio dentro de AppShell */}
-              <Route
-                path="/inicio"
-                element={
-                  <RutaProtegida>
-                    <AppShell title="Inicio">
-                      <InicioPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/mi-espacio"
-                element={
-                  <RutaProtegida>
-                    <AppShell title="Mi Espacio">
-                      <MiEspacioPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/miembros"
-                element={
-                  <RutaProtegida allow={(c) => c.canViewMiembros}>
-                    <AppShell title="Miembros">
-                      <MiembrosPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/miembros/:id"
-                element={
-                  <RutaProtegida allow={(c) => c.canViewMiembros}>
-                    <AppShell title="Miembro">
-                      <MiembroDetallePage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/legajos"
-                element={
-                  <RutaProtegida allow={(c) => c.canViewLegajosModule}>
-                    <AppShell title="Legajos">
-                      <LegajosPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/legajos/completar"
-                element={
-                  <RutaProtegida allow={(c) => c.canCompleteLegajos || c.canViewLegajosModule}>
-                    <AppShell title="Completar Legajo">
-                      <CompletarLegajoPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/pases"
-                element={
-                  <RutaProtegida allow={(c) => c.canViewPases}>
-                    <AppShell title="Pases">
-                      <PasesPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/tesoreria"
-                element={
-                  <RutaProtegida allow={(c) => c.canSeeTesoreriaGestion}>
-                    <AppShell title="Tesorería">
-                      <TesoreriaPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/eventos"
-                element={
-                  <RutaProtegida allow={(c) => c.canViewEventos}>
-                    <AppShell title="Eventos">
-                      <EventosCatalogoPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/eventos/:id"
-                element={
-                  <RutaProtegida allow={(c) => c.canViewEventos}>
-                    <AppShell title="Evento">
-                      <EventoWorkspacePage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-              <Route
-                path="/organizacion"
-                element={
-                  <RutaProtegida
-                    allow={(c) =>
-                      c.canViewOrganizacion || c.canViewRoles || c.canEditCorreo
-                    }
-                  >
-                    <AppShell title="Organización">
-                      <OrganizacionPage />
-                    </AppShell>
-                  </RutaProtegida>
-                }
-              />
-
-              {/* Redirecciones temporales desde rutas legacy */}
-              <Route path="/autogestion" element={<Navigate to="/mi-espacio" replace />} />
-              <Route path="/perfil" element={<Navigate to="/mi-espacio?tab=perfil" replace />} />
-              <Route path="/rama" element={<Navigate to="/miembros" replace />} />
-              <Route path="/unidad" element={<Navigate to="/miembros" replace />} />
-              <Route path="/padron" element={<Navigate to="/miembros" replace />} />
-              <Route
-                path="/global"
-                element={
-                  <RutaProtegida>
-                    <GlobalLegacyRedirect />
-                  </RutaProtegida>
-                }
-              />
-
-              <Route path="*" element={<Navigate to={rutaDefault()} replace />} />
-            </Routes>
-          </Suspense>
-          <ToastGlobal />
-          <DialogoDescartarCambios />
-        </BrowserRouter>
+        <RouterProvider router={router} />
       </QueryClientProvider>
     </ErrorBoundary>
   );

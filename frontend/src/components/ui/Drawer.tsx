@@ -19,6 +19,8 @@ export interface DrawerProps {
   bloqueado?: boolean;
   /** Esc ejecuta esto en vez de cerrar (p. ej. volver de una subvista interna). */
   onEscape?: () => void;
+  /** false: no agrega entrada al historial (diálogos que aparecen durante una navegación). */
+  manejarHistorial?: boolean;
   bodyClassName?: string;
   className?: string;
 }
@@ -36,6 +38,7 @@ export const Drawer: React.FC<DrawerProps> = ({
   allowFullscreen = false,
   bloqueado = false,
   onEscape,
+  manejarHistorial = true,
   bodyClassName,
   className,
 }) => {
@@ -46,6 +49,7 @@ export const Drawer: React.FC<DrawerProps> = ({
     onCerrar,
     bloqueado,
     onEscape,
+    manejarHistorial,
   });
 
   if (!abierto) return null;

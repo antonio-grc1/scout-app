@@ -35,7 +35,7 @@ import { BotonInstalarPwa } from '../BotonInstalarPwa';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { QrScannerUniversalModal } from '../qr/QrScannerUniversalModal';
 import { useQrModalStore } from '../../core/qrModalStore';
-import { confirmarSalidaSiHayCambios, hayCambiosSinGuardar } from '../../store/cambiosSinGuardarStore';
+import { confirmarSalidaSiHayCambios } from '../../store/cambiosSinGuardarStore';
 
 export const InsideAppShellContext = React.createContext(false);
 export const useInsideAppShell = () => React.useContext(InsideAppShellContext);
@@ -213,21 +213,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
     navigate('/login', { replace: true });
   };
 
-  // Cualquier link interno del shell (sidebar, header, barra móvil o contenido) pide
-  // confirmación si la vista marcó cambios sin guardar (p. ej. el legajo a medio completar).
-  const protegerNavegacion = (e: React.MouseEvent) => {
-    const link = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null;
-    if (!link || link.target === '_blank' || link.origin !== window.location.origin) return;
-    const destino = link.pathname + link.search;
-    if (destino === window.location.pathname + window.location.search) return;
-    if (!hayCambiosSinGuardar()) return;
-    // El diálogo es asíncrono: se frena el click y se navega recién si la persona confirma.
-    e.preventDefault();
-    e.stopPropagation();
-    void confirmarSalidaSiHayCambios().then((ok) => {
-      if (ok) navigate(destino);
-    });
-  };
+  // La confirmación al salir con cambios sin guardar la hace el router (useBlocker en App.tsx)
+  // para links, navigate() y el botón Atrás. Solo "Cerrar sesión" pregunta acá, porque limpia
+  // la sesión antes de navegar.
 
   // Barra inferior móvil (4 tabs + FAB central). Solo enlaza rutas permitidas y no repite destinos.
   type SlotLink = { kind: 'link'; to: string; label: string; icon: React.ReactNode };
@@ -258,7 +246,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
 
   return (
     <InsideAppShellContext.Provider value={true}>
-      <div className="min-h-screen flex bg-paper text-ink" onClickCapture={protegerNavegacion}>
+      <div className="min-h-screen flex bg-paper text-ink">
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex w-64 lg:w-[272px] shrink-0 border-r border-rule bg-paper-2 flex-col justify-between p-3.5 sticky top-0 h-screen">
         <div className="space-y-5 overflow-y-auto no-scrollbar pr-0.5">
@@ -462,9 +450,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                     fabModo === 'qr'
                       ? handleOpenQr
                       : () => {
-                          void confirmarSalidaSiHayCambios().then((ok) => {
-                            if (ok) navigate('/eventos');
-                          });
+                          navigate('/eventos');
                         }
                   }
                   aria-label={fabModo === 'qr' ? 'Abrir escáner QR' : 'Ver Eventos'}
@@ -534,8 +520,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
               <button
                 key={it.id}
                 type="button"
-                onClick={async () => {
-                  if (!(await confirmarSalidaSiHayCambios())) return;
+                onClick={() => {
                   setMobileMoreOpen(false);
                   navigate(it.to);
                 }}

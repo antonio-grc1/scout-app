@@ -15,6 +15,7 @@ export interface ConfirmImpactDialogProps {
   textoCancelar?: string;
   peligroso?: boolean;
   cargando?: boolean;
+  manejarHistorial?: boolean;
 }
 
 export const ConfirmImpactDialog: React.FC<ConfirmImpactDialogProps> = ({
@@ -29,6 +30,7 @@ export const ConfirmImpactDialog: React.FC<ConfirmImpactDialogProps> = ({
   textoCancelar = 'Cancelar',
   peligroso = true,
   cargando = false,
+  manejarHistorial = true,
 }) => {
   const tone = tipoImpacto ?? (peligroso ? 'warn' : 'info');
   const badgeClass =
@@ -46,6 +48,7 @@ export const ConfirmImpactDialog: React.FC<ConfirmImpactDialogProps> = ({
       mode="sheet"
       maxWidthClass="sm:max-w-md"
       bloqueado={cargando}
+      manejarHistorial={manejarHistorial}
       footer={
         <>
           <Button

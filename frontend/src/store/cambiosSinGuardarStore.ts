@@ -24,23 +24,10 @@ export const useCambiosSinGuardarStore = create<CambiosSinGuardarState>((set, ge
   resolverDialogo: null,
   responderDialogo: (ok) => {
     const resolver = get().resolverDialogo;
-    // El diálogo (useModalOverlay) agrega una entrada al historial y, al cerrarse, hace un
-    // history.back() diferido. Si se navegara antes, ese "atrás" deshace la navegación:
-    // al confirmar se espera ese popstate (con un tope por si no llega).
-    const esperaHistorial = ok && window.history.state?.__modalId != null;
+    // El diálogo se monta sin entrada de historial (manejarHistorial={false}), así que se puede
+    // resolver enseguida: ya no hay un history.back() diferido que deshaga la navegación.
     set({ mensajeDialogo: null, resolverDialogo: null });
-    if (!resolver) return;
-    if (!esperaHistorial) {
-      resolver(ok);
-      return;
-    }
-    const terminar = () => {
-      window.removeEventListener('popstate', terminar);
-      window.clearTimeout(tope);
-      resolver(ok);
-    };
-    const tope = window.setTimeout(terminar, 500);
-    window.addEventListener('popstate', terminar);
+    resolver?.(ok);
   },
 }));
 

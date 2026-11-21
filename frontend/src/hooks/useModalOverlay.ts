@@ -9,6 +9,8 @@ interface ModalStackEntry {
   cerrarConEsc: boolean;
   /** Acción de Esc si difiere de cerrar (p. ej. volver de una subvista). */
   escape: () => void;
+  /** false: el modal no agregó entrada al historial y no debe cerrarse con "Atrás". */
+  manejaHistorial: boolean;
 }
 
 const modalStack: ModalStackEntry[] = [];
@@ -57,6 +59,10 @@ if (typeof window !== 'undefined') {
       for (let i = modalStack.length - 1; i >= 0; i--) {
         const top = modalStack[i];
         if (top.isClosing) continue;
+        // Un modal sin historial (p. ej. el diálogo de "cambios sin guardar" que aparece mientras
+        // el router frena una navegación) no reacciona al popstate: ese evento lo dispara el
+        // propio router al revertir la URL y cerraba el diálogo apenas se abría.
+        if (!top.manejaHistorial) return;
 
         const currentModalStateId =
           event.state && typeof event.state === 'object'
@@ -204,6 +210,7 @@ export function useModalOverlay({
         closedByPopState = val;
       },
       cerrarConEsc,
+      manejaHistorial: manejarHistorial,
     };
 
     modalStack.push(stackEntry);

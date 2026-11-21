@@ -16,6 +16,8 @@ export const DialogoDescartarCambios: React.FC = () => {
       textoConfirmar="Descartar cambios"
       textoCancelar="Seguir editando"
       tipoImpacto="warn"
+      // Aparece mientras el router tiene una navegación en pausa (useBlocker): no debe tocar el historial.
+      manejarHistorial={false}
     />
   );
 };
