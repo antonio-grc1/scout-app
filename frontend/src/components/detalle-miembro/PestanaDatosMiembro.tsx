@@ -8,6 +8,7 @@ import {
 import { TrayectoriaMiembro } from './TrayectoriaMiembro';
 import { puedeDesvincularIntegrantePorAlcance } from '../../lib/permisos';
 import { BloqueGrupoFamiliar } from './BloqueGrupoFamiliar';
+import { Button } from '../ui';
 
 export interface FormDatosMiembro {
   nombre: string;
@@ -420,14 +421,13 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             </span>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={guardando}
-            className="min-h-[46px] px-5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
-          </button>
+          </Button>
         </div>
       )}
 

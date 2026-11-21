@@ -3,6 +3,7 @@ import { FileCheck2, Eye, Download, Pencil, Loader2 } from 'lucide-react';
 import { ESTADO_FICHA_CONFIG, obtenerCicloAnioActual } from '../../lib/formatters';
 import { DynamicFormRenderer, type EsquemaCampos } from '../DynamicFormRenderer';
 import { VisorFichaMiembro } from '../VisorFichaMiembro';
+import { Button } from '../ui';
 
 export interface PestanaLegajosFichasProps {
   miembro: any;
@@ -176,17 +177,17 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
         {/* Acciones Táctiles 1-Tap */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           {esPendiente && puedeValidarFisico && (
-            <button
+            <Button
               type="button"
               disabled={validandoFichaId === ent?.id}
               onClick={() => onValidarFisicoDirecto(ent)}
-              className="col-span-2 sm:flex-1 min-h-[46px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-[13px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+              className="col-span-2 sm:flex-1"
             >
               <FileCheck2 className="w-4 h-4" />
               <span>
                 {validandoFichaId === ent?.id ? 'Guardando...' : 'Recibir Papel'}
               </span>
-            </button>
+            </Button>
           )}
 
           <button

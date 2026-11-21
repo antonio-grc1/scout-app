@@ -1,5 +1,6 @@
 import React from 'react';
 import { Users } from 'lucide-react';
+import { Button } from '../ui';
 
 interface BloqueGrupoFamiliarProps {
   familiar: { nombreFamilia?: string } | null | undefined;
@@ -56,13 +57,13 @@ export const BloqueGrupoFamiliar: React.FC<BloqueGrupoFamiliarProps> = ({
             </button>
           )}
           {habilitarVincularHermano && (
-            <button
+            <Button
               type="button"
               onClick={onVincularHermano}
-              className="min-h-[40px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] cursor-pointer transition-colors"
+              size="sm"
             >
               + Hermano
-            </button>
+            </Button>
           )}
         </div>
       )}

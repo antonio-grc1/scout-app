@@ -23,6 +23,7 @@ import {
   FileText,
   Loader2,
 } from 'lucide-react';
+import { Button } from './ui';
 
 export interface MiembroCardProps {
   miembro: any;
@@ -193,11 +194,10 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
       >
         {/* 1-Tap: Validar Ficha Física si está pendiente de firma */}
         {esPendienteFirma && puedeValidarFisico && onValidarFichaDirecto && (
-          <button
+          <Button
             type="button"
             disabled={validandoDirecto}
             onClick={() => onValidarFichaDirecto(entrega)}
-            className="min-h-[44px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
           >
             {validandoDirecto ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -205,19 +205,18 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
               <FileCheck2 className="w-4 h-4" />
             )}
             <span>Recibir Ficha</span>
-          </button>
+          </Button>
         )}
 
         {/* 1-Tap: Pase sugerido */}
         {tienePaseSugerido && puedeEjecutarPases && (
-          <button
+          <Button
             type="button"
             onClick={() => onAbrirDetalle('pase')}
-            className="min-h-[44px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
             <span>Pasar de Rama</span>
-          </button>
+          </Button>
         )}
 
         {/* 1-Tap: Ver Ficha del Miembro sin descargar */}

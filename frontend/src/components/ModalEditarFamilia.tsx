@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 import { X, Users, Percent, Check, AlertCircle, UserMinus, Trash2 } from 'lucide-react';
 import { obtenerRolPrincipal, traducirErrorAmigable } from '../lib/formatters';
 import { puedeDesvincularIntegrantePorAlcance } from '../lib/permisos';
+import { Button } from './ui';
 
 interface Props {
   abierto: boolean;
@@ -351,14 +352,13 @@ export const ModalEditarFamilia: React.FC<Props> = ({
             >
               Cancelar
             </button>
-            <button
+            <Button
               type="submit"
               disabled={guardando}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
             >
               <Check className="w-4 h-4" />
               <span>{guardando ? 'Guardando...' : 'Guardar Descuento'}</span>
-            </button>
+            </Button>
           </div>
         </div>
       </form>

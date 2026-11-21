@@ -21,6 +21,7 @@ import {
 } from '../../lib/formatters';
 import { puedeDesvincularIntegrantePorAlcance } from '../../lib/permisos';
 import { BloqueGrupoFamiliar } from './BloqueGrupoFamiliar';
+import { Button } from '../ui';
 
 export interface CargoEditando {
   id: number;
@@ -208,14 +209,13 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
           )}
 
           {puedeCobrarCuotas && (
-            <button
+            <Button
               type="button"
               onClick={() => onCobrarCargo(null)}
-              className="min-h-[44px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center gap-1.5 cursor-pointer transition-colors"
             >
               <CreditCard className="w-4 h-4" />
               <span>{saldoPendiente > 0 ? 'Cobrar / Pagar' : 'Registrar Adelanto'}</span>
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -392,14 +392,14 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                     {/* Acciones 1-Tap por Cuota */}
                     <div className="flex items-center gap-2 shrink-0">
                       {puedeCobrar && (
-                        <button
+                        <Button
                           type="button"
                           onClick={() => onCobrarCargo(c.id)}
-                          className="min-h-[42px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center gap-1.5 cursor-pointer transition-colors"
+                          size="sm"
                         >
                           <CreditCard className="w-4 h-4" />
                           <span>Cobrar {formatearMoneda(pendiente)}</span>
-                        </button>
+                        </Button>
                       )}
 
                       {habilitarAjustes && (
@@ -501,13 +501,13 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                         >
                           Cancelar
                         </button>
-                        <button
+                        <Button
                           type="submit"
                           disabled={procesandoAccionCuota}
-                          className="min-h-[42px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-[13px] font-bold cursor-pointer disabled:opacity-50 transition-colors"
+                          size="sm"
                         >
                           Guardar
-                        </button>
+                        </Button>
                       </div>
                     </form>
                   )}
@@ -710,13 +710,13 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                           placeholder="Observaciones"
                           className="flex-1 min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-[13px]"
                         />
-                        <button
+                        <Button
                           type="submit"
                           disabled={procesandoAccionCuota}
-                          className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-[13px] font-bold cursor-pointer transition-colors"
+                          size="sm"
                         >
                           OK
-                        </button>
+                        </Button>
                       </div>
                     </form>
                   )}

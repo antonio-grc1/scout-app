@@ -26,6 +26,7 @@ import {
   Check,
   Mail,
 } from 'lucide-react';
+import { Button, Input, Select } from './ui';
 
 interface Props {
   abierto: boolean;
@@ -474,49 +475,37 @@ export const ModalAltaMiembro: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">DNI *</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                required
-                placeholder="Sin puntos"
-                value={dni}
-                onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Fecha de Nacimiento *</label>
-              <input
-                type="date"
-                max={new Date().toISOString().slice(0, 10)}
-                required
-                value={fechaNacimiento}
-                onChange={(e) => setFechaNacimiento(e.target.value)}
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Nombre *</label>
-              <input
-                type="text"
-                required
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Apellido *</label>
-              <input
-                type="text"
-                required
-                value={apellido}
-                onChange={(e) => setApellido(e.target.value)}
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+            <Input
+              label="DNI"
+              type="text"
+              inputMode="numeric"
+              required
+              placeholder="Sin puntos"
+              value={dni}
+              onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
+            />
+            <Input
+              label="Fecha de Nacimiento"
+              type="date"
+              max={new Date().toISOString().slice(0, 10)}
+              required
+              value={fechaNacimiento}
+              onChange={(e) => setFechaNacimiento(e.target.value)}
+            />
+            <Input
+              label="Nombre"
+              type="text"
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+            />
+            <Input
+              label="Apellido"
+              type="text"
+              required
+              value={apellido}
+              onChange={(e) => setApellido(e.target.value)}
+            />
           </div>
 
           {/* Categoría Scout en el grupo (independiente del rol de permisos) */}
@@ -563,64 +552,57 @@ export const ModalAltaMiembro: React.FC<Props> = ({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Rama / Sección *</label>
-              <select
-                value={unidadId}
-                onChange={(e) => handleCambioUnidad(Number(e.target.value))}
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors bg-surface text-ink"
-              >
-                {unidadesFiltradas.some(esUnidadRama) && (
-                  <optgroup label="Ramas del Grupo">
-                    {unidadesFiltradas.filter(esUnidadRama).map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nombre}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {unidadesFiltradas.some((u) => !esUnidadRama(u)) && (
-                  <optgroup label="Adultos y Equipo">
-                    {unidadesFiltradas.filter((u) => !esUnidadRama(u)).map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.nombre}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Rol y Permisos *</label>
-              <select
-                value={rolId}
-                onChange={(e) => handleCambioRol(Number(e.target.value))}
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors bg-surface text-ink"
-              >
-                {rolesFiltrados.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Rama / Sección"
+              required
+              value={unidadId}
+              onChange={(e) => handleCambioUnidad(Number(e.target.value))}
+            >
+              {unidadesFiltradas.some(esUnidadRama) && (
+                <optgroup label="Ramas del Grupo">
+                  {unidadesFiltradas.filter(esUnidadRama).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {unidadesFiltradas.some((u) => !esUnidadRama(u)) && (
+                <optgroup label="Adultos y Equipo">
+                  {unidadesFiltradas.filter((u) => !esUnidadRama(u)).map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.nombre}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </Select>
+            <Select
+              label="Rol y Permisos"
+              required
+              value={rolId}
+              onChange={(e) => handleCambioRol(Number(e.target.value))}
+            >
+              {rolesFiltrados.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <Input
+              label="Teléfono del Miembro"
+              type="tel"
+              inputMode="tel"
+              value={telefonoContacto}
+              onChange={(e) => setTelefonoContacto(e.target.value)}
+              placeholder="Ej. 351 456 7890"
+            />
             <div>
-              <label className="block font-semibold text-ink-2 mb-1">Teléfono del Miembro</label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={telefonoContacto}
-                onChange={(e) => setTelefonoContacto(e.target.value)}
-                placeholder="Ej. 351 456 7890"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Email</label>
-              <input
+              <Input
+                label="Email"
                 type="email"
                 value={emailContacto}
                 onChange={(e) => {
@@ -629,7 +611,6 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                   if (!next.trim()) setSoloEnviarPorCorreo(false);
                 }}
                 placeholder="correo@ejemplo.com"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
               {emailContacto.trim() && (
                 <label className="mt-2 flex items-start gap-2 text-xs text-ink-2 cursor-pointer select-none">
@@ -647,111 +628,97 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               )}
             </div>
 
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Nombre y Apellido Madre</label>
-              <input
-                type="text"
-                value={madreNombres}
-                onChange={(e) => setMadreNombres(e.target.value)}
-                placeholder="Opcional"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Teléfono Madre</label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={madreTelefono}
-                onChange={(e) => setMadreTelefono(e.target.value)}
-                placeholder="Opcional"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+            <Input
 
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Nombre y Apellido Padre</label>
-              <input
-                type="text"
-                value={padreNombres}
-                onChange={(e) => setPadreNombres(e.target.value)}
-                placeholder="Opcional"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Teléfono Padre</label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={padreTelefono}
-                onChange={(e) => setPadreTelefono(e.target.value)}
-                placeholder="Opcional"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+              label="Nombre y Apellido Madre"
 
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Nombre y Apellido Tutor/a</label>
-              <input
-                type="text"
-                value={tutorNombres}
-                onChange={(e) => setTutorNombres(e.target.value)}
-                placeholder="Opcional (si aplica)"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Teléfono Tutor/a</label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={tutorTelefono}
-                onChange={(e) => setTutorTelefono(e.target.value)}
-                placeholder="Opcional (si aplica)"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+              type="text"
+
+              value={madreNombres}
+
+              onChange={(e) => setMadreNombres(e.target.value)}
+
+              placeholder="Opcional"
+
+            />
+            <Input
+              label="Teléfono Madre"
+              type="tel"
+              inputMode="tel"
+              value={madreTelefono}
+              onChange={(e) => setMadreTelefono(e.target.value)}
+              placeholder="Opcional"
+            />
+
+            <Input
+
+              label="Nombre y Apellido Padre"
+
+              type="text"
+
+              value={padreNombres}
+
+              onChange={(e) => setPadreNombres(e.target.value)}
+
+              placeholder="Opcional"
+
+            />
+            <Input
+              label="Teléfono Padre"
+              type="tel"
+              inputMode="tel"
+              value={padreTelefono}
+              onChange={(e) => setPadreTelefono(e.target.value)}
+              placeholder="Opcional"
+            />
+
+            <Input
+
+              label="Nombre y Apellido Tutor/a"
+
+              type="text"
+
+              value={tutorNombres}
+
+              onChange={(e) => setTutorNombres(e.target.value)}
+
+              placeholder="Opcional (si aplica)"
+
+            />
+            <Input
+              label="Teléfono Tutor/a"
+              type="tel"
+              inputMode="tel"
+              value={tutorTelefono}
+              onChange={(e) => setTutorTelefono(e.target.value)}
+              placeholder="Opcional (si aplica)"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Domicilio</label>
-              <input
-                type="text"
-                value={domicilio}
-                onChange={(e) => setDomicilio(e.target.value)}
-                placeholder="Calle y número"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-ink-2 mb-1">Obra Social / Prepaga</label>
-              <input
-                type="text"
-                value={obraSocial}
-                onChange={(e) => setObraSocial(e.target.value)}
-                placeholder="Opcional"
-                className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+            <Input
+              label="Domicilio"
+              type="text"
+              value={domicilio}
+              onChange={(e) => setDomicilio(e.target.value)}
+              placeholder="Calle y número"
+            />
+            <Input
+              label="Obra Social / Prepaga"
+              type="text"
+              value={obraSocial}
+              onChange={(e) => setObraSocial(e.target.value)}
+              placeholder="Opcional"
+            />
           </div>
 
           <div className="flex justify-end gap-2.5 pt-3 border-t border-rule">
-            <button
-              type="button"
-              onClick={cerrarModal}
-              className="min-h-[44px] px-4 py-2 rounded-xl border border-rule text-ink-2 font-bold text-sm hover:bg-paper-2 transition cursor-pointer"
-            >
+            <Button type="button" variant="secondary" onClick={cerrarModal}>
               Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={cargando}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors cursor-pointer disabled:opacity-50"
-            >
-              {cargando ? 'Guardando...' : 'Guardar Miembro'}
-            </button>
+            </Button>
+            <Button type="submit" loading={cargando} loadingText="Guardando...">
+              Guardar miembro
+            </Button>
           </div>
         </form>
   );

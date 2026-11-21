@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Check, Copy, KeyRound, Mail } from 'lucide-react';
+import { Button } from '../ui';
 
 export interface PestanaSeguridadProps {
   miembro: any;
@@ -60,17 +61,16 @@ export const PestanaSeguridad: React.FC<PestanaSeguridadProps> = ({
       )}
 
       <div className="flex flex-wrap items-center gap-2.5">
-        <button
+        <Button
           type="button"
           onClick={() => onResetClave(false)}
           disabled={reseteandoClave}
-          className="min-h-[46px] px-4.5 bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold rounded-xl text-sm inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
         >
           <KeyRound className="w-4 h-4" />
           <span>
             {reseteandoClave ? 'Generando clave...' : 'Generar clave temporal'}
           </span>
-        </button>
+        </Button>
 
         <button
           type="button"
