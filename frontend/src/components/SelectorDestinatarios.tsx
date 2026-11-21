@@ -115,12 +115,22 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
       return;
     }
 
+    // Al cambiar la búsqueda, la respuesta anterior se descarta (antes podía llegar tarde y
+    // pisar los resultados del término nuevo).
+    let cancelado = false;
     const timer = setTimeout(async () => {
       setBuscando(true);
       try {
         const res = await api.get('/miembros', {
-          params: { q: busqueda.trim(), busqueda: busqueda.trim(), porPagina: 20 },
+          params: {
+            q: busqueda.trim(),
+            busqueda: busqueda.trim(),
+            porPagina: 20,
+            // Las excepciones se buscan dentro de la unidad elegida.
+            ...(unidadId !== null ? { unidadId } : {}),
+          },
         });
+        if (cancelado) return;
         const items: MiembroResumen[] = res.data?.items || res.data || [];
 
         // Filtro estricto sin tildes en memoria: solo incluir si coincide con nombre, apellido o DNI
@@ -141,14 +151,17 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
 
         setResultadosBusqueda(filtrados);
       } catch {
-        setResultadosBusqueda([]);
+        if (!cancelado) setResultadosBusqueda([]);
       } finally {
-        setBuscando(false);
+        if (!cancelado) setBuscando(false);
       }
     }, 200);
 
-    return () => clearTimeout(timer);
-  }, [busqueda]);
+    return () => {
+      cancelado = true;
+      clearTimeout(timer);
+    };
+  }, [busqueda, unidadId]);
 
   const handleAgregarExcepcion = (m: MiembroResumen) => {
     if (!excepcionesIds.includes(m.id)) {

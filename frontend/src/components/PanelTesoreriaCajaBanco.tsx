@@ -456,34 +456,27 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     return [...movimientos].reverse();
   }, [movimientos]);
 
+  // Un único criterio de búsqueda para la lista y la exportación (antes estaba duplicado).
+  const coincideBusqueda = useCallback((m: MovimientoFinancieroItem, q: string) => {
+    const usuario = m.creadoPor ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}` : '';
+    return [
+      normalizarTextoBusqueda(m.conceptoTexto),
+      normalizarTextoBusqueda(m.miembroNombre),
+      normalizarTextoBusqueda(m.rubro?.nombre),
+      normalizarTextoBusqueda(usuario),
+      normalizarTextoBusqueda(obtenerEtiquetaTipoMovimiento(m.tipo).texto),
+      String(m.montoIngreso || ''),
+      String(m.montoEgreso || ''),
+      String(m.saldoAcumulado || ''),
+    ].some((campo) => campo.includes(q));
+  }, []);
+
   // Filtrado en vivo por término de búsqueda
   const movimientosFiltrados = useMemo(() => {
     if (!busqueda.trim()) return movimientosInvertidos;
     const q = normalizarTextoBusqueda(busqueda);
-    return movimientosInvertidos.filter((m) => {
-      const concepto = normalizarTextoBusqueda(m.conceptoTexto);
-      const miembro = normalizarTextoBusqueda(m.miembroNombre);
-      const rubro = normalizarTextoBusqueda(m.rubro?.nombre);
-      const usuario = normalizarTextoBusqueda(
-        m.creadoPor ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}` : '',
-      );
-      const tipo = normalizarTextoBusqueda(obtenerEtiquetaTipoMovimiento(m.tipo).texto);
-      const montoIn = String(m.montoIngreso || '');
-      const montoEg = String(m.montoEgreso || '');
-      const saldo = String(m.saldoAcumulado || '');
-
-      return (
-        concepto.includes(q) ||
-        miembro.includes(q) ||
-        rubro.includes(q) ||
-        usuario.includes(q) ||
-        tipo.includes(q) ||
-        montoIn.includes(q) ||
-        montoEg.includes(q) ||
-        saldo.includes(q)
-      );
-    });
-  }, [movimientosInvertidos, busqueda]);
+    return movimientosInvertidos.filter((m) => coincideBusqueda(m, q));
+  }, [movimientosInvertidos, busqueda, coincideBusqueda]);
 
   const totalMovimientos = movimientosFiltrados.length;
   const hayMasMovimientos = cantidadVisible < totalMovimientos;
@@ -492,30 +485,8 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   const movimientosAExportar = useMemo(() => {
     if (!busqueda.trim()) return movimientos;
     const q = normalizarTextoBusqueda(busqueda);
-    return movimientos.filter((m) => {
-      const concepto = normalizarTextoBusqueda(m.conceptoTexto);
-      const miembro = normalizarTextoBusqueda(m.miembroNombre);
-      const rubro = normalizarTextoBusqueda(m.rubro?.nombre);
-      const usuario = normalizarTextoBusqueda(
-        m.creadoPor ? `${m.creadoPor.nombre} ${m.creadoPor.apellido}` : '',
-      );
-      const tipo = normalizarTextoBusqueda(obtenerEtiquetaTipoMovimiento(m.tipo).texto);
-      const montoIn = String(m.montoIngreso || '');
-      const montoEg = String(m.montoEgreso || '');
-      const saldo = String(m.saldoAcumulado || '');
-
-      return (
-        concepto.includes(q) ||
-        miembro.includes(q) ||
-        rubro.includes(q) ||
-        usuario.includes(q) ||
-        tipo.includes(q) ||
-        montoIn.includes(q) ||
-        montoEg.includes(q) ||
-        saldo.includes(q)
-      );
-    });
-  }, [movimientos, busqueda]);
+    return movimientos.filter((m) => coincideBusqueda(m, q));
+  }, [movimientos, busqueda, coincideBusqueda]);
 
   const prepararColumnasLibroDiario = (): ColumnaExportacion<MovimientoFinancieroItem>[] => [
     {
@@ -529,7 +500,13 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     },
     { header: 'Miembro', formatear: (m) => m.miembroNombre || '' },
     { header: 'Rubro Contable', formatear: (m) => m.rubro?.nombre || '' },
-    { header: 'N° Comprobante', formatear: (m) => m.gasto?.comprobanteNro || '' },
+    {
+      header: 'N° Comprobante',
+      // Los ingresos manuales guardan el comprobante dentro del concepto.
+      formatear: (m) =>
+        m.gasto?.comprobanteNro ||
+        (m.tipo === 'INGRESO_OTRO' ? desarmarConceptoIngreso(m.conceptoTexto).comprobanteNro : ''),
+    },
     { header: 'Ingreso (+)', formatear: (m) => Number(m.montoIngreso || 0) },
     { header: 'Egreso (-)', formatear: (m) => Number(m.montoEgreso || 0) },
     { header: 'Saldo Acumulado', formatear: (m) => Number(m.saldoAcumulado || 0) },
@@ -540,37 +517,66 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     },
   ];
 
-  const handleExportarExcel = async () => {
-    if (movimientosAExportar.length === 0) {
-      if (onToastRef.current) onToastRef.current('No hay movimientos para exportar.', 'error');
-      return;
-    }
-    const fechaHoy = obtenerHoyLocalISO();
-    const nombreSanitizado = (cuentaActiva?.nombre || 'Cuenta').replace(/[^a-zA-Z0-9_-]/g, '_');
+  /**
+   * Encabezado y pie de la exportación. Con búsqueda activa los totales salen de las filas
+   * exportadas (antes eran los del período completo y no cuadraban con lo exportado).
+   */
+  const construirResumenesExportacion = () => {
     const periodoTexto = `${fechaDesde ? formatearFecha(fechaDesde) : 'Histórico'} al ${fechaHasta ? formatearFecha(fechaHasta) : 'Hoy'}`;
-
-    await exportarAExcel({
-      nombreArchivo: `Libro_Diario_${nombreSanitizado}_${fechaHoy}`,
-      nombreHoja: 'Libro Diario',
-      columnas: prepararColumnasLibroDiario(),
-      filas: movimientosAExportar,
-      resumenSuperior: [
-        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
-        { etiqueta: 'Cuenta', valor: cuentaActiva?.nombre || '' },
-        {
-          etiqueta: 'Tipo de Cuenta',
-          valor: cuentaActiva?.tipo === 'CAJA_EFECTIVO' ? 'Caja Chica / Efectivo' : 'Cuenta Bancaria',
-        },
-        { etiqueta: 'Período', valor: periodoTexto },
-        { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
-        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(obtenerHoyLocalISO()) },
-      ],
+    const termino = busqueda.trim();
+    const resumenSuperior = [
+      { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
+      { etiqueta: 'Cuenta', valor: cuentaActiva?.nombre || '' },
+      {
+        etiqueta: 'Tipo de Cuenta',
+        valor: cuentaActiva?.tipo === 'CAJA_EFECTIVO' ? 'Caja Chica / Efectivo' : 'Cuenta Bancaria',
+      },
+      { etiqueta: 'Período', valor: periodoTexto },
+      ...(termino ? [{ etiqueta: 'Filtro de búsqueda', valor: `"${termino}" (${movimientosAExportar.length} movimientos)` }] : []),
+      { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
+      { etiqueta: 'Fecha de Emisión', valor: formatearFecha(obtenerHoyLocalISO()) },
+    ];
+    if (termino) {
+      const centavos = (valor: unknown) => Math.round(Number(valor || 0) * 100);
+      const ingresos = movimientosAExportar.reduce((acc, m) => acc + centavos(m.montoIngreso), 0) / 100;
+      const egresos = movimientosAExportar.reduce((acc, m) => acc + centavos(m.montoEgreso), 0) / 100;
+      return {
+        resumenSuperior,
+        resumenInferior: [
+          { etiqueta: 'Total Ingresos de los movimientos filtrados ($)', valor: ingresos },
+          { etiqueta: 'Total Egresos de los movimientos filtrados ($)', valor: egresos },
+          { etiqueta: 'Neto de los movimientos filtrados ($)', valor: (centavos(ingresos) - centavos(egresos)) / 100 },
+          { etiqueta: 'Saldo Final del Período completo ($)', valor: libroDiario?.saldoFinalPeriodo ?? 0 },
+        ],
+      };
+    }
+    return {
+      resumenSuperior,
       resumenInferior: [
         { etiqueta: 'Total Ingresos del Período ($)', valor: libroDiario?.totalIngresosPeriodo ?? 0 },
         { etiqueta: 'Total Egresos del Período ($)', valor: libroDiario?.totalEgresosPeriodo ?? 0 },
         { etiqueta: 'Saldo Final del Período ($)', valor: libroDiario?.saldoFinalPeriodo ?? 0 },
         { etiqueta: 'Saldo Actual Consolidado ($)', valor: libroDiario?.saldoActualConsolidado ?? 0 },
       ],
+    };
+  };
+
+  const nombreArchivoLibro = () => {
+    const nombreSanitizado = (cuentaActiva?.nombre || 'Cuenta').replace(/[^a-zA-Z0-9_-]/g, '_');
+    return `Libro_Diario_${nombreSanitizado}_${obtenerHoyLocalISO()}`;
+  };
+
+  const handleExportarExcel = async () => {
+    if (movimientosAExportar.length === 0) {
+      if (onToastRef.current) onToastRef.current('No hay movimientos para exportar.', 'error');
+      return;
+    }
+    await exportarAExcel({
+      nombreArchivo: nombreArchivoLibro(),
+      nombreHoja: 'Libro Diario',
+      columnas: prepararColumnasLibroDiario(),
+      filas: movimientosAExportar,
+      ...construirResumenesExportacion(),
     });
     if (onToastRef.current) onToastRef.current('Libro diario exportado exitosamente a Excel.');
   };
@@ -580,31 +586,11 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       if (onToastRef.current) onToastRef.current('No hay movimientos para exportar.', 'error');
       return;
     }
-    const fechaHoy = obtenerHoyLocalISO();
-    const nombreSanitizado = (cuentaActiva?.nombre || 'Cuenta').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const periodoTexto = `${fechaDesde ? formatearFecha(fechaDesde) : 'Histórico'} al ${fechaHasta ? formatearFecha(fechaHasta) : 'Hoy'}`;
-
     exportarACSV({
-      nombreArchivo: `Libro_Diario_${nombreSanitizado}_${fechaHoy}`,
+      nombreArchivo: nombreArchivoLibro(),
       columnas: prepararColumnasLibroDiario(),
       filas: movimientosAExportar,
-      resumenSuperior: [
-        { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
-        { etiqueta: 'Cuenta', valor: cuentaActiva?.nombre || '' },
-        {
-          etiqueta: 'Tipo de Cuenta',
-          valor: cuentaActiva?.tipo === 'CAJA_EFECTIVO' ? 'Caja Chica / Efectivo' : 'Cuenta Bancaria',
-        },
-        { etiqueta: 'Período', valor: periodoTexto },
-        { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
-        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(obtenerHoyLocalISO()) },
-      ],
-      resumenInferior: [
-        { etiqueta: 'Total Ingresos del Período ($)', valor: libroDiario?.totalIngresosPeriodo ?? 0 },
-        { etiqueta: 'Total Egresos del Período ($)', valor: libroDiario?.totalEgresosPeriodo ?? 0 },
-        { etiqueta: 'Saldo Final del Período ($)', valor: libroDiario?.saldoFinalPeriodo ?? 0 },
-        { etiqueta: 'Saldo Actual Consolidado ($)', valor: libroDiario?.saldoActualConsolidado ?? 0 },
-      ],
+      ...construirResumenesExportacion(),
     });
     if (onToastRef.current) onToastRef.current('Libro diario exportado exitosamente a CSV.');
   };
