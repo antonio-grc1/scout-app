@@ -7,6 +7,7 @@ import { ArrowRightLeft, Clock, Loader2, ShieldAlert, Sparkles, Users } from 'lu
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { useConfirmar } from '../hooks/useConfirmar';
 import { PanelSolicitudesPase } from './PanelSolicitudesPase';
+import { Button } from './ui';
 
 interface Props {
   candidatos: any[];
@@ -320,11 +321,11 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                         </label>
                       )}
 
-                      <button
+                      <Button
                         type="button"
                         disabled={ejecutandoLote || g.miembros.every((m) => Boolean(m.solicitudPendiente))}
                         onClick={() => solicitarPaseCamada(g)}
-                        className="min-h-[42px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50"
+                        size="sm"
                       >
                         {ejecutandoLote ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -334,7 +335,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                         <span>
                           Pasar toda la Camada {g.camada} ({g.miembros.filter((m) => !m.solicitudPendiente).length})
                         </span>
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>

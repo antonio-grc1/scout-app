@@ -24,6 +24,7 @@ import {
   Eye,
   RotateCcw,
 } from 'lucide-react';
+import { Input, Button } from './ui';
 
 interface Props {
   roles: any[];
@@ -652,14 +653,14 @@ export const PanelGestorRoles: React.FC<Props> = ({
           )}
 
           {puedeGestionarRoles && (
-            <button
+            <Button
               type="button"
               onClick={abrirNuevoRol}
-              className="min-h-[46px] px-4 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0 shadow-xs"
+              className="shrink-0"
             >
               <PlusCircle className="w-4 h-4" />
               <span>Crear Nuevo Rol</span>
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -806,7 +807,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                     </button>
                   )}
 
-                  <button
+                  <Button
                     type="button"
                     disabled={!puedeOperarEsteRol}
                     onClick={() => abrirEditarRol(r)}
@@ -815,11 +816,11 @@ export const PanelGestorRoles: React.FC<Props> = ({
                         ? 'No podés modificar un rol que tiene permisos superiores a los tuyos'
                         : undefined
                     }
-                    className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                    className="flex-1 sm:flex-initial"
                   >
                     <Pencil className="w-4 h-4" />
                     <span>Editar Rol y Paneles</span>
-                  </button>
+                  </Button>
                   {(!puedeOperarEsteRol || r.esSistema || (esUltimo && !esInactivo)) && (
                     <p className="basis-full text-[13px] text-ink-muted leading-snug">
                       {!puedeOperarEsteRol
@@ -874,19 +875,14 @@ export const PanelGestorRoles: React.FC<Props> = ({
                 className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 text-sm"
               >
                 {/* 1. Nombre libre del Rol */}
-                <div>
-                  <label className="block text-sm font-extrabold text-ink mb-1.5">
-                    1. Nombre del rol *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={nombreRol}
-                    onChange={(e) => setNombreRol(e.target.value)}
-                    placeholder="Ej: Jefe de Grupo, Tesorero, Educador, Colaborador..."
-                    className="w-full min-h-[46px] px-4 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
+                <Input
+                  label="1. Nombre del rol"
+                  type="text"
+                  required
+                  value={nombreRol}
+                  onChange={(e) => setNombreRol(e.target.value)}
+                  placeholder="Ej: Jefe de Grupo, Tesorero, Educador, Colaborador..."
+                />
 
                 {/* 2. Permisos y alcance por Panel */}
                 <div className="space-y-3">
@@ -1090,11 +1086,10 @@ export const PanelGestorRoles: React.FC<Props> = ({
                 >
                   Cancelar
                 </button>
-                <button
+                <Button
                   type="submit"
                   form="form-gestor-rol"
                   disabled={guardando}
-                  className="min-h-[46px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-sm font-bold flex items-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs transition-colors"
                 >
                   {guardando ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1102,7 +1097,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                     <Check className="w-4 h-4" />
                   )}
                   <span>{rolEditando ? 'Guardar Cambios' : 'Crear Rol'}</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>,

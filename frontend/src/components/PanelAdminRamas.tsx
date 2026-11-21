@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ModalHistorialSeccion } from './ModalHistorialSeccion';
 import { ModalConfirmacion, type ModalConfirmacionProps } from './ModalConfirmacion';
+import { Input, Select, Button } from './ui';
 
 interface Props {
   ramas: any[];
@@ -457,14 +458,14 @@ export const PanelAdminRamas: React.FC<Props> = ({
               </h3>
             </div>
             {puedeGestionar && (
-              <button
+              <Button
                 type="button"
                 onClick={abrirCrearRama}
-                className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-[13px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                size="sm"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Agregar Rama</span>
-              </button>
+              </Button>
             )}
           </div>
 
@@ -571,14 +572,14 @@ export const PanelAdminRamas: React.FC<Props> = ({
               </h3>
             </div>
             {puedeGestionar && (
-              <button
+              <Button
                 type="button"
                 onClick={abrirCrearUnidad}
-                className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-[13px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                size="sm"
               >
                 <PlusCircle className="w-4 h-4" />
                 <span>Agregar Sección</span>
-              </button>
+              </Button>
             )}
           </div>
 
@@ -733,35 +734,25 @@ export const PanelAdminRamas: React.FC<Props> = ({
               className="flex flex-col flex-1 overflow-hidden"
             >
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-sm">
-                <div>
-                  <label className="block text-sm font-bold text-ink-2 mb-1.5">
-                    Nombre de la Rama *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formRama.nombre}
-                    onChange={(e) => setFormRama({ ...formRama, nombre: e.target.value })}
-                    placeholder="Ej: Castores, Lobatos, Scout..."
-                    className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
+                <Input
+                  label="Nombre de la Rama"
+                  type="text"
+                  required
+                  value={formRama.nombre}
+                  onChange={(e) => setFormRama({ ...formRama, nombre: e.target.value })}
+                  placeholder="Ej: Castores, Lobatos, Scout..."
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-sm font-bold text-ink-2 mb-1.5">
-                      Edad Mínima (años) *
-                    </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={99}
-                      required
-                      value={formRama.edadMinima}
-                      onChange={(e) => setFormRama({ ...formRama, edadMinima: aNumeroOVacio(e.target.value) })}
-                      className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                    />
-                  </div>
+                  <Input
+                    label="Edad Mínima (años)"
+                    type="number"
+                    min={0}
+                    max={99}
+                    required
+                    value={formRama.edadMinima}
+                    onChange={(e) => setFormRama({ ...formRama, edadMinima: aNumeroOVacio(e.target.value) })}
+                  />
 
                   <div>
                     <label className="block text-sm font-bold text-ink-2 mb-1.5">
@@ -784,22 +775,27 @@ export const PanelAdminRamas: React.FC<Props> = ({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-ink-2 mb-1.5">
-                    Orden de Progresión (1°, 2°, 3°...) *
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={20}
-                    required
-                    value={formRama.ordenProgresion}
-                    onChange={(e) =>
-                      setFormRama({ ...formRama, ordenProgresion: aNumeroOVacio(e.target.value) })
-                    }
-                    className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
+                <Input
+
+                  label="Orden de Progresión (1°, 2°, 3°...)"
+
+                  type="number"
+
+                  min={1}
+
+                  max={20}
+
+                  required
+
+                  value={formRama.ordenProgresion}
+
+                  onChange={(e) =>
+
+                  setFormRama({ ...formRama, ordenProgresion: aNumeroOVacio(e.target.value) })
+
+                  }
+
+                />
 
                 {creandoRama && (
                   <div className="pt-1">
@@ -831,10 +827,9 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 >
                   Cancelar
                 </button>
-                <button
+                <Button
                   type="submit"
                   disabled={guardandoRama}
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-sm font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {guardandoRama ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -842,7 +837,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     <Check className="w-4 h-4" />
                   )}
                   <span>{editandoRama ? 'Guardar Cambios' : 'Crear Rama'}</span>
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -895,66 +890,62 @@ export const PanelAdminRamas: React.FC<Props> = ({
               className="flex flex-col flex-1 overflow-hidden"
             >
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-sm">
-                <div>
-                  <label className="block text-sm font-bold text-ink-2 mb-1.5">
-                    Nombre de la Sección *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formUnidad.nombre}
-                    onChange={(e) => setFormUnidad({ ...formUnidad, nombre: e.target.value })}
-                    placeholder="Ej: Rama Scout Cura Brochero"
-                    className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  />
-                </div>
+                <Input
+                  label="Nombre de la Sección"
+                  type="text"
+                  required
+                  value={formUnidad.nombre}
+                  onChange={(e) => setFormUnidad({ ...formUnidad, nombre: e.target.value })}
+                  placeholder="Ej: Rama Scout Cura Brochero"
+                />
 
-                <div>
-                  <label className="block text-sm font-bold text-ink-2 mb-1.5">
-                    Tipo de Sección *
-                  </label>
-                  <select
-                    value={formUnidad.tipo}
-                    onChange={(e) =>
-                      setFormUnidad({
-                        ...formUnidad,
-                        tipo: e.target.value as 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO',
-                      })
-                    }
-                    className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                  >
-                    <option value="SECCION_RAMA">Sección de Rama (Protagonistas)</option>
-                    <option value="SIN_RAMA_APOYO">Equipo de Apoyo / Sin Rama</option>
-                    <option value="JEFATURA">Jefatura de Grupo</option>
-                  </select>
-                </div>
+                <Select
+
+                  label="Tipo de Sección"
+                  required
+
+                  value={formUnidad.tipo}
+
+                  onChange={(e) =>
+
+                  setFormUnidad({
+
+                  ...formUnidad,
+
+                  tipo: e.target.value as 'SECCION_RAMA' | 'JEFATURA' | 'SIN_RAMA_APOYO',
+
+                  })
+
+                  }
+
+                >
+                  <option value="SECCION_RAMA">Sección de Rama (Protagonistas)</option>
+                  <option value="SIN_RAMA_APOYO">Equipo de Apoyo / Sin Rama</option>
+                  <option value="JEFATURA">Jefatura de Grupo</option>
+
+                </Select>
 
                 {formUnidad.tipo === 'SECCION_RAMA' && (
-                  <div>
-                    <label className="block text-sm font-bold text-ink-2 mb-1.5">
-                      Rama Pedagógica Asociada *
-                    </label>
-                    <select
-                      required
-                      value={formUnidad.ramaId}
-                      onChange={(e) =>
-                        setFormUnidad({
-                          ...formUnidad,
-                          ramaId: e.target.value ? Number(e.target.value) : '',
-                        })
-                      }
-                      className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-bold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-                    >
-                      <option value="">Seleccionar rama…</option>
-                      {ramas
-                        .filter((r) => r.activa !== false)
-                        .map((r) => (
-                          <option key={r.id} value={r.id}>
-                            {r.nombre} ({r.edadMinima}-{r.edadMaxima} años)
-                          </option>
-                        ))}
-                    </select>
-                  </div>
+                  <Select
+                    label="Rama Pedagógica Asociada"
+                    required
+                    value={formUnidad.ramaId}
+                    onChange={(e) =>
+                    setFormUnidad({
+                    ...formUnidad,
+                    ramaId: e.target.value ? Number(e.target.value) : '',
+                    })
+                    }
+                  >
+                    <option value="">Seleccionar rama…</option>
+                    {ramas
+                      .filter((r) => r.activa !== false)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nombre} ({r.edadMinima}-{r.edadMaxima} años)
+                        </option>
+                      ))}
+                  </Select>
                 )}
               </div>
 
@@ -971,10 +962,9 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 >
                   Cancelar
                 </button>
-                <button
+                <Button
                   type="submit"
                   disabled={guardandoUnidad}
-                  className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-sm font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
                 >
                   {guardandoUnidad ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -982,7 +972,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                     <Check className="w-4 h-4" />
                   )}
                   <span>{editandoUnidad ? 'Guardar Cambios' : 'Crear Sección'}</span>
-                </button>
+                </Button>
               </div>
             </form>
           </div>

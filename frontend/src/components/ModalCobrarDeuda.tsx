@@ -11,6 +11,7 @@ import {
   Landmark,
 } from 'lucide-react';
 import { formatearMoneda, parsearMontoAR, traducirErrorAmigable } from '../lib/formatters';
+import { Input, Select, Button } from './ui';
 
 interface Props {
   abierto: boolean;
@@ -621,21 +622,22 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               </p>
             </div>
 
-            <div>
-              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Método de Pago
-              </label>
-              <select
-                value={metodoPago}
-                onChange={(e) => setMetodoPago(e.target.value as any)}
-                disabled={montoEfectivoFinal <= 0}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors disabled:opacity-50"
-              >
-                <option value="EFECTIVO">Efectivo</option>
-                <option value="TRANSFERENCIA">Transferencia Bancaria</option>
-                <option value="OTRO">Otro Medio</option>
-              </select>
-            </div>
+            <Select
+
+              label="Método de Pago"
+
+              value={metodoPago}
+
+              onChange={(e) => setMetodoPago(e.target.value as any)}
+
+              disabled={montoEfectivoFinal <= 0}
+
+            >
+              <option value="EFECTIVO">Efectivo</option>
+              <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+              <option value="OTRO">Otro Medio</option>
+
+            </Select>
           </div>
 
           {/* Sin cuenta para el método elegido el cobro no entra en ningún libro diario: avisarlo */}
@@ -738,31 +740,27 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           {/* Referencia Comprobante y Observaciones */}
           {montoEfectivoFinal > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              <div>
-                <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
-                  N° Comprobante / Referencia (opcional)
-                </label>
-                <input
-                  type="text"
-                  value={referenciaComprobante}
-                  onChange={(e) => setReferenciaComprobante(e.target.value)}
-                  placeholder="Ej. Transf 884920..."
-                  className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
-                />
-              </div>
+              <Input
+                label="N° Comprobante / Referencia (opcional)"
+                type="text"
+                value={referenciaComprobante}
+                onChange={(e) => setReferenciaComprobante(e.target.value)}
+                placeholder="Ej. Transf 884920..."
+              />
 
-              <div>
-                <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
-                  Observaciones (opcional)
-                </label>
-                <input
-                  type="text"
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  placeholder="Notas para tesorería..."
-                  className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
-                />
-              </div>
+              <Input
+
+                label="Observaciones (opcional)"
+
+                type="text"
+
+                value={observaciones}
+
+                onChange={(e) => setObservaciones(e.target.value)}
+
+                placeholder="Notas para tesorería..."
+
+              />
             </div>
           )}
         </div>
@@ -776,10 +774,9 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           >
             Cancelar
           </button>
-          <button
+          <Button
             type="submit"
             disabled={!puedeConfirmar}
-            className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>
@@ -791,7 +788,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                     ? `Cobrar ${formatearMoneda(montoEfectivoFinal)} (+ ${formatearMoneda(saldoAFavorAUsar)} saldo)`
                     : `Confirmar Pago (${formatearMoneda(montoEfectivoFinal)})`}
             </span>
-          </button>
+          </Button>
         </div>
       </form>
     </div>

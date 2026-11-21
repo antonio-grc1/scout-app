@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { CheckCircle2, Eye, EyeOff, Mail, Send, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { Input, Button } from './ui';
 
 interface ConfiguracionCorreo {
   habilitado: boolean;
@@ -281,29 +282,37 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-ink mb-1.5">Puerto</label>
-              <input
-                type="number"
-                min={1}
-                max={65535}
-                value={port}
-                onChange={(e) => setPort(e.target.value)}
-                placeholder="587"
-                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
-              />
-            </div>
+            <Input
 
-            <div>
-              <label className="block text-sm font-bold text-ink mb-1.5">Usuario SMTP</label>
-              <input
-                type="text"
-                value={user}
-                onChange={(e) => setUser(e.target.value)}
-                placeholder="notificaciones@grupo.org"
-                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
-              />
-            </div>
+              label="Puerto"
+
+              type="number"
+
+              min={1}
+
+              max={65535}
+
+              value={port}
+
+              onChange={(e) => setPort(e.target.value)}
+
+              placeholder="587"
+
+            />
+
+            <Input
+
+              label="Usuario SMTP"
+
+              type="text"
+
+              value={user}
+
+              onChange={(e) => setUser(e.target.value)}
+
+              placeholder="notificaciones@grupo.org"
+
+            />
 
             <div>
               <label className="block text-sm font-bold text-ink mb-1.5">
@@ -334,16 +343,19 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-bold text-ink mb-1.5">Remitente (From)</label>
-              <input
-                type="text"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                placeholder='"Grupo Scout Juan XXIII" <correo@grupo.org>'
-                className="w-full min-h-[46px] px-3.5 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
-              />
-            </div>
+            <Input
+
+              label="Remitente (From)"
+
+              type="text"
+
+              value={from}
+
+              onChange={(e) => setFrom(e.target.value)}
+
+              placeholder='"Grupo Scout Juan XXIII" <correo@grupo.org>'
+
+            />
 
             <div className="sm:col-span-3">
               <label className="block text-sm font-bold text-ink mb-1.5">
@@ -364,14 +376,13 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
               <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>La contraseña se guarda de forma segura y no vuelve a mostrarse.</span>
             </p>
-            <button
+            <Button
               type="submit"
               disabled={guardando}
-              className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 text-brand-contrast text-sm font-extrabold cursor-pointer disabled:opacity-50 inline-flex items-center gap-2"
             >
               {guardando && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{guardando ? 'Guardando...' : 'Guardar configuración'}</span>
-            </button>
+            </Button>
           </div>
         </form>
       </div>

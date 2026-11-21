@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { useConfirmar } from '../hooks/useConfirmar';
+import { Input, Select, Button } from './ui';
 
 interface Props {
   abierto: boolean;
@@ -254,40 +255,40 @@ export const ModalCobroCampamento: React.FC<Props> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Categoría
-              </label>
-              <select
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value as any)}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              >
-                <option value="CAMPAMENTO">Campamento</option>
-                <option value="EVENTO">Evento Especial</option>
-                <option value="INSCRIPCION">Inscripción / Afiliación</option>
-                <option value="MATERIALES">Materiales / Indumentaria</option>
-                <option value="OTRO">Otro Cobro</option>
-              </select>
-            </div>
+            <Select
 
-            <div>
-              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Rubro Contable
-              </label>
-              <select
-                value={rubroId ?? ''}
-                onChange={(e) => setRubroId(e.target.value ? Number(e.target.value) : null)}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              >
-                <option value="">Sin rubro contable</option>
-                {rubros.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+              label="Categoría"
+
+              value={tipo}
+
+              onChange={(e) => setTipo(e.target.value as any)}
+
+            >
+              <option value="CAMPAMENTO">Campamento</option>
+              <option value="EVENTO">Evento Especial</option>
+              <option value="INSCRIPCION">Inscripción / Afiliación</option>
+              <option value="MATERIALES">Materiales / Indumentaria</option>
+              <option value="OTRO">Otro Cobro</option>
+
+            </Select>
+
+            <Select
+
+              label="Rubro Contable"
+
+              value={rubroId ?? ''}
+
+              onChange={(e) => setRubroId(e.target.value ? Number(e.target.value) : null)}
+
+            >
+              <option value="">Sin rubro contable</option>
+              {rubros.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.nombre}
+                </option>
+              ))}
+
+            </Select>
           </div>
 
           {/* Monto, Año y Fecha de Vencimiento */}
@@ -313,31 +314,33 @@ export const ModalCobroCampamento: React.FC<Props> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Ciclo / Año
-              </label>
-              <input
-                type="number"
-                min={2020}
-                max={2100}
-                value={cicloAnio}
-                onChange={(e) => setCicloAnio(Number(e.target.value))}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+            <Input
 
-            <div>
-              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Fecha de Vencimiento (opcional)
-              </label>
-              <input
-                type="date"
-                value={fechaVencimiento}
-                onChange={(e) => setFechaVencimiento(e.target.value)}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+              label="Ciclo / Año"
+
+              type="number"
+
+              min={2020}
+
+              max={2100}
+
+              value={cicloAnio}
+
+              onChange={(e) => setCicloAnio(Number(e.target.value))}
+
+            />
+
+            <Input
+
+              label="Fecha de Vencimiento (opcional)"
+
+              type="date"
+
+              value={fechaVencimiento}
+
+              onChange={(e) => setFechaVencimiento(e.target.value)}
+
+            />
           </div>
 
           {/* SELECTOR BIDIMENSIONAL DE DESTINATARIOS */}
@@ -413,10 +416,9 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             >
               Cancelar
             </button>
-            <button
+            <Button
               type="submit"
               disabled={guardando}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>
@@ -426,7 +428,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                     ? 'Guardar Cambios'
                     : 'Crear y Asignar Cobro'}
               </span>
-            </button>
+            </Button>
           </div>
         </form>
       </div>

@@ -7,6 +7,7 @@ import {
   PlusCircle,
   CheckCircle2,
 } from 'lucide-react';
+import { Input, Select, Button } from './ui';
 
 interface Props {
   abierto: boolean;
@@ -151,37 +152,32 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
 
         {/* Motivo y Tipo */}
         <div className="space-y-3.5">
-          <div>
-            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-              Motivo / Nombre del Concepto *
-            </label>
-            <input
-              type="text"
-              required
-              value={nombreConcepto}
-              onChange={(e) => setNombreConcepto(e.target.value)}
-              placeholder="Ej. Pañuelo y Camisa Scout, Campamento Verano, Ajuste..."
-              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand-ink/50 focus:border-brand-ink transition"
-            />
-          </div>
+          <Input
+            label="Motivo / Nombre del Concepto"
+            type="text"
+            required
+            value={nombreConcepto}
+            onChange={(e) => setNombreConcepto(e.target.value)}
+            placeholder="Ej. Pañuelo y Camisa Scout, Campamento Verano, Ajuste..."
+          />
 
-          <div>
-            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-              Categoría
-            </label>
-            <select
-              value={tipo}
-              onChange={(e) => setTipo(e.target.value as any)}
-              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand-ink/50 focus:border-brand-ink transition"
-            >
-              <option value="CAMPAMENTO">Campamento</option>
-              <option value="CUOTA_MENSUAL">Cuota Mensual</option>
-              <option value="INSCRIPCION">Inscripción / Matrícula</option>
-              <option value="MATERIALES">Materiales / Indumentaria</option>
-              <option value="EVENTO">Evento</option>
-              <option value="OTRO">Otro / Extraordinario</option>
-            </select>
-          </div>
+          <Select
+
+            label="Categoría"
+
+            value={tipo}
+
+            onChange={(e) => setTipo(e.target.value as any)}
+
+          >
+            <option value="CAMPAMENTO">Campamento</option>
+            <option value="CUOTA_MENSUAL">Cuota Mensual</option>
+            <option value="INSCRIPCION">Inscripción / Matrícula</option>
+            <option value="MATERIALES">Materiales / Indumentaria</option>
+            <option value="EVENTO">Evento</option>
+            <option value="OTRO">Otro / Extraordinario</option>
+
+          </Select>
         </div>
 
         {/* Montos */}
@@ -238,30 +234,26 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
 
         {/* Vencimiento y Observaciones */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div>
-            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-              Fecha de Vencimiento (opcional)
-            </label>
-            <input
-              type="date"
-              value={fechaVencimiento}
-              onChange={(e) => setFechaVencimiento(e.target.value)}
-              className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
-            />
-          </div>
+          <Input
+            label="Fecha de Vencimiento (opcional)"
+            type="date"
+            value={fechaVencimiento}
+            onChange={(e) => setFechaVencimiento(e.target.value)}
+          />
 
-          <div>
-            <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-              Observaciones (opcional)
-            </label>
-            <input
-              type="text"
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value)}
-              placeholder="Detalle o nota interna..."
-              className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] text-ink"
-            />
-          </div>
+          <Input
+
+            label="Observaciones (opcional)"
+
+            type="text"
+
+            value={observaciones}
+
+            onChange={(e) => setObservaciones(e.target.value)}
+
+            placeholder="Detalle o nota interna..."
+
+          />
         </div>
 
         {/* Footer del Form */}
@@ -273,14 +265,13 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
           >
             Cancelar
           </button>
-          <button
+          <Button
             type="submit"
             disabled={guardando || montoFinal <= 0}
-            className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
             <span>{guardando ? 'Generando...' : `Generar Deuda de ${formatearMoneda(montoFinal)}`}</span>
-          </button>
+          </Button>
         </div>
       </form>
     </div>

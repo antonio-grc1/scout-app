@@ -13,6 +13,7 @@ import {
   PlusCircle,
   Pencil,
 } from 'lucide-react';
+import { Input, Button } from './ui';
 
 export interface PlanCuotaMensualData {
   id?: number;
@@ -295,20 +296,23 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
               />
             </div>
 
-            <div>
-              <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Ciclo / Año *
-              </label>
-              <input
-                type="number"
-                required
-                min={2020}
-                max={2100}
-                value={cicloAnio}
-                onChange={(e) => setCicloAnio(Number(e.target.value))}
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
-              />
-            </div>
+            <Input
+
+              label="Ciclo / Año"
+
+              type="number"
+
+              required
+
+              min={2020}
+
+              max={2100}
+
+              value={cicloAnio}
+
+              onChange={(e) => setCicloAnio(Number(e.target.value))}
+
+            />
           </div>
 
           {/* Categoría / Rubro de Ingreso */}
@@ -547,14 +551,13 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
             >
               Cancelar
             </button>
-            <button
+            <Button
               type="submit"
               disabled={guardando}
-              className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>{guardando ? 'Guardando...' : planAEditar ? 'Guardar Cambios' : 'Crear Cobro Mensual'}</span>
-            </button>
+            </Button>
           </div>
         </form>
       </div>
