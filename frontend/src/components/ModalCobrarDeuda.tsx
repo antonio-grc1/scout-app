@@ -384,7 +384,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
     <div
       className={
         embedded
-          ? 'bg-surface rounded-2xl border border-rule w-full flex flex-col overflow-hidden'
+          ? 'bg-surface rounded-2xl border border-rule w-full flex flex-col overflow-clip'
           : 'bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none'
       }
       {...(embedded ? {} : contentProps)}
@@ -408,7 +408,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           <button
             type="button"
             onClick={onCerrar}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -416,7 +416,10 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       </div>
 
       {/* Formulario */}
-      <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
+      <form
+        onSubmit={handleSubmit}
+        className={`p-5 sm:p-6 space-y-4 flex-1 ${embedded ? "" : "overflow-y-auto"}`}
+      >
         {error && (
           <div role="alert" className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold">
             {error}
@@ -763,7 +766,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
         </div>
 
         {/* Footer del Formulario */}
-        <div className="pt-3.5 border-t border-rule flex items-center justify-end gap-3">
+        <div className="sticky bottom-0 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 px-5 sm:px-6 pt-3.5 pb-[max(1rem,env(safe-area-inset-bottom))] bg-surface border-t border-rule flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onCerrar}

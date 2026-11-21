@@ -158,7 +158,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
           <button
             type="button"
             onClick={onCerrar}
-            className="p-1.5 rounded-xl hover:bg-paper-2 text-ink-muted hover:text-ink transition cursor-pointer"
+            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-1.5 rounded-xl hover:bg-paper-2 text-ink-muted hover:text-ink transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

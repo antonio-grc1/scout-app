@@ -277,7 +277,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
             <button
               type="button"
               onClick={handleCerrar}
-              className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
+              className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-3 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

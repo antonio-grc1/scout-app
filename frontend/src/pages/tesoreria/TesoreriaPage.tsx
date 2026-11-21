@@ -760,7 +760,7 @@ export const TesoreriaPage: React.FC = () => {
                 type="text"
                 value={busquedaCobranzas}
                 onChange={(e) => setBusquedaCobranzas(e.target.value)}
-                placeholder="Buscar familia, hermano o miembro por nombre, apellido o DNI..."
+                aria-label="Buscar familia, hermano o miembro por nombre, apellido o DNI" placeholder="Buscar familia o miembro..."
                 className="w-full min-h-[46px] pl-10 pr-10 py-2.5 rounded-xl border border-rule bg-paper-2 text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
               />
               {busquedaCobranzas && (

@@ -224,7 +224,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           </div>
           <button
             onClick={onCerrar}
-            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>

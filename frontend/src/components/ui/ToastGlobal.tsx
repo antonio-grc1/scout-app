@@ -68,7 +68,7 @@ export const ToastGlobal: React.FC = () => {
   return createPortal(
     <div
       key={toast.id}
-      className="s-anim-toast-in fixed bottom-22 md:bottom-5 left-3 right-3 sm:left-auto sm:right-5 sm:w-full sm:max-w-sm z-[600] pointer-events-none"
+      className="s-anim-toast-in fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] md:bottom-5 left-3 right-3 sm:left-auto sm:right-5 sm:w-full sm:max-w-sm z-[600] pointer-events-none"
       role={esError ? 'alert' : 'status'}
       aria-live={esError ? 'assertive' : 'polite'}
       onMouseEnter={pausar}

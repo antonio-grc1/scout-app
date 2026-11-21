@@ -1249,7 +1249,7 @@ export const MiembrosPage: React.FC = () => {
           <input
             type="text"
             inputMode="search"
-            placeholder="Buscar por nombre, apellido, DNI, familia, sección o rol..."
+            aria-label="Buscar por nombre, apellido, DNI, familia, sección o rol" placeholder="Buscar miembro..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             className="s-input w-full min-h-[46px] pl-11 pr-10 py-2.5 rounded-2xl text-base sm:text-[15px] [&::-webkit-search-cancel-button]:hidden"

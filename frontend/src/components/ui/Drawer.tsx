@@ -110,7 +110,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                 onClick={() => setFullscreen((prev) => !prev)}
                 aria-label={fullscreen ? 'Salir de pantalla completa' : 'Expandir a pantalla completa'}
                 title={fullscreen ? 'Salir de pantalla completa' : 'Expandir'}
-                className="s-btn-sec min-w-[38px] min-h-[38px] p-2 rounded-xl flex items-center justify-center cursor-pointer"
+                className="s-btn-sec min-w-[44px] min-h-[44px] p-2 rounded-xl flex items-center justify-center cursor-pointer"
               >
                 {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
               </button>
@@ -120,7 +120,7 @@ export const Drawer: React.FC<DrawerProps> = ({
                 type="button"
                 onClick={onCerrar}
                 aria-label="Cerrar panel"
-                className="s-btn-sec min-w-[38px] min-h-[38px] p-2 rounded-xl flex items-center justify-center cursor-pointer"
+                className="s-btn-sec min-w-[44px] min-h-[44px] p-2 rounded-xl flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>

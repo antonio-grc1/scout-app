@@ -804,7 +804,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           <input
             type="text"
             inputMode="search"
-            placeholder="Buscar por concepto, miembro, rubro, tipo o monto..."
+            aria-label="Buscar por concepto, miembro, rubro, tipo o monto" placeholder="Buscar movimiento..."
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             className="w-full min-h-[46px] pl-10 pr-10 py-2.5 rounded-xl border border-rule text-base sm:text-[15px] focus:border-brand outline-none bg-paper-2 text-ink placeholder:text-ink-muted transition-colors [&::-webkit-search-cancel-button]:hidden"

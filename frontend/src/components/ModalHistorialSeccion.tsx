@@ -441,7 +441,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                       type="text"
                       value={busqueda}
                       onChange={(e) => setBusqueda(e.target.value)}
-                      placeholder="Buscar por nombre, apellido, DNI, rol..."
+                      aria-label="Buscar por nombre, apellido, DNI, rol" placeholder="Buscar miembro..."
                       className="w-full min-h-[46px] pl-10 pr-9 py-2.5 rounded-xl border border-rule bg-surface text-ink text-base sm:text-[15px] font-semibold focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition"
                     />
                     {busqueda && (

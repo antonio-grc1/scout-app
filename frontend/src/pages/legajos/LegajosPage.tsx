@@ -1373,7 +1373,7 @@ export const LegajosPage: React.FC = () => {
                       type="text"
                       value={busquedaSalud}
                       onChange={(e) => setBusquedaSalud(e.target.value)}
-                      placeholder="Buscar miembro, dieta, alergia, medicación..."
+                      aria-label="Buscar miembro, dieta, alergia, medicación" placeholder="Buscar..."
                       className="s-input w-full min-h-[44px] pl-10 pr-8 rounded-xl text-base sm:text-[15px]"
                     />
                     {busquedaSalud && (

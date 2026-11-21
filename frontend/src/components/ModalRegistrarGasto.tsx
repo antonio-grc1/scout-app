@@ -241,7 +241,7 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
             <button
               type="button"
               onClick={onCerrar}
-              className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+              className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

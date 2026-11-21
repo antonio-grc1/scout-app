@@ -310,7 +310,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por descripción, comprobante, rubro..."
+              aria-label="Buscar por descripción, comprobante, rubro" placeholder="Buscar gasto..."
               className="w-full min-h-[44px] pl-10 pr-8 py-2 rounded-xl bg-paper border border-rule text-base sm:text-[15px] font-medium text-ink placeholder:text-ink-muted focus:outline-brand"
             />
             {busqueda && (
