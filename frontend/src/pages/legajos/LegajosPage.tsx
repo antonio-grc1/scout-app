@@ -41,6 +41,7 @@ import {
 import { useQrModalStore } from '../../core/qrModalStore';
 import { useAuthStore } from '../../store/authStore';
 import { tienePermisoConAlcance, tienePermisoSobreMiembro } from '../../lib/permisos';
+import { useConfirmar } from '../../hooks/useConfirmar';
 import { useToastStore } from '../../store/toastStore';
 import {
   extraerCatalogosMedicosDinamicos,
@@ -141,6 +142,7 @@ export const LegajosPage: React.FC = () => {
   const abrirQr = useQrModalStore((s) => s.abrirQr);
   const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
 
   const puedeVerPlantillasTab =
     esGlobalPlantillas && caps.hasAnyPermiso('plantillas.ver', 'plantillas.editar');
@@ -928,6 +930,7 @@ export const LegajosPage: React.FC = () => {
 
   return (
     <div className="space-y-5 s-anim-view">
+      {dialogoConfirmacion}
       {pdfPreviewUrl && (
         <Suspense fallback={null}>
           <PdfViewerModal
@@ -1200,7 +1203,22 @@ export const LegajosPage: React.FC = () => {
                                 variant="primary"
                                 size="sm"
                                 loading={validandoHash === entrega.hashVerificacion}
-                                onClick={() => void handleValidarFisico(entrega, miembro)}
+                                onClick={() =>
+                                  pedirConfirmacion(
+                                    {
+                                      titulo: 'Validar legajo físico',
+                                      mensaje: (
+                                        <>
+                                          ¿Confirmás que recibiste el legajo físico firmado de <strong>{miembro.nombre} {miembro.apellido}</strong>?
+                                        </>
+                                      ),
+                                      impacto: 'La entrega quedará marcada como validada en el sistema.',
+                                      peligroso: false,
+                                      textoConfirmar: 'Validar',
+                                    },
+                                    () => handleValidarFisico(entrega, miembro),
+                                  )
+                                }
                                 leftIcon={<CheckCircle2 className="w-4 h-4" />}
                               >
                                 Validar Físico
@@ -1884,7 +1902,19 @@ export const LegajosPage: React.FC = () => {
                               variant="secondary"
                               size="sm"
                               disabled={enProceso}
-                              onClick={() => void handleToggleActivaPlantilla(p)}
+                              onClick={() =>
+                                p.activa
+                                  ? pedirConfirmacion(
+                                      {
+                                        titulo: 'Pausar plantilla',
+                                        mensaje: `¿Pausar "${p.titulo ?? p.nombre ?? 'la plantilla'}"?`,
+                                        impacto: 'Dejará de mostrarse a las familias hasta que la actives de nuevo.',
+                                        textoConfirmar: 'Pausar',
+                                      },
+                                      () => handleToggleActivaPlantilla(p),
+                                    )
+                                  : void handleToggleActivaPlantilla(p)
+                              }
                               leftIcon={<Power className="w-3.5 h-3.5" />}
                             >
                               {p.activa ? 'Pausar' : 'Activar'}

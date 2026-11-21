@@ -191,6 +191,7 @@ export const TesoreriaPage: React.FC = () => {
 
   // Drawer de Cobro
   const [cobroDrawerAbierto, setCobroDrawerAbierto] = useState(false);
+  const [cobroEnCurso, setCobroEnCurso] = useState(false);
   const [cargandoEstadoCuenta, setCargandoEstadoCuenta] = useState(false);
   const [estadoCuentaCobro, setEstadoCuentaCobro] = useState<{
     miembro: any;
@@ -445,11 +446,14 @@ export const TesoreriaPage: React.FC = () => {
       plan.recaudacion?.totalRecaudado ?? plan.resumenRecaudacion?.totalRecaudado ?? 0,
     );
 
-    if (estaHabilitado && cobradoPlan > 0) {
+    if (estaHabilitado) {
       setImpactoDialog({
         titulo: `Desactivar ${NOMBRES_MESES_LARGOS[mesNum]}`,
         mensaje: `Vas a deshabilitar el cobro de ${NOMBRES_MESES_LARGOS[mesNum]} en "${plan.nombre}".`,
-        impacto: `El plan registra ${formatearMoneda(cobradoPlan)} recaudados. Si este mes tenía pagos aplicados, esos importes pasarán automáticamente al Saldo a Favor de cada integrante.`,
+        impacto:
+          cobradoPlan > 0
+            ? `El plan registra ${formatearMoneda(cobradoPlan)} recaudados. Si este mes tenía pagos aplicados, esos importes pasarán automáticamente al Saldo a Favor de cada integrante.`
+            : 'Se anularán las cuotas de este mes de todos los integrantes del plan que aún no tengan pagos.',
         tipoImpacto: 'warn',
         textoConfirmar: `Sí, desactivar ${NOMBRES_MESES_CORTOS[mesNum]}`,
         peligroso: true,
@@ -1345,6 +1349,7 @@ export const TesoreriaPage: React.FC = () => {
       {/* Drawer de Cobro Parcial / Saldo a Favor */}
       <Drawer
         abierto={cobroDrawerAbierto}
+        bloqueado={cobroEnCurso}
         onCerrar={() => {
           setCobroDrawerAbierto(false);
           setEstadoCuentaCobro(null);
@@ -1368,6 +1373,7 @@ export const TesoreriaPage: React.FC = () => {
             <ModalCobrarDeuda
               abierto={true}
               embedded={true}
+              onOcupadoChange={setCobroEnCurso}
               miembro={estadoCuentaCobro.miembro}
               cargosPendientes={estadoCuentaCobro.cargos}
               onCerrar={() => {

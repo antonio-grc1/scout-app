@@ -25,6 +25,7 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
 import { useOfflineStore } from '../../store/offlineStore';
+import { useConfirmar } from '../../hooks/useConfirmar';
 import { useToastStore } from '../../store/toastStore';
 import {
   ESTADO_FICHA_CONFIG,
@@ -66,6 +67,7 @@ export const CompletarLegajoPage: React.FC = () => {
   const asignacionesSesion = useAuthStore((s) => s.asignaciones);
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
 
   const paramUsuarioId = searchParams.get('usuarioId');
   const paramPlantillaId = searchParams.get('plantillaId');
@@ -520,6 +522,7 @@ export const CompletarLegajoPage: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4 s-anim-view">
+      {dialogoConfirmacion}
       {pdfPreviewUrl && (
         <Suspense fallback={null}>
           <PdfViewerModal
@@ -697,7 +700,17 @@ export const CompletarLegajoPage: React.FC = () => {
               variant="secondary"
               size="sm"
               disabled={sincronizandoBorrador}
-              onClick={() => void handleDescartarBorradorLocal()}
+              onClick={() =>
+                pedirConfirmacion(
+                  {
+                    titulo: 'Descartar borrador',
+                    mensaje: '¿Descartar el borrador guardado en este dispositivo?',
+                    impacto: 'Se perderán las respuestas que no se hayan sincronizado. No se puede deshacer.',
+                    textoConfirmar: 'Descartar borrador',
+                  },
+                  handleDescartarBorradorLocal,
+                )
+              }
               leftIcon={<Trash2 className="w-4 h-4" />}
             >
               Descartar

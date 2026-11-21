@@ -5,6 +5,7 @@ import { calcularCamada, traducirErrorAmigable } from '../lib/formatters';
 import { tienePermisoSobreUnidades } from '../lib/permisos';
 import { ArrowRightLeft, Clock, Loader2, ShieldAlert, Sparkles, Users } from 'lucide-react';
 import { ModalConfirmacion } from './ModalConfirmacion';
+import { useConfirmar } from '../hooks/useConfirmar';
 import { PanelSolicitudesPase } from './PanelSolicitudesPase';
 
 interface Props {
@@ -30,6 +31,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   // Ejecutar un pase exige pases.editar sobre la sección de origen de la camada.
   const puedeEjecutarEn = (g: { unidadActualId: number | null }) =>
     tienePermisoSobreUnidades(asignacionesActor, 'pases.editar', [g.unidadActualId]);
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});
@@ -231,6 +233,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
+      {dialogoConfirmacion}
       <PanelSolicitudesPase
         solicitudes={solicitudes}
         puedeEjecutar={puedeEjecutarPases}
@@ -430,7 +433,22 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                             <button
                               type="button"
                               disabled={enProceso || ejecutandoLote}
-                              onClick={() => handlePasarIndividual(c, g)}
+                              onClick={() =>
+                                pedirConfirmacion(
+                                  {
+                                    titulo: 'Confirmar pase',
+                                    mensaje: (
+                                      <>
+                                        ¿Pasar a <strong>{c.usuario?.nombre} {c.usuario?.apellido}</strong> a la sección elegida?
+                                      </>
+                                    ),
+                                    impacto: 'El pase queda registrado en el historial; para revertirlo hay que hacer otro pase.',
+                                    peligroso: false,
+                                    textoConfirmar: 'Confirmar pase',
+                                  },
+                                  () => handlePasarIndividual(c, g),
+                                )
+                              }
                               className="min-h-[40px] px-4 py-1.5 rounded-xl bg-paper-3 hover:bg-brand hover:text-brand-contrast text-ink-2 font-bold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
                             >
                               {enProceso ? (

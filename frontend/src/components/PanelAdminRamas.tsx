@@ -190,6 +190,28 @@ export const PanelAdminRamas: React.FC<Props> = ({
     }
   };
 
+  const solicitarDesactivar = (tipoItem: 'rama' | 'sección', nombre: string, miembros: number, ejecutar: () => void) => {
+    setModalConfirmacion({
+      abierto: true,
+      tipo: 'peligro',
+      titulo: `Desactivar ${tipoItem}`,
+      mensaje:
+        `¿Desactivar la ${tipoItem} "${nombre}"?` +
+        (miembros > 0
+          ? `\n\nTiene ${miembros} ${miembros === 1 ? 'miembro activo' : 'miembros activos'}: revisá que no queden sin destino.`
+          : '') +
+        '\n\nPodés reactivarla más tarde.',
+      textoConfirmar: 'Desactivar',
+      textoCancelar: 'Cancelar',
+      cargando: false,
+      onCerrar: () => setModalConfirmacion(null),
+      onConfirmar: () => {
+        setModalConfirmacion(null);
+        ejecutar();
+      },
+    });
+  };
+
   const solicitarEliminarRama = (r: any) => {
     setModalConfirmacion({
       abierto: true,
@@ -502,7 +524,9 @@ export const PanelAdminRamas: React.FC<Props> = ({
                         <button
                           type="button"
                           disabled={enProceso}
-                          onClick={() => handleQuitarRama(r)}
+                          onClick={() =>
+                            solicitarDesactivar('rama', r.nombre, r.unidades?.reduce((a: number, u: any) => a + (u._count?.asignaciones ?? 0), 0) ?? 0, () => void handleQuitarRama(r))
+                          }
                           title="Desactivar rama"
                           className="min-h-[38px] px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
@@ -624,7 +648,9 @@ export const PanelAdminRamas: React.FC<Props> = ({
                           <button
                             type="button"
                             disabled={enProceso}
-                            onClick={() => handleQuitarUnidad(u)}
+                            onClick={() =>
+                              solicitarDesactivar('sección', u.nombre, u._count?.asignaciones ?? 0, () => void handleQuitarUnidad(u))
+                            }
                             title="Desactivar sección"
                             className="min-h-[38px] px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                           >

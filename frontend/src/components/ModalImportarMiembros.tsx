@@ -61,6 +61,8 @@ export function construirPayloadActualizacionMiembro(
 export interface ModalImportarMiembrosProps {
   abierto: boolean;
   embedded?: boolean;
+  /** Avisa al contenedor (Drawer) cuando hay una importación en curso para bloquear el cierre */
+  onOcupadoChange?: (ocupado: boolean) => void;
   onCerrar: () => void;
   onImportado: () => void;
   unidadesDisponibles: any[];
@@ -136,6 +138,7 @@ function encontrarValorPorColumna(fila: Record<string, any>, clavesPosibles: str
 export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
   abierto,
   embedded = false,
+  onOcupadoChange,
   onCerrar,
   onImportado,
   unidadesDisponibles,
@@ -165,6 +168,10 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
 
   // Estado de importación
   const [ejecutando, setEjecutando] = useState(false);
+  useEffect(() => {
+    onOcupadoChange?.(ejecutando);
+    return () => onOcupadoChange?.(false);
+  }, [ejecutando, onOcupadoChange]);
   const [progreso, setProgreso] = useState({ actual: 0, total: 0 });
   const [resumenFin, setResumenFin] = useState<{
     creados: number;

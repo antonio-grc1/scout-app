@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
@@ -10,6 +10,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { traducirErrorAmigable } from '../lib/formatters';
+import { useConfirmar } from '../hooks/useConfirmar';
 
 interface Props {
   abierto: boolean;
@@ -58,6 +59,8 @@ export const ModalCobroCampamento: React.FC<Props> = ({
   const [unidadId, setUnidadId] = useState<number | null>(null);
   const [rubroId, setRubroId] = useState<number | null>(null);
   const [rubros, setRubros] = useState<any[]>([]);
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
+  const confirmadoRef = useRef(false);
   const [permiteDescuentoHermanos, setPermiteDescuentoHermanos] = useState(true);
   const [usarPorcentajePersonalizado, setUsarPorcentajePersonalizado] = useState(false);
   const [porcentajeDescuentoHermanos, setPorcentajeDescuentoHermanos] = useState<number | ''>('');
@@ -139,6 +142,23 @@ export const ModalCobroCampamento: React.FC<Props> = ({
       return;
     }
 
+    if (conceptoAEditar?.id && !confirmadoRef.current) {
+      pedirConfirmacion(
+        {
+          titulo: 'Guardar cambios del cobro',
+          mensaje: 'Al guardar se sincronizan los cargos ya generados de este cobro.',
+          impacto: 'Si cambiaste el monto, el destinatario o las excepciones, los cargos pendientes se recalcularán y pueden modificar deudas existentes.',
+          peligroso: false,
+          textoConfirmar: 'Guardar y sincronizar',
+        },
+        async () => {
+          confirmadoRef.current = true;
+          await handleSubmit({ preventDefault() {} } as React.FormEvent);
+        },
+      );
+      return;
+    }
+    confirmadoRef.current = false;
     setGuardando(true);
     try {
       const payload = {
@@ -180,6 +200,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
       {...backdropProps}
     >
+      {dialogoConfirmacion}
       <div
         className="bg-surface rounded-3xl border border-rule shadow-md w-full max-w-2xl max-h-[92dvh] flex flex-col overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
         {...contentProps}

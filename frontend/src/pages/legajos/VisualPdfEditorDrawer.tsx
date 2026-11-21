@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { useConfirmar } from '../../hooks/useConfirmar';
 import * as pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import {
   ChevronLeft,
@@ -333,6 +334,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
   onGuardado,
   onToast,
 }) => {
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
   const [mostrarPickerInicial, setMostrarPickerInicial] = useState(false);
   const [tabBuilder, setTabBuilder] = useState<TabConstructor>('portada');
 
@@ -1133,6 +1135,8 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
         ];
 
   return (
+    <>
+    {dialogoConfirmacion}
     <Drawer
       abierto={abierto}
       onCerrar={onCerrar}
@@ -1586,7 +1590,17 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                         {esquema.secciones.length > 1 && (
                           <button
                             type="button"
-                            onClick={() => handleEliminarSeccion(seccionActivaIdx)}
+                            onClick={() =>
+                              pedirConfirmacion(
+                                {
+                                  titulo: 'Eliminar sección',
+                                  mensaje: `¿Eliminar la sección "${esquema.secciones[seccionActivaIdx]?.titulo ?? ''}" con todas sus preguntas?`,
+                                  impacto: 'Se quitarán también los mapeos al PDF de esas preguntas. Solo se recupera cerrando el editor sin guardar.',
+                                  textoConfirmar: 'Eliminar sección',
+                                },
+                                () => handleEliminarSeccion(seccionActivaIdx),
+                              )
+                            }
                             className="min-h-[42px] px-2.5 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                             title="Eliminar sección"
                           >
@@ -1806,7 +1820,15 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleEliminarCampo(campo.key);
+                              pedirConfirmacion(
+                                {
+                                  titulo: 'Eliminar pregunta',
+                                  mensaje: `¿Eliminar la pregunta "${campo.label}"?`,
+                                  impacto: 'Se quitará también su mapeo al PDF.',
+                                  textoConfirmar: 'Eliminar',
+                                },
+                                () => handleEliminarCampo(campo.key),
+                              );
                             }}
                             className="p-1.5 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                             aria-label={`Eliminar pregunta ${campo.label}`}
@@ -2044,5 +2066,6 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
         </div>
       )}
     </Drawer>
+    </>
   );
 };

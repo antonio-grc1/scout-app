@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { api } from '../api/client';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { Check, Clock, Loader2, X } from 'lucide-react';
+import { useConfirmar } from '../hooks/useConfirmar';
 
 interface Props {
   solicitudes: any[];
@@ -18,6 +19,7 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
   onToast,
   onAbrirMiembro,
 }) => {
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
   const [seccionSeleccionada, setSeccionSeleccionada] = useState<Record<number, number>>({});
   const [procesandoId, setProcesandoId] = useState<number | null>(null);
 
@@ -60,6 +62,8 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
   };
 
   return (
+    <>
+      {dialogoConfirmacion}
     <div className="bg-surface rounded-2xl border border-amber-300 dark:border-amber-700/60 shadow-xs overflow-hidden">
       <div className="p-4 sm:px-5 bg-amber-50/70 dark:bg-amber-950/25 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between gap-3 flex-wrap">
         <div>
@@ -168,7 +172,17 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
                     <button
                       type="button"
                       disabled={enProceso}
-                      onClick={() => handleRechazar(s)}
+                      onClick={() =>
+                        pedirConfirmacion(
+                          {
+                            titulo: s.puedeAprobar ? 'Rechazar solicitud' : 'Cancelar solicitud',
+                            mensaje: `¿${s.puedeAprobar ? 'Rechazar' : 'Cancelar'} la solicitud de pase de ${s.usuario?.nombre} ${s.usuario?.apellido}?`,
+                            impacto: 'La persona no será movida de sección.',
+                            textoConfirmar: s.puedeAprobar ? 'Rechazar' : 'Cancelar solicitud',
+                          },
+                          () => handleRechazar(s),
+                        )
+                      }
                       className="min-h-[40px] px-3.5 py-1.5 rounded-xl border border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 font-bold text-[13px] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       <X className="w-4 h-4" />
@@ -182,5 +196,6 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
         })}
       </div>
     </div>
+    </>
   );
 };

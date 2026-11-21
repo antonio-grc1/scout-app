@@ -14,6 +14,8 @@ import { formatearMoneda, parsearMontoAR, traducirErrorAmigable } from '../lib/f
 
 interface Props {
   abierto: boolean;
+  /** Avisa al contenedor (Drawer) cuando hay un cobro en curso para bloquear el cierre */
+  onOcupadoChange?: (ocupado: boolean) => void;
   miembro: {
     id: number;
     nombre: string;
@@ -67,6 +69,7 @@ interface CuentaSimple {
 
 export const ModalCobrarDeuda: React.FC<Props> = ({
   abierto,
+  onOcupadoChange,
   miembro,
   cargosPendientes,
   cargoInicialId,
@@ -91,6 +94,10 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
   const [procesando, setProcesando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    onOcupadoChange?.(procesando);
+    return () => onOcupadoChange?.(false);
+  }, [procesando, onOcupadoChange]);
   const [errorCuentas, setErrorCuentas] = useState<string | null>(null);
   const enviandoRef = useRef(false);
 

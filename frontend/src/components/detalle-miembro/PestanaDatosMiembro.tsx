@@ -1,4 +1,5 @@
 import React from 'react';
+import { useConfirmar } from '../../hooks/useConfirmar';
 import { Check, HeartPulse, Save, Trash2, Users, Utensils } from 'lucide-react';
 import {
   OPCIONES_ALERGIA_ESTANDAR,
@@ -80,6 +81,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
   onAbrirVincularHermano,
   onSolicitarEliminarDefinitivo,
 }) => {
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
   type Campo = {
     key: keyof FormDatosMiembro;
     label: string;
@@ -136,6 +138,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
 
   return (
     <form onSubmit={onGuardarDatos} className="space-y-4">
+      {dialogoConfirmacion}
       {/* Categoría en el Grupo (independiente del rol de permisos) */}
       <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
@@ -435,7 +438,22 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
               <input
                 type="checkbox"
                 checked={formData.activo}
-                onChange={(e) => setFormData({ ...formData, activo: e.target.checked })}
+                onChange={(e) => {
+                  const activo = e.target.checked;
+                  if (!activo && formData.activo) {
+                    pedirConfirmacion(
+                      {
+                        titulo: 'Dar de baja al miembro',
+                        mensaje: 'Al guardar, el miembro quedará inactivo en el grupo.',
+                        impacto: 'Se cierran sus asignaciones activas y deja de aparecer en el padrón activo. Se puede reactivar después.',
+                        textoConfirmar: 'Marcar como baja',
+                      },
+                      () => setFormData({ ...formData, activo: false }),
+                    );
+                    return;
+                  }
+                  setFormData({ ...formData, activo });
+                }}
                 className="w-5 h-5 text-brand rounded border-rule cursor-pointer focus:ring-brand/20"
               />
               <span className="font-bold text-sm text-ink-2">

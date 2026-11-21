@@ -42,6 +42,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
 import { useCapabilities } from '../../core/capabilities';
 import { useOfflineStore } from '../../store/offlineStore';
+import { useConfirmar } from '../../hooks/useConfirmar';
 import { useToastStore } from '../../store/toastStore';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
@@ -94,6 +95,7 @@ export const MiEspacioPage: React.FC = () => {
   const { usuario, asignaciones, setSesion } = useAuthStore();
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -976,6 +978,7 @@ export const MiEspacioPage: React.FC = () => {
 
   return (
     <div className="s-anim-view max-w-5xl mx-auto space-y-5">
+      {dialogoConfirmacion}
       {/* Cabecera Compacta + Navegación 4 tabs */}
       <section className="s-card rounded-2xl p-5 sm:p-6 space-y-4 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 min-w-0">
@@ -1094,7 +1097,17 @@ export const MiEspacioPage: React.FC = () => {
                     <button
                       type="button"
                       disabled={sincronizandoBorrador}
-                      onClick={() => void handleDescartarBorradorLocal()}
+                      onClick={() =>
+                        pedirConfirmacion(
+                          {
+                            titulo: 'Descartar borrador',
+                            mensaje: '¿Descartar el borrador guardado en este dispositivo?',
+                            impacto: 'Se perderán las respuestas que no se hayan sincronizado. No se puede deshacer.',
+                            textoConfirmar: 'Descartar borrador',
+                          },
+                          handleDescartarBorradorLocal,
+                        )
+                      }
                       className="s-btn-sec min-h-[38px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       <Trash2 className="w-4 h-4" />

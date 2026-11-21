@@ -44,6 +44,7 @@ import {
   useCapabilities,
 } from '../../core/capabilities';
 import { useMenuKeyboard } from '../../hooks/useMenuKeyboard';
+import { useConfirmar } from '../../hooks/useConfirmar';
 import { useQrModalStore } from '../../core/qrModalStore';
 import { extraerInfoMedicaMiembro } from '../../lib/alertasMedicas';
 import { obtenerConfigRama, obtenerOrdenRama } from '../../lib/ramaColors';
@@ -135,6 +136,7 @@ export const MiembrosPage: React.FC = () => {
   const abrirQr = useQrModalStore((s) => s.abrirQr);
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
 
   const esGlobal = tienePermisoGlobal(['padron.ver', 'padron.editar']);
   const puedeEjecutarEgreso = caps.canExecuteEgreso;
@@ -169,6 +171,7 @@ export const MiembrosPage: React.FC = () => {
   // Modales / Drawers
   const [modalAltaAbierto, setModalAltaAbierto] = useState(false);
   const [modalImportarAbierto, setModalImportarAbierto] = useState(false);
+  const [importacionEnCurso, setImportacionEnCurso] = useState(false);
   const [miembroDrawerId, setMiembroDrawerId] = useState<number | null>(null);
   const [tabInicialDrawer, setTabInicialDrawer] = useState<TabExpediente360>('datos');
   const [drawerFamiliasAbierto, setDrawerFamiliasAbierto] = useState(false);
@@ -1113,6 +1116,7 @@ export const MiembrosPage: React.FC = () => {
 
   return (
     <div className="s-anim-view max-w-7xl mx-auto space-y-5">
+      {dialogoConfirmacion}
       {/* Cabecera Compacta */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
         <div className="flex items-center gap-3 min-w-0">
@@ -2040,7 +2044,23 @@ export const MiembrosPage: React.FC = () => {
                             Boolean(ejecutandoCamadaKey) ||
                             g.miembros.every((m) => Boolean(m.solicitudPendiente))
                           }
-                          onClick={() => void handleEjecutarPaseCamada(g)}
+                          onClick={() => {
+                            const n = g.miembros.filter((m) => !m.solicitudPendiente).length;
+                            pedirConfirmacion(
+                              {
+                                titulo: 'Ejecutar pase de camada',
+                                mensaje: (
+                                  <>
+                                    ¿Pasar la camada {g.camada} de <strong>{g.unidadActual}</strong> a la sección elegida?
+                                  </>
+                                ),
+                                impacto: `Se moverán ${n} ${n === 1 ? 'integrante' : 'integrantes'}. Cada pase queda registrado en el historial; para revertirlo hay que hacer otro pase.`,
+                                textoConfirmar: 'Ejecutar pase',
+                                peligroso: false,
+                              },
+                              () => handleEjecutarPaseCamada(g),
+                            );
+                          }}
                           className="s-btn-brand min-h-[42px] px-4 py-2 rounded-xl text-[13px] flex items-center justify-center gap-1.5 disabled:opacity-50"
                         >
                           {ejecutando ? (
@@ -2449,6 +2469,7 @@ export const MiembrosPage: React.FC = () => {
       {/* Importar Miembros desde Hoja de Cálculo */}
       <Drawer
         abierto={modalImportarAbierto}
+        bloqueado={importacionEnCurso}
         onCerrar={() => setModalImportarAbierto(false)}
         titulo="Importar Padrón desde Hoja de Cálculo"
         subtitulo="Soporta Excel (.xlsx) y CSV con vista previa"
@@ -2458,6 +2479,7 @@ export const MiembrosPage: React.FC = () => {
         <ModalImportarMiembros
           abierto={modalImportarAbierto}
           embedded={true}
+          onOcupadoChange={setImportacionEnCurso}
           onCerrar={() => setModalImportarAbierto(false)}
           onImportado={() => {
             void cargarDatos(true);

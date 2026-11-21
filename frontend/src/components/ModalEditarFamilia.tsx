@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { useConfirmar } from '../hooks/useConfirmar';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { X, Users, Percent, Check, AlertCircle, UserMinus, Trash2 } from 'lucide-react';
@@ -46,6 +47,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
   const [desvinculandoId, setDesvinculandoId] = useState<number | null>(null);
   const [eliminandoGrupo, setEliminandoGrupo] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
 
   const { backdropProps, contentProps } = useModalOverlay({
     abierto: !embedded && abierto,
@@ -136,6 +138,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
       }
       {...(embedded ? {} : contentProps)}
     >
+      {dialogoConfirmacion}
       {/* Encabezado */}
       <div className="flex items-center justify-between p-5 border-b border-rule bg-paper-2">
         <div className="flex items-center gap-3">
@@ -277,7 +280,21 @@ export const ModalEditarFamilia: React.FC<Props> = ({
                         <button
                           type="button"
                           disabled={desvinculandoId === m.id}
-                          onClick={() => handleDesvincularMiembro(m.id)}
+                          onClick={() =>
+                            pedirConfirmacion(
+                              {
+                                titulo: 'Desvincular de la familia',
+                                mensaje: (
+                                  <>
+                                    ¿Desvincular a <strong>{m.nombre} {m.apellido}</strong> de este grupo familiar?
+                                  </>
+                                ),
+                                impacto: 'Se recalcularán los descuentos y las cuotas del grupo. Podés volver a vincularlo después.',
+                                textoConfirmar: 'Desvincular',
+                              },
+                              () => handleDesvincularMiembro(m.id),
+                            )
+                          }
                           title="Desvincular de la familia"
                           className="min-h-[36px] px-3 py-1 rounded-lg bg-surface border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
                         >
@@ -298,7 +315,18 @@ export const ModalEditarFamilia: React.FC<Props> = ({
             <button
               type="button"
               disabled={eliminandoGrupo}
-              onClick={handleDisolverGrupo}
+              onClick={() =>
+                pedirConfirmacion(
+                  {
+                    titulo: 'Disolver grupo familiar',
+                    mensaje: '¿Disolver este grupo familiar? Todos los integrantes quedarán sin grupo.',
+                    impacto: 'Se recalcularán las cuotas de todos los integrantes. Para rearmarlo hay que volver a vincular cada hermano.',
+                    tipoImpacto: 'danger',
+                    textoConfirmar: 'Disolver grupo',
+                  },
+                  handleDisolverGrupo,
+                )
+              }
               className="min-h-[42px] px-3.5 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-bold text-[13px] flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4" />
