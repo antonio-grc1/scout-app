@@ -73,7 +73,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
 
   // Unidades disponibles según alcance (si es GLOBAL con organizacion.ver trae todas; sino usa unidades asignadas)
   const { data: unidadesOrg } = useQuery({
-    queryKey: ['shell-unidades-org'],
+    queryKey: ['unidades-org', usuario?.id],
     enabled: Boolean(usuario) && caps.esGlobal && caps.hasAnyPermiso('organizacion.ver', 'organizacion.editar'),
     staleTime: 1000 * 60 * 5,
     queryFn: async () => {

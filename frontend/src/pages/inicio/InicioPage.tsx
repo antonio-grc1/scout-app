@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   ArrowRight,
@@ -44,7 +45,6 @@ import {
 } from '../../core/offline/campamentoSync';
 import {
   ESTADO_FICHA_CONFIG,
-  esErrorOffline,
   formatearMoneda,
   obtenerCicloAnioActual,
   obtenerRolPrincipal,
@@ -105,21 +105,138 @@ export const InicioPage: React.FC = () => {
 
   const ciclo = obtenerCicloAnioActual();
 
-  // Estado personal
-  const [miEstadoCuenta, setMiEstadoCuenta] = useState<any | null>(null);
-  // true si la consulta de cuotas falló: no se puede afirmar "al día".
-  const [miCuentaError, setMiCuentaError] = useState(false);
-  const [miUltimaEntrega, setMiUltimaEntrega] = useState<any | null>(null);
-  const [cargandoPersonal, setCargandoPersonal] = useState(true);
+  const queryClient = useQueryClient();
+  const usuarioId = usuario?.id;
+  // Datos de Inicio con react-query: al volver a la pantalla se muestran al instante desde la
+  // caché y se refrescan en segundo plano (antes se pedía todo de nuevo en cada visita y foco,
+  // y un error se trataba como "sin datos").
+  const opcionesInicio = { refetchOnMount: 'always' as const, refetchOnWindowFocus: true };
 
-  // Estado operativo de gestión
-  const [miembros, setMiembros] = useState<any[]>([]);
-  const [entregas, setEntregas] = useState<any[]>([]);
-  const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
-  const [solicitudesPase, setSolicitudesPase] = useState<any[]>([]);
-  const [unidadesOrg, setUnidadesOrg] = useState<any[]>([]);
-  const [balanceData, setBalanceData] = useState<ResumenBalance | null>(null);
-  const [cargandoGestion, setCargandoGestion] = useState(false);
+  // Estado personal
+  const personalQuery = useQuery({
+    queryKey: ['inicio-personal', usuarioId, ciclo],
+    enabled: Boolean(usuarioId),
+    ...opcionesInicio,
+    queryFn: async () => {
+      const [resCuenta, resPlantillasAnio] = await Promise.all([
+        api.get(`/tesoreria/estado-cuenta/${usuarioId}`).catch(() => ({ data: null })),
+        api.get(`/legajos/plantillas?cicloAnio=${ciclo}`).catch(() => ({ data: [] })),
+      ]);
+      let plantillas: any[] = Array.isArray(resPlantillasAnio.data) ? resPlantillasAnio.data : [];
+      if (plantillas.length === 0) {
+        const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
+        plantillas = Array.isArray(resTodas.data) ? resTodas.data : [];
+      }
+      const plantillaPropia =
+        seleccionarPlantillaPorMiembro(plantillas, usuario, asignaciones) || plantillas[0] || null;
+      let ultimaEntrega: any | null = null;
+      if (plantillaPropia) {
+        const cicloPlantilla = plantillaPropia.cicloAnio || ciclo;
+        const resPrecarga = await api
+          .get(
+            `/legajos/miembro/${usuarioId}/plantilla/${plantillaPropia.id}/precarga?cicloAnio=${cicloPlantilla}`,
+          )
+          .catch(() => ({ data: null }));
+        ultimaEntrega = resPrecarga.data?.ultimaEntrega ?? null;
+      }
+      return { estadoCuenta: (resCuenta.data ?? null) as any | null, ultimaEntrega };
+    },
+  });
+  const miEstadoCuenta = personalQuery.data?.estadoCuenta ?? null;
+  // true si la consulta de cuotas falló: no se puede afirmar "al día".
+  const miCuentaError = personalQuery.isError || (personalQuery.isSuccess && miEstadoCuenta == null);
+  const miUltimaEntrega = personalQuery.data?.ultimaEntrega ?? null;
+  const cargandoPersonal = personalQuery.isPending;
+
+  // Estado operativo de gestión (solo perfiles con alcance de unidad o global)
+  const gestionHabilitada = Boolean(usuarioId) && !caps.esPropio;
+  const miembrosQuery = useQuery({
+    queryKey: ['inicio-miembros-activos', usuarioId],
+    enabled: gestionHabilitada && caps.canViewMiembros,
+    ...opcionesInicio,
+    queryFn: async (): Promise<any[]> => {
+      const porPagina = 200;
+      const primera = await api.get(`/miembros?pagina=1&porPagina=${porPagina}&incluirInactivos=false`);
+      const primerosItems: any[] = Array.isArray(primera.data?.items) ? primera.data.items : [];
+      const total = Number(primera.data?.total ?? primerosItems.length);
+      const totalPaginas = Math.ceil(total / porPagina);
+      if (totalPaginas <= 1) return primerosItems;
+      const resto = await Promise.all(
+        Array.from({ length: totalPaginas - 1 }, (_, i) =>
+          api.get(`/miembros?pagina=${i + 2}&porPagina=${porPagina}&incluirInactivos=false`),
+        ),
+      );
+      const acumulados = [...primerosItems];
+      for (const r of resto) {
+        if (Array.isArray(r.data?.items)) acumulados.push(...r.data.items);
+      }
+      return acumulados;
+    },
+  });
+  const listaDe = (res: { data: unknown }) => (Array.isArray(res.data) ? (res.data as any[]) : []);
+  const entregasQuery = useQuery({
+    queryKey: ['legajos-entregas', usuarioId, ciclo],
+    enabled: gestionHabilitada && caps.canViewLegajosModule,
+    ...opcionesInicio,
+    queryFn: async () => listaDe(await api.get(`/legajos/entregas?cicloAnio=${ciclo}`)),
+  });
+  const candidatosQuery = useQuery({
+    queryKey: ['pases-candidatos', usuarioId],
+    enabled: gestionHabilitada && caps.canViewPases,
+    ...opcionesInicio,
+    queryFn: async () => listaDe(await api.get('/pases/candidatos')),
+  });
+  const solicitudesQuery = useQuery({
+    queryKey: ['pases-solicitudes', usuarioId],
+    enabled: gestionHabilitada && caps.canViewPases,
+    ...opcionesInicio,
+    queryFn: async () => listaDe(await api.get('/pases/solicitudes')),
+  });
+  const balanceQuery = useQuery({
+    queryKey: ['tesoreria-cuadro-resultados', usuarioId, ciclo],
+    enabled: gestionHabilitada && caps.canSeeBalance,
+    ...opcionesInicio,
+    queryFn: async () =>
+      ((await api.get(`/tesoreria/cuadro-resultados?anio=${ciclo}`)).data ?? null) as ResumenBalance | null,
+  });
+  // Misma clave que el selector de unidad del AppShell: comparten la caché.
+  const unidadesQuery = useQuery({
+    queryKey: ['unidades-org', usuarioId],
+    enabled: gestionHabilitada && caps.canViewOrganizacion,
+    queryFn: async () => listaDe(await api.get('/organizacion/unidades')),
+  });
+
+  const miembros = useMemo(() => miembrosQuery.data ?? [], [miembrosQuery.data]);
+  const entregas = useMemo(() => entregasQuery.data ?? [], [entregasQuery.data]);
+  const candidatosPase = useMemo(() => candidatosQuery.data ?? [], [candidatosQuery.data]);
+  const solicitudesPase = useMemo(() => solicitudesQuery.data ?? [], [solicitudesQuery.data]);
+  const unidadesOrg = useMemo(() => unidadesQuery.data ?? [], [unidadesQuery.data]);
+  const balanceData = balanceQuery.data ?? null;
+
+  const consultasGestion = [
+    { nombre: 'miembros', q: miembrosQuery },
+    { nombre: 'legajos', q: entregasQuery },
+    { nombre: 'pases sugeridos', q: candidatosQuery },
+    { nombre: 'solicitudes de pase', q: solicitudesQuery },
+    { nombre: 'balance', q: balanceQuery },
+  ];
+  // isLoading = primera carga en curso (las consultas deshabilitadas no cuentan).
+  const cargandoGestion = gestionHabilitada && consultasGestion.some(({ q }) => q.isLoading);
+  const fallosGestion = consultasGestion.filter(({ q }) => q.isError).map(({ nombre }) => nombre);
+
+  const refrescarInicio = useCallback(() => {
+    const prefijos = [
+      'inicio-personal',
+      'inicio-miembros-activos',
+      'legajos-entregas',
+      'pases-candidatos',
+      'pases-solicitudes',
+      'tesoreria-cuadro-resultados',
+    ];
+    return queryClient.invalidateQueries({
+      predicate: (query) => prefijos.includes(String(query.queryKey[0])),
+    });
+  }, [queryClient]);
 
   // Campamento offline sync
   const [ultimoSync, setUltimoSync] = useState<CampamentoSyncResumen | null>(() =>
@@ -150,154 +267,14 @@ export const InicioPage: React.FC = () => {
     }
   }, [usuario?.id]);
 
-  const cargarDatosInicio = useCallback(
-    async (silencioso = false) => {
-      if (!usuario?.id) return;
-      if (!silencioso) {
-        setCargandoPersonal(true);
-        if (!caps.esPropio) setCargandoGestion(true);
-      }
-
-      try {
-        // 1. Estado personal (para todo perfil)
-        const [resCuenta, resPlantillasAnio] = await Promise.all([
-          api.get(`/tesoreria/estado-cuenta/${usuario.id}`).catch(() => ({ data: null })),
-          api.get(`/legajos/plantillas?cicloAnio=${ciclo}`).catch(() => ({ data: [] })),
-        ]);
-
-        setMiEstadoCuenta(resCuenta.data);
-        setMiCuentaError(resCuenta.data == null);
-        setMiCuentaError(resCuenta.data == null);
-
-        let plantillas: any[] = Array.isArray(resPlantillasAnio.data) ? resPlantillasAnio.data : [];
-        if (plantillas.length === 0) {
-          const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
-          plantillas = Array.isArray(resTodas.data) ? resTodas.data : [];
-        }
-
-        const plantillaPropia =
-          seleccionarPlantillaPorMiembro(plantillas, usuario, asignaciones) || plantillas[0] || null;
-        if (plantillaPropia) {
-          const cicloPlantilla = plantillaPropia.cicloAnio || ciclo;
-          const resPrecarga = await api
-            .get(
-              `/legajos/miembro/${usuario.id}/plantilla/${plantillaPropia.id}/precarga?cicloAnio=${cicloPlantilla}`,
-            )
-            .catch(() => ({ data: null }));
-          setMiUltimaEntrega(resPrecarga.data?.ultimaEntrega ?? null);
-        } else {
-          setMiUltimaEntrega(null);
-        }
-      } catch (err) {
-        if (!esErrorOffline(err) && !silencioso) {
-          mostrarToast(traducirErrorAmigable(err, 'No se pudo actualizar tu estado personal.'), 'error');
-        }
-      } finally {
-        setCargandoPersonal(false);
-      }
-
-      // 2. Estado de gestión (solo si no es PROPIO)
-      if (caps.esPropio) {
-        setCargandoGestion(false);
-        return;
-      }
-
-      try {
-        const cargarMiembrosPaginados = async (): Promise<any[]> => {
-          if (!caps.canViewMiembros) return [];
-          const porPagina = 200;
-          const primera = await api.get(
-            `/miembros?pagina=1&porPagina=${porPagina}&incluirInactivos=false`,
-          );
-          const primerosItems: any[] = Array.isArray(primera.data?.items) ? primera.data.items : [];
-          const total = Number(primera.data?.total ?? primerosItems.length);
-          const totalPaginas = Math.ceil(total / porPagina);
-          if (totalPaginas <= 1) return primerosItems;
-
-          const resto = await Promise.all(
-            Array.from({ length: totalPaginas - 1 }, (_, i) =>
-              api.get(`/miembros?pagina=${i + 2}&porPagina=${porPagina}&incluirInactivos=false`),
-            ),
-          );
-          const acumulados = [...primerosItems];
-          for (const r of resto) {
-            if (Array.isArray(r.data?.items)) acumulados.push(...r.data.items);
-          }
-          return acumulados;
-        };
-
-        const [
-          listaMiembros,
-          resEntregas,
-          resCandidatos,
-          resSolicitudes,
-          resBalance,
-          resUnidades,
-        ] = await Promise.all([
-          cargarMiembrosPaginados().catch(() => []),
-          caps.canViewLegajosModule
-            ? api.get(`/legajos/entregas?cicloAnio=${ciclo}`).catch(() => ({ data: [] }))
-            : Promise.resolve({ data: [] }),
-          caps.canViewPases
-            ? api.get('/pases/candidatos').catch(() => ({ data: [] }))
-            : Promise.resolve({ data: [] }),
-          caps.canViewPases
-            ? api.get('/pases/solicitudes').catch(() => ({ data: [] }))
-            : Promise.resolve({ data: [] }),
-          caps.canSeeBalance
-            ? api.get(`/tesoreria/cuadro-resultados?anio=${ciclo}`).catch(() => ({ data: null }))
-            : Promise.resolve({ data: null }),
-          caps.canViewOrganizacion
-            ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
-            : Promise.resolve({ data: [] }),
-        ]);
-
-        setMiembros(listaMiembros);
-        setEntregas(Array.isArray(resEntregas.data) ? resEntregas.data : []);
-        setCandidatosPase(Array.isArray(resCandidatos.data) ? resCandidatos.data : []);
-        setSolicitudesPase(Array.isArray(resSolicitudes.data) ? resSolicitudes.data : []);
-        setBalanceData(resBalance.data ?? null);
-        setUnidadesOrg(Array.isArray(resUnidades.data) ? resUnidades.data : []);
-      } catch (err) {
-        if (!esErrorOffline(err) && !silencioso) {
-          mostrarToast(traducirErrorAmigable(err, 'No se pudo cargar el resumen operativo.'), 'error');
-        }
-      } finally {
-        setCargandoGestion(false);
-      }
-    },
-    [
-      usuario,
-      asignaciones,
-      ciclo,
-      caps.esPropio,
-      caps.canViewMiembros,
-      caps.canViewLegajosModule,
-      caps.canViewPases,
-      caps.canSeeBalance,
-      caps.canViewOrganizacion,
-      mostrarToast,
-    ],
-  );
-
-  useEffect(() => {
-    void cargarDatosInicio(false);
-  }, [cargarDatosInicio]);
-
-  // Refrescar al volver foco o tras validar desde el escáner QR universal
+  // Tras validar desde el escáner QR universal cambian legajos y estado personal.
   useEffect(() => {
     if (lastValidationAt > 0) {
-      void cargarDatosInicio(true);
+      void queryClient.invalidateQueries({
+        predicate: (query) => ['legajos-entregas', 'inicio-personal'].includes(String(query.queryKey[0])),
+      });
     }
-  }, [lastValidationAt, cargarDatosInicio]);
-
-  useEffect(() => {
-    const onFocus = () => {
-      void cargarDatosInicio(true);
-    };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [cargarDatosInicio]);
+  }, [lastValidationAt, queryClient]);
 
   const activeUnitLabel = useMemo(
     () => obtenerNombreUnidadActiva(activeUnitId, caps, unidadesOrg),
@@ -465,7 +442,7 @@ export const InicioPage: React.FC = () => {
           `${sincronizados} borrador(es) de legajo guardado(s).`,
           'exito',
         );
-        void cargarDatosInicio(true);
+        void refrescarInicio();
       } else if (fallidos > 0) {
         mostrarToast(
           `Se sincronizaron ${sincronizados} borrador(es), pero ${fallidos} quedaron pendientes.`,
@@ -846,6 +823,19 @@ export const InicioPage: React.FC = () => {
               </span>
             )}
           </div>
+
+          {fallosGestion.length > 0 && (
+            <div role="alert" className="s-badge-warn rounded-2xl p-3.5 flex items-center justify-between gap-3 flex-wrap text-sm font-semibold">
+              <span>No se pudo cargar: {fallosGestion.join(', ')}. Los números de abajo pueden estar incompletos.</span>
+              <button
+                type="button"
+                onClick={() => void refrescarInicio()}
+                className="s-btn-sec min-h-[40px] px-3.5 rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
 
           <div className="s-stagger grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
             {caps.canViewLegajosModule && (

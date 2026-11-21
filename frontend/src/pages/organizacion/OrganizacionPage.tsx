@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   GitBranch,
@@ -30,6 +31,7 @@ export const OrganizacionPage: React.FC = () => {
   const refrescarSesionDesdeServidor = useAuthStore((s) => s.refrescarSesionDesdeServidor);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
 
   const tabsDisponibles = useMemo<SegmentedTabItem<TabOrganizacion>[]>(() => {
     const items: SegmentedTabItem<TabOrganizacion>[] = [];
@@ -264,7 +266,11 @@ export const OrganizacionPage: React.FC = () => {
             unidades={unidades}
             mostrarInactivas={mostrarInactivas}
             onToggleMostrarInactivas={setMostrarInactivas}
-            onRecargar={cargarDatos}
+            onRecargar={async () => {
+              await cargarDatos();
+              // El selector de unidad del AppShell e Inicio comparten esta caché.
+              void queryClient.invalidateQueries({ queryKey: ['unidades-org'] });
+            }}
             onToast={mostrarToast}
           />
         )}
