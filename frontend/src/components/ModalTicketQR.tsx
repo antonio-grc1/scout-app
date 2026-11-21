@@ -46,9 +46,11 @@ export interface ModalTicketQRProps {
   abierto: boolean;
   onCerrar: () => void;
   ticket: TicketData | null;
+  /** Si el pedido tiene varios vales, permite pasar de uno a otro */
+  navegacion?: { actual: number; total: number; onAnterior: () => void; onSiguiente: () => void };
 }
 
-export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar, ticket }) => {
+export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar, ticket, navegacion }) => {
   const [qrUrl, setQrUrl] = useState<string>('');
   const [copiadoToken, setCopiadoToken] = useState<boolean>(false);
   const [copiadaImagen, setCopiadaImagen] = useState<boolean>(false);
@@ -287,6 +289,31 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
         {/* Contenido / Tarjeta del Ticket */}
         <div className="p-5 flex flex-col items-center text-center space-y-3.5 overflow-y-auto">
           {/* Previsualización de la Tarjeta del Vale con los detalles de compra */}
+          {navegacion && (
+            <div className="w-full flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={navegacion.onAnterior}
+                disabled={navegacion.actual <= 1}
+                aria-label="Vale anterior"
+                className="s-btn-sec min-h-[44px] min-w-[44px] rounded-xl font-bold disabled:opacity-40 cursor-pointer"
+              >
+                ‹
+              </button>
+              <span className="text-sm font-bold text-ink" aria-live="polite">
+                Vale {navegacion.actual} de {navegacion.total}
+              </span>
+              <button
+                type="button"
+                onClick={navegacion.onSiguiente}
+                disabled={navegacion.actual >= navegacion.total}
+                aria-label="Vale siguiente"
+                className="s-btn-sec min-h-[44px] min-w-[44px] rounded-xl font-bold disabled:opacity-40 cursor-pointer"
+              >
+                ›
+              </button>
+            </div>
+          )}
           {ticket.estado !== 'ACTIVO' && (
             <div role="alert" className="w-full s-badge-err rounded-xl p-3 text-sm font-extrabold text-center">
               {ticket.estado === 'CANCELADO'

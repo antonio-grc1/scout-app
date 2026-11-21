@@ -121,8 +121,9 @@ export const EventoWorkspacePage: React.FC = () => {
 
   const [modalTicketQR, setModalTicketQR] = useState<{
     abierto: boolean;
-    ticket: TicketData | null;
-  }>({ abierto: false, ticket: null });
+    pedido: any | null;
+    indice: number;
+  }>({ abierto: false, pedido: null, indice: 0 });
 
   const [confirmAcreditar, setConfirmAcreditar] = useState(false);
   const [acreditando, setAcreditando] = useState(false);
@@ -526,34 +527,40 @@ export const EventoWorkspacePage: React.FC = () => {
     }
   };
 
-  const handleVerTicket = (ticket: any, pedido: any) => {
-    setModalTicketQR({
-      abierto: true,
-      ticket: {
-        id: ticket.id,
-        tokenQr: ticket.tokenQr,
-        cantidad: ticket.cantidad,
-        estado: ticket.estado,
-        fechaUso: ticket.fechaUso,
-        item: {
-          nombre: ticket.item?.nombre || 'Producto',
-          precioVenta: ticket.item?.precioVenta || 0,
-        },
-        pedido: {
-          id: pedido.id,
-          compradorNombre: pedido.compradorNombre,
-          compradorContacto: pedido.compradorContacto,
-          evento: {
-            id: evento.id,
-            titulo: evento.titulo,
-            fechaEvento: evento.fechaEvento,
-            lugarEntrega: evento.lugarEntrega,
-          },
-          vendedorUsuario: pedido.vendedorUsuario,
-        },
+  const armarTicketData = (ticket: any, pedido: any): TicketData => ({
+    id: ticket.id,
+    tokenQr: ticket.tokenQr,
+    cantidad: ticket.cantidad,
+    estado: ticket.estado,
+    fechaUso: ticket.fechaUso,
+    item: {
+      nombre: ticket.item?.nombre || 'Producto',
+      precioVenta: ticket.item?.precioVenta || 0,
+    },
+    pedido: {
+      id: pedido.id,
+      compradorNombre: pedido.compradorNombre,
+      compradorContacto: pedido.compradorContacto,
+      evento: {
+        id: evento.id,
+        titulo: evento.titulo,
+        fechaEvento: evento.fechaEvento,
+        lugarEntrega: evento.lugarEntrega,
       },
-    });
+      vendedorUsuario: pedido.vendedorUsuario,
+    },
+  });
+
+  const handleVerTicket = (ticket: any, pedido: any) => {
+    const tickets: any[] = Array.isArray(pedido?.tickets) ? pedido.tickets : [ticket];
+    const indice = Math.max(0, tickets.findIndex((t) => t.id === ticket.id));
+    setModalTicketQR({ abierto: true, pedido: { ...pedido, tickets }, indice });
   };
+
+  const ticketsModal: any[] = Array.isArray(modalTicketQR.pedido?.tickets)
+    ? modalTicketQR.pedido.tickets
+    : [];
+  const ticketModalActual = ticketsModal[modalTicketQR.indice] ?? null;
 
   const ejecutarEliminarPedido = async () => {
     if (!pedidoAEliminar || !evento) return;
@@ -1774,8 +1781,23 @@ export const EventoWorkspacePage: React.FC = () => {
 
       <ModalTicketQR
         abierto={modalTicketQR.abierto}
-        onCerrar={() => setModalTicketQR({ abierto: false, ticket: null })}
-        ticket={modalTicketQR.ticket}
+        onCerrar={() => setModalTicketQR({ abierto: false, pedido: null, indice: 0 })}
+        ticket={ticketModalActual ? armarTicketData(ticketModalActual, modalTicketQR.pedido) : null}
+        navegacion={
+          ticketsModal.length > 1
+            ? {
+                actual: modalTicketQR.indice + 1,
+                total: ticketsModal.length,
+                onAnterior: () =>
+                  setModalTicketQR((m) => ({ ...m, indice: Math.max(0, m.indice - 1) })),
+                onSiguiente: () =>
+                  setModalTicketQR((m) => ({
+                    ...m,
+                    indice: Math.min(ticketsModal.length - 1, m.indice + 1),
+                  })),
+              }
+            : undefined
+        }
       />
 
       <ConfirmImpactDialog

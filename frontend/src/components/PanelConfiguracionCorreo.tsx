@@ -36,6 +36,15 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
   const [appUrl, setAppUrl] = useState('');
   const [fuente, setFuente] = useState<'db' | 'env' | 'sin_configurar'>('sin_configurar');
 
+  // Firma de lo último guardado en el servidor, para saber si hay cambios sin guardar
+  const [baseGuardada, setBaseGuardada] = useState<string | null>(null);
+  const firmaConfig = (v: unknown[]) => JSON.stringify(v);
+  const hayCambiosSinGuardar =
+    baseGuardada !== null &&
+    (pass.length > 0 ||
+      firmaConfig([habilitado, host.trim(), port.trim(), user.trim(), from.trim(), appUrl.trim()]) !==
+        baseGuardada);
+
   const [emailPrueba, setEmailPrueba] = useState('');
   const [resultadoPrueba, setResultadoPrueba] = useState<{ ok: boolean; texto: string } | null>(null);
 
@@ -54,6 +63,16 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
       setFrom(d.from || '');
       setAppUrl(d.appUrl || (typeof window !== 'undefined' ? window.location.origin : ''));
       setFuente(d.fuente || 'sin_configurar');
+      setBaseGuardada(
+        firmaConfig([
+          Boolean(d.habilitado),
+          (d.host || '').trim(),
+          String(d.port || 587),
+          (d.user || '').trim(),
+          (d.from || '').trim(),
+          (d.appUrl || (typeof window !== 'undefined' ? window.location.origin : '')).trim(),
+        ]),
+      );
     } catch (err: any) {
       const msg = traducirErrorAmigable(err, 'No se pudo cargar la configuración de correo.');
       setErrorCarga(msg);
@@ -114,6 +133,16 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
       setFrom(d.from || '');
       setAppUrl(d.appUrl || '');
       setFuente(d.fuente);
+      setBaseGuardada(
+        firmaConfig([
+          Boolean(d.habilitado),
+          (d.host || '').trim(),
+          String(d.port || 587),
+          (d.user || '').trim(),
+          (d.from || '').trim(),
+          (d.appUrl || '').trim(),
+        ]),
+      );
       onToast('Configuración de correo guardada correctamente.');
     } catch (err: any) {
       onToast(traducirErrorAmigable(err, 'No se pudo guardar la configuración de correo.'), 'error');
@@ -355,6 +384,12 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
           </p>
         </div>
 
+        {hayCambiosSinGuardar && (
+          <p role="status" className="s-badge-warn rounded-xl p-3 text-[13px] font-semibold">
+            Tenés cambios sin guardar: la prueba usa la configuración guardada. Guardá los cambios para poder probarlos.
+          </p>
+        )}
+
         <form onSubmit={handleProbarEnvio} className="flex flex-col sm:flex-row gap-3">
           <input
             type="email"
@@ -366,7 +401,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
           />
           <button
             type="submit"
-            disabled={probando || !emailPrueba.trim()}
+            disabled={probando || !emailPrueba.trim() || hayCambiosSinGuardar}
             className="min-h-[46px] px-5 py-2.5 rounded-xl border border-rule bg-paper-2 hover:bg-paper-3 text-ink text-sm font-extrabold cursor-pointer disabled:opacity-50 inline-flex items-center justify-center gap-2 shrink-0"
           >
             {probando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
