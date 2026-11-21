@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { calcularCamada, traducirErrorAmigable } from '../lib/formatters';
+import { tienePermisoSobreUnidades } from '../lib/permisos';
 import { ArrowRightLeft, Clock, Loader2, ShieldAlert, Sparkles, Users } from 'lucide-react';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { PanelSolicitudesPase } from './PanelSolicitudesPase';
@@ -22,8 +23,13 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   onAbrirMiembro,
 }) => {
   const { tienePermisoGlobal, tienePermisoUnidadOGlobal } = useAuthStore();
-  const esGlobal = tienePermisoGlobal(['pases.ver', 'pases.editar']);
+  // El egreso a educador exige pases.editar GLOBAL (antes bastaba pases.ver GLOBAL).
+  const esGlobal = tienePermisoGlobal('pases.editar');
   const puedeEjecutarPases = tienePermisoUnidadOGlobal('pases.editar');
+  const asignacionesActor = useAuthStore((s) => s.asignaciones);
+  // Ejecutar un pase exige pases.editar sobre la sección de origen de la camada.
+  const puedeEjecutarEn = (g: { unidadActualId: number | null }) =>
+    tienePermisoSobreUnidades(asignacionesActor, 'pases.editar', [g.unidadActualId]);
   const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});
@@ -80,6 +86,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
         key: string;
         camada: number;
         edadAlCorte: number;
+        unidadActualId: number | null;
         unidadActualNombre: string;
         ramaActualNombre: string;
         ramaSugeridaNombre: string;
@@ -104,6 +111,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
           key,
           camada,
           edadAlCorte: c.edad,
+          unidadActualId: typeof c.unidadActual?.id === 'number' ? c.unidadActual.id : null,
           unidadActualNombre: c.unidadActual?.nombre || 'Sección',
           ramaActualNombre: c.ramaActual?.nombre || 'Rama',
           ramaSugeridaNombre:
@@ -292,7 +300,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                     </p>
                   </div>
 
-                  {puedeEjecutarPases && (!esGlobal && g.tipo === 'EGRESO' ? (
+                  {puedeEjecutarEn(g) && (!esGlobal && g.tipo === 'EGRESO' ? (
                     <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[13px] font-bold shrink-0">
                       <ShieldAlert className="w-4 h-4" />
                       Requiere Jefatura (Global)
@@ -389,7 +397,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                           </div>
                         </div>
 
-                        {puedeEjecutarPases && (c.solicitudPendiente ? (
+                        {puedeEjecutarEn(g) && (c.solicitudPendiente ? (
                           <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[13px] font-bold self-end sm:self-center shrink-0">
                             <Clock className="w-4 h-4" />
                             Pendiente ({c.solicitudPendiente.unidadDestinoNombre})

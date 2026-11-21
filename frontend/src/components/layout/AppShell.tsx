@@ -189,7 +189,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       label: 'Organización',
       icon: <Shield className="w-[18px] h-[18px] shrink-0" />,
       group: 'Administración',
-      show: caps.canViewOrganizacion,
+      // Misma condición que la ruta /organizacion (Ramas, Roles o Correo)
+      show: caps.canViewOrganizacion || caps.canViewRoles || caps.canEditCorreo,
     },
   ];
   const navItems = allNavItems.filter((item) => item.show);
@@ -210,30 +211,32 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
     navigate('/login', { replace: true });
   };
 
-  // Barra inferior móvil (4 tabs + FAB central)
-  const mobileBottomSlots: Array<
-    | { kind: 'link'; to: string; label: string; icon: React.ReactNode }
-    | { kind: 'fab' }
-    | { kind: 'more' }
-  > = caps.canViewMiembros
-    ? [
-        { kind: 'link', to: '/inicio', label: 'Inicio', icon: <Home className="w-5 h-5" /> },
-        { kind: 'link', to: '/miembros', label: 'Miembros', icon: <Users className="w-5 h-5" /> },
-        { kind: 'fab' },
-        caps.canSeeTesoreriaGestion
-          ? { kind: 'link', to: '/tesoreria', label: 'Tesorería', icon: <Wallet className="w-5 h-5" /> }
-          : { kind: 'link', to: '/eventos', label: 'Eventos', icon: <Ticket className="w-5 h-5" /> },
-        { kind: 'more' },
-      ]
-    : [
-        { kind: 'link', to: '/inicio', label: 'Inicio', icon: <Home className="w-5 h-5" /> },
-        { kind: 'link', to: '/mi-espacio', label: 'Mi Espacio', icon: <User className="w-5 h-5" /> },
-        { kind: 'fab' },
-        caps.canSeeTesoreriaGestion
-          ? { kind: 'link', to: '/tesoreria', label: 'Tesorería', icon: <Wallet className="w-5 h-5" /> }
-          : { kind: 'link', to: '/eventos', label: 'Eventos', icon: <Ticket className="w-5 h-5" /> },
-        { kind: 'more' },
-      ];
+  // Barra inferior móvil (4 tabs + FAB central). Solo enlaza rutas permitidas y no repite destinos.
+  type SlotLink = { kind: 'link'; to: string; label: string; icon: React.ReactNode };
+  const fabModo: 'qr' | 'eventos' | null = caps.canUseQrScanner
+    ? 'qr'
+    : caps.canViewEventos
+      ? 'eventos'
+      : null;
+  const segundoSlot: SlotLink = caps.canViewMiembros
+    ? { kind: 'link', to: '/miembros', label: 'Miembros', icon: <Users className="w-5 h-5" /> }
+    : { kind: 'link', to: '/mi-espacio', label: 'Mi Espacio', icon: <User className="w-5 h-5" /> };
+  const tercerSlot: SlotLink | null = caps.canSeeTesoreriaGestion
+    ? { kind: 'link', to: '/tesoreria', label: 'Tesorería', icon: <Wallet className="w-5 h-5" /> }
+    : caps.canViewEventos && fabModo !== 'eventos'
+      ? { kind: 'link', to: '/eventos', label: 'Eventos', icon: <Ticket className="w-5 h-5" /> }
+      : caps.canViewLegajosModule
+        ? { kind: 'link', to: '/legajos', label: 'Legajos', icon: <FileText className="w-5 h-5" /> }
+        : caps.canViewMiembros
+          ? { kind: 'link', to: '/mi-espacio', label: 'Mi Espacio', icon: <User className="w-5 h-5" /> }
+          : null;
+  const mobileBottomSlots: Array<SlotLink | { kind: 'fab' } | { kind: 'more' } | { kind: 'spacer' }> = [
+    { kind: 'link', to: '/inicio', label: 'Inicio', icon: <Home className="w-5 h-5" /> },
+    segundoSlot,
+    fabModo ? { kind: 'fab' } : { kind: 'spacer' },
+    tercerSlot ?? { kind: 'spacer' },
+    { kind: 'more' },
+  ];
 
   return (
     <InsideAppShellContext.Provider value={true}>
@@ -437,11 +440,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
               <div key={`fab-${idx}`} className="flex justify-center -mt-6">
                 <button
                   type="button"
-                  onClick={caps.canUseQrScanner ? handleOpenQr : () => navigate('/eventos')}
-                  aria-label={caps.canUseQrScanner ? 'Abrir escáner QR' : 'Ver Eventos'}
+                  onClick={fabModo === 'qr' ? handleOpenQr : () => navigate('/eventos')}
+                  aria-label={fabModo === 'qr' ? 'Abrir escáner QR' : 'Ver Eventos'}
                   className="s-btn-brand s-fab-btn w-14 h-14 rounded-full flex items-center justify-center border-4 border-paper cursor-pointer"
                 >
-                  {caps.canUseQrScanner ? (
+                  {fabModo === 'qr' ? (
                     <QrCode className="w-6 h-6" />
                   ) : (
                     <Ticket className="w-6 h-6" />
@@ -449,6 +452,10 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                 </button>
               </div>
             );
+          }
+
+          if (slot.kind === 'spacer') {
+            return <div key={`spacer-${idx}`} aria-hidden="true" />;
           }
 
           if (slot.kind === 'more') {

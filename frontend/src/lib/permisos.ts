@@ -71,7 +71,9 @@ const PERMISOS_EDICION: Record<string, Record<string, string[]>> = {
 const PERMISOS_LECTURA: Record<string, string[]> = {
   miembro: ['padron.ver', 'padron.editar'],
   cuotas: ['cobranzas.ver', 'cobranzas.editar', 'caja.ver', 'caja.editar'],
-  ficha: ['legajos.ver', 'legajos.editar', 'plantillas.ver', 'plantillas.editar'],
+  // Ver la ficha de un miembro (salud, retiro, familiares) exige permiso de legajos:
+  // diseñar plantillas (plantillas.*) no habilita leer datos sensibles.
+  ficha: ['legajos.ver', 'legajos.editar'],
   plantillas: ['plantillas.ver', 'plantillas.editar'],
   pase: ['pases.ver', 'pases.editar'],
   clave: ['padron.editar'],
@@ -210,7 +212,10 @@ export const usePermisosUI = () => {
   const canView = (modulo: string) =>
     (PERMISOS_LECTURA[modulo] ?? []).some((p) => tienePermiso(p));
 
-  return { canEdit, canEditInScope, canView };
+  const canViewInScope = (modulo: string, alcanceMinimo: AlcanceRolUI = 'UNIDAD') =>
+    tienePermisoConAlcance(asignaciones, PERMISOS_LECTURA[modulo] ?? [], alcanceMinimo);
+
+  return { canEdit, canEditInScope, canView, canViewInScope };
 };
 
 export function obtenerRutaInicialUsuario(opts: {
@@ -655,4 +660,40 @@ export function puedeDesvincularIntegrantePorAlcance(
     const uid = typeof a?.unidadId === 'number' ? a.unidadId : a?.unidad?.id;
     return typeof uid === 'number' && opts.unidadesEnAlcanceIds.includes(uid);
   });
+}
+
+/** IDs de las unidades donde el miembro tiene asignaciones activas. */
+export function unidadesActivasDeMiembro(miembro: any): number[] {
+  if (!miembro || !Array.isArray(miembro.asignaciones)) return [];
+  const ids = new Set<number>();
+  for (const a of miembro.asignaciones) {
+    if (a?.activo === false) continue;
+    const id = Number(a?.unidadId ?? a?.unidad?.id);
+    if (Number.isFinite(id) && id > 0) ids.add(id);
+  }
+  return Array.from(ids);
+}
+
+/**
+ * ¿El actor tiene alguno de estos permisos sobre al menos una de las unidades indicadas?
+ * Con alcance GLOBAL alcanza siempre; con UNIDAD, la unidad debe estar entre las suyas.
+ * Sirve para acciones por fila (validar legajo, pasar camada, cobrar) en vez de booleanos globales.
+ */
+export function tienePermisoSobreUnidades(
+  asignaciones: readonly AsignacionPermisosLike[],
+  permisos: string | readonly string[],
+  unidadIds: readonly (number | null | undefined)[],
+): boolean {
+  if (tienePermisoConAlcance(asignaciones, permisos, 'GLOBAL')) return true;
+  const propias = obtenerUnidadesConPermiso(asignaciones, permisos);
+  return unidadIds.some((id) => typeof id === 'number' && propias.includes(id));
+}
+
+/** Atajo de `tienePermisoSobreUnidades` usando las unidades activas de un miembro. */
+export function tienePermisoSobreMiembro(
+  asignaciones: readonly AsignacionPermisosLike[],
+  permisos: string | readonly string[],
+  miembro: any,
+): boolean {
+  return tienePermisoSobreUnidades(asignaciones, permisos, unidadesActivasDeMiembro(miembro));
 }

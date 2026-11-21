@@ -39,6 +39,7 @@ import {
   type BorradorLegajoLocal,
 } from '../../core/offline/campamentoSync';
 import { useAuthStore } from '../../store/authStore';
+import { useCapabilities } from '../../core/capabilities';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
@@ -95,17 +96,24 @@ export const MiEspacioPage: React.FC = () => {
   const location = useLocation();
 
   const cicloActual = obtenerCicloAnioActual();
+  const caps = useCapabilities();
+  // "Mis Pedidos y Vales" consulta /tesoreria/eventos, que exige eventos.ver: sin permiso no se muestra.
+  const puedeVerPedidos = caps.canViewEventos;
+  const resolverTabPermitida = (sp: URLSearchParams): TabMiEspacio => {
+    const t = resolverTabDesdeParams(sp);
+    return t === 'pedidos' && !puedeVerPedidos ? 'legajo' : t;
+  };
 
   const [tabActiva, setTabActiva] = useState<TabMiEspacio>(() =>
-    resolverTabDesdeParams(searchParams),
+    resolverTabPermitida(searchParams),
   );
 
   useEffect(() => {
-    const resuelta = resolverTabDesdeParams(searchParams);
+    const resuelta = resolverTabPermitida(searchParams);
     if (resuelta !== tabActiva) {
       setTabActiva(resuelta);
     }
-  }, [searchParams, tabActiva]);
+  }, [searchParams, tabActiva, puedeVerPedidos]);
 
   const cambiarTab = (nuevoTab: TabMiEspacio) => {
     if (nuevoTab === tabActiva) return;
@@ -843,7 +851,8 @@ export const MiEspacioPage: React.FC = () => {
     [eventosActivos],
   );
   const eventosFinalizados = useMemo(
-    () => eventosActivos.filter((e) => e.estado !== 'PUBLICADO'),
+    // Solo FINALIZADO: a UNIDAD/GLOBAL el backend también envía BORRADOR y CANCELADO.
+    () => eventosActivos.filter((e) => e.estado === 'FINALIZADO'),
     [eventosActivos],
   );
 
@@ -873,7 +882,7 @@ export const MiEspacioPage: React.FC = () => {
   const unidadPrincipalNombre =
     obtenerRolPrincipal(precarga?.usuario)?.unidad?.nombre || asignaciones?.[0]?.unidadNombre || '';
 
-  const tabsItems: readonly SegmentedTabItem<TabMiEspacio>[] = [
+  const tabsItemsTodos: readonly SegmentedTabItem<TabMiEspacio>[] = [
     {
       id: 'legajo',
       label: 'Mi Legajo',
@@ -897,6 +906,7 @@ export const MiEspacioPage: React.FC = () => {
       icon: <User className="w-4 h-4" />,
     },
   ];
+  const tabsItems = tabsItemsTodos.filter((t) => t.id !== 'pedidos' || puedeVerPedidos);
 
   // Datos de perfil
   const asigPrincipal =

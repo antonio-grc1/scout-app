@@ -232,7 +232,8 @@ export const EventosCatalogoPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPIs Resumen (sin preselección automática de evento) */}
+      {/* KPIs de gestión: solo para quien vende/gestiona (a familias el backend no les envía métricas) */}
+      {caps.canSellEventos && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
           label="Eventos publicados"
@@ -263,6 +264,7 @@ export const EventosCatalogoPage: React.FC = () => {
           icon={<CheckCircle2 className="w-4 h-4" />}
         />
       </div>
+      )}
 
       {/* Filtros de Estado */}
       <div className="flex items-center justify-between gap-3 flex-wrap">

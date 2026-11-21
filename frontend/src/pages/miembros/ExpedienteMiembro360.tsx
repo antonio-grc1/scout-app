@@ -135,7 +135,11 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   } = useAuthStore();
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
-  const { canEdit, canView } = usePermisosUI();
+  const { canEditInScope, canViewInScope } = usePermisosUI();
+  // El expediente opera sobre otros miembros: un permiso con alcance PROPIO (solo la ficha propia)
+  // no habilita ver ni editar a terceros, así que se exige como mínimo alcance UNIDAD.
+  const canEdit = (modulo: string, campo: string) => canEditInScope(modulo, campo, 'UNIDAD');
+  const canView = (modulo: string) => canViewInScope(modulo, 'UNIDAD');
 
   const esGlobalPadron = tienePermisoGlobal('padron.editar');
   const tieneBajaGlobal = esGlobalPadron;
@@ -179,6 +183,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const [miembro, setMiembro] = useState<any | null>(null);
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
   const [entregas, setEntregas] = useState<any[]>([]);
+  // true si la consulta de fichas falló (403/red): no se puede afirmar "sin alertas".
+  const [entregasNoDisponibles, setEntregasNoDisponibles] = useState(false);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [roles, setRoles] = useState<any[]>([]);
   const [ramas, setRamas] = useState<any[]>([]);
@@ -267,14 +273,14 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const puedeEditarContacto =
     canEdit('miembro', 'contacto') && (!targetEsGlobal || esGlobalPadron);
   const puedeDarBaja =
-    canEdit('miembro', 'estado') && (!targetEsGlobal || tieneBajaGlobal);
+    canEdit('miembro', 'estado') && (!targetEsGlobal || tieneBajaGlobal) && !esMismoUsuario;
   const puedeEditarMiembro = puedeEditarIdentidad || puedeEditarContacto || puedeDarBaja;
   const puedeHacerPases =
     canEdit('miembro', 'pase') &&
     (!targetEsGlobal || esGlobalPases) &&
     !(!esGlobalPases && (esMismoUsuario || targetEsEducador));
   const puedeResetearClave =
-    canEdit('miembro', 'clave') && (!targetEsGlobal || esGlobalPadron);
+    canEdit('miembro', 'clave') && (!targetEsGlobal || esGlobalPadron) && !esMismoUsuario; // la propia clave se cambia en Mi Espacio
 
   const ramaSeleccionadaObj = useMemo(
     () => ramas.find((r) => r.id === ramaSeleccionadaId),
@@ -354,6 +360,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         setCargando(true);
       }
       try {
+        // Catálogos de organización solo con permiso (si no, 403); abajo hay respaldo sintético.
+        const capsCarga = computeCapabilities(useAuthStore.getState().asignaciones);
         const [
           resMiembro,
           resCuenta,
@@ -368,16 +376,23 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           api.get(`/tesoreria/estado-cuenta/${id}`).catch(() => null),
           api.get(`/legajos/entregas?usuarioId=${id}`).catch(() => null),
           api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({ data: [] })),
-          api.get('/organizacion/unidades').catch(() => ({ data: [] })),
-          api.get('/organizacion/roles').catch(() => ({ data: [] })),
+          capsCarga.canViewOrganizacion
+            ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          capsCarga.canViewRoles
+            ? api.get('/organizacion/roles').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
           api.get('/pases/candidatos').catch(() => ({ data: [] })),
-          api.get('/organizacion/ramas').catch(() => ({ data: [] })),
+          capsCarga.canViewOrganizacion
+            ? api.get('/organizacion/ramas').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
         ]);
 
         const m = resMiembro.data;
         setMiembro(m);
         if (resCuenta) setEstadoCuenta(resCuenta.data);
         if (resEntregas) setEntregas(resEntregas.data);
+        setEntregasNoDisponibles(!resEntregas);
 
         let listaPlantillas: any[] = Array.isArray(resPlantillas?.data) ? resPlantillas.data : [];
         if (listaPlantillas.length === 0) {
@@ -1483,6 +1498,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     candidatoPase,
   ]);
 
+  // La pestaña pedida (URL o prop) solo se muestra si el usuario tiene permiso para verla;
+  // si no, cae en "Datos" (evita ver acciones con ?tab=seguridad|pase|cuotas sin permiso).
+  const tabVisible: TabExpediente360 = tabsItems.some((t) => t.id === tab) ? tab : 'datos';
+
   const titulosSubVista: Record<Exclude<SubVistaExpediente, null>, string> = {
     cobrar: 'Registrar Cobro',
     'nuevo-cargo': 'Generar Cargo Individual',
@@ -1566,7 +1585,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
       </div>
 
       {/* Tira de Seguridad Vital fija arriba */}
-      {miembro && infoMedica && (
+      {miembro && infoMedica && puedeVerFicha && (
         <div
           className={`rounded-2xl p-3.5 sm:p-4 border text-[13px] space-y-2 ${
             infoMedica.criticasCount > 0
@@ -1594,7 +1613,11 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 </span>
               )}
               {!infoMedica.grupoSanguineo && !infoMedica.obraSocial && !infoMedica.tieneAlertas && (
-                <span className="text-ink-muted font-medium">Sin alertas médicas declaradas</span>
+                <span className="text-ink-muted font-medium">
+                  {entregasNoDisponibles
+                    ? 'No se pudo consultar la ficha médica: no asumas que no hay alertas.'
+                    : 'Sin alertas médicas declaradas'}
+                </span>
               )}
             </div>
           </div>
@@ -1841,7 +1864,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         <div className="pb-1 border-b border-rule">
             <SegmentedTabs
               items={tabsItems}
-              activeId={tab}
+              activeId={tabVisible}
               onChange={cambiarTab}
               ariaLabel="Pestañas del expediente del miembro"
             />
@@ -1854,7 +1877,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             </div>
           ) : miembro ? (
             <div className="s-anim-tab text-sm">
-              {tab === 'datos' && (
+              {tabVisible === 'datos' && (
                 <PestanaDatosMiembro
                   miembro={miembro}
                   estadoCuenta={estadoCuenta}
@@ -1885,7 +1908,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 />
               )}
 
-              {tab === 'cuotas' && (
+              {tabVisible === 'cuotas' && (
                 <PestanaCuotasTesoreria
                   miembro={miembro}
                   estadoCuenta={estadoCuenta}
@@ -1941,7 +1964,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 />
               )}
 
-              {tab === 'ficha' && (
+              {tabVisible === 'ficha' && (
                 <PestanaLegajosFichas
                   miembro={miembro}
                   entregas={entregas}
@@ -1974,7 +1997,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 />
               )}
 
-              {tab === 'pase' && (
+              {tabVisible === 'pase' && (
                 <PestanaPaseRol
                   candidatoPase={candidatoPase}
                   categoriaDestino={categoriaDestino}
@@ -2017,7 +2040,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 />
               )}
 
-              {tab === 'seguridad' && (
+              {tabVisible === 'seguridad' && (
                 <PestanaSeguridad
                   miembro={miembro}
                   reseteandoClave={reseteandoClave}

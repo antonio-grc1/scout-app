@@ -247,7 +247,7 @@ export function App() {
               <Route
                 path="/legajos/completar"
                 element={
-                  <RutaProtegida>
+                  <RutaProtegida allow={(c) => c.canCompleteLegajos || c.canViewLegajosModule}>
                     <AppShell title="Completar Legajo">
                       <CompletarLegajoPage />
                     </AppShell>

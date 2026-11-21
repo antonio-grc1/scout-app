@@ -22,7 +22,7 @@
 | Bloque | Tema | Crít. | Alto | Medio/Bajo |
 |---|---|---|---|---|
 | B0 | Bugs funcionales que rompen flujos ✅ corregido | 7 | 5 | 2 |
-| B1 | Permisos y vistas por rol | 4 | 12 | 13 |
+| B1 | Permisos y vistas por rol ✅ corregido (salvo B1-25, B1-28 y B1-29) | 4 | 12 | 13 |
 | B2 | Integridad de datos (errores tragados, PDFs, dinero) | — | 11 | 26 |
 | B3 | Sistema de diseño: color, contraste, tipografía | — | 6 | 8 |
 | B4 | Accesibilidad estructural (foco, diálogos, labels, ARIA) | — | 8 | 10 |
@@ -70,6 +70,13 @@
 ---
 
 ## B1 — Permisos y vistas por rol
+
+> **Estado (21/11/2026): corregido**, sin commitear, excepto B1-25, B1-28 y B1-29.
+> - Se agregaron en `lib/permisos.ts` los helpers `tienePermisoSobreUnidades` y `tienePermisoSobreMiembro`, que se usan para las acciones por fila (legajos, pases por camada, cobro en búsqueda).
+> - En el Expediente, todos los permisos se evalúan ahora con alcance mínimo UNIDAD.
+> - `canConfigureEventos` pasa a ser solo GLOBAL, alineado con el backend.
+> - Verificado en el navegador como Jefe de Rama y como Protagonista. B1-01 y B1-17: el expediente propio con `?tab=seguridad` cae en Datos. B1-05: sin "Nuevo evento" ni "Configurar". B1-19: barra móvil. B1-20: cero respuestas 403. B1-27: título del padrón. Los botones de legajos de B1-02 también se probaron.
+> - **Pendientes:** B1-25 (Inicio casi vacío para educadores sin padrón) y B1-28 (KPIs de Tesorería por permiso) quedan para B8. B1-29 necesita backend: `GET /miembros` exige `padron.ver`, así que hace falta un endpoint de búsqueda para tesorería. B1-20 quedó resuelto solo del lado del front (se evitan los 403 y se usan los datos de respaldo). Para que un Jefe de Rama vea las secciones destino de un pase, el backend tendría que exponer un catálogo de unidades y ramas de solo lectura para alcance UNIDAD.
 
 ### B1.a Acciones o datos expuestos sin permiso
 

@@ -206,6 +206,7 @@ export const OrganizacionPage: React.FC = () => {
 
       {/* KPIs compactos */}
       <section className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+        {caps.canViewOrganizacion && (
         <KpiCard
           label="Ramas activas"
           value={cargando && ramas.length === 0 ? '—' : metricas.ramasActivas}
@@ -213,6 +214,8 @@ export const OrganizacionPage: React.FC = () => {
           icon={<Layers className="w-4 h-4" />}
           tone="brand"
         />
+        )}
+        {caps.canViewOrganizacion && (
         <KpiCard
           label="Secciones activas"
           value={cargando && unidades.length === 0 ? '—' : metricas.unidadesActivas}
@@ -220,6 +223,9 @@ export const OrganizacionPage: React.FC = () => {
           icon={<GitBranch className="w-4 h-4" />}
           tone="info"
         />
+        )}
+        {/* Cada KPI solo con su permiso: sin él mostraba "0" porque esos datos no se cargan */}
+        {caps.canViewRoles && (
         <KpiCard
           label="Roles configurados"
           value={cargando && roles.length === 0 ? '—' : metricas.totalRoles}
@@ -228,6 +234,7 @@ export const OrganizacionPage: React.FC = () => {
           tone="ok"
           className="col-span-2 lg:col-span-1"
         />
+        )}
       </section>
 
       {error && (

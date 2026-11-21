@@ -431,6 +431,11 @@ export const EventoWorkspacePage: React.FC = () => {
       return;
     }
 
+    if (!caps.canCreateGlobalEventos && !posVendedorId) {
+      mostrarToast('Seleccioná un scout de tu rama como vendedor del pedido.', 'error');
+      return;
+    }
+
     const puedeImputarPago = caps.canCreateGlobalEventos;
     if (puedeImputarPago && posMetodoPago !== 'PENDIENTE' && !posCuentaId) {
       mostrarToast('Seleccioná la cuenta donde ingresa el pago.', 'error');
@@ -1022,11 +1027,17 @@ export const EventoWorkspacePage: React.FC = () => {
                         setPosBusquedaVendedor(e.target.value);
                         setPosDropdownAbierto(true);
                       }}
-                      placeholder="Buscar scout por nombre o DNI (o dejar Venta General)..."
+                      placeholder={
+                        caps.canCreateGlobalEventos
+                          ? 'Buscar scout por nombre o DNI (o dejar Venta General)...'
+                          : 'Buscar scout de tu rama por nombre o DNI...'
+                      }
                       className="s-input w-full min-h-[46px] pl-10 pr-3 rounded-xl text-base sm:text-[15px]"
                     />
                     {posDropdownAbierto && (
                       <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-xl bg-surface border border-rule z-20 py-1 divide-y divide-rule/40">
+                        {/* La venta general (sin vendedor) solo la acepta el backend con alcance GLOBAL */}
+                        {caps.canCreateGlobalEventos && (
                         <button
                           type="button"
                           onMouseDown={(e) => {
@@ -1039,6 +1050,7 @@ export const EventoWorkspacePage: React.FC = () => {
                         >
                           Venta general del grupo (sin vendedor)
                         </button>
+                        )}
                         {vendedoresFiltrados.map((m) => (
                           <button
                             key={m.id}

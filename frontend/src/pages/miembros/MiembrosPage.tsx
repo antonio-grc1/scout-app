@@ -38,7 +38,11 @@ import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
-import { useActiveUnitStore, useCapabilities } from '../../core/capabilities';
+import {
+  obtenerNombreUnidadActiva,
+  useActiveUnitStore,
+  useCapabilities,
+} from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
 import { extraerInfoMedicaMiembro } from '../../lib/alertasMedicas';
 import { obtenerConfigRama, obtenerOrdenRama } from '../../lib/ramaColors';
@@ -135,9 +139,18 @@ export const MiembrosPage: React.FC = () => {
   const puedeEjecutarEgreso = caps.canExecuteEgreso;
   const puedeVerPases = caps.canViewPases;
   const puedeEjecutarPases = caps.canExecutePases;
-  const puedeVerCuotas = caps.canViewCuotas || caps.canSeeTesoreriaGestion;
+  // Una sola fuente para ver deudas (antes desktop sumaba canSeeTesoreriaGestion, que incluye padrón).
+  const puedeVerCuotas = caps.canViewCuotas;
   const puedeVerFichas = caps.hasPermiso('legajos.ver');
   const puedeValidarFisico = caps.canValidateQr;
+  // ?filtro= de la URL no debe filtrar por datos que el usuario no puede ver
+  // (p. ej. CON_DEUDA sin cuotas permitiría inferir quién debe).
+  const normalizarChip = (chip: ChipFiltroMiembros): ChipFiltroMiembros => {
+    if (chip === 'CON_DEUDA' && !puedeVerCuotas) return 'TODOS';
+    if ((chip === 'ALERTA_MEDICA' || chip === 'FALTA_FICHA') && !puedeVerFichas) return 'TODOS';
+    if (chip === 'PASE_SUGERIDO' && !puedeVerPases) return 'TODOS';
+    return chip;
+  };
 
   const cicloAnio = useMemo(() => obtenerCicloAnioActual(), []);
 
@@ -173,7 +186,7 @@ export const MiembrosPage: React.FC = () => {
   const [menuCamadasAbierto, setMenuCamadasAbierto] = useState(false);
   const [menuAccionesAbierto, setMenuAccionesAbierto] = useState(false);
   const [chipActivo, setChipActivo] = useState<ChipFiltroMiembros>(() =>
-    parseFiltroParam(searchParams.get('filtro')),
+    normalizarChip(parseFiltroParam(searchParams.get('filtro'))),
   );
   const [subFiltroMedico, setSubFiltroMedico] = useState<SubFiltroAlertaMedica>('TODAS');
   const [mostrarFiltrosMovil, setMostrarFiltrosMovil] = useState(false);
@@ -206,7 +219,7 @@ export const MiembrosPage: React.FC = () => {
   // Sincronización desde URL ?filtro= (Back/Forward)
   const filtroParam = searchParams.get('filtro');
   useEffect(() => {
-    setChipActivo(parseFiltroParam(filtroParam));
+    setChipActivo(normalizarChip(parseFiltroParam(filtroParam)));
   }, [filtroParam]);
 
   const seleccionarChip = useCallback(
@@ -291,9 +304,16 @@ export const MiembrosPage: React.FC = () => {
           puedeVerFichas
             ? api.get(`/legajos/entregas?cicloAnio=${cicloAnio}`).catch(() => ({ data: [] }))
             : Promise.resolve({ data: [] }),
-          api.get('/organizacion/unidades').catch(() => ({ data: [] })),
-          api.get('/organizacion/roles').catch(() => ({ data: [] })),
-          api.get('/organizacion/ramas').catch(() => ({ data: [] })),
+          // Catálogos de organización: solo con permiso (si no, 403); hay respaldo derivado del padrón.
+          caps.canViewOrganizacion
+            ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          caps.canViewRoles
+            ? api.get('/organizacion/roles').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
+          caps.canViewOrganizacion
+            ? api.get('/organizacion/ramas').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
         ]);
 
         setMiembros(miembrosLista);
@@ -326,7 +346,15 @@ export const MiembrosPage: React.FC = () => {
         if (!silencioso) setCargando(false);
       }
     },
-    [cargarTodosLosMiembrosPaginados, puedeVerPases, puedeVerFichas, cicloAnio, mostrarToast],
+    [
+      cargarTodosLosMiembrosPaginados,
+      puedeVerPases,
+      puedeVerFichas,
+      cicloAnio,
+      mostrarToast,
+      caps.canViewOrganizacion,
+      caps.canViewRoles,
+    ],
   );
 
   useEffect(() => {
@@ -930,6 +958,8 @@ export const MiembrosPage: React.FC = () => {
     [navigate],
   );
 
+  // Las columnas de salud y finanzas solo se exportan con el permiso correspondiente:
+  // el archivo sale de la app y no puede llevar datos que el usuario no ve en pantalla.
   const prepararColumnasPadron = (): ColumnaExportacion<any>[] => [
     { header: 'Apellido', formatear: (m) => m.apellido || '' },
     { header: 'Nombre', formatear: (m) => m.nombre || '' },
@@ -962,6 +992,11 @@ export const MiembrosPage: React.FC = () => {
       header: 'Familia',
       formatear: (m) => formatearNombreFamilia(m.grupoFamiliar?.nombreFamilia) || '',
     },
+    ...(puedeVerFichas ? columnasFichaPadron() : []),
+    ...(puedeVerCuotas ? columnasCuotasPadron() : []),
+  ];
+
+  const columnasFichaPadron = (): ColumnaExportacion<any>[] => [
     {
       header: 'Ficha Médica',
       formatear: (m) => {
@@ -983,6 +1018,9 @@ export const MiembrosPage: React.FC = () => {
       header: 'Alertas Médicas',
       formatear: (m) => alertasPorUsuario.get(m.id)?.resumenAlertas || '',
     },
+  ];
+
+  const columnasCuotasPadron = (): ColumnaExportacion<any>[] => [
     { header: 'Saldo a Favor ($)', formatear: (m) => Number(m.saldoAFavor || 0) },
     { header: 'Deuda Cuotas ($)', formatear: (m) => calcularDeudaMiembro(m) },
   ];
@@ -1062,13 +1100,19 @@ export const MiembrosPage: React.FC = () => {
 
   const agruparAccionesEnMovil = accionesSecundarias.length > 1;
 
+  // El título refleja el alcance real: un Jefe de Rama o una unidad elegida no es "todo el grupo".
+  const tituloPadron =
+    caps.esGlobal && activeUnitId === 'ALL'
+      ? 'Padrón del Grupo'
+      : `Padrón · ${obtenerNombreUnidadActiva(activeUnitId, caps, unidades, 'Tus unidades')}`;
+
   return (
     <div className="s-anim-view max-w-7xl mx-auto space-y-5">
       {/* Cabecera Compacta */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3.5">
-        <div className="flex items-center gap-3 shrink-0">
-          <h1 className="text-2xl sm:text-[1.75rem] font-extrabold text-ink tracking-tight whitespace-nowrap">
-            Padrón del Grupo
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="text-2xl sm:text-[1.75rem] font-extrabold text-ink tracking-tight min-w-0">
+            {tituloPadron}
           </h1>
           <span className="px-3 py-0.5 rounded-full text-[13px] font-extrabold bg-brand/10 text-brand border border-brand/30 shrink-0">
             {miembrosFiltrados.length}
@@ -1815,7 +1859,7 @@ export const MiembrosPage: React.FC = () => {
           </button>
         )}
 
-        {(conteos.conAlertaMedica > 0 || chipActivo === 'ALERTA_MEDICA') && (
+        {puedeVerFichas && (conteos.conAlertaMedica > 0 || chipActivo === 'ALERTA_MEDICA') && (
           <button
             type="button"
             onClick={() =>
@@ -2180,7 +2224,7 @@ export const MiembrosPage: React.FC = () => {
                                   Baja
                                 </span>
                               )}
-                              {infoMed?.tieneAlertas && (
+                              {puedeVerFichas && infoMed?.tieneAlertas && (
                                 <span
                                   title={infoMed.resumenAlertas || 'Posee alertas médicas'}
                                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60"

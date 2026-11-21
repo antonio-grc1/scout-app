@@ -40,6 +40,7 @@ import {
 } from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
 import { useAuthStore } from '../../store/authStore';
+import { tienePermisoConAlcance, tienePermisoSobreMiembro } from '../../lib/permisos';
 import { useToastStore } from '../../store/toastStore';
 import {
   extraerCatalogosMedicosDinamicos,
@@ -130,7 +131,11 @@ export const LegajosPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const caps = useCapabilities();
   const usuarioActual = useAuthStore((s) => s.usuario);
+  const asignacionesActor = useAuthStore((s) => s.asignaciones);
   const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
+  // Completar/editar/validar el legajo de otro miembro exige legajos.editar sobre SU unidad.
+  const puedeEditarLegajoDe = (miembro: any) =>
+    tienePermisoSobreMiembro(asignacionesActor, 'legajos.editar', miembro);
   const esGlobalPlantillas = tienePermisoGlobal(['plantillas.ver', 'plantillas.editar']);
   const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
   const abrirQr = useQrModalStore((s) => s.abrirQr);
@@ -139,9 +144,16 @@ export const LegajosPage: React.FC = () => {
 
   const puedeVerPlantillasTab =
     esGlobalPlantillas && caps.hasAnyPermiso('plantillas.ver', 'plantillas.editar');
+  // Cumplimiento, Salud y Colaboradores muestran fichas y datos médicos: exigen legajos.ver/editar.
+  // Diseñar plantillas (plantillas.*) no habilita ver esos datos.
+  const puedeVerDatosLegajos = tienePermisoConAlcance(
+    asignacionesActor,
+    ['legajos.ver', 'legajos.editar'],
+    'UNIDAD',
+  );
   const tabUrl = searchParams.get('tab') as TabLegajos | null;
   const tabInicial: TabLegajos =
-    tabUrl === 'plantillas' && puedeVerPlantillasTab
+    (tabUrl === 'plantillas' || !puedeVerDatosLegajos) && puedeVerPlantillasTab
       ? 'plantillas'
       : tabUrl === 'salud'
         ? 'salud'
@@ -152,10 +164,11 @@ export const LegajosPage: React.FC = () => {
 
   useEffect(() => {
     if (tabUrl === 'plantillas' && puedeVerPlantillasTab) setTab('plantillas');
+    else if (!puedeVerDatosLegajos) return;
     else if (tabUrl === 'salud') setTab('salud');
     else if (tabUrl === 'colaboradores') setTab('colaboradores');
     else if (tabUrl === 'cumplimiento') setTab('cumplimiento');
-  }, [tabUrl, puedeVerPlantillasTab]);
+  }, [tabUrl, puedeVerPlantillasTab, puedeVerDatosLegajos]);
 
   const cambiarTab = (next: TabLegajos) => {
     setTab(next);
@@ -876,12 +889,8 @@ export const LegajosPage: React.FC = () => {
   }, [plantillasAdmin]);
 
   const tabItems = useMemo(() => {
-    const items: Array<{
-      id: TabLegajos;
-      label: string;
-      icon: React.ReactNode;
-      badge?: number;
-    }> = [
+    type ItemTab = { id: TabLegajos; label: string; icon: React.ReactNode; badge?: number };
+    const tabsDatos: ItemTab[] = [
       {
         id: 'cumplimiento',
         label: 'Cumplimiento',
@@ -900,6 +909,7 @@ export const LegajosPage: React.FC = () => {
         icon: <HeartHandshake className="w-3.5 h-3.5" />,
       },
     ];
+    const items: ItemTab[] = puedeVerDatosLegajos ? tabsDatos : [];
     if (puedeVerPlantillasTab) {
       items.push({
         id: 'plantillas',
@@ -908,7 +918,13 @@ export const LegajosPage: React.FC = () => {
       });
     }
     return items;
-  }, [puedeVerPlantillasTab, kpisCumplimiento.total, kpisSalud.conDieta, kpisSalud.conAlergia]);
+  }, [
+    puedeVerPlantillasTab,
+    puedeVerDatosLegajos,
+    kpisCumplimiento.total,
+    kpisSalud.conDieta,
+    kpisSalud.conAlergia,
+  ]);
 
   return (
     <div className="space-y-5 s-anim-view">
@@ -1175,7 +1191,7 @@ export const LegajosPage: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
-                          {caps.canValidateQr &&
+                          {puedeEditarLegajoDe(miembro) &&
                             miembro?.id !== usuarioActual?.id &&
                             estado === 'LISTO_PARA_FIRMA' &&
                             entrega?.hashVerificacion && (
@@ -1203,15 +1219,17 @@ export const LegajosPage: React.FC = () => {
                             </Button>
                           )}
 
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            onClick={() => navigate(completarUrl)}
-                            leftIcon={<Edit2 className="w-4 h-4" />}
-                          >
-                            {entrega ? 'Editar' : 'Completar'}
-                          </Button>
+                          {(miembro?.id === usuarioActual?.id || puedeEditarLegajoDe(miembro)) && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => navigate(completarUrl)}
+                              leftIcon={<Edit2 className="w-4 h-4" />}
+                            >
+                              {entrega ? 'Editar' : 'Completar'}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );

@@ -227,12 +227,14 @@ export function computeCapabilities(asignaciones: readonly AsignacionUsuario[]):
     ['eventos.editar', 'caja.editar'],
     'UNIDAD',
   );
-  const canConfigureEventos = canSellEventos;
   const canCreateGlobalEventos = tienePermisoConAlcance(
     asignaciones,
     ['eventos.editar', 'caja.editar'],
     'GLOBAL',
   );
+  // Crear, editar, eliminar y acreditar ganancias de eventos es solo GLOBAL en el backend
+  // (tesoreria-eventos.service.ts); con alcance UNIDAD esas acciones siempre daban 403.
+  const canConfigureEventos = canCreateGlobalEventos;
 
   // 9 & 10. Panel Organización, Roles y Correo (A5)
   const canViewOrganizacion = panelGlobal.puedeVerOrganizacion;

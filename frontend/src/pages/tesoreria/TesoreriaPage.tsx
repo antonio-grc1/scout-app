@@ -29,6 +29,7 @@ import {
   filtrarUnidadesPorAlcance,
   puedeEditarFamiliaPorAlcance,
   puedeModificarPorAlcanceUnidad,
+  tienePermisoSobreMiembro,
 } from '../../lib/permisos';
 import {
   NOMBRES_MESES_CORTOS,
@@ -231,7 +232,9 @@ export const TesoreriaPage: React.FC = () => {
           puedeVerCobranzas
             ? api.get('/tesoreria/familias').catch(() => ({ data: [] }))
             : Promise.resolve({ data: [] }),
-          api.get('/organizacion/unidades').catch(() => ({ data: [] })),
+          caps.canViewOrganizacion
+            ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
+            : Promise.resolve({ data: [] }),
           caps.canSeeCajaContabilidad
             ? api.get('/tesoreria/cuentas').catch(() => ({ data: [] }))
             : Promise.resolve({ data: [] }),
@@ -268,6 +271,7 @@ export const TesoreriaPage: React.FC = () => {
     puedeVerPlanesYConceptos,
     puedeVerCobranzas,
     caps.canSeeCajaContabilidad,
+    caps.canViewOrganizacion,
   ]);
 
   useEffect(() => {
@@ -782,7 +786,8 @@ export const TesoreriaPage: React.FC = () => {
                             </span>
                           </button>
 
-                          {caps.canCobrar && (
+                          {caps.canCobrar &&
+                            tienePermisoSobreMiembro(asignaciones, ['cobranzas.editar', 'caja.editar'], m) && (
                             <Button
                               type="button"
                               variant="primary"

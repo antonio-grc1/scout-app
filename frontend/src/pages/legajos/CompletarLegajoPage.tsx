@@ -72,12 +72,14 @@ export const CompletarLegajoPage: React.FC = () => {
     if (
       Number.isFinite(parsed) &&
       parsed > 0 &&
-      (caps.canViewLegajosModule || caps.canEditMiembros || parsed === usuarioSesion?.id)
+      // Completar el legajo de otro miembro exige legajos.editar con alcance UNIDAD o superior
+      // (canValidateQr); solo ver el módulo no alcanza. El backend valida además la unidad.
+      (caps.canValidateQr || parsed === usuarioSesion?.id)
     ) {
       return parsed;
     }
     return usuarioSesion?.id ?? 0;
-  }, [paramUsuarioId, caps.canViewLegajosModule, caps.canEditMiembros, usuarioSesion?.id]);
+  }, [paramUsuarioId, caps.canValidateQr, usuarioSesion?.id]);
 
   const esOtroMiembro = Boolean(usuarioSesion?.id && targetUserId !== usuarioSesion.id);
 

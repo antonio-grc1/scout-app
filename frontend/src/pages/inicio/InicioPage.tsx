@@ -773,7 +773,8 @@ export const InicioPage: React.FC = () => {
               </span>
             </Link>
 
-            {/* 3. Eventos y Vales */}
+            {/* 3. Eventos y Vales (requiere eventos.ver) */}
+            {caps.canViewEventos && (
             <Link
               to="/mi-espacio?tab=pedidos"
               className="s-card s-card-hover rounded-2xl p-5 flex flex-col justify-between gap-3.5 min-w-0"
@@ -799,6 +800,7 @@ export const InicioPage: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </span>
             </Link>
+            )}
           </div>
         </section>
       )}
@@ -892,7 +894,9 @@ export const InicioPage: React.FC = () => {
               </Link>
             )}
 
-            {/* Tarjeta interactiva de Alertas Médicas */}
+            {/* Tarjeta interactiva de Alertas Médicas: solo con acceso a fichas (si no, mostraría
+                "sin alertas" sin haberlas consultado) */}
+            {caps.canViewLegajosModule && caps.hasAnyPermiso('legajos.ver', 'legajos.editar') && (
             <button
               type="button"
               onClick={() => {
@@ -922,6 +926,7 @@ export const InicioPage: React.FC = () => {
                 <span className="font-bold text-brand shrink-0">Abrir guía →</span>
               </div>
             </button>
+            )}
           </div>
         </section>
       )}
