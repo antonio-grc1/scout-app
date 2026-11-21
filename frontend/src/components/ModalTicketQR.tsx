@@ -287,6 +287,13 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
         {/* Contenido / Tarjeta del Ticket */}
         <div className="p-5 flex flex-col items-center text-center space-y-3.5 overflow-y-auto">
           {/* Previsualización de la Tarjeta del Vale con los detalles de compra */}
+          {ticket.estado !== 'ACTIVO' && (
+            <div role="alert" className="w-full s-badge-err rounded-xl p-3 text-sm font-extrabold text-center">
+              {ticket.estado === 'CANCELADO'
+                ? 'Vale CANCELADO: no es válido para canjear.'
+                : 'Vale ya UTILIZADO: no puede volver a canjearse.'}
+            </div>
+          )}
           <div className="w-full flex justify-center">
             {qrUrl ? (
               <div

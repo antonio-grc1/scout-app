@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMenuKeyboard } from '../../hooks/useMenuKeyboard';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -21,6 +22,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Trash2,
+  MoreHorizontal,
   User,
   Wallet,
   X,
@@ -105,6 +107,11 @@ export const EventoWorkspacePage: React.FC = () => {
   // Sub-modals & confirmaciones
   const [modalEditarEventoAbierto, setModalEditarEventoAbierto] = useState(false);
   const [confirmEliminarEvento, setConfirmEliminarEvento] = useState(false);
+  const [menuEventoAbierto, setMenuEventoAbierto] = useState(false);
+  const { menuRef: menuEventoRef, onKeyDown: onKeyDownMenuEvento } = useMenuKeyboard(
+    menuEventoAbierto,
+    () => setMenuEventoAbierto(false),
+  );
   const [eliminandoEvento, setEliminandoEvento] = useState(false);
 
   const [pedidoModalState, setPedidoModalState] = useState<{
@@ -771,15 +778,49 @@ export const EventoWorkspacePage: React.FC = () => {
                 >
                   Configurar Evento
                 </Button>
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={() => setConfirmEliminarEvento(true)}
-                  leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                >
-                  Eliminar
-                </Button>
+                <div className="relative">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    aria-label="Más acciones del evento"
+                    aria-haspopup="menu"
+                    aria-expanded={menuEventoAbierto}
+                    onClick={() => setMenuEventoAbierto((v) => !v)}
+                  >
+                    <MoreHorizontal className="w-4 h-4" aria-hidden="true" />
+                  </Button>
+                  {menuEventoAbierto && (
+                    <>
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        className="fixed inset-0 z-10 cursor-default"
+                        onClick={() => setMenuEventoAbierto(false)}
+                      />
+                      <div
+                        role="menu"
+                        ref={menuEventoRef}
+                        onKeyDown={onKeyDownMenuEvento}
+                        className="absolute right-0 mt-1.5 z-20 min-w-[180px] s-card rounded-xl p-1 shadow-lg"
+                      >
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setMenuEventoAbierto(false);
+                            setConfirmEliminarEvento(true);
+                          }}
+                          className="w-full min-h-[44px] px-3 rounded-lg flex items-center gap-2 text-sm font-bold text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4" aria-hidden="true" />
+                          <span>Eliminar evento</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </>
             )}
           </div>

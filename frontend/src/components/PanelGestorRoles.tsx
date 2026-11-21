@@ -766,7 +766,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
               </div>
 
               {puedeGestionarRoles && (
-                <div className="flex items-center justify-between gap-2.5 pt-3 border-t border-rule">
+                <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-rule">
                   {esInactivo ? (
                     <button
                       type="button"
@@ -812,7 +812,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                     onClick={() => abrirEditarRol(r)}
                     title={
                       !puedeOperarEsteRol
-                        ? 'No puede modificar un rol que posee permisos superiores a los suyos'
+                        ? 'No podés modificar un rol que tiene permisos superiores a los tuyos'
                         : undefined
                     }
                     className="flex-1 sm:flex-initial min-h-[44px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
@@ -820,6 +820,15 @@ export const PanelGestorRoles: React.FC<Props> = ({
                     <Pencil className="w-4 h-4" />
                     <span>Editar Rol y Paneles</span>
                   </button>
+                  {(!puedeOperarEsteRol || r.esSistema || (esUltimo && !esInactivo)) && (
+                    <p className="basis-full text-[13px] text-ink-muted leading-snug">
+                      {!puedeOperarEsteRol
+                        ? 'No podés modificar ni eliminar este rol: incluye permisos que vos no tenés.'
+                        : r.esSistema
+                          ? 'Rol base del sistema: se puede editar, pero no eliminar.'
+                          : `Protegido para eliminar: es el único rol con ${capacidades.join(', ')}.`}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

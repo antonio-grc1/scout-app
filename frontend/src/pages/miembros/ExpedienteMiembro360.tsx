@@ -1012,7 +1012,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           setAlerta({
             tipo: 'exito',
             texto: claveTemporal
-              ? `Nueva clave temporal generada: ${claveTemporal}.${detalleEmail}`
+              ? `Nueva clave temporal generada (se muestra en la sección Clave).${detalleEmail}`
               : res.data?.mensaje ||
                 (emailDestino
                   ? `Se generó una nueva clave temporal y se envió únicamente por correo a ${emailDestino}.`

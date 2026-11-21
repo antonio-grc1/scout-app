@@ -282,6 +282,7 @@ export const MiEspacioPage: React.FC = () => {
   });
   const [verActual, setVerActual] = useState(false);
   const [verNueva, setVerNueva] = useState(false);
+  const edadPerfil = calcularEdad(perfil?.fechaNacimiento);
   const [verConfirmar, setVerConfirmar] = useState(false);
 
   const inicializarMiEspacio = useCallback(async (opts?: { silencioso?: boolean }) => {
@@ -1856,6 +1857,8 @@ export const MiEspacioPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {(edadPerfil === null || edadPerfil < 18) && (
+                  <>
                   <div>
                     <label className="block text-ink font-bold mb-1.5">Madre: Nombre Completo</label>
                     <input
@@ -1927,6 +1930,8 @@ export const MiEspacioPage: React.FC = () => {
                       className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
                     />
                   </div>
+                  </>
+                  )}
 
                   <div>
                     <label className="block text-ink font-bold mb-1.5">Teléfono de Urgencias</label>
