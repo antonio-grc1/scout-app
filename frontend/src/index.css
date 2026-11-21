@@ -211,6 +211,17 @@
 
 .s-tabular { font-variant-numeric: tabular-nums; }
 .s-touch { min-height: 46px; }
+/* B5-13: botones de solo ícono. 32px con mouse (WCAG 2.5.8 pide ≥24) y 44px en pantallas táctiles. */
+.s-touch-icon {
+  min-width: 32px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (pointer: coarse) {
+  .s-touch-icon { min-width: 44px; min-height: 44px; }
+}
 
 .s-badge-ok { background: var(--s-ok-bg); color: var(--s-ok-ink); border: 1px solid var(--s-ok-border); }
 .s-badge-warn { background: var(--s-warn-bg); color: var(--s-warn-ink); border: 1px solid var(--s-warn-border); }

@@ -165,7 +165,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
               <button
                 type="button"
                 onClick={onCerrar}
-                className="text-ink-muted hover:text-ink transition-colors p-1.5 rounded-lg cursor-pointer hover:bg-paper-2"
+                className="text-ink-muted hover:text-ink transition-colors p-1.5 rounded-lg cursor-pointer hover:bg-paper-2 s-touch-icon"
                 aria-label="Cerrar ventana"
               >
                 <X className="w-5 h-5" />

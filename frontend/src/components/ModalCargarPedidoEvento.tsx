@@ -565,7 +565,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                         setVendedorUsuarioId('');
                         setBusquedaMiembro('');
                       }}
-                      className="p-1.5 rounded-lg hover:bg-paper-3 text-ink-muted hover:text-ink cursor-pointer"
+                      className="p-1.5 rounded-lg hover:bg-paper-3 text-ink-muted hover:text-ink cursor-pointer s-touch-icon"
                       title="Quitar asignación (Venta general)"
                     >
                       <X className="w-4 h-4" />

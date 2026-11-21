@@ -277,15 +277,18 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               onClick={() => setZoom((z) => Math.max(0.75, Number((z - 0.25).toFixed(2))))}
               disabled={zoom <= 0.75}
               title="Alejar"
-              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
+              aria-label="Alejar"
+              className="s-touch-icon rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
             >
               <ZoomOut className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={() => setZoom(1)}
-              className="px-2.5 text-xs font-bold text-ink cursor-pointer"
+              // Antes era solo texto (~20px de alto): ahora tiene área táctil propia.
+              className="s-touch-icon px-2.5 rounded-lg text-xs font-bold text-ink hover:bg-surface cursor-pointer"
               title="Restablecer zoom"
+              aria-label={`Zoom ${Math.round(zoom * 100)}%. Restablecer al 100%`}
             >
               {Math.round(zoom * 100)}%
             </button>
@@ -294,7 +297,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.25).toFixed(2))))}
               disabled={zoom >= 2.5}
               title="Acercar"
-              className="min-h-[38px] min-w-[38px] flex items-center justify-center rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
+              aria-label="Acercar"
+              className="s-touch-icon rounded-lg text-ink-2 hover:bg-surface disabled:opacity-40 transition cursor-pointer"
             >
               <ZoomIn className="w-4 h-4" />
             </button>

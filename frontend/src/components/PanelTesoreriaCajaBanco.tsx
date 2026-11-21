@@ -1376,7 +1376,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                               });
                               setModalIngresoAbierto(true);
                             }}
-                            className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                            className="flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer s-touch-icon"
                             title="Modificar ingreso"
                             aria-label="Modificar ingreso"
                           >
@@ -1388,7 +1388,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                               setMovimientoAEliminar(m);
                               setModalConfirmarEliminar(true);
                             }}
-                            className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer"
+                            className="flex items-center justify-center p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition cursor-pointer s-touch-icon"
                             title="Eliminar ingreso"
                             aria-label="Eliminar ingreso"
                           >
@@ -1412,7 +1412,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                               });
                               setModalGastoAbierto(true);
                             }}
-                            className="min-h-[34px] min-w-[34px] flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+                            className="flex items-center justify-center p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer s-touch-icon"
                             title="Modificar gasto"
                             aria-label="Modificar gasto"
                           >

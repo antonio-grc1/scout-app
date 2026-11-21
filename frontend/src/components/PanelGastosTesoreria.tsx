@@ -317,7 +317,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               <button
                 type="button"
                 onClick={() => setBusqueda('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink rounded cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink rounded cursor-pointer s-touch-icon"
                 title="Limpiar búsqueda"
                 aria-label="Limpiar búsqueda"
               >

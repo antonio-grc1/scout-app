@@ -315,7 +315,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
                   setBusqueda('');
                   setResultadosBusqueda([]);
                 }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-ink-muted hover:text-ink cursor-pointer s-touch-icon"
                 title="Limpiar búsqueda"
               >
                 <X className="w-4 h-4" />

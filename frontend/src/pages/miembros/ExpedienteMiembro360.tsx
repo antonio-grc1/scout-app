@@ -1726,7 +1726,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             type="button"
             onClick={() => setAlerta(null)}
             aria-label="Cerrar alerta"
-            className="p-1 cursor-pointer shrink-0"
+            className="p-1 cursor-pointer shrink-0 s-touch-icon"
           >
             <X className="w-4 h-4" />
           </button>

@@ -234,7 +234,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             <button
               type="button"
               onClick={() => setAjustandoSaldo(false)}
-              className="text-ink-muted hover:text-ink cursor-pointer p-1"
+              className="text-ink-muted hover:text-ink cursor-pointer p-1 s-touch-icon"
             >
               <X className="w-4 h-4" />
             </button>

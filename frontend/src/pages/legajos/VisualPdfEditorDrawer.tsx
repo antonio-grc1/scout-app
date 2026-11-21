@@ -1960,7 +1960,8 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                               <button
                                 type="button"
                                 onClick={() => handleEliminarOpcionCampoActivo(opt.value)}
-                                className="text-rose-500 hover:text-rose-700 cursor-pointer"
+                                // Antes: ícono de 12px sin relleno. Área táctil propia sin agrandar el chip.
+                                className="s-touch-icon -my-1.5 -mr-1.5 rounded-md text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                                 aria-label={`Quitar opción ${opt.label}`}
                               >
                                 <X className="w-3 h-3" />

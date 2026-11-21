@@ -103,7 +103,7 @@ export const ModalConfirmacion: React.FC<ModalConfirmacionProps> = ({
               <button
                 type="button"
                 onClick={onCerrar}
-                className="text-ink-muted hover:text-ink transition-colors p-1 rounded-lg cursor-pointer"
+                className="text-ink-muted hover:text-ink transition-colors p-1 rounded-lg cursor-pointer s-touch-icon"
               >
                 <X className="w-5 h-5" />
               </button>

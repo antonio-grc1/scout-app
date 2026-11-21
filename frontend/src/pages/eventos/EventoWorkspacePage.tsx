@@ -1094,7 +1094,7 @@ export const EventoWorkspacePage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setPosVendedorId('')}
-                      className="text-ink-muted hover:text-ink p-1 cursor-pointer"
+                      className="text-ink-muted hover:text-ink p-1 cursor-pointer s-touch-icon"
                       aria-label="Quitar vendedor"
                     >
                       <X className="w-4 h-4" />
