@@ -214,8 +214,11 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
         async () => {
           try {
             if (!eliminadoPermanente) {
-              await api.post(`/tesoreria/rubros/${rubroAEliminar.id}/restaurar`);
-              if (onRubroEliminado) onRubroEliminado(rubroAEliminar);
+              const resRestaurar = await api.post(`/tesoreria/rubros/${rubroAEliminar.id}/restaurar`);
+              // Reinsertar en la lista del padre (antes se llamaba a onRubroEliminado y seguía oculto).
+              if (onRubroCreado) {
+                onRubroCreado(resRestaurar.data?.id ? resRestaurar.data : rubroAEliminar);
+              }
             } else {
               const res = await api.post('/tesoreria/rubros', {
                 nombre: rubroAEliminar.nombre,

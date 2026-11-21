@@ -10,6 +10,7 @@ import {
   traducirErrorAmigable,
   ahoraLocalDatetime,
   fechaAFormatoDatetimeLocal,
+  desarmarConceptoIngreso,
 } from '../lib/formatters';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
 import { useModalOverlay } from '../hooks/useModalOverlay';
@@ -20,6 +21,7 @@ export interface IngresoAEditarItem {
   montoIngreso: number;
   conceptoTexto: string;
   rubroId?: number | null;
+  rubro?: { nombre?: string | null } | null;
   cuentaId: number;
   comprobanteNro?: string | null;
 }
@@ -134,21 +136,14 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
         setMonto(String(ingresoAEditar.montoIngreso));
 
         // Limpiar descripción quitando el prefijo "Ingreso: ", comprobante y rubro
-        let descLimpia = ingresoAEditar.conceptoTexto || '';
-        let compExtraido = ingresoAEditar.comprobanteNro || '';
-
-        const matchComp = descLimpia.match(/\(Comp\.\s*#?([^)]+)\)/i);
-        if (matchComp) {
-          if (!compExtraido) compExtraido = matchComp[1].trim();
-          descLimpia = descLimpia.replace(/\(Comp\.\s*#?[^)]+\)/i, '').trim();
-        }
-
-        if (descLimpia.startsWith('Ingreso: ')) {
-          descLimpia = descLimpia.replace(/^Ingreso:\s*/, '');
-          const partes = descLimpia.split(' - ');
-          descLimpia = partes[0] || descLimpia;
-        }
-        setDescripcion(descLimpia.trim());
+        const { descripcion: descLimpia, comprobanteNro: compExtraido } = desarmarConceptoIngreso(
+          ingresoAEditar.conceptoTexto,
+          {
+            comprobanteNro: ingresoAEditar.comprobanteNro,
+            rubroNombre: ingresoAEditar.rubro?.nombre,
+          },
+        );
+        setDescripcion(descLimpia);
         setRubroId(ingresoAEditar.rubroId || '');
         setCuentaId(ingresoAEditar.cuentaId);
         setComprobanteNro(compExtraido);

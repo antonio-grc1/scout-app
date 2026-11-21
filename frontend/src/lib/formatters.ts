@@ -852,3 +852,36 @@ export function resumirMaterialesAdultos(data: Record<string, unknown>) {
     mat_campamento_donacion: activos(MATERIALES_CAMPAMENTO, 'donacion'),
   };
 }
+
+/**
+ * Separa el concepto de un ingreso manual, que el backend guarda como
+ * "Ingreso: <descripción> - <rubro> (Comp. #<n>)", en descripción y comprobante.
+ * Corta solo el último " - " (o el nombre exacto del rubro) para no truncar
+ * descripciones que contienen guiones.
+ */
+export function desarmarConceptoIngreso(
+  conceptoTexto: string | null | undefined,
+  opciones: { comprobanteNro?: string | null; rubroNombre?: string | null } = {},
+): { descripcion: string; comprobanteNro: string } {
+  let descripcion = conceptoTexto || '';
+  let comprobanteNro = opciones.comprobanteNro || '';
+
+  const matchComp = descripcion.match(/\(Comp\.\s*#?([^)]+)\)/i);
+  if (matchComp) {
+    if (!comprobanteNro) comprobanteNro = matchComp[1].trim();
+    descripcion = descripcion.replace(/\(Comp\.\s*#?[^)]+\)/i, '').trim();
+  }
+
+  if (descripcion.startsWith('Ingreso: ')) {
+    descripcion = descripcion.replace(/^Ingreso:\s*/, '');
+    const sufijoRubro = opciones.rubroNombre ? ` - ${opciones.rubroNombre}` : null;
+    if (sufijoRubro && descripcion.endsWith(sufijoRubro)) {
+      descripcion = descripcion.slice(0, -sufijoRubro.length);
+    } else {
+      const corte = descripcion.lastIndexOf(' - ');
+      if (corte > 0) descripcion = descripcion.slice(0, corte);
+    }
+  }
+
+  return { descripcion: descripcion.trim(), comprobanteNro };
+}

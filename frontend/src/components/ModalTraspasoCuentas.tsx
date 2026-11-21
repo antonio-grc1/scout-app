@@ -303,6 +303,13 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
               </div>
             )}
 
+            {cuentas.length < 2 && (
+              <p className="p-3.5 rounded-xl s-badge-info text-sm font-medium">
+                Para hacer un traspaso necesitás al menos dos cuentas activas. Creá otra cuenta desde
+                &quot;Nueva Cuenta&quot;.
+              </p>
+            )}
+
             {/* Botones de acción */}
             <div className="pt-2 flex items-center justify-end gap-2.5">
               <Button

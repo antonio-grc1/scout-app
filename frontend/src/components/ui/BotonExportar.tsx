@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, ChevronDown, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
 import { useMenuKeyboard } from '../../hooks/useMenuKeyboard';
+import { useToastStore } from '../../store/toastStore';
 
 export interface BotonExportarProps {
   onExportarExcel: () => Promise<void> | void;
@@ -58,6 +59,16 @@ export const BotonExportar: React.FC<BotonExportarProps> = ({
       } else {
         await onExportarCSV();
       }
+    } catch {
+      // Antes fallaba en silencio (p. ej. sin conexión no se puede bajar el módulo de Excel).
+      useToastStore
+        .getState()
+        .mostrarToast(
+          navigator.onLine
+            ? 'No se pudo generar el archivo. Probá de nuevo.'
+            : 'No se pudo generar el archivo sin conexión. Probá con CSV o cuando vuelvas a tener señal.',
+          'error',
+        );
     } finally {
       setProcesando(null);
     }

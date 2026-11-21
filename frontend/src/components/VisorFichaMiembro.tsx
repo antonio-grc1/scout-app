@@ -30,6 +30,8 @@ interface VisorFichaMiembroProps {
   ocultarModalPdf?: boolean;
   onCerrarPdfPreview?: () => void;
   onDescargarPdf?: () => void;
+  /** Si es false, no se sugiere "Rellenar Ficha" (el botón está oculto por permisos). */
+  puedeCompletarFicha?: boolean;
 }
 
 type SeccionVista = 'salud' | 'familia' | 'retiro' | 'apoyos';
@@ -48,6 +50,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   ocultarModalPdf = false,
   onCerrarPdfPreview,
   onDescargarPdf,
+  puedeCompletarFicha = true,
 }) => {
   const [seccion, setSeccion] = useState<SeccionVista>('salud');
 
@@ -149,9 +152,11 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
           <p className="text-sm font-bold text-ink-2">
             Este miembro todavía no tiene respuestas cargadas en su ficha digital.
           </p>
-          <p className="text-xs text-ink-muted">
-            Tocá &ldquo;Rellenar Ficha&rdquo; arriba para completarla desde el celular.
-          </p>
+          {puedeCompletarFicha && (
+            <p className="text-xs text-ink-muted">
+              Tocá &ldquo;Rellenar Ficha&rdquo; arriba para completarla desde el celular.
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3.5">
@@ -330,7 +335,12 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                       )}
                     </div>
                   ) : (
-                    <p className="text-xs text-ink-muted">Sin restricciones alimentarias declaradas.</p>
+                    // Con una alergia declarada (p. ej. maní) no se afirma "sin restricciones".
+                    <p className="text-xs text-ink-muted">
+                      {infoMedica.tieneAlergia
+                        ? 'Sin dieta especial declarada. Revisá las alergias más abajo.'
+                        : 'Sin restricciones alimentarias declaradas.'}
+                    </p>
                   )}
                 </div>
 

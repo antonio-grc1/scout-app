@@ -9,6 +9,7 @@ import {
   formatearFechaHora,
   normalizarTextoBusqueda,
   obtenerHoyLocalISO,
+  desarmarConceptoIngreso,
 } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { BotonExportar } from './ui/BotonExportar';
@@ -205,6 +206,9 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   const [cuentas, setCuentas] = useState<CuentaFinancieraItem[]>([]);
   const [cuentaSeleccionadaId, setCuentaSeleccionadaId] = useState<number | null>(null);
   const [cargandoCuentas, setCargandoCuentas] = useState(true);
+  // Las cuentas archivadas (inactivas) no se listaban y quedaban inaccesibles: se pueden ver y reactivar.
+  const [verArchivadas, setVerArchivadas] = useState(false);
+  const [reactivandoCuenta, setReactivandoCuenta] = useState(false);
 
   // Filtros de fecha / arqueo
   const [fechaDesde, setFechaDesde] = useState<string>('');
@@ -233,7 +237,9 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   const cargarCuentas = useCallback(
     async (idASeleccionar?: number) => {
       try {
-        const res = await api.get('/tesoreria/cuentas');
+        const res = await api.get(
+          verArchivadas ? '/tesoreria/cuentas?incluirInactivas=true' : '/tesoreria/cuentas',
+        );
         const listaCuentas: CuentaFinancieraItem[] = res.data || [];
         setCuentas(listaCuentas);
 
@@ -265,7 +271,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         setCargandoCuentas(false);
       }
     },
-    [],
+    [verArchivadas],
   );
 
   useEffect(() => {
@@ -346,12 +352,18 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         `Ingreso "${mov.conceptoTexto}" eliminado.`,
         async () => {
           try {
+            // Se recrea con la descripción original y el comprobante (antes se perdía el
+            // comprobante y el rubro quedaba repetido dentro de la descripción).
+            const { descripcion, comprobanteNro } = desarmarConceptoIngreso(mov.conceptoTexto, {
+              rubroNombre: mov.rubro?.nombre,
+            });
             await api.post('/tesoreria/ingresos', {
               fecha: mov.fecha,
               monto: Number(mov.montoIngreso),
-              descripcion: mov.conceptoTexto.replace(/^Ingreso:\s*/, ''),
+              descripcion,
               cuentaId: mov.cuentaId,
               rubroId: mov.rubroId || mov.rubro?.id,
+              comprobanteNro: comprobanteNro || undefined,
             });
             await Promise.all([cargarCuentas(), cargarLibroDiario()]);
             useToastStore.getState().mostrarToast('Ingreso restaurado correctamente.');
@@ -391,6 +403,22 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   };
 
   const cuentaActiva = cuentas.find((c) => c.id === cuentaSeleccionadaId);
+  const cuentaArchivada = cuentaActiva?.activa === false;
+  const cuentasOperables = useMemo(() => cuentas.filter((c) => c.activa !== false), [cuentas]);
+
+  const reactivarCuenta = async () => {
+    if (!cuentaActiva) return;
+    setReactivandoCuenta(true);
+    try {
+      await api.post(`/tesoreria/cuentas/${cuentaActiva.id}/restaurar`);
+      await cargarCuentas(cuentaActiva.id);
+      onToastRef.current?.(`Cuenta "${cuentaActiva.nombre}" reactivada.`);
+    } catch (err: any) {
+      onToastRef.current?.(traducirErrorAmigable(err, 'No se pudo reactivar la cuenta.'), 'error');
+    } finally {
+      setReactivandoCuenta(false);
+    }
+  };
   const hayFiltroFecha = Boolean(fechaDesde || fechaHasta);
   const datosLibroListos = Boolean(
     libroDiario && cuentaSeleccionadaId !== null && libroDiario.cuenta?.id === cuentaSeleccionadaId,
@@ -645,6 +673,11 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                     <Wallet className="w-4 h-4 shrink-0" />
                   )}
                   <span>{c.nombre}</span>
+                  {c.activa === false && (
+                    <span className="text-[11px] font-bold uppercase tracking-wide opacity-80">
+                      (archivada)
+                    </span>
+                  )}
                   <span
                     className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
                       estaSeleccionada
@@ -660,21 +693,31 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           )}
         </div>
 
-        {puedeGestionarTesoreria && (
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => {
-              setCuentaAEditar(null);
-              setModalCrearAbierto(true);
-            }}
-            leftIcon={<PlusCircle className="w-4 h-4" />}
-            className="shrink-0"
+            aria-pressed={verArchivadas}
+            onClick={() => setVerArchivadas((v) => !v)}
           >
-            Nueva Cuenta
+            {verArchivadas ? 'Ocultar archivadas' : 'Ver archivadas'}
           </Button>
-        )}
+          {puedeGestionarTesoreria && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setCuentaAEditar(null);
+                setModalCrearAbierto(true);
+              }}
+              leftIcon={<PlusCircle className="w-4 h-4" />}
+            >
+              Nueva Cuenta
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* 2. Top Summary Hero Strip */}
@@ -699,10 +742,16 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                       ? 'Caja Chica / Efectivo'
                       : 'Cuenta Bancaria'}
                   </span>
-                  <span className="text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Activa</span>
-                  </span>
+                  {cuentaArchivada ? (
+                    <span className="text-xs px-2.5 py-0.5 rounded-md font-bold s-badge-warn">
+                      Archivada
+                    </span>
+                  ) : (
+                    <span className="text-xs px-2.5 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Activa</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -724,7 +773,28 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             </div>
           </div>
 
-          {puedeGestionarTesoreria && (
+          {cuentaArchivada && (
+            <div className="pt-3 border-t border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <p className="text-sm text-ink-muted">
+                Cuenta archivada: conserva su historial pero no admite ingresos, gastos ni traspasos.
+              </p>
+              {puedeGestionarTesoreria && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  loading={reactivandoCuenta}
+                  onClick={() => void reactivarCuenta()}
+                  leftIcon={<RotateCcw className="w-4 h-4 shrink-0" />}
+                  className="shrink-0"
+                >
+                  Reactivar cuenta
+                </Button>
+              )}
+            </div>
+          )}
+
+          {puedeGestionarTesoreria && !cuentaArchivada && (
             <div className="pt-3 border-t border-rule grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end gap-2">
               <Button
                 type="button"
@@ -1525,7 +1595,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       {modalTraspasoAbierto && (
         <ModalTraspasoCuentas
           abierto={modalTraspasoAbierto}
-          cuentas={cuentas}
+          cuentas={cuentasOperables}
           cuentaOrigenInicialId={cuentaSeleccionadaId ?? undefined}
           onCerrar={() => setModalTraspasoAbierto(false)}
           onTransferenciaExitosa={() => {

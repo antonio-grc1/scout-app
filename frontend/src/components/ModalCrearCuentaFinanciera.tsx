@@ -38,6 +38,9 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
   onToast,
 }) => {
   const esModoEdicion = Boolean(cuentaAEditar);
+  // El backend rechaza eliminar/archivar una cuenta con saldo distinto de $0.
+  const tieneSaldo =
+    esModoEdicion && Math.round(Number(cuentaAEditar?.saldoActual ?? 0) * 100) !== 0;
   const asignaciones = useAuthStore((s) => s.asignaciones);
   const tienePermisoGlobal = useAuthStore((s) => s.tienePermisoGlobal);
   const obtenerUnidadesConPermiso = useAuthStore((s) => s.obtenerUnidadesConPermiso);
@@ -372,17 +375,25 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
 
               <div className="pt-2 flex items-center justify-between gap-2.5">
                 {esModoEdicion ? (
-                  <Button
-                    type="button"
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setModalConfirmarEliminar(true)}
-                    disabled={guardando || eliminando}
-                    className="gap-1.5"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Eliminar</span>
-                  </Button>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      onClick={() => setModalConfirmarEliminar(true)}
+                      disabled={guardando || eliminando || tieneSaldo}
+                      aria-describedby={tieneSaldo ? 'cuenta-eliminar-motivo' : undefined}
+                      className="gap-1.5 self-start"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      <span>Eliminar</span>
+                    </Button>
+                    {tieneSaldo && (
+                      <span id="cuenta-eliminar-motivo" className="text-xs text-ink-muted">
+                        Para eliminarla, primero transferí el saldo a otra cuenta.
+                      </span>
+                    )}
+                  </div>
                 ) : (
                   <div />
                 )}

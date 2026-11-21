@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { traducirErrorAmigable } from '../lib/formatters';
+import { NOMBRES_MESES_LARGOS, traducirErrorAmigable } from '../lib/formatters';
 import { api } from '../api/client';
 import { SelectorDestinatarios } from './SelectorDestinatarios';
 import { ModalCrearRubro, type RubroAEditarItem } from './ModalCrearRubro';
@@ -463,6 +463,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                     aria-pressed={activo}
                     key={m.num}
                     type="button"
+                    aria-label={`${NOMBRES_MESES_LARGOS[m.num]}: ${activo ? 'habilitado' : 'deshabilitado'}`}
                     onClick={() => toggleMes(m.num)}
                     className={`min-h-[54px] py-2 px-1.5 rounded-xl text-center border transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                       activo

@@ -3,7 +3,6 @@ import {
   Wallet,
   CreditCard,
   PlusCircle,
-  Users,
   Pencil,
   Ban,
   RotateCcw,
@@ -21,6 +20,7 @@ import {
   METODO_PAGO_LABELS,
 } from '../../lib/formatters';
 import { puedeDesvincularIntegrantePorAlcance } from '../../lib/permisos';
+import { BloqueGrupoFamiliar } from './BloqueGrupoFamiliar';
 
 export interface CargoEditando {
   id: number;
@@ -310,73 +310,19 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
         </form>
       )}
 
-      {/* Barra rápida de Grupo Familiar y Descuento Hermanos */}
-      <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Users className="w-4 h-4 text-brand shrink-0" />
-            <span className="font-bold text-ink text-sm">
-              {familiar ? familiar.nombreFamilia : 'Sin grupo familiar'}
-            </span>
-            {familiar && (
-              <span className="px-2.5 py-0.5 rounded-full bg-brand/15 text-brand text-xs font-bold">
-                {pctDesc > 0 ? `-${pctDesc}% desc. hermanos` : '0% desc.'}
-              </span>
-            )}
-          </div>
-          {(habilitarVincularHermano || habilitarEditarDescuento) && (
-            <div className="flex items-center gap-2">
-              {familiar && habilitarEditarDescuento && (
-                <button
-                  type="button"
-                  onClick={onAbrirModalEditarFamilia}
-                  className="min-h-[36px] px-3 py-1 rounded-lg bg-surface border border-brand/40 text-brand font-bold text-xs cursor-pointer"
-                >
-                  Editar Familia ({pctDesc}%)
-                </button>
-              )}
-              {habilitarVincularHermano && (
-                <button
-                  type="button"
-                  onClick={onAbrirModalVincularHermano}
-                  className="min-h-[36px] px-3 py-1 rounded-lg bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-xs cursor-pointer transition-colors"
-                >
-                  + Hermano
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {integrantesFamilia.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-rule">
-            <span className="text-xs font-bold text-ink-muted mr-1">
-              Integrantes:
-            </span>
-            {integrantesFamilia.map((h: any) => (
-              <span
-                key={h.id}
-                className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-surface border border-brand/30 text-xs font-bold text-ink"
-              >
-                <span>
-                  {h.nombre} {h.apellido}
-                </span>
-                {puedeDesvincularIntegrante(h) && (
-                  <button
-                    type="button"
-                    disabled={desvinculandoMiembroId === h.id}
-                    onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
-                    title={`Quitar a ${h.nombre} del grupo familiar`}
-                    className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
-                  >
-                    {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Grupo Familiar y Descuento Hermanos (bloque compartido con la pestaña Datos) */}
+      <BloqueGrupoFamiliar
+        familiar={familiar}
+        pctDesc={pctDesc}
+        integrantesFamilia={integrantesFamilia}
+        habilitarVincularHermano={habilitarVincularHermano}
+        habilitarEditarDescuento={habilitarEditarDescuento}
+        onEditarFamilia={onAbrirModalEditarFamilia}
+        onVincularHermano={onAbrirModalVincularHermano}
+        puedeDesvincularIntegrante={puedeDesvincularIntegrante}
+        desvinculandoMiembroId={desvinculandoMiembroId}
+        onDesvincularRapido={onDesvincularRapido}
+      />
 
       {/* Lista de Cuotas / Cargos en Tarjetas Mobile-First */}
       <div className="space-y-2.5">

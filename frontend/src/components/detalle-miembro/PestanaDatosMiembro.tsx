@@ -1,12 +1,13 @@
 import React from 'react';
 import { useConfirmar } from '../../hooks/useConfirmar';
-import { Check, HeartPulse, Save, Trash2, Users, Utensils } from 'lucide-react';
+import { Check, HeartPulse, Save, Trash2, Utensils } from 'lucide-react';
 import {
   OPCIONES_ALERGIA_ESTANDAR,
   OPCIONES_DIETA_ESTANDAR,
 } from '../../lib/alertasMedicas';
 import { TrayectoriaMiembro } from './TrayectoriaMiembro';
 import { puedeDesvincularIntegrantePorAlcance } from '../../lib/permisos';
+import { BloqueGrupoFamiliar } from './BloqueGrupoFamiliar';
 
 export interface FormDatosMiembro {
   nombre: string;
@@ -358,74 +359,19 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
         </div>
       )}
 
-      {/* Grupo Familiar */}
-      <div className="p-4 rounded-2xl bg-brand/10 border border-brand/30 space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Users className="w-[18px] h-[18px] text-brand" />
-            <span className="font-bold text-[15px] text-ink">
-              {familiar ? familiar.nombreFamilia : 'Sin hermanos vinculados'}
-            </span>
-            {familiar && pctDesc > 0 && (
-              <span className="px-2.5 py-0.5 rounded-full bg-brand/20 text-brand font-bold text-xs">
-                -{pctDesc}% cuota
-              </span>
-            )}
-          </div>
-
-          {(habilitarVincularHermano || habilitarEditarDescuento) && (
-            <div className="flex items-center gap-2">
-              {familiar && habilitarEditarDescuento && (
-                <button
-                  type="button"
-                  onClick={onAbrirEditarFamilia}
-                  className="min-h-[40px] px-3.5 rounded-xl border border-brand/40 bg-surface text-brand font-bold text-[13px] cursor-pointer"
-                >
-                  Descuento ({pctDesc}%)
-                </button>
-              )}
-              {habilitarVincularHermano && (
-                <button
-                  type="button"
-                  onClick={onAbrirVincularHermano}
-                  className="min-h-[40px] px-3.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-[13px] cursor-pointer transition-colors"
-                >
-                  + Hermano
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {integrantesFamilia.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-rule">
-            <span className="text-xs font-bold text-ink-muted mr-1">
-              Integrantes:
-            </span>
-            {integrantesFamilia.map((h: any) => (
-              <span
-                key={h.id}
-                className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-xl bg-surface border border-brand/30 text-[13px] font-bold text-ink"
-              >
-                <span>
-                  {h.nombre} {h.apellido}
-                </span>
-                {puedeDesvincularIntegrante(h) && (
-                  <button
-                    type="button"
-                    disabled={desvinculandoMiembroId === h.id}
-                    onClick={() => onDesvincularRapido(h.id, `${h.nombre} ${h.apellido}`)}
-                    title={`Quitar a ${h.nombre} del grupo familiar`}
-                    className="px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-400 text-xs font-extrabold transition cursor-pointer disabled:opacity-50"
-                  >
-                    {desvinculandoMiembroId === h.id ? '...' : 'Quitar'}
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Grupo Familiar y Descuento Hermanos (bloque compartido con la pestaña Cuotas) */}
+      <BloqueGrupoFamiliar
+        familiar={familiar}
+        pctDesc={pctDesc}
+        integrantesFamilia={integrantesFamilia}
+        habilitarVincularHermano={habilitarVincularHermano}
+        habilitarEditarDescuento={habilitarEditarDescuento}
+        onEditarFamilia={onAbrirEditarFamilia}
+        onVincularHermano={onAbrirVincularHermano}
+        puedeDesvincularIntegrante={puedeDesvincularIntegrante}
+        desvinculandoMiembroId={desvinculandoMiembroId}
+        onDesvincularRapido={onDesvincularRapido}
+      />
 
       {/* Trayectoria en el Grupo */}
       <TrayectoriaMiembro asignaciones={miembro?.asignaciones} />

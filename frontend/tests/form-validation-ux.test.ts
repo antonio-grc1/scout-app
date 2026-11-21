@@ -435,3 +435,21 @@ describe('esDniValido (alta de miembro)', () => {
     assert.equal(esDniValido(''), false);
   });
 });
+
+describe('desarmarConceptoIngreso (editar / deshacer ingreso)', () => {
+  it('conserva guiones de la descripción y recupera el comprobante', async () => {
+    const { desarmarConceptoIngreso } = await vite.ssrLoadModule('/src/lib/formatters.ts');
+    assert.deepEqual(
+      desarmarConceptoIngreso('Ingreso: Rifa - edición invierno - Donaciones (Comp. #A-12)'),
+      { descripcion: 'Rifa - edición invierno', comprobanteNro: 'A-12' },
+    );
+    assert.deepEqual(
+      desarmarConceptoIngreso('Ingreso: Venta - Bufet - Kiosco', { rubroNombre: 'Bufet - Kiosco' }),
+      { descripcion: 'Venta', comprobanteNro: '' },
+    );
+    assert.deepEqual(
+      desarmarConceptoIngreso('Ingreso: Bono - Rifas', { comprobanteNro: '99' }),
+      { descripcion: 'Bono', comprobanteNro: '99' },
+    );
+  });
+});

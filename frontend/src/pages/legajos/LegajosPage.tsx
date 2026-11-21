@@ -667,7 +667,7 @@ export const LegajosPage: React.FC = () => {
     ];
     const nombreArchivo = `Salud_y_Alimentacion_${obtenerCicloAnioActual()}`;
     if (formato === 'xlsx') {
-      void exportarAExcel({
+      return exportarAExcel({
         filas: registrosSalud,
         columnas,
         nombreArchivo,
@@ -819,7 +819,7 @@ export const LegajosPage: React.FC = () => {
     ];
     const nombreArchivo = `Colaboradores_Adultos_${obtenerCicloAnioActual()}`;
     if (formato === 'xlsx') {
-      void exportarAExcel({
+      return exportarAExcel({
         filas: colaboradoresFiltrados,
         columnas,
         nombreArchivo,

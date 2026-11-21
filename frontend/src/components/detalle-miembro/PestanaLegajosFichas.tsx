@@ -244,6 +244,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
         ocultarModalPdf={ocultarModalPdf}
         onCerrarPdfPreview={onCerrarPdfPreview}
         onDescargarPdf={() => onDescargarPdfEducador(ent)}
+        puedeCompletarFicha={puedeCompletarFicha}
       />
     </div>
   );

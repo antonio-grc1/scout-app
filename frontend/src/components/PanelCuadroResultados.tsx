@@ -191,7 +191,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
   const handleExportarExcel = () => {
     const { filas, columnas } = construirFilasExportacion();
     const sufijo = mesFiltro ? `mes-${mesFiltro}` : 'anual';
-    void exportarAExcel({
+    return exportarAExcel({
       filas,
       columnas,
       nombreArchivo: `cuadro-resultados-${anio}-${sufijo}`,

@@ -389,7 +389,9 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       }
       {...(embedded ? {} : contentProps)}
     >
-      {/* Header */}
+      {/* Header: embebido, el contenedor (Drawer de Tesorería o subvista del expediente) ya
+          muestra el título y el miembro, así que no se repiten. */}
+      {!embedded && (
       <div className="p-5 border-b border-rule flex items-center justify-between shrink-0 bg-paper-2">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-2xl bg-brand/10 text-brand">
@@ -404,16 +406,16 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
             </p>
           </div>
         </div>
-        {!embedded && (
-          <button
-            type="button"
-            onClick={onCerrar}
-            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onCerrar}
+          aria-label="Cerrar"
+          className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-paper-2 transition cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
       </div>
+      )}
 
       {/* Formulario */}
       <form
