@@ -370,6 +370,23 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const legalTextareaRef = useRef<HTMLTextAreaElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // B5-10: en pantallas chicas se alterna entre editar y ver el PDF (antes la vista previa quedaba
+  // debajo de todo el formulario) y el canvas se ajusta al ancho real del contenedor.
+  const [vistaMovil, setVistaMovil] = useState<'editar' | 'preview'>('editar');
+  const [anchoPreview, setAnchoPreview] = useState(0);
+  // Ref por callback: si el Drawer vuelve a montar el contenedor (p. ej. al cambiar el ancho de
+  // pantalla) el observer se reconecta al elemento nuevo en lugar de seguir mirando el viejo.
+  const observerPreviewRef = useRef<ResizeObserver | null>(null);
+  const contenedorPreviewRef = useCallback((el: HTMLDivElement | null) => {
+    observerPreviewRef.current?.disconnect();
+    observerPreviewRef.current = null;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entrada]) => {
+      setAnchoPreview(Math.round(entrada.contentRect.width + 24));
+    });
+    observer.observe(el);
+    observerPreviewRef.current = observer;
+  }, []);
   const [vistaEnBlanco, setVistaEnBlanco] = useState(false);
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [previewBytes, setPreviewBytes] = useState<Uint8Array | null>(null);
@@ -793,6 +810,8 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
 
   useEffect(() => {
     if (!pdfDoc || !canvasRef.current || paginaActual < 1 || paginaActual > pdfDoc.numPages) return;
+    // Columna oculta (vista "Editar" en el celular): se renderiza al volver a mostrarse.
+    if (anchoPreview > 0 && anchoPreview < 120) return;
     let cancelado = false;
     let renderTask: pdfjsLib.RenderTask | null = null;
 
@@ -801,7 +820,9 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
         const page = await pdfDoc.getPage(paginaActual);
         if (cancelado) return;
         const pdfVp = page.getViewport({ scale: 1 });
-        const scale = Math.min(1.15, 520 / pdfVp.width);
+        // Ancho disponible menos el padding (p-3) y el borde del marco; 520px hasta medirlo.
+        const anchoUtil = anchoPreview > 0 ? anchoPreview - 26 : 520;
+        const scale = Math.min(1.15, anchoUtil / pdfVp.width);
         const viewport = page.getViewport({ scale });
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -827,7 +848,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
       cancelado = true;
       renderTask?.cancel();
     };
-  }, [pdfDoc, paginaActual]);
+  }, [pdfDoc, paginaActual, anchoPreview]);
 
   const seccionActiva: SeccionSchema | undefined = esquema.secciones[seccionActivaIdx];
 
@@ -1334,8 +1355,34 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Celular / tablet: alternar entre editar y ver el PDF */}
+          <div
+            className="lg:hidden grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-paper-2 border border-rule"
+            role="group"
+            aria-label="Modo del editor"
+          >
+            {(
+              [
+                { id: 'editar', label: 'Editar' },
+                { id: 'preview', label: 'Vista previa' },
+              ] as const
+            ).map((op) => (
+              <button
+                key={op.id}
+                type="button"
+                aria-pressed={vistaMovil === op.id}
+                onClick={() => setVistaMovil(op.id)}
+                className={`min-h-[44px] rounded-xl text-sm font-bold cursor-pointer transition ${
+                  vistaMovil === op.id ? 's-btn-brand' : 'text-ink-2 hover:bg-surface'
+                }`}
+              >
+                {op.label}
+              </button>
+            ))}
+          </div>
+
           {/* Columna Izquierda: Pestañas adaptadas al tipo de documento */}
-          <div className="lg:col-span-6 space-y-4">
+          <div className={`lg:col-span-6 space-y-4 ${vistaMovil === 'preview' ? 'hidden lg:block' : ''}`}>
             <div
               className={`grid gap-1.5 p-1 rounded-2xl bg-paper-2 border border-rule ${
                 esPdfAcroForm ? 'grid-cols-2' : 'grid-cols-3'
@@ -2042,7 +2089,11 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
           </div>
 
           {/* Columna Derecha: Vista Previa Real en Vivo del PDF */}
-          <div className="lg:col-span-6 space-y-3 lg:sticky lg:top-2">
+          <div
+            className={`lg:col-span-6 space-y-3 lg:sticky lg:top-2 ${
+              vistaMovil === 'editar' ? 'hidden lg:block' : ''
+            }`}
+          >
             <div className="s-panel rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <button
@@ -2109,7 +2160,10 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                 <span>{errorPreview}</span>
               </div>
             )}
-            <div className="overflow-auto rounded-2xl border border-rule bg-paper-3 p-3 flex justify-center min-h-[460px] max-h-[75vh]">
+            <div
+              ref={contenedorPreviewRef}
+              className="overflow-auto rounded-2xl border border-rule bg-paper-3 p-3 flex justify-center min-h-[460px] max-h-[75vh]"
+            >
               {cargandoPreview && !pdfDoc ? (
                 <div className="flex flex-col items-center justify-center gap-2.5 text-ink-muted py-16">
                   <Loader2 className="w-6 h-6 animate-spin text-brand" />
