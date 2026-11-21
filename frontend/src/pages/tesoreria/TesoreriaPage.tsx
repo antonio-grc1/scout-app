@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   Calendar,
@@ -177,13 +178,86 @@ export const TesoreriaPage: React.FC = () => {
     });
   };
 
-  // Datos principales
-  const [familias, setFamilias] = useState<any[]>([]);
-  const [planesMensuales, setPlanesMensuales] = useState<any[]>([]);
-  const [conceptos, setConceptos] = useState<any[]>([]);
-  const [unidades, setUnidades] = useState<any[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Datos principales con react-query: al volver a Tesorería se muestran al instante desde la
+  // caché y se refrescan en segundo plano; las acciones invalidan las consultas.
+  const queryClient = useQueryClient();
+  const usuarioId = useAuthStore((s) => s.usuario?.id);
+  const hayTabs = tabsDisponibles.length > 0;
+  const listaDe = (res: { data: unknown }) => (Array.isArray(res.data) ? (res.data as any[]) : []);
+  const opcionesTesoreria = { refetchOnMount: 'always' as const };
+
+  const planesQuery = useQuery({
+    queryKey: ['tesoreria-planes', usuarioId],
+    enabled: hayTabs && puedeVerPlanesYConceptos,
+    ...opcionesTesoreria,
+    queryFn: async () => listaDe(await api.get('/tesoreria/planes-mensuales')),
+  });
+  const conceptosQuery = useQuery({
+    queryKey: ['tesoreria-conceptos', usuarioId],
+    enabled: hayTabs && puedeVerPlanesYConceptos,
+    ...opcionesTesoreria,
+    queryFn: async () => listaDe(await api.get('/tesoreria/conceptos')),
+  });
+  const familiasQuery = useQuery({
+    queryKey: ['tesoreria-familias', usuarioId],
+    enabled: hayTabs && puedeVerCobranzas,
+    ...opcionesTesoreria,
+    queryFn: async () => listaDe(await api.get('/tesoreria/familias')),
+  });
+  // Misma clave que el selector de unidad del AppShell e Inicio.
+  const unidadesQuery = useQuery({
+    queryKey: ['unidades-org', usuarioId],
+    enabled: hayTabs && caps.canViewOrganizacion,
+    queryFn: async () => listaDe(await api.get('/organizacion/unidades')),
+  });
+  const cuentasQuery = useQuery({
+    queryKey: ['tesoreria-cuentas-precarga', usuarioId],
+    enabled: hayTabs && caps.canSeeCajaContabilidad,
+    ...opcionesTesoreria,
+    queryFn: async () => listaDe(await api.get('/tesoreria/cuentas')),
+  });
+
+  const planesMensuales = useMemo(() => planesQuery.data ?? [], [planesQuery.data]);
+  const conceptos = useMemo(() => conceptosQuery.data ?? [], [conceptosQuery.data]);
+  const familias = useMemo(() => familiasQuery.data ?? [], [familiasQuery.data]);
+  const unidades = useMemo(() => unidadesQuery.data ?? [], [unidadesQuery.data]);
+
+  const consultasPrincipales = [
+    { nombre: 'planes', q: planesQuery },
+    { nombre: 'conceptos', q: conceptosQuery },
+    { nombre: 'familias', q: familiasQuery },
+    { nombre: 'unidades', q: unidadesQuery },
+    { nombre: 'cuentas', q: cuentasQuery },
+  ];
+  const cargando = consultasPrincipales.some(({ q }) => q.isFetching);
+  const fallos = consultasPrincipales.filter(({ q }) => q.isError);
+  const error =
+    fallos.length === 0
+      ? null
+      : fallos.some(({ q }) => esErrorOffline(q.error))
+        ? 'Sin conexión: mostrando información guardada en este dispositivo.'
+        : `No se pudieron cargar: ${fallos.map(({ nombre }) => nombre).join(', ')}. Los datos que ves pueden estar incompletos.`;
+
+  // Pre-cachear libro diario de las cuentas para resiliencia offline (el interceptor guarda la respuesta).
+  useEffect(() => {
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    if (!online || !cuentasQuery.data) return;
+    for (const c of cuentasQuery.data.slice(0, 10)) {
+      if (c?.id) api.get(`/tesoreria/cuentas/${c.id}/libro-diario`).catch(() => {});
+    }
+  }, [cuentasQuery.data]);
+
+  /** Refresca los datos de Tesorería; la promesa termina cuando se recargaron las consultas activas. */
+  const cargarDatos = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          ['tesoreria-planes', 'tesoreria-conceptos', 'tesoreria-familias', 'tesoreria-cuentas-precarga'].includes(
+            String(query.queryKey[0]),
+          ),
+      }),
+    [queryClient],
+  );
 
   // Buscador de Cobranzas y Miembros
   const [busquedaCobranzas, setBusquedaCobranzas] = useState('');
@@ -215,80 +289,6 @@ export const TesoreriaPage: React.FC = () => {
   const [impactoDialog, setImpactoDialog] = useState<ImpactoDialogState | null>(null);
   const [ejecutandoImpacto, setEjecutandoImpacto] = useState(false);
 
-  const cargarDatos = useCallback(async () => {
-    if (tabsDisponibles.length === 0) {
-      setCargando(false);
-      return;
-    }
-
-    setCargando(true);
-    setError(null);
-    const fallos: string[] = [];
-    const vacioSiFalla = (nombre: string) => () => {
-      fallos.push(nombre);
-      return { data: [] as any[] };
-    };
-    try {
-      const [resPlanes, resConceptos, resFamilias, resUnidades, resCuentas] =
-        await Promise.all([
-          puedeVerPlanesYConceptos
-            ? api.get('/tesoreria/planes-mensuales').catch(vacioSiFalla('planes'))
-            : Promise.resolve({ data: [] }),
-          puedeVerPlanesYConceptos
-            ? api.get('/tesoreria/conceptos').catch(vacioSiFalla('conceptos'))
-            : Promise.resolve({ data: [] }),
-          puedeVerCobranzas
-            ? api.get('/tesoreria/familias').catch(vacioSiFalla('familias'))
-            : Promise.resolve({ data: [] }),
-          caps.canViewOrganizacion
-            ? api.get('/organizacion/unidades').catch(vacioSiFalla('unidades'))
-            : Promise.resolve({ data: [] }),
-          caps.canSeeCajaContabilidad
-            ? api.get('/tesoreria/cuentas').catch(vacioSiFalla('cuentas'))
-            : Promise.resolve({ data: [] }),
-        ]);
-
-      if (fallos.length > 0) {
-        setError(`No se pudieron cargar: ${fallos.join(', ')}. Los datos que ves pueden estar incompletos.`);
-      }
-
-      setPlanesMensuales(Array.isArray(resPlanes.data) ? resPlanes.data : []);
-      setConceptos(Array.isArray(resConceptos.data) ? resConceptos.data : []);
-      setFamilias(Array.isArray(resFamilias.data) ? resFamilias.data : []);
-      if (Array.isArray(resUnidades.data) && resUnidades.data.length > 0) {
-        setUnidades(resUnidades.data);
-      }
-
-      // Pre-cachear libro diario de cuentas financieras para resiliencia offline (GLOBAL)
-      const online = typeof navigator === 'undefined' || navigator.onLine !== false;
-      if (caps.canSeeCajaContabilidad && online && Array.isArray(resCuentas.data)) {
-        for (const c of resCuentas.data.slice(0, 10)) {
-          if (c?.id) {
-            api.get(`/tesoreria/cuentas/${c.id}/libro-diario`).catch(() => {});
-          }
-        }
-      }
-    } catch (err) {
-      const msg = traducirErrorAmigable(err, 'No se pudieron cargar los datos de tesorería.');
-      if (esErrorOffline(err)) {
-        setError('Sin conexión: mostrando información guardada en este dispositivo.');
-      } else {
-        setError(msg);
-      }
-    } finally {
-      setCargando(false);
-    }
-  }, [
-    tabsDisponibles.length,
-    puedeVerPlanesYConceptos,
-    puedeVerCobranzas,
-    caps.canSeeCajaContabilidad,
-    caps.canViewOrganizacion,
-  ]);
-
-  useEffect(() => {
-    void cargarDatos();
-  }, [cargarDatos]);
 
   // Buscador instantáneo de miembros individuales para cobro directo
   useEffect(() => {
