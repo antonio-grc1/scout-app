@@ -228,7 +228,7 @@ export function App() {
                 path="/miembros/:id"
                 element={
                   <RutaProtegida allow={(c) => c.canViewMiembros}>
-                    <AppShell title="Miembro ">
+                    <AppShell title="Miembro">
                       <MiembroDetallePage />
                     </AppShell>
                   </RutaProtegida>

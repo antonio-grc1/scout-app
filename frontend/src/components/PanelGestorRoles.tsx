@@ -591,7 +591,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
     setModalConfirmacion({
       abierto: true,
       titulo: `Eliminar o archivar rol "${r.nombre}"`,
-      mensaje: `¿Confirmas que deseas eliminar el rol "${r.nombre}"? Si posee historial de asignaciones o pases anteriores, se archivará automáticamente para preservar la trazabilidad.`,
+      mensaje: `¿Confirmás que querés eliminar el rol "${r.nombre}"? Si posee historial de asignaciones o pases anteriores, se archivará automáticamente para preservar la trazabilidad.`,
       tipo: 'peligro',
       textoConfirmar: 'Sí, continuar',
       textoCancelar: 'Cancelar',
@@ -790,7 +790,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                         r.esSistema
                           ? 'Rol base del sistema protegido'
                           : !puedeOperarEsteRol
-                            ? 'Este rol contiene permisos que usted no posee'
+                            ? 'Este rol contiene permisos que vos no tenés'
                             : esUltimo
                               ? `Protegido: único rol con ${capacidades.join(', ')}`
                               : 'Eliminar o archivar este rol'

@@ -259,12 +259,12 @@ describe('traducirErrorAmigable no confunde montos con códigos HTTP', () => {
         response: { status: 500, data: { message: 'Error inesperado' } },
         message: 'Request failed with status code 500',
       }),
-      'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.',
+      'Ocurrió un inconveniente temporal. Probá de nuevo en unos segundos.',
     );
 
     assert.equal(
       traducirErrorAmigable(new Error('Request failed with status code 500')),
-      'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.',
+      'Ocurrió un inconveniente temporal. Probá de nuevo en unos segundos.',
     );
 
     assert.equal(
@@ -274,7 +274,7 @@ describe('traducirErrorAmigable no confunde montos con códigos HTTP', () => {
 
     assert.equal(
       traducirErrorAmigable({ response: { status: 403, data: { message: 'Forbidden resource' } } }),
-      'No tienes permisos para realizar esta acción.',
+      'No tenés permisos para realizar esta acción.',
     );
 
     assert.equal(
@@ -291,14 +291,14 @@ describe('traducirErrorAmigable no confunde montos con códigos HTTP', () => {
       traducirErrorAmigable({
         response: { status: 403, data: { message: 'Solo usuarios con alcance global pueden crear eventos' } },
       }),
-      'No tienes permisos para realizar esta acción.',
+      'No tenés permisos para realizar esta acción.',
     );
 
     assert.equal(
       traducirErrorAmigable({
         response: { status: 404, data: { message: 'Miembro no encontrado en su alcance' } },
       }),
-      'No encontramos la información solicitada o no tienes acceso a ella.',
+      'No encontramos la información solicitada o no tenés acceso a ella.',
     );
   });
 });
@@ -746,6 +746,24 @@ describe('Alcance en UI: ocultar pestañas globales y filtrar unidades destinata
         asigMixta,
       ).map((r: any) => r.id),
       [10],
+    );
+  });
+});
+
+describe('traducirErrorAmigable (B7): sesión vencida y errores técnicos', () => {
+  it('401 fuera del login indica sesión vencida y errores del navegador no se exponen', async () => {
+    const { traducirErrorAmigable } = await vite.ssrLoadModule('/src/lib/formatters.ts');
+    assert.equal(
+      traducirErrorAmigable({ response: { status: 401, data: { message: 'Unauthorized' } }, config: { url: '/miembros' } }),
+      'Tu sesión venció. Volvé a iniciar sesión.',
+    );
+    assert.equal(
+      traducirErrorAmigable({ response: { status: 401, data: { message: 'Unauthorized' } }, config: { url: '/auth/login' } }),
+      'El DNI o la contraseña ingresados no son correctos.',
+    );
+    assert.equal(
+      traducirErrorAmigable(new TypeError("Cannot read properties of undefined (reading 'x')"), 'No se pudo generar el PDF.'),
+      'No se pudo generar el PDF.',
     );
   });
 });

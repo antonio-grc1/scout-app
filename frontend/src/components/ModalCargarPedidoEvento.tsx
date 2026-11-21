@@ -311,7 +311,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
     setError(null);
 
     if (!compradorNombre.trim()) {
-      setError('Indique el nombre del comprador o cliente');
+      setError('Indicá el nombre del comprador o cliente');
       return;
     }
 
@@ -779,7 +779,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 <div className="mt-2.5">
                   <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
                     <Landmark className="w-4 h-4 text-brand" />
-                    Ingresa en la cuenta:
+                    Ingresá en la cuenta:
                   </label>
                   <select
                     value={cuentaId}

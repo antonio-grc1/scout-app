@@ -1032,7 +1032,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
               No hay cuentas financieras creadas
             </p>
             <p className="text-[13px] text-ink-muted max-w-md mx-auto">
-              Crea una caja chica o cuenta bancaria para comenzar a registrar movimientos.
+              Creá una caja chica o cuenta bancaria para comenzar a registrar movimientos.
             </p>
           </div>
         )}

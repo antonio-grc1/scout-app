@@ -368,7 +368,7 @@ export function formatearNombreFamilia(nombre?: string | null): string {
 /**
  * Traduce errores de API o de red a mensajes claros y accionables para educadores/familias
  */
-export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos guardar los cambios. Intenta de nuevo.'): string {
+export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos guardar los cambios. Intentá de nuevo.'): string {
   if (err?.response?.data?.errores && Array.isArray(err.response.data.errores) && err.response.data.errores.length > 0) {
     return err.response.data.errores.map((e: any) => e.mensaje).join('. ');
   }
@@ -384,7 +384,7 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
     return 'Este registro ya existe en el sistema.';
   }
   if (!status && (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('timeout'))) {
-    return 'Sin conexión a internet. Verifica tu señal e intenta nuevamente.';
+    return 'Sin conexión a internet. Verificá tu señal e intentá nuevamente.';
   }
   if (
     status === 401 ||
@@ -392,6 +392,10 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
     lower.includes('credenciales') ||
     (!serverRaw && /(?:status(?:\s+code)?|http)\s*401\b/i.test(texto))
   ) {
+    const urlPeticion = String(err?.config?.url ?? '');
+    if (urlPeticion && !urlPeticion.includes('/auth/login') && !lower.includes('credenciales')) {
+      return 'Tu sesión venció. Volvé a iniciar sesión.';
+    }
     return 'El DNI o la contraseña ingresados no son correctos.';
   }
   if (
@@ -400,13 +404,13 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
     (status === 403 && !serverRaw) ||
     (!serverRaw && /(?:status(?:\s+code)?|http)\s*403\b/i.test(texto))
   ) {
-    return 'No tienes permisos para realizar esta acción.';
+    return 'No tenés permisos para realizar esta acción.';
   }
   if (lower.includes('alcance')) {
     if (status === 404 || lower.includes('no encontrado')) {
-      return 'No encontramos la información solicitada o no tienes acceso a ella.';
+      return 'No encontramos la información solicitada o no tenés acceso a ella.';
     }
-    return 'No tienes permisos para realizar esta acción.';
+    return 'No tenés permisos para realizar esta acción.';
   }
   if (
     lower.includes('not found') ||
@@ -420,8 +424,14 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
     lower.includes('internal server') ||
     (!serverRaw && /(?:status(?:\s+code)?|http)\s*5\d\d\b/i.test(texto))
   ) {
-    return 'Ocurrió un inconveniente temporal. Por favor, intenta de nuevo en unos segundos.';
+    return 'Ocurrió un inconveniente temporal. Probá de nuevo en unos segundos.';
   }
+
+  const esErrorTecnicoDelNavegador =
+    !err?.response &&
+    (/^(TypeError|RangeError|SyntaxError|ReferenceError|InvalidCharacterError)/i.test(String(err?.name ?? '') + ' ' + texto) ||
+      /(cannot read|is not (a function|defined|iterable)|undefined|failed to execute|pdf-lib|pdfjs|atob|invalid (array|string) length|unexpected token)/i.test(texto));
+  if (esErrorTecnicoDelNavegador) return mensajePorDefecto;
 
   if (texto && !lower.includes('prisma') && !lower.includes('sql') && !lower.includes('constraint') && !lower.includes('exception')) {
     return texto;

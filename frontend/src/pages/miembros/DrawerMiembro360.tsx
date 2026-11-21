@@ -34,7 +34,6 @@ export const DrawerMiembro360: React.FC<DrawerMiembro360Props> = ({
       abierto={true}
       onCerrar={onCerrar}
       titulo="Expediente"
-      subtitulo={`Miembro #${usuarioId}`}
       mode="drawer"
       allowFullscreen={true}
       maxWidthClass="sm:max-w-2xl"

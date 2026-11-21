@@ -292,7 +292,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
               disabled={disabled}
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Escriba nombre, apellido o DNI para excluir..."
+              placeholder="Escribí nombre, apellido o DNI para excluir..."
               className="w-full min-h-[42px] rounded-xl border border-rule bg-surface pl-10 pr-9 py-2 text-base sm:text-[15px] text-ink placeholder:text-ink-muted focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
             />
             {busqueda && (

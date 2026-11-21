@@ -258,7 +258,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
                 {planAEditar ? 'Editar Cobro Mensual' : 'Nuevo Cobro Mensual'}
               </h3>
               <p className="text-[13px] text-ink-muted">
-                Configure el monto mensual y los casilleros de meses del año
+                Configurá el monto mensual y los casilleros de meses del año
               </p>
             </div>
           </div>

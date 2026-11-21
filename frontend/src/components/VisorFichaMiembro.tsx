@@ -15,7 +15,7 @@ import {
   Utensils,
   Pill,
 } from 'lucide-react';
-import { extraerInfoMedicaMiembro } from '../lib/alertasMedicas';
+import { esVerdadero, extraerInfoMedicaMiembro } from '../lib/alertasMedicas';
 import { obtenerCicloAnioActual } from '../lib/formatters';
 
 const PdfViewerModal = lazy(() =>
@@ -39,9 +39,6 @@ const valorTexto = (val: unknown, fallback = '—'): string => {
   const s = String(val).trim();
   return s.length > 0 ? s : fallback;
 };
-
-const esVerdadero = (val: unknown): boolean =>
-  val === true || val === 'true' || val === 'SI' || val === 'Sí';
 
 export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
   miembro,

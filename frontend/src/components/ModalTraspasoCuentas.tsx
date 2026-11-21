@@ -206,7 +206,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
               </Select>
 
               <Select
-                label="Cuenta Destino (Ingresa dinero)"
+                label="Cuenta destino (ingresa dinero)"
                 required
                 value={destinoId}
                 onChange={(e) => setDestinoId(e.target.value === '' ? '' : Number(e.target.value))}
@@ -287,7 +287,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
               onChange={(e) => setConcepto(e.target.value)}
               placeholder="Ej. Extracción de banco para compras de comida campamento..."
               disabled={enviando}
-              helperText="Detalla el motivo del movimiento para el libro diario."
+              helperText="Detallá el motivo del movimiento para el libro diario."
             />
 
             {error && (

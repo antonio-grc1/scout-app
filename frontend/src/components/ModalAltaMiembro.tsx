@@ -194,6 +194,14 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!/^d{7,9}$/.test(dni.trim())) {
+      setError('Ingresá un DNI válido (7 a 9 números).');
+      return;
+    }
+    if (fechaNacimiento && fechaNacimiento > new Date().toISOString().slice(0, 10)) {
+      setError('La fecha de nacimiento no puede ser futura.');
+      return;
+    }
     if (!rolId || !unidadId) {
       setError('Debe seleccionar una unidad y el rol asignado en el sistema.');
       return;
@@ -480,6 +488,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               <label className="block font-semibold text-ink-2 mb-1">Fecha de Nacimiento *</label>
               <input
                 type="date"
+                max={new Date().toISOString().slice(0, 10)}
                 required
                 value={fechaNacimiento}
                 onChange={(e) => setFechaNacimiento(e.target.value)}

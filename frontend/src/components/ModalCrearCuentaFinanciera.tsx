@@ -246,7 +246,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                   <p className="text-[13px] text-ink-muted">
                     {esModoEdicion
                       ? 'Modifica los datos de la cuenta o gestiona su estado.'
-                      : 'Crea una cuenta para registrar movimientos de caja o banco.'}
+                      : 'Creá una cuenta para registrar movimientos de caja o banco.'}
                   </p>
                 </div>
               </div>

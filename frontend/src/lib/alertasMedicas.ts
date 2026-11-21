@@ -111,7 +111,7 @@ function normalizarFrase(val: unknown): string {
     .trim();
 }
 
-function esVerdadero(val: unknown): boolean {
+export function esVerdadero(val: unknown): boolean {
   if (val === true) return true;
   const s = normalizarFrase(val);
   return s === 'true' || s === 'si' || s === '1';

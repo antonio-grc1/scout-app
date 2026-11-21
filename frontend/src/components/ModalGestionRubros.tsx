@@ -282,7 +282,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                 <Tag className="w-9 h-9 text-ink-muted mx-auto opacity-50" />
                 <p className="text-sm font-bold text-ink">No se encontraron rubros.</p>
                 <p className="text-[13px] text-ink-muted">
-                  {busqueda ? 'Probá con otro término de búsqueda.' : 'Crea tu primera categoría con el botón superior.'}
+                  {busqueda ? 'Probá con otro término de búsqueda.' : 'Creá tu primera categoría con el botón superior.'}
                 </p>
               </div>
             ) : (

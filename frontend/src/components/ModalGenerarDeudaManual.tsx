@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
+import { formatearMoneda } from '../lib/formatters';
 import {
   X,
   PlusCircle,
@@ -95,7 +96,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
         observaciones: observaciones.trim() || undefined,
       });
 
-      onGenerado(`Deuda de "${nombreConcepto.trim()}" por $${montoFinal.toFixed(2)} generada exitosamente.`);
+      onGenerado(`Deuda de "${nombreConcepto.trim()}" por ${formatearMoneda(montoFinal)} generada exitosamente.`);
       onCerrar();
     } catch (err: any) {
       console.error('Error al generar deuda individual', err);
@@ -231,7 +232,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
         <div className="flex items-center justify-between p-3.5 rounded-xl bg-paper-2 border border-rule text-sm">
           <span className="font-bold text-ink-2">Deuda final a cobrar:</span>
           <span className="text-base font-extrabold text-blue-600 dark:text-blue-400">
-            ${montoFinal.toFixed(2)}
+            {formatearMoneda(montoFinal)}
           </span>
         </div>
 
@@ -278,7 +279,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
             className="min-h-[44px] px-5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>{guardando ? 'Generando...' : `Generar Deuda de $${montoFinal.toFixed(2)}`}</span>
+            <span>{guardando ? 'Generando...' : `Generar Deuda de ${formatearMoneda(montoFinal)}`}</span>
           </button>
         </div>
       </form>

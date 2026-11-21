@@ -3,6 +3,31 @@ import { api, setOnAuthError, setOnRequirePasswordChange } from '../api/client';
 import { limpiarCacheApi } from '../lib/offlineCache';
 import type { TipoUnidad } from '../types/miembro';
 
+// localStorage puede estar bloqueado (Safari privado, cookies deshabilitadas): nunca debe romper la app.
+const almacen = {
+  getItem: (k: string): string | null => {
+    try {
+      return localStorage.getItem(k);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (k: string, v: string): void => {
+    try {
+      localStorage.setItem(k, v);
+    } catch {
+      /* sin persistencia */
+    }
+  },
+  removeItem: (k: string): void => {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* sin persistencia */
+    }
+  },
+};
+
 function safeJsonParse<T>(value: string | null, fallback: T): T {
   if (!value) return fallback;
   try {
@@ -135,10 +160,10 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set, get) => {
-  localStorage.removeItem('scout_token');
-  const savedUser = localStorage.getItem('scout_user');
-  const savedAsignaciones = localStorage.getItem('scout_asignaciones');
-  const savedCambioClave = localStorage.getItem('scout_cambio_clave');
+  almacen.removeItem('scout_token');
+  const savedUser = almacen.getItem('scout_user');
+  const savedAsignaciones = almacen.getItem('scout_asignaciones');
+  const savedCambioClave = almacen.getItem('scout_cambio_clave');
   const initialUser = safeJsonParse<UsuarioSesion | null>(savedUser, null);
 
   return {
@@ -152,10 +177,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
       if (prevUsuario && prevUsuario.id !== usuario.id) {
         limpiarCacheApi();
       }
-      localStorage.removeItem('scout_token');
-      localStorage.setItem('scout_user', JSON.stringify(usuario));
-      localStorage.setItem('scout_asignaciones', JSON.stringify(asignaciones));
-      localStorage.setItem('scout_cambio_clave', String(requiereCambioClave));
+      almacen.removeItem('scout_token');
+      almacen.setItem('scout_user', JSON.stringify(usuario));
+      almacen.setItem('scout_asignaciones', JSON.stringify(asignaciones));
+      almacen.setItem('scout_cambio_clave', String(requiereCambioClave));
       set({
         autenticado: true,
         usuario,
@@ -165,7 +190,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     },
 
     setRequiereCambioClave: (val) => {
-      localStorage.setItem('scout_cambio_clave', String(val));
+      almacen.setItem('scout_cambio_clave', String(val));
       set({ requiereCambioClave: val });
     },
 
@@ -205,10 +230,10 @@ export const useAuthStore = create<AuthState>((set, get) => {
 
     limpiarSesionLocal: () => {
       limpiarCacheApi();
-      localStorage.removeItem('scout_token');
-      localStorage.removeItem('scout_user');
-      localStorage.removeItem('scout_asignaciones');
-      localStorage.removeItem('scout_cambio_clave');
+      almacen.removeItem('scout_token');
+      almacen.removeItem('scout_user');
+      almacen.removeItem('scout_asignaciones');
+      almacen.removeItem('scout_cambio_clave');
       set({
         autenticado: false,
         usuario: null,

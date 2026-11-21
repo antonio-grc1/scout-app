@@ -312,7 +312,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
         const domicilio = String(rawDom).trim();
 
         // Validaciones de consistencia
-        if (!dniLimpio || dniLimpio.length < 6 || dniLimpio.length > 10) {
+        if (!dniLimpio || dniLimpio.length < 7 || dniLimpio.length > 9) {
           resultado.push({
             idTemporal,
             dni: rawDni || '(vacío)',
@@ -323,7 +323,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
             emailContacto,
             domicilio,
             estado: 'ERROR',
-            motivoError: 'DNI inválido o vacío (debe tener entre 6 y 10 dígitos).',
+            motivoError: 'DNI inválido o vacío (debe tener entre 7 y 9 dígitos).',
           });
           continue;
         }
@@ -730,7 +730,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <label className="font-bold text-ink">
-                    1. Selecciona o arrastra el archivo de la planilla:
+                    1. Seleccioná o arrastrá el archivo de la planilla:
                   </label>
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-ink-muted font-medium">
@@ -901,7 +901,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                             Se encontraron {totalExistentes} personas cuyo DNI ya existe en el grupo.
                           </span>
                           <span className="text-xs text-amber-800/80 dark:text-amber-300/80 block mt-0.5">
-                            Puedes actualizar sus datos de contacto (teléfono, email, domicilio) o dejarlos intactos.
+                            Podés actualizar sus datos de contacto (teléfono, email, domicilio) o dejarlos intactos.
                           </span>
                         </div>
                       </div>
