@@ -315,7 +315,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
       </div>
 
       {error && (
-        <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm flex items-center gap-2">
+        <div role="alert" className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -521,6 +521,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
               const mesPositivo = m.resultadoNeto >= 0;
               return (
                 <button
+                  aria-pressed={estaSeleccionado}
                   key={m.mes}
                   type="button"
                   onClick={() => setMesFiltro(estaSeleccionado ? null : m.mes)}

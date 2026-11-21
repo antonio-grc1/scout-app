@@ -249,7 +249,7 @@ export const ModalRegistrarGasto: React.FC<ModalRegistrarGastoProps> = ({
 
           <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold flex items-start gap-2">
+              <div role="alert" className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>

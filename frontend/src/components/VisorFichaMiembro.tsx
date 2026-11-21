@@ -161,6 +161,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
           {/* Selector de Secciones de la Ficha (Mobile-First Chips) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-paper-3/90 p-1.5 rounded-2xl">
             <button
+              aria-pressed={seccion === 'salud'}
               type="button"
               onClick={() => setSeccion('salud')}
               className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
@@ -177,6 +178,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
             </button>
 
             <button
+              aria-pressed={seccion === 'familia'}
               type="button"
               onClick={() => setSeccion('familia')}
               className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
@@ -190,6 +192,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
             </button>
 
             <button
+              aria-pressed={seccion === 'retiro'}
               type="button"
               onClick={() => setSeccion('retiro')}
               className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
@@ -203,6 +206,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
             </button>
 
             <button
+              aria-pressed={seccion === 'apoyos'}
               type="button"
               onClick={() => setSeccion('apoyos')}
               className={`min-h-[42px] px-3 py-1.5 rounded-xl text-[13px] font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${

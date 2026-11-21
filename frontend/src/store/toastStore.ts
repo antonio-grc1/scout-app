@@ -33,15 +33,28 @@ interface ToastState {
     duracionMs?: number,
   ) => void;
   cerrarToast: () => void;
+  /** Pausa el cierre automático (hover/foco): WCAG 2.2.1, el usuario necesita tiempo para leer. */
+  pausarToast: () => void;
+  reanudarToast: () => void;
   ejecutarAccion: () => Promise<void>;
 }
 
 let timeoutId: any = null;
+let venceEn = 0;
+let restanteMs = 0;
+
+function programarCierre(ms: number, cerrar: () => void) {
+  if (timeoutId) clearTimeout(timeoutId);
+  venceEn = Date.now() + ms;
+  timeoutId = setTimeout(cerrar, ms);
+}
 
 export const useToastStore = create<ToastState>((set, get) => ({
   toast: null,
 
-  mostrarToast: (texto, tipo = 'exito', duracionMs = 4000) => {
+  mostrarToast: (texto, tipo = 'exito', duracionMsParam) => {
+    // Los errores suelen ser largos y accionables: se muestran más tiempo que un aviso de éxito.
+    const duracionMs = duracionMsParam ?? (tipo === 'error' ? 8000 : 4000);
     // Silenciar toasts de error por falta de conexión u offline, ya que se informa en el banner superior
     if (
       tipo === 'error' &&
@@ -68,11 +81,11 @@ export const useToastStore = create<ToastState>((set, get) => ({
       },
     });
 
-    timeoutId = setTimeout(() => {
+    programarCierre(duracionMs, () => {
       if (get().toast?.id === id) {
         set({ toast: null });
       }
-    }, duracionMs);
+    });
   },
 
   mostrarToastAccion: (texto, label, onEjecutar, duracionMs = 7500) => {
@@ -94,11 +107,11 @@ export const useToastStore = create<ToastState>((set, get) => ({
       },
     });
 
-    timeoutId = setTimeout(() => {
+    programarCierre(duracionMs, () => {
       if (get().toast?.id === id) {
         set({ toast: null });
       }
-    }, duracionMs);
+    });
   },
 
   mostrarToastConDeshacer: (texto, onDeshacer, duracionMs = 7500) => {
@@ -110,6 +123,25 @@ export const useToastStore = create<ToastState>((set, get) => ({
       clearTimeout(timeoutId);
     }
     set({ toast: null });
+  },
+
+  pausarToast: () => {
+    const { toast } = get();
+    if (!toast || !timeoutId) return;
+    clearTimeout(timeoutId);
+    timeoutId = null;
+    restanteMs = Math.max(2500, venceEn - Date.now());
+  },
+
+  reanudarToast: () => {
+    const { toast } = get();
+    if (!toast || timeoutId) return;
+    const id = toast.id;
+    programarCierre(restanteMs || 2500, () => {
+      if (get().toast?.id === id) {
+        set({ toast: null });
+      }
+    });
   },
 
   ejecutarAccion: async () => {

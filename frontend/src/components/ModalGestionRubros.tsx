@@ -194,6 +194,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
               {/* Filtro por Tipo */}
               <div className="grid grid-cols-3 sm:flex items-center gap-1 bg-paper rounded-xl p-1 border border-rule w-full sm:w-fit">
                 <button
+                  aria-pressed={filtroTipo === 'TODOS'}
                   type="button"
                   onClick={() => setFiltroTipo('TODOS')}
                   className={`min-h-[38px] px-3 py-1.5 rounded-lg text-[13px] font-bold transition cursor-pointer text-center ${
@@ -205,6 +206,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                   Todos
                 </button>
                 <button
+                  aria-pressed={filtroTipo === 'EGRESO'}
                   type="button"
                   onClick={() => setFiltroTipo('EGRESO')}
                   className={`min-h-[38px] px-3 py-1.5 rounded-lg text-[13px] font-bold transition cursor-pointer text-center ${
@@ -216,6 +218,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                   Egresos
                 </button>
                 <button
+                  aria-pressed={filtroTipo === 'INGRESO'}
                   type="button"
                   onClick={() => setFiltroTipo('INGRESO')}
                   className={`min-h-[38px] px-3 py-1.5 rounded-lg text-[13px] font-bold transition cursor-pointer text-center ${

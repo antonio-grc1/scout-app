@@ -98,6 +98,15 @@ if (typeof window !== 'undefined') {
   });
 }
 
+const SELECTOR_FOCUSABLE =
+  'a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+function obtenerFocusables(contenedor: HTMLElement): HTMLElement[] {
+  return Array.from(contenedor.querySelectorAll<HTMLElement>(SELECTOR_FOCUSABLE)).filter(
+    (el) => el.getClientRects().length > 0,
+  );
+}
+
 function isClickOnScrollbar(e: React.MouseEvent<HTMLElement>) {
   const rect = e.currentTarget.getBoundingClientRect();
   const clickedScrollbarX = e.clientX >= rect.left + e.currentTarget.clientWidth;
@@ -139,6 +148,12 @@ export function useModalOverlay({
   bloqueadoRef.current = bloqueado;
 
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
+
+  // Panel del diálogo (se obtiene vía contentProps.ref): sobre él se maneja el foco.
+  const contentElRef = useRef<HTMLElement | null>(null);
+  const setContentEl = useCallback((el: HTMLElement | null) => {
+    contentElRef.current = el;
+  }, []);
 
   useEffect(() => {
     if (!activo || !tieneCallback) return;
@@ -183,7 +198,70 @@ export function useModalOverlay({
 
     modalStack.push(stackEntry);
 
+    // Accesibilidad: foco inicial dentro del diálogo, trampa de Tab y retorno de foco al cerrar.
+    const elementoPrevio =
+      typeof document !== 'undefined' ? (document.activeElement as HTMLElement | null) : null;
+
+    const prepararFoco = () => {
+      const el = contentElRef.current;
+      if (!el) return;
+      // Semántica de diálogo si el panel no la declara (varios modales a mano no la tenían).
+      if (!el.hasAttribute('role')) el.setAttribute('role', 'dialog');
+      if (!el.hasAttribute('aria-modal')) el.setAttribute('aria-modal', 'true');
+      if (!el.getAttribute('aria-label') && !el.getAttribute('aria-labelledby')) {
+        const titulo = el.querySelector<HTMLElement>('h1,h2,h3,h4');
+        if (titulo) {
+          if (!titulo.id) titulo.id = `modal-titulo-${modalId}`;
+          el.setAttribute('aria-labelledby', titulo.id);
+        }
+      }
+      if (el.contains(document.activeElement)) return; // p. ej. un campo con autoFocus
+      // Se enfoca el propio panel (no un campo) para no abrir el teclado en móvil.
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+      el.style.outline = 'none';
+      el.focus({ preventScroll: true });
+    };
+    prepararFoco();
+    const timerFoco = typeof window !== 'undefined' ? window.setTimeout(prepararFoco, 0) : 0;
+
+    const onKeyDownTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const top = [...modalStack].reverse().find((item) => !item.isClosing);
+      if (!top || top.id !== modalId) return;
+      const el = contentElRef.current;
+      if (!el) return;
+      const focusables = obtenerFocusables(el);
+      if (focusables.length === 0) {
+        e.preventDefault();
+        el.focus({ preventScroll: true });
+        return;
+      }
+      const primero = focusables[0];
+      const ultimo = focusables[focusables.length - 1];
+      const activo = document.activeElement;
+      if (!el.contains(activo)) {
+        e.preventDefault();
+        primero.focus();
+      } else if (e.shiftKey && (activo === primero || activo === el)) {
+        e.preventDefault();
+        ultimo.focus();
+      } else if (!e.shiftKey && activo === ultimo) {
+        e.preventDefault();
+        primero.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDownTab, true);
+
     return () => {
+      document.removeEventListener('keydown', onKeyDownTab, true);
+      if (timerFoco) window.clearTimeout(timerFoco);
+      queueMicrotask(() => {
+        const activoAhora = document.activeElement;
+        const foco = !activoAhora || activoAhora === document.body || !activoAhora.isConnected;
+        if (foco && elementoPrevio && elementoPrevio.isConnected) {
+          elementoPrevio.focus({ preventScroll: true });
+        }
+      });
       if (bloquearScroll) {
         unlockScroll();
       }
@@ -246,6 +324,7 @@ export function useModalOverlay({
     },
     contentProps: {
       onClick: handleContentClick,
+      ref: setContentEl,
     },
   };
 }

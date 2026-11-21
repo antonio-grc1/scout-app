@@ -40,7 +40,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             htmlFor={inputId}
             className="block text-sm font-bold text-ink leading-snug"
           >
-            {label} {required && <span className="text-rose-500">*</span>}
+            {label}{' '}
+            {required && (
+              <span className="text-rose-500" aria-hidden="true">
+                *
+              </span>
+            )}
           </label>
         )}
 

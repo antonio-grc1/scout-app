@@ -5,6 +5,7 @@ import { registerSW } from 'virtual:pwa-register';
 import './index.css';
 import App from './App';
 import { useToastStore } from './store/toastStore';
+import { iniciarAccesibilidadAutomatica } from './lib/accesibilidadAuto';
 
 // Registra el Service Worker de la PWA solicitando confirmación al usuario antes de recargar
 const updateSW = registerSW({
@@ -19,6 +20,9 @@ const updateSW = registerSW({
       );
   },
 });
+
+// Asocia etiquetas huérfanas y nombra campos/botones de solo ícono (ver lib/accesibilidadAuto.ts)
+iniciarAccesibilidadAutomatica();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

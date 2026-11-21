@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, ChevronDown, FileSpreadsheet, FileText, Loader2 } from 'lucide-react';
+import { useMenuKeyboard } from '../../hooks/useMenuKeyboard';
 
 export interface BotonExportarProps {
   onExportarExcel: () => Promise<void> | void;
@@ -62,6 +63,10 @@ export const BotonExportar: React.FC<BotonExportarProps> = ({
     }
   };
 
+  const { menuRef: menuTecladoRef, onKeyDown: onKeyDownMenu } = useMenuKeyboard(menuAbierto, () =>
+    setMenuAbierto(false),
+  );
+
   const padClasses =
     size === 'sm'
       ? 'min-h-[38px] px-3.5 py-2 text-[13px] gap-1.5 rounded-xl'
@@ -94,6 +99,8 @@ export const BotonExportar: React.FC<BotonExportarProps> = ({
       {menuAbierto && (
         <div
           role="menu"
+          ref={menuTecladoRef}
+          onKeyDown={onKeyDownMenu}
           aria-orientation="vertical"
           className="absolute right-0 top-full mt-1.5 z-40 w-64 bg-surface border border-rule rounded-2xl shadow-lg p-1.5 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-reduce:animate-none"
         >

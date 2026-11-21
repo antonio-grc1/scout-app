@@ -182,6 +182,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
         </label>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <button
+            aria-pressed={destinatarioTipo === 'PROTAGONISTAS'}
             type="button"
             disabled={disabled}
             onClick={() => onChangeDestinatarioTipo('PROTAGONISTAS')}
@@ -196,6 +197,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
           </button>
 
           <button
+            aria-pressed={destinatarioTipo === 'EDUCADORES'}
             type="button"
             disabled={disabled}
             onClick={() => onChangeDestinatarioTipo('EDUCADORES')}
@@ -210,6 +212,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
           </button>
 
           <button
+            aria-pressed={destinatarioTipo === 'TODOS'}
             type="button"
             disabled={disabled}
             onClick={() => onChangeDestinatarioTipo('TODOS')}

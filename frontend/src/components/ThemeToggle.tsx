@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Sun, Moon, Monitor, Check, Type } from 'lucide-react';
 import { useThemeStore, ThemeMode } from '../store/themeStore';
+import { useMenuKeyboard } from '../hooks/useMenuKeyboard';
 
 interface ThemeToggleProps {
   variant?: 'icon' | 'dropdown' | 'segmented';
@@ -21,6 +22,9 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   } = useThemeStore();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { menuRef: menuTecladoRef, onKeyDown: onKeyDownMenu } = useMenuKeyboard(isOpen, () =>
+    setIsOpen(false),
+  );
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -149,6 +153,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       {isOpen && (
         <div
           role="menu"
+          ref={menuTecladoRef}
+          onKeyDown={onKeyDownMenu}
           aria-label="Apariencia"
           className="s-anim-modal-pop absolute right-0 mt-2 w-60 bg-surface border border-rule rounded-xl shadow-lg py-1.5 z-50"
         >

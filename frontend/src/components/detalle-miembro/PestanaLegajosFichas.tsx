@@ -127,6 +127,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
               const estCfg = ESTADO_FICHA_CONFIG[estDoc] || ESTADO_FICHA_CONFIG.SIN_FICHA;
               return (
                 <button
+                  aria-pressed={activa}
                   key={p.id}
                   type="button"
                   onClick={() => onSeleccionarPlantilla(p)}

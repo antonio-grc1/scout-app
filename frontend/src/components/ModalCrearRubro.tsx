@@ -274,7 +274,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
 
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold">
+              <div role="alert" className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm font-semibold">
                 {error}
               </div>
             )}
@@ -286,6 +286,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
+                    aria-pressed={tipo === 'INGRESO'}
                     type="button"
                     onClick={() => {
                       setTipo('INGRESO');
@@ -300,6 +301,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                     Ingreso (Cobro)
                   </button>
                   <button
+                    aria-pressed={tipo === 'EGRESO'}
                     type="button"
                     onClick={() => {
                       setTipo('EGRESO');

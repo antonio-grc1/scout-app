@@ -471,7 +471,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-4 flex-1">
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
+            <div role="alert" className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-sm">
               {error}
             </div>
           )}
@@ -731,6 +731,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
               <label className="block text-[13px] font-bold text-ink">Estado del Cobro:</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
+                  aria-pressed={metodoPago === 'PENDIENTE'}
                   type="button"
                   onClick={() => setMetodoPago('PENDIENTE')}
                   disabled={bloquearVolverAPendiente}
@@ -749,6 +750,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                 </button>
 
                 <button
+                  aria-pressed={metodoPago === 'EFECTIVO'}
                   type="button"
                   onClick={() => setMetodoPago('EFECTIVO')}
                   className={`min-h-[42px] py-2 px-3 rounded-xl border text-[13px] font-bold transition cursor-pointer text-center ${

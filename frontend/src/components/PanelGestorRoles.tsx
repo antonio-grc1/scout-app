@@ -1006,6 +1006,8 @@ export const PanelGestorRoles: React.FC<Props> = ({
                                   <button
                                     key={op.id}
                                     type="button"
+                                    aria-pressed={seleccionado}
+                                    aria-label={`${panel.titulo}: ${op.label}`}
                                     disabled={deshabilitado}
                                     onClick={() => cambiarNivelPanel(panel, op.id)}
                                     className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
@@ -1043,8 +1045,10 @@ export const PanelGestorRoles: React.FC<Props> = ({
                                   const Ic = alc.Icono;
                                   return (
                                     <button
+                                      aria-pressed={sel}
                                       key={alc.id}
                                       type="button"
+                                      aria-label={`${panel.titulo}: alcance ${alc.label}`}
                                       disabled={!habilitado}
                                       onClick={() => cambiarAlcancePanel(panel, alc.id)}
                                       className={`px-2.5 py-1.5 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed ${

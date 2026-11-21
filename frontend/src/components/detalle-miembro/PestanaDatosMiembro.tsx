@@ -155,6 +155,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
               const sel = formData.tipoMiembro === op.id;
               return (
                 <button
+                  aria-pressed={sel}
                   key={op.id}
                   type="button"
                   onClick={() => setFormData({ ...formData, tipoMiembro: op.id })}
@@ -240,6 +241,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                   const activo = formData.regimenDietarioTipos.includes(op.value);
                   return (
                     <button
+                      aria-pressed={activo}
                       key={op.value}
                       type="button"
                       onClick={() => {
@@ -300,6 +302,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                   const activo = formData.alergiasTipos.includes(op.value);
                   return (
                     <button
+                      aria-pressed={activo}
                       key={op.value}
                       type="button"
                       onClick={() => {

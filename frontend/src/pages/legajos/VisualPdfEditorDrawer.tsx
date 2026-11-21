@@ -1759,7 +1759,16 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                     return (
                       <div
                         key={campo.key}
+                        tabIndex={0}
+                        aria-current={seleccionado ? 'true' : undefined}
                         onClick={() => setCampoActivoKey(campo.key)}
+                        onKeyDown={(e) => {
+                          // Teclado: Enter/Espacio selecciona la pregunta para editarla
+                          if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault();
+                            setCampoActivoKey(campo.key);
+                          }
+                        }}
                         className={`p-2.5 rounded-xl border text-[13px] cursor-pointer flex items-center justify-between gap-2 transition ${
                           seleccionado
                             ? 'bg-brand-soft/35 border-brand'
@@ -1971,6 +1980,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                   Con datos ejemplo
                 </button>
                 <button
+                  aria-pressed={vistaEnBlanco}
                   type="button"
                   onClick={() => setVistaEnBlanco(true)}
                   className={`min-h-[34px] px-3 py-1 rounded-lg text-xs font-bold border cursor-pointer transition ${

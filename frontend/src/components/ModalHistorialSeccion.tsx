@@ -264,13 +264,14 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-historial-seccion-titulo"
+      role="presentation"
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
       {...backdropProps}
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-historial-seccion-titulo"
         className="bg-surface border-t sm:border border-rule rounded-t-3xl sm:rounded-3xl w-full max-w-4xl max-h-[92dvh] overflow-hidden shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-150 text-ink"
         {...contentProps}
       >
@@ -476,6 +477,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                     {/* Alternador de Vista (Por Ciclo vs Por Categoría) */}
                     <div className="flex items-center bg-paper-2 p-1 rounded-xl border border-rule shrink-0">
                       <button
+                        aria-pressed={modoVista === 'ciclo'}
                         type="button"
                         onClick={() => setModoVista('ciclo')}
                         className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-[13px] font-bold flex items-center gap-1.5 cursor-pointer transition ${
@@ -489,6 +491,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                         <span className="sm:hidden">Ciclos</span>
                       </button>
                       <button
+                        aria-pressed={modoVista === 'categoria'}
                         type="button"
                         onClick={() => setModoVista('categoria')}
                         className={`min-h-[38px] px-3.5 py-1.5 rounded-lg text-[13px] font-bold flex items-center gap-1.5 cursor-pointer transition ${
@@ -664,6 +667,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                   {/* Pestañas de categoría */}
                   <div className="flex border-b border-rule gap-2">
                     <button
+                      aria-pressed={subCategoria === 'EDUCADORES'}
                       type="button"
                       onClick={() => setSubCategoria('EDUCADORES')}
                       className={`min-h-[44px] px-4 py-2 font-bold text-sm flex items-center gap-2 border-b-2 cursor-pointer transition ${
@@ -676,6 +680,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                       <span>Educadores ({listaPorCategoria.educadores.length})</span>
                     </button>
                     <button
+                      aria-pressed={subCategoria === 'PROTAGONISTAS'}
                       type="button"
                       onClick={() => setSubCategoria('PROTAGONISTAS')}
                       className={`min-h-[44px] px-4 py-2 font-bold text-sm flex items-center gap-2 border-b-2 cursor-pointer transition ${

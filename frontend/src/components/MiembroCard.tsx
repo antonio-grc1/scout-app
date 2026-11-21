@@ -72,7 +72,15 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
 
   return (
     <div
+      tabIndex={0}
       onClick={() => onAbrirDetalle('datos')}
+      onKeyDown={(e) => {
+        // Teclado: Enter/Espacio abre el detalle (solo si el foco está en la tarjeta misma)
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onAbrirDetalle('datos');
+        }
+      }}
       className={`s-card s-card-hover rounded-2xl border-l-4 p-4 transition cursor-pointer ${
         !miembro.activo
           ? 'border-l-rule opacity-65'

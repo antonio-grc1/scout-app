@@ -195,7 +195,7 @@ export const PasesPage: React.FC = () => {
       </section>
 
       {error && (
-        <div className="s-badge-warn rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div role="alert" className="s-badge-warn rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>

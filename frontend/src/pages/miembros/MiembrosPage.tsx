@@ -43,6 +43,7 @@ import {
   useActiveUnitStore,
   useCapabilities,
 } from '../../core/capabilities';
+import { useMenuKeyboard } from '../../hooks/useMenuKeyboard';
 import { useQrModalStore } from '../../core/qrModalStore';
 import { extraerInfoMedicaMiembro } from '../../lib/alertasMedicas';
 import { obtenerConfigRama, obtenerOrdenRama } from '../../lib/ramaColors';
@@ -185,6 +186,10 @@ export const MiembrosPage: React.FC = () => {
   const [menuRolesAbierto, setMenuRolesAbierto] = useState(false);
   const [menuCamadasAbierto, setMenuCamadasAbierto] = useState(false);
   const [menuAccionesAbierto, setMenuAccionesAbierto] = useState(false);
+  const { menuRef: menuAccionesRef, onKeyDown: onKeyDownMenuAcciones } = useMenuKeyboard(
+    menuAccionesAbierto,
+    () => setMenuAccionesAbierto(false),
+  );
   const [chipActivo, setChipActivo] = useState<ChipFiltroMiembros>(() =>
     normalizarChip(parseFiltroParam(searchParams.get('filtro'))),
   );
@@ -1164,6 +1169,8 @@ export const MiembrosPage: React.FC = () => {
                   <div className="fixed inset-0 z-20" onClick={() => setMenuAccionesAbierto(false)} />
                   <div
                     role="menu"
+                    ref={menuAccionesRef}
+                    onKeyDown={onKeyDownMenuAcciones}
                     className="absolute left-0 top-full mt-1.5 z-30 w-64 max-w-[calc(100vw-2rem)] bg-surface border border-rule rounded-2xl shadow-md p-1.5 motion-safe:animate-in motion-safe:fade-in motion-reduce:animate-none"
                   >
                     {accionesSecundarias.map((accion) => (
@@ -2145,40 +2152,56 @@ export const MiembrosPage: React.FC = () => {
               <thead className="bg-paper-2 border-b border-rule text-ink font-semibold text-xs uppercase tracking-wide">
                 <tr>
                   <th
-                    onClick={() => handleOrdenar('miembro')}
-                    className="py-4 px-4 cursor-pointer hover:bg-surface transition select-none"
+                    aria-sort={campoOrden === 'miembro' ? (direccionOrden === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-0 px-0 hover:bg-surface transition select-none"
                   >
-                    <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleOrdenar('miembro')}
+                      className="flex items-center w-full py-4 px-4 text-left uppercase tracking-wide font-semibold cursor-pointer"
+                    >
                       <span>Nombre y Familia</span>
                       {renderIconoOrden('miembro')}
-                    </div>
+                    </button>
                   </th>
                   <th
-                    onClick={() => handleOrdenar('seccion')}
-                    className="py-4 px-4 cursor-pointer hover:bg-surface transition select-none"
+                    aria-sort={campoOrden === 'seccion' ? (direccionOrden === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-0 px-0 hover:bg-surface transition select-none"
                   >
-                    <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleOrdenar('seccion')}
+                      className="flex items-center w-full py-4 px-4 text-left uppercase tracking-wide font-semibold cursor-pointer"
+                    >
                       <span>Sección y Rol</span>
                       {renderIconoOrden('seccion')}
-                    </div>
+                    </button>
                   </th>
                   <th
-                    onClick={() => handleOrdenar('edad')}
-                    className="py-4 px-4 cursor-pointer hover:bg-surface transition select-none"
+                    aria-sort={campoOrden === 'edad' ? (direccionOrden === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-0 px-0 hover:bg-surface transition select-none"
                   >
-                    <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleOrdenar('edad')}
+                      className="flex items-center w-full py-4 px-4 text-left uppercase tracking-wide font-semibold cursor-pointer"
+                    >
                       <span>Edad / Camada</span>
                       {renderIconoOrden('edad')}
-                    </div>
+                    </button>
                   </th>
                   <th
-                    onClick={() => handleOrdenar('ficha')}
-                    className="py-4 px-4 cursor-pointer hover:bg-surface transition select-none"
+                    aria-sort={campoOrden === 'ficha' ? (direccionOrden === 'asc' ? 'ascending' : 'descending') : 'none'}
+                    className="py-0 px-0 hover:bg-surface transition select-none"
                   >
-                    <div className="flex items-center">
+                    <button
+                      type="button"
+                      onClick={() => handleOrdenar('ficha')}
+                      className="flex items-center w-full py-4 px-4 text-left uppercase tracking-wide font-semibold cursor-pointer"
+                    >
                       <span>Ficha {cicloAnio}</span>
                       {renderIconoOrden('ficha')}
-                    </div>
+                    </button>
                   </th>
                   <th className="py-4 px-4 text-right">Acciones Rápidas</th>
                 </tr>
@@ -2199,7 +2222,15 @@ export const MiembrosPage: React.FC = () => {
                   return (
                     <tr
                       key={m.id}
+                      tabIndex={0}
                       onClick={() => abrirMiembro(m.id, 'datos')}
+                      onKeyDown={(e) => {
+                        // Teclado: Enter/Espacio abre el expediente (solo si el foco está en la fila)
+                        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                          e.preventDefault();
+                          abrirMiembro(m.id, 'datos');
+                        }
+                      }}
                       className={`hover:bg-paper-2 transition border-l-4 cursor-pointer ${
                         !m.activo ? 'border-l-rule opacity-60' : cfg.borderClases
                       }`}

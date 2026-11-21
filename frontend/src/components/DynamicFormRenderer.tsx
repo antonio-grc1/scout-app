@@ -1491,7 +1491,15 @@ export const DynamicFormRenderer: React.FC<Props> = ({
         {secciones.length > 1 && (
           <>
             {/* Barra de Progreso Dinámica de Carga y Avance */}
-            <div className="w-full bg-paper-3 rounded-full h-1.5 overflow-hidden">
+            <div
+              role="progressbar"
+              aria-label="Avance del formulario"
+              aria-valuemin={1}
+              aria-valuemax={Math.max(secciones.length, 1)}
+              aria-valuenow={pasoActivo + 1}
+              aria-valuetext={`Paso ${pasoActivo + 1} de ${secciones.length}`}
+              className="w-full bg-paper-3 rounded-full h-1.5 overflow-hidden"
+            >
               <div
                 className="bg-brand h-full rounded-full transition-all duration-300 ease-out"
                 style={{ width: `${((pasoActivo + 1) / Math.max(secciones.length, 1)) * 100}%` }}
@@ -1512,6 +1520,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
 
                 return (
                   <button
+                    aria-pressed={esActivo}
                     key={sec.id}
                     type="button"
                     aria-current={esActivo ? 'step' : undefined}

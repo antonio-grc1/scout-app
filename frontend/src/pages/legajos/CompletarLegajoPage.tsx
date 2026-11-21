@@ -631,6 +631,7 @@ export const CompletarLegajoPage: React.FC = () => {
                 const estCfg = ESTADO_FICHA_CONFIG[est] || ESTADO_FICHA_CONFIG.SIN_FICHA;
                 return (
                   <button
+                    aria-pressed={activa}
                     key={p.id}
                     type="button"
                     onClick={() => {

@@ -657,7 +657,14 @@ export const InicioPage: React.FC = () => {
           </div>
 
           {sincronizando && progresoSync && (
-            <div className="w-full sm:w-44 h-2 rounded-full bg-paper-3 overflow-hidden shrink-0">
+            <div
+              role="progressbar"
+              aria-label="Progreso de sincronización"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progresoSync.porcentaje)}
+              className="w-full sm:w-44 h-2 rounded-full bg-paper-3 overflow-hidden shrink-0"
+            >
               <div
                 className="s-progress-bar h-full bg-brand rounded-full"
                 style={{ width: `${Math.min(100, Math.max(5, progresoSync.porcentaje))}%` }}

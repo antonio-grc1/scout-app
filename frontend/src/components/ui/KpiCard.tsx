@@ -36,7 +36,9 @@ export const KpiCard: React.FC<KpiCardProps> = ({
 
   return (
     <Tag
-      {...(interactive ? { type: 'button' as const, onClick } : {})}
+      {...(interactive
+        ? { type: 'button' as const, onClick, 'aria-pressed': active }
+        : {})}
       className={cn(
         's-card rounded-2xl p-4 sm:p-5 text-left flex flex-col justify-between gap-2 min-w-0',
         interactive && 's-card-hover w-full',

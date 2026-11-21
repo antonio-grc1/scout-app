@@ -611,7 +611,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
       {/* Cuerpo con scroll */}
       <div className={embedded ? 'space-y-5 text-[13px]' : 'p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 text-[13px]'}>
           {errorGlobal && (
-            <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-start gap-2.5">
+            <div role="alert" className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 rounded-xl flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{errorGlobal}</span>
             </div>
@@ -748,16 +748,24 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   </div>
                 </div>
 
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-rule hover:border-brand/60 rounded-2xl p-6 text-center bg-paper-2 hover:bg-paper-3/60 transition cursor-pointer flex flex-col items-center justify-center gap-2.5"
+                {/* <label>: el selector de archivo es accesible por teclado (Tab + Enter/Espacio) y el click nativo abre el diálogo */}
+                <label
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const input = fileInputRef.current;
+                    if (!input || e.dataTransfer.files.length === 0) return;
+                    input.files = e.dataTransfer.files;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                  }}
+                  className="border-2 border-dashed border-rule hover:border-brand/60 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand-ink/40 rounded-2xl p-6 text-center bg-paper-2 hover:bg-paper-3/60 transition cursor-pointer flex flex-col items-center justify-center gap-2.5"
                 >
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept=".xlsx, .xls, .csv"
                     onChange={handleSeleccionarArchivo}
-                    className="hidden"
+                    className="sr-only"
                   />
                   {procesandoArchivo ? (
                     <div className="flex items-center gap-2 text-brand font-bold py-2">
@@ -779,7 +787,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                       </div>
                       <div>
                         <span className="font-bold text-ink block text-sm sm:text-[15px]">
-                          Haz clic aquí para seleccionar tu archivo Excel o CSV
+                          Tocá acá o arrastrá tu archivo Excel o CSV
                         </span>
                         <span className="text-ink-muted text-xs block mt-1">
                           Formatos aceptados: .xlsx, .xls, .csv (columnas: DNI, Nombre, Apellido, Fecha de Nacimiento)
@@ -787,7 +795,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                       </div>
                     </>
                   )}
-                </div>
+                </label>
               </div>
 
               {/* Sección 2: Asignación Masiva de Rama y Rol (para todos en el lote) */}
@@ -992,7 +1000,14 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                   {progreso.actual} de {progreso.total}
                 </span>
               </div>
-              <div className="w-full h-2 rounded-full bg-paper-3 overflow-hidden">
+              <div
+                role="progressbar"
+                aria-label="Progreso de importación"
+                aria-valuemin={0}
+                aria-valuemax={progreso.total}
+                aria-valuenow={progreso.actual}
+                className="w-full h-2 rounded-full bg-paper-3 overflow-hidden"
+              >
                 <div
                   className="h-full bg-brand transition-all duration-200"
                   style={{

@@ -237,6 +237,34 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     return items.filter((it) => normalizarTextoBusqueda(`${it.label} ${it.hint}`).includes(q));
   }, [caps, query, onAbrirQr, onCerrar, navigate, openCustomizer]);
 
+  // Navegación con teclado: ↑/↓ mueven la opción activa y Enter la ejecuta (patrón combobox/listbox)
+  const offsetAcciones = caps.canViewMiembros ? miembrosFiltrados.length : 0;
+  const totalOpciones = offsetAcciones + acciones.length;
+  const [activo, setActivo] = useState(0);
+  const listaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setActivo(0);
+  }, [query, abierto]);
+  useEffect(() => {
+    listaRef.current
+      ?.querySelector(`#cmdk-opcion-${activo}`)
+      ?.scrollIntoView?.({ block: 'nearest' });
+  }, [activo]);
+
+  const onKeyDownBuscador = (e: React.KeyboardEvent) => {
+    if (totalOpciones === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActivo((i) => (i + 1) % totalOpciones);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActivo((i) => (i - 1 + totalOpciones) % totalOpciones);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      listaRef.current?.querySelector<HTMLElement>(`#cmdk-opcion-${Math.min(activo, totalOpciones - 1)}`)?.click();
+    }
+  };
+
   if (!abierto) return null;
 
   return createPortal(
@@ -258,6 +286,13 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
             ref={inputRef}
             type="text"
             value={query}
+            role="combobox"
+            aria-label="Buscar miembro, DNI o acción"
+            aria-expanded="true"
+            aria-controls="cmdk-lista"
+            aria-autocomplete="list"
+            aria-activedescendant={totalOpciones > 0 ? `cmdk-opcion-${Math.min(activo, totalOpciones - 1)}` : undefined}
+            onKeyDown={onKeyDownBuscador}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={
               caps.canViewMiembros
@@ -269,13 +304,20 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           <button
             type="button"
             onClick={onCerrar}
-            className="s-btn-sec text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer shrink-0"
+            aria-label="Cerrar buscador"
+            className="s-btn-sec text-xs font-bold px-3 min-h-[36px] rounded-lg cursor-pointer shrink-0"
           >
             Esc
           </button>
         </div>
 
-        <div className="p-2.5 max-h-[65dvh] sm:max-h-[420px] overflow-y-auto space-y-2.5">
+        <div
+          id="cmdk-lista"
+          ref={listaRef}
+          role="listbox"
+          aria-label="Resultados"
+          className="p-2.5 max-h-[65dvh] sm:max-h-[420px] overflow-y-auto space-y-2.5"
+        >
           {caps.canViewMiembros && (
             <div className="space-y-1">
               <div className="px-3 pt-1 text-xs uppercase font-bold tracking-wider text-ink-muted flex items-center justify-between">
@@ -284,18 +326,22 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
               </div>
 
               {miembrosFiltrados.length > 0 ? (
-                miembrosFiltrados.map((m) => {
+                miembrosFiltrados.map((m, idxM) => {
                   const asigActiva =
                     m.asignaciones?.find((a) => a.activo !== false) ?? m.asignaciones?.[0];
                   return (
                     <button
                       key={m.id}
+                      id={`cmdk-opcion-${idxM}`}
                       type="button"
+                      role="option"
+                      tabIndex={-1}
+                      aria-selected={activo === idxM}
                       onClick={() => {
                         onCerrar();
                         navigate(`/miembros/${m.id}`);
                       }}
-                      className="w-full px-3 py-2.5 rounded-xl text-left text-sm flex items-center justify-between gap-2.5 hover:bg-brand-soft/45 transition-colors cursor-pointer"
+                      className={`w-full px-3 py-2.5 rounded-xl text-left text-sm flex items-center justify-between gap-2.5 hover:bg-brand-soft/45 transition-colors cursor-pointer ${activo === idxM ? 'bg-brand-soft/45' : ''}`}
                     >
                       <div className="min-w-0 flex-1 flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-ink truncate">
@@ -327,12 +373,16 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
               Acciones Rápidas
             </div>
             {acciones.length > 0 ? (
-              acciones.map((acc) => (
+              acciones.map((acc, idxA) => (
                 <button
                   key={acc.id}
+                  id={`cmdk-opcion-${offsetAcciones + idxA}`}
                   type="button"
+                  role="option"
+                  tabIndex={-1}
+                  aria-selected={activo === offsetAcciones + idxA}
                   onClick={acc.onSelect}
-                  className="w-full px-3 py-2.5 rounded-xl text-left text-sm flex items-center justify-between gap-2.5 hover:bg-brand-soft/45 transition-colors cursor-pointer group"
+                  className={`w-full px-3 py-2.5 rounded-xl text-left text-sm flex items-center justify-between gap-2.5 hover:bg-brand-soft/45 transition-colors cursor-pointer group ${activo === offsetAcciones + idxA ? 'bg-brand-soft/45' : ''}`}
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {acc.icon}

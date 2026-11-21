@@ -133,6 +133,7 @@ export const EventoWorkspacePage: React.FC = () => {
   const [posVendedorId, setPosVendedorId] = useState<string>('');
   const [posBusquedaVendedor, setPosBusquedaVendedor] = useState('');
   const [posDropdownAbierto, setPosDropdownAbierto] = useState(false);
+  const [posVendedorActivo, setPosVendedorActivo] = useState(0);
   const [posMiembros, setPosMiembros] = useState<MiembroBusqueda[]>([]);
   const [posCantidades, setPosCantidades] = useState<Record<number, number>>({});
   const [posMetodoPago, setPosMetodoPago] = useState<'PENDIENTE' | 'EFECTIVO' | 'TRANSFERENCIA'>(
@@ -268,6 +269,22 @@ export const EventoWorkspacePage: React.FC = () => {
       })
       .slice(0, 20);
   }, [posMiembros, posBusquedaVendedor]);
+
+  // Opciones del combobox: "Venta general" (solo GLOBAL) + miembros filtrados.
+  type OpcionVendedor = { id: number | null; nombre?: string; apellido?: string; dni?: string };
+  const opcionesVendedor: OpcionVendedor[] = useMemo(
+    () => [
+      ...(caps.canCreateGlobalEventos ? [{ id: null } as OpcionVendedor] : []),
+      ...vendedoresFiltrados,
+    ],
+    [caps.canCreateGlobalEventos, vendedoresFiltrados],
+  );
+  const elegirVendedor = (op: OpcionVendedor) => {
+    setPosVendedorId(op.id === null ? '' : String(op.id));
+    setPosBusquedaVendedor('');
+    setPosDropdownAbierto(false);
+    setPosVendedorActivo(0);
+  };
 
   const vendedorSeleccionado = useMemo(
     () => posMiembros.find((m) => String(m.id) === String(posVendedorId)) || null,
@@ -1040,6 +1057,14 @@ export const EventoWorkspacePage: React.FC = () => {
                     <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                     <input
                       type="text"
+                      role="combobox"
+                      aria-expanded={posDropdownAbierto}
+                      aria-controls="pos-vendedores-lista"
+                      aria-autocomplete="list"
+                      aria-label="Vendedor scout"
+                      aria-activedescendant={
+                        posDropdownAbierto ? `pos-vendedor-opcion-${posVendedorActivo}` : undefined
+                      }
                       value={posBusquedaVendedor}
                       disabled={evento.estado !== 'PUBLICADO'}
                       onFocus={() => setPosDropdownAbierto(true)}
@@ -1047,6 +1072,25 @@ export const EventoWorkspacePage: React.FC = () => {
                       onChange={(e) => {
                         setPosBusquedaVendedor(e.target.value);
                         setPosDropdownAbierto(true);
+                        setPosVendedorActivo(0);
+                      }}
+                      onKeyDown={(e) => {
+                        const total = opcionesVendedor.length;
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setPosDropdownAbierto(true);
+                          setPosVendedorActivo((i) => (total === 0 ? 0 : (i + 1) % total));
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setPosDropdownAbierto(true);
+                          setPosVendedorActivo((i) => (total === 0 ? 0 : (i - 1 + total) % total));
+                        } else if (e.key === 'Enter' && posDropdownAbierto && total > 0) {
+                          e.preventDefault();
+                          elegirVendedor(opcionesVendedor[Math.min(posVendedorActivo, total - 1)]);
+                        } else if (e.key === 'Escape' && posDropdownAbierto) {
+                          e.stopPropagation();
+                          setPosDropdownAbierto(false);
+                        }
                       }}
                       placeholder={
                         caps.canCreateGlobalEventos
@@ -1056,41 +1100,44 @@ export const EventoWorkspacePage: React.FC = () => {
                       className="s-input w-full min-h-[46px] pl-10 pr-3 rounded-xl text-base sm:text-[15px]"
                     />
                     {posDropdownAbierto && (
-                      <div className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-xl bg-surface border border-rule z-20 py-1 divide-y divide-rule/40">
-                        {/* La venta general (sin vendedor) solo la acepta el backend con alcance GLOBAL */}
-                        {caps.canCreateGlobalEventos && (
-                        <button
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            setPosVendedorId('');
-                            setPosBusquedaVendedor('');
-                            setPosDropdownAbierto(false);
-                          }}
-                          className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink-muted hover:bg-paper-2 cursor-pointer"
-                        >
-                          Venta general del grupo (sin vendedor)
-                        </button>
+                      <div
+                        id="pos-vendedores-lista"
+                        role="listbox"
+                        aria-label="Vendedores disponibles"
+                        className="absolute left-0 right-0 top-full mt-1 max-h-48 overflow-y-auto rounded-xl bg-surface border border-rule z-20 py-1 divide-y divide-rule/40"
+                      >
+                        {opcionesVendedor.length === 0 && (
+                          <div className="px-3.5 py-2.5 text-[13px] text-ink-muted">Sin resultados</div>
                         )}
-                        {vendedoresFiltrados.map((m) => (
+                        {opcionesVendedor.map((op, idx) => (
                           <button
-                            key={m.id}
+                            key={op.id === null ? 'general' : op.id}
+                            id={`pos-vendedor-opcion-${idx}`}
                             type="button"
+                            role="option"
+                            aria-selected={idx === posVendedorActivo}
+                            tabIndex={-1}
                             onMouseDown={(e) => {
                               e.preventDefault();
-                              setPosVendedorId(String(m.id));
-                              setPosBusquedaVendedor('');
-                              setPosDropdownAbierto(false);
+                              elegirVendedor(op);
                             }}
-                            className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink hover:bg-paper-2 flex items-center justify-between gap-2 cursor-pointer"
+                            className={`w-full px-3.5 py-2.5 text-left text-[13px] hover:bg-paper-2 flex items-center justify-between gap-2 cursor-pointer ${
+                              idx === posVendedorActivo ? 'bg-paper-2' : ''
+                            } ${op.id === null ? 'text-ink-muted' : 'text-ink'}`}
                           >
-                            <span className="font-bold truncate">
-                              {m.nombre} {m.apellido}
-                            </span>
-                            {m.dni && (
-                              <span className="text-xs text-ink-muted s-tabular shrink-0">
-                                DNI {m.dni}
-                              </span>
+                            {op.id === null ? (
+                              <span>Venta general del grupo (sin vendedor)</span>
+                            ) : (
+                              <>
+                                <span className="font-bold truncate">
+                                  {op.nombre} {op.apellido}
+                                </span>
+                                {op.dni && (
+                                  <span className="text-xs text-ink-muted s-tabular shrink-0">
+                                    DNI {op.dni}
+                                  </span>
+                                )}
+                              </>
                             )}
                           </button>
                         ))}
@@ -1130,6 +1177,7 @@ export const EventoWorkspacePage: React.FC = () => {
                     const active = posMetodoPago === op.id;
                     return (
                       <button
+                        aria-pressed={active}
                         key={op.id}
                         type="button"
                         disabled={evento.estado !== 'PUBLICADO'}

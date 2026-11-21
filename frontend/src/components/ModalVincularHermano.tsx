@@ -152,7 +152,7 @@ export const ModalVincularHermano: React.FC<Props> = ({
       {/* Cuerpo */}
       <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
         {error && (
-          <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300 text-sm flex items-center gap-2">
+          <div role="alert" className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/60 text-rose-800 dark:text-rose-300 text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -196,6 +196,7 @@ export const ModalVincularHermano: React.FC<Props> = ({
                 const seleccionado = grupoSeleccionado?.key === grupo.key;
                 return (
                   <button
+                    aria-pressed={seleccionado}
                     key={grupo.key}
                     type="button"
                     onClick={() => setGrupoSeleccionado(grupo)}

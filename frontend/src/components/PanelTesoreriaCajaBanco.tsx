@@ -617,6 +617,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
               const estaSeleccionada = c.id === cuentaSeleccionadaId;
               return (
                 <button
+                  aria-pressed={estaSeleccionada}
                   key={c.id}
                   type="button"
                   onClick={() => {
@@ -819,6 +820,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             </span>
 
             <button
+              aria-pressed={filtroRapido === 'hoy'}
               type="button"
               onClick={() => aplicarFiltroRapido('hoy')}
               className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${
@@ -831,6 +833,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             </button>
 
             <button
+              aria-pressed={filtroRapido === 'semana'}
               type="button"
               onClick={() => aplicarFiltroRapido('semana')}
               className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${
@@ -843,6 +846,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             </button>
 
             <button
+              aria-pressed={filtroRapido === 'mes'}
               type="button"
               onClick={() => aplicarFiltroRapido('mes')}
               className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${
@@ -855,6 +859,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             </button>
 
             <button
+              aria-pressed={filtroRapido === 'todo'}
               type="button"
               onClick={() => aplicarFiltroRapido('todo')}
               className={`min-h-[38px] px-3.5 py-1.5 rounded-xl text-[13px] font-bold transition cursor-pointer shrink-0 border ${

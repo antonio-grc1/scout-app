@@ -1304,6 +1304,7 @@ export const LegajosPage: React.FC = () => {
                   Cocina / Dieta:
                 </span>
                 <button
+                  aria-pressed={filtroDietaSalud === 'TODAS'}
                   type="button"
                   onClick={() => setFiltroDietaSalud('TODAS')}
                   className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold border cursor-pointer transition ${
@@ -1313,6 +1314,7 @@ export const LegajosPage: React.FC = () => {
                   Todas
                 </button>
                 <button
+                  aria-pressed={filtroDietaSalud === 'CUALQUIERA'}
                   type="button"
                   onClick={() => setFiltroDietaSalud('CUALQUIERA')}
                   className={`min-h-[34px] px-3 py-1 rounded-xl text-xs font-bold border cursor-pointer transition ${

@@ -25,7 +25,7 @@
 | B1 | Permisos y vistas por rol ✅ corregido (salvo B1-25, B1-28 y B1-29) | 4 | 12 | 13 |
 | B2 | Integridad de datos (errores tragados, PDFs, dinero) ✅ corregido en su mayoría | — | 11 | 26 |
 | B3 | Sistema de diseño: color, contraste, tipografía ✅ corregido (salvo B3-10) | — | 6 | 8 |
-| B4 | Accesibilidad estructural (foco, diálogos, labels, ARIA) | — | 8 | 10 |
+| B4 | Accesibilidad estructural (foco, diálogos, labels, ARIA) ✅ corregido en su mayoría | — | 8 | 10 |
 | B5 | Mobile / responsive | — | 3 | 14 |
 | B6 | Confirmaciones de acciones destructivas | — | 3 | 13 |
 | B7 | Consistencia (primitivos, idioma, formatos, duplicados) | — | — | 16 |
@@ -243,6 +243,22 @@
 ---
 
 ## B4 — Accesibilidad estructural
+
+> **Estado (21/11/2026): corregido en su mayoría**, sin commitear.
+> - **B4-01 y B4-02:** `useModalOverlay` ahora da foco inicial al panel, trampa de Tab (también con Shift+Tab), retorno de foco al disparador, y completa `role="dialog"`, `aria-modal` y el nombre (del primer título) si el panel no los declaraba. Cubre los 29 modales y drawers. `ModalHistorialSeccion` tenía el rol en el fondo y se movió al panel.
+> - **B4-03 y B4-11:** nuevo `lib/accesibilidadAuto.ts`, un `MutationObserver` iniciado en `main.tsx` que asocia cada `<label>` con el control que le sigue, usa el `placeholder` como `aria-label` en campos sin nombre, y nombra botones de solo ícono (desde `title` o según el ícono: cerrar, eliminar, editar…). Es una **red de seguridad**: la solución de fondo sigue siendo migrar los formularios a `Input`/`Select`. Medido antes/después: Mi Perfil pasó de 14 de 15 campos sin nombre a 0, Correo de 7 a 0 y los buscadores a 0.
+> - **B4-04 a 07:** filas del padrón y tarjetas móviles abribles con Enter/Espacio, encabezados ordenables como botones con `aria-sort`, selector de vendedor del POS como combobox accesible (flechas, Enter, Escape), zona de carga de archivos como `<label>` accesible por teclado y con arrastrar-y-soltar real, y preguntas del editor de plantillas seleccionables por teclado.
+> - **B4-09:** `SegmentedTabs` con flechas, Inicio/Fin y tabindex itinerante, y la pestaña activa siempre visible en móvil (resuelve parte de B5-04).
+> - **B4-10 (y B3-10):** `aria-pressed` en ~52 botones de selección (filtros, chips, métodos de pago, meses, KPIs), más el nombre completo de los meses y de los niveles/alcances del gestor de roles.
+> - **B4-12 a 14:** los toasts de error usan `role="alert"` (assertive), duran 8 s, se pausan con hover/foco y no se cortan a 2 líneas; se renderizan por portal con z-index por encima de los modales. 21 banners de error en línea tienen `role="alert"`.
+> - **B4-15:** hook `useMenuKeyboard` en los menús de tema, exportar y "Más acciones" (foco al abrir, flechas, Escape, retorno de foco).
+> - **B4-16, 17 y 18:** buscador rápido como combobox/listbox con flechas y Enter, 4 barras de progreso con `role="progressbar"`, y asterisco de `Input` oculto a lectores de pantalla.
+> - **Verificado en el navegador** (Jefe de Grupo): trampa de Tab y retorno de foco en "Crear rol", tabs, menú, buscador, fila con Enter, `aria-sort` y etiquetas del modal "Nueva cuenta".
+> - **Pendiente:**
+>   - B4-08 (`DynamicFormRenderer`): `fieldset/legend` en grupos de chips, `aria-required`, `aria-describedby` en errores y foco al primer campo con error.
+>   - B4-09 (parte): `aria-controls` y `tabpanel` (los paneles viven en cada página); tabs caseros de `VisorFichaMiembro`, `ModalHistorialSeccion` y `VisualPdfEditorDrawer` sin `role="tab"`.
+>   - B4-18 (parte): `aria-required` en campos obligatorios.
+>   - No se probó con lector de pantalla real.
 
 | ID | Sev. | Dónde | Problema | Fix |
 |---|---|---|---|---|

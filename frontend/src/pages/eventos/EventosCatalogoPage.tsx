@@ -419,7 +419,14 @@ export const EventosCatalogoPage: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="w-full h-1.5 bg-paper-3 rounded-full overflow-hidden">
+                      <div
+                        role="progressbar"
+                        aria-label="Vales retirados"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.round(pctRetiro)}
+                        className="w-full h-1.5 bg-paper-3 rounded-full overflow-hidden"
+                      >
                         <div
                           className="h-full bg-brand rounded-full s-progress-bar"
                           style={{ width: `${pctRetiro}%` }}

@@ -822,7 +822,7 @@ export const QrScannerUniversalModal: React.FC = () => {
             )}
 
             {errorCobro && (
-              <div className="s-badge-err rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
+              <div role="alert" className="s-badge-err rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>{errorCobro}</span>
               </div>
@@ -863,6 +863,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           {(!resultadoLegajo && !resultadoEvento) || continuo ? (
             <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-xl s-panel">
               <button
+                aria-pressed={modo === 'camara'}
                 type="button"
                 onClick={() => {
                   setModo('camara');
@@ -876,6 +877,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                 <span>Cámara QR</span>
               </button>
               <button
+                aria-pressed={modo === 'manual'}
                 type="button"
                 onClick={() => {
                   setModo('manual');
@@ -1134,7 +1136,7 @@ export const QrScannerUniversalModal: React.FC = () => {
           )}
 
           {error && (
-            <div className="s-badge-err rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
+            <div role="alert" className="s-badge-err rounded-xl p-3 text-[13px] font-bold flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>

@@ -716,7 +716,7 @@ export const TesoreriaPage: React.FC = () => {
       )}
 
       {error && (
-        <div className="s-badge-warn rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div role="alert" className="s-badge-warn rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
@@ -1040,8 +1040,10 @@ export const TesoreriaPage: React.FC = () => {
                           );
                           return (
                             <button
+                              aria-pressed={activo}
                               key={num}
                               type="button"
+                              aria-label={`${NOMBRES_MESES_LARGOS[num]}: ${activo ? 'habilitado' : 'deshabilitado'}`}
                               disabled={!puedeEditarPlan || planSincronizando}
                               onClick={() => puedeEditarPlan && handleToggleMesPlan(plan, num)}
                               className={`min-h-[42px] py-1 px-0.5 rounded-xl text-center font-bold text-xs transition flex flex-col items-center justify-center gap-0.5 border ${

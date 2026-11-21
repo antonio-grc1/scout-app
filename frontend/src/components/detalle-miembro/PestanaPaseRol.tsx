@@ -309,6 +309,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
       {onAgregarAsignacion && (
         <div className="flex rounded-xl p-1 bg-paper-2 border border-rule gap-1">
           <button
+            aria-pressed={modoAccion === 'MUDAR'}
             type="button"
             onClick={() => setModoAccion('MUDAR')}
             className={`flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-[13px] font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -321,6 +322,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
             Pase de Rama / Mudar Rol
           </button>
           <button
+            aria-pressed={modoAccion === 'AGREGAR'}
             type="button"
             onClick={() => setModoAccion('AGREGAR')}
             className={`flex-1 min-h-[38px] py-1.5 px-3 rounded-lg text-[13px] font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -345,6 +347,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
           }`}
         >
           <button
+            aria-pressed={categoriaDestino === 'RAMA'}
             type="button"
             onClick={() => onCambioCategoria('RAMA')}
             className={`min-h-[46px] p-2.5 rounded-xl border font-bold text-[13px] transition cursor-pointer ${
@@ -357,6 +360,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
           </button>
           {puedeMostrarSinRama && (
             <button
+              aria-pressed={categoriaDestino === 'SIN_RAMA'}
               type="button"
               onClick={() => onCambioCategoria('SIN_RAMA')}
               className={`min-h-[46px] p-2.5 rounded-xl border font-bold text-[13px] transition cursor-pointer ${
@@ -370,6 +374,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
           )}
           {esGlobal && (
             <button
+              aria-pressed={categoriaDestino === 'JEFATURA'}
               type="button"
               onClick={() => onCambioCategoria('JEFATURA')}
               className={`min-h-[46px] p-2.5 rounded-xl border font-bold text-[13px] transition cursor-pointer ${
@@ -392,6 +397,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
               const seleccionada = ramaSeleccionadaId === rama.id;
               return (
                 <button
+                  aria-pressed={seleccionada}
                   key={rama.id}
                   type="button"
                   onClick={() => onSeleccionarRama(rama)}
@@ -425,6 +431,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                   const activa = Number(unidadDestinoId) === u.id;
                   return (
                     <button
+                      aria-pressed={activa}
                       key={u.id}
                       type="button"
                       onClick={() => setUnidadDestinoId(String(u.id))}
@@ -464,6 +471,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
               const activo = Number(rolDestinoId) === r.id;
               return (
                 <button
+                  aria-pressed={activo}
                   key={r.id}
                   type="button"
                   onClick={() => setRolDestinoId(String(r.id))}

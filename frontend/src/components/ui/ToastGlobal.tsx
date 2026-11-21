@@ -1,10 +1,20 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useToastStore } from '../../store/toastStore';
 import { RotateCcw, X, CheckCircle2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
 
 export const ToastGlobal: React.FC = () => {
-  const { toast, cerrarToast, ejecutarAccion } = useToastStore();
+  const { toast, cerrarToast, ejecutarAccion, pausarToast, reanudarToast } = useToastStore();
   const [ejecutando, setEjecutando] = useState(false);
+  const [pausado, setPausado] = useState(false);
+  const pausar = () => {
+    setPausado(true);
+    pausarToast();
+  };
+  const reanudar = () => {
+    setPausado(false);
+    reanudarToast();
+  };
 
   if (!toast) return null;
 
@@ -51,12 +61,20 @@ export const ToastGlobal: React.FC = () => {
         ? 'bg-amber-500'
         : 'bg-emerald-500';
 
-  return (
+  const esError = toast.tipo === 'error';
+
+  // Portal al <body> y z-index por encima de modales/drawers (z-50): si no, los avisos
+  // disparados desde un modal quedaban detrás del fondo difuminado.
+  return createPortal(
     <div
       key={toast.id}
-      className="s-anim-toast-in fixed bottom-22 md:bottom-5 left-3 right-3 sm:left-auto sm:right-5 sm:w-full sm:max-w-sm z-50 pointer-events-none"
-      role="status"
-      aria-live="polite"
+      className="s-anim-toast-in fixed bottom-22 md:bottom-5 left-3 right-3 sm:left-auto sm:right-5 sm:w-full sm:max-w-sm z-[600] pointer-events-none"
+      role={esError ? 'alert' : 'status'}
+      aria-live={esError ? 'assertive' : 'polite'}
+      onMouseEnter={pausar}
+      onMouseLeave={reanudar}
+      onFocus={pausar}
+      onBlur={reanudar}
     >
       <div
         className={`pointer-events-auto relative overflow-hidden rounded-xl bg-surface text-ink border shadow-xl ${borderToneClass}`}
@@ -66,7 +84,7 @@ export const ToastGlobal: React.FC = () => {
             <div className="w-8 h-8 rounded-lg bg-paper-2 flex items-center justify-center shrink-0">
               {getIcono()}
             </div>
-            <span className="text-sm font-semibold leading-snug line-clamp-2">
+            <span className={`text-sm font-semibold leading-snug ${esError ? '' : 'line-clamp-2'}`}>
               {toast.texto}
             </span>
           </div>
@@ -87,7 +105,7 @@ export const ToastGlobal: React.FC = () => {
             <button
               type="button"
               onClick={cerrarToast}
-              className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition-colors cursor-pointer"
+              className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-paper-2 transition-colors cursor-pointer"
               aria-label="Cerrar notificación"
             >
               <X className="w-4 h-4" />
@@ -98,10 +116,11 @@ export const ToastGlobal: React.FC = () => {
         <div className="h-1 w-full bg-paper-2 overflow-hidden">
           <div
             className={`h-full w-full s-toast-progress ${barToneClass}`}
-            style={{ animationDuration: `${duracion}ms` }}
+            style={{ animationDuration: `${duracion}ms`, animationPlayState: pausado ? 'paused' : 'running' }}
           />
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };

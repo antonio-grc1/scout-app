@@ -154,6 +154,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
                 const Icon = card.icon;
                 return (
                   <button
+                    aria-pressed={card.active}
                     key={card.id}
                     type="button"
                     onClick={card.onSelect}

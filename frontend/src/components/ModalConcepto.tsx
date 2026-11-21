@@ -310,7 +310,7 @@ export const ModalConcepto: React.FC<ModalConceptoProps> = ({
 
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[82dvh] overflow-y-auto">
           {error && (
-            <div className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2">
+            <div role="alert" className="p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 rounded-xl text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
