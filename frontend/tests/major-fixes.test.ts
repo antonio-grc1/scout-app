@@ -780,3 +780,20 @@ describe('traducirErrorAmigable traduce validaciones zod en inglés', () => {
     assert.equal(msg, 'Hay campos obligatorios vacíos o con formato inválido. Fecha inválida (AAAA-MM-DD)');
   });
 });
+
+describe('traducirErrorAmigable: VALIDATION_ERROR de Prisma es un error del sistema', () => {
+  it('no culpa al usuario con "Datos inválidos" y mantiene los errores de carga por campo', async () => {
+    const { traducirErrorAmigable } = await vite.ssrLoadModule('/src/lib/formatters.ts');
+    const sistema = traducirErrorAmigable({
+      response: {
+        status: 400,
+        data: { statusCode: 400, message: 'Datos inválidos para la operación solicitada', code: 'VALIDATION_ERROR' },
+      },
+    });
+    assert.match(sistema, /error del sistema/);
+    const porCampo = traducirErrorAmigable({
+      response: { status: 400, data: { errores: [{ mensaje: 'El DNI es obligatorio' }] } },
+    });
+    assert.equal(porCampo, 'El DNI es obligatorio');
+  });
+});

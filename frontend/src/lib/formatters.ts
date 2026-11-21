@@ -372,6 +372,11 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
   if (err?.response?.data?.errores && Array.isArray(err.response.data.errores) && err.response.data.errores.length > 0) {
     return err.response.data.errores.map((e: any) => e.mensaje).join('. ');
   }
+  // VALIDATION_ERROR lo emite el filtro de Prisma del backend: es un error del sistema (la consulta
+  // no coincide con la base), no un dato mal cargado. Los errores de carga llegan en `errores`.
+  if (err?.response?.data?.code === 'VALIDATION_ERROR') {
+    return 'No se pudo completar la operación por un error del sistema. Si se repite, avisá a la jefatura del grupo.';
+  }
   const statusRaw = err?.response?.status ?? err?.response?.data?.statusCode;
   const status = typeof statusRaw === 'number' ? statusRaw : undefined;
   const serverRaw = err?.response?.data?.message;
