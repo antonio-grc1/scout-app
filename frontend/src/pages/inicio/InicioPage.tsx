@@ -589,7 +589,7 @@ export const InicioPage: React.FC = () => {
             )}
           </div>
 
-          <h1 className="text-2xl sm:text-[1.75rem] font-extrabold text-ink tracking-tight truncate">
+          <h1 className="text-2xl sm:text-[1.75rem] font-extrabold text-ink tracking-tight break-words">
             Hola, {usuario?.nombre} {usuario?.apellido}
           </h1>
 

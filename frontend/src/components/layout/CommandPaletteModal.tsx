@@ -269,7 +269,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
   return createPortal(
     <div
-      className="s-anim-backdrop fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-end sm:items-start sm:pt-20 justify-center p-0 sm:p-4"
+      className="s-anim-backdrop fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-start pt-[max(0.75rem,env(safe-area-inset-top))] sm:pt-20 justify-center p-3 sm:p-4"
       role="presentation"
       {...backdropProps}
     >
@@ -277,7 +277,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label="Buscador rápido"
-        className="s-anim-sheet-up sm:s-anim-modal-pop w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl overflow-hidden bg-surface text-ink border border-rule shadow-2xl"
+        className="s-anim-modal-pop w-full sm:max-w-lg rounded-2xl overflow-hidden bg-surface text-ink border border-rule shadow-2xl"
         {...contentProps}
       >
         <div className="px-4 py-3.5 border-b border-rule flex items-center gap-3">
@@ -316,7 +316,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
           ref={listaRef}
           role="listbox"
           aria-label="Resultados"
-          className="p-2.5 max-h-[65dvh] sm:max-h-[420px] overflow-y-auto space-y-2.5"
+          className="p-2.5 max-h-[55dvh] sm:max-h-[420px] overflow-y-auto space-y-2.5"
         >
           {caps.canViewMiembros && (
             <div className="space-y-1">

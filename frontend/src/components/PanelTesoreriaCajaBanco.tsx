@@ -606,7 +606,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     <div className="space-y-5">
       {/* 1. Dynamic Account Tabs Strip */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar s-fade-edge pb-1 max-w-full">
           {cargandoCuentas && cuentas.length === 0 ? (
             <div className="flex items-center gap-2">
               <div className="h-10 w-32 bg-paper-2 animate-pulse rounded-xl" />
@@ -813,7 +813,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-1.5 border-t border-rule/50">
           {/* Quick 1-tap arqueo buttons */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar s-fade-edge pb-1">
             <span className="text-[13px] font-bold text-ink-muted mr-1 hidden sm:inline flex items-center gap-1">
               <Calendar className="w-4 h-4" />
               <span>Período:</span>

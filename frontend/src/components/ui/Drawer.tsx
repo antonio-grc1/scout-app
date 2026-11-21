@@ -133,7 +133,7 @@ export const Drawer: React.FC<DrawerProps> = ({
         </div>
 
         {footer && (
-          <div className="px-5 py-3.5 border-t border-rule bg-paper-2 flex flex-wrap items-center justify-end gap-2.5 shrink-0">
+          <div className="px-5 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] border-t border-rule bg-paper-2 flex flex-wrap items-center justify-end gap-2.5 shrink-0">
             {footer}
           </div>
         )}

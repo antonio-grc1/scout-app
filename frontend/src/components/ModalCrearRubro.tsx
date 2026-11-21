@@ -347,7 +347,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                   value={unidadId}
                   onChange={(e) => setUnidadId(e.target.value)}
                   disabled={guardando || eliminando}
-                  className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-base sm:text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
                 >
                   <option value="">General del Grupo</option>
                   {unidadesDisponibles.map((u) => (
@@ -367,7 +367,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                   onChange={(e) => setUnidadId(e.target.value)}
                   disabled={guardando || eliminando}
                   required
-                  className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
+                  className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-base sm:text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
                 >
                   {unidadesDisponibles.map((u) => (
                     <option key={u.id} value={String(u.id)}>

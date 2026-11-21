@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -439,7 +439,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
         {/* Contenido de Vista */}
         <main className="flex-1 min-w-0 p-4 sm:p-6 pb-26 md:pb-8">
           <div key={location.pathname} className="max-w-7xl mx-auto s-anim-view">
-            {children}
+            <Suspense
+              fallback={
+                <div className="py-24 text-center text-ink-muted text-sm font-semibold" role="status">
+                  Cargando…
+                </div>
+              }
+            >
+              {children}
+            </Suspense>
           </div>
         </main>
       </div>

@@ -347,7 +347,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
 
                 {/* Integrantes de la Camada */}
                 <div className="w-full overflow-x-auto">
-                  <div className="divide-y divide-rule min-w-[540px] sm:min-w-0">
+                  <div className="divide-y divide-rule">
                     {g.miembros.map((c) => {
                     const enProceso = ejecutandoPaseId === c.asignacionId;
                     const destIndiv =

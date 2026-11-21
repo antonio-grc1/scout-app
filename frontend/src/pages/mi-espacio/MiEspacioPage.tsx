@@ -1752,7 +1752,7 @@ export const MiEspacioPage: React.FC = () => {
                       return (
                         <span
                           key={a.id}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-bold border whitespace-nowrap shrink-0 ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[13px] font-bold border max-w-full min-w-0 ${
                             c?.badgeClases || 's-badge-brand'
                           }`}
                         >
@@ -2023,7 +2023,7 @@ export const MiEspacioPage: React.FC = () => {
                         type="button"
                         onClick={() => setVerActual((v) => !v)}
                         aria-label="Mostrar u ocultar clave actual"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                        className="absolute right-0.5 top-1/2 -translate-y-1/2 p-2.5 text-ink-muted hover:text-ink cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -2046,7 +2046,7 @@ export const MiEspacioPage: React.FC = () => {
                         type="button"
                         onClick={() => setVerNueva((v) => !v)}
                         aria-label="Mostrar u ocultar clave nueva"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                        className="absolute right-0.5 top-1/2 -translate-y-1/2 p-2.5 text-ink-muted hover:text-ink cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
@@ -2069,7 +2069,7 @@ export const MiEspacioPage: React.FC = () => {
                         type="button"
                         onClick={() => setVerConfirmar((v) => !v)}
                         aria-label="Mostrar u ocultar confirmación"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                        className="absolute right-0.5 top-1/2 -translate-y-1/2 p-2.5 text-ink-muted hover:text-ink cursor-pointer"
                       >
                         <Eye className="w-4 h-4" />
                       </button>

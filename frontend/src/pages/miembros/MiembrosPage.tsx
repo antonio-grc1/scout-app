@@ -1819,7 +1819,7 @@ export const MiembrosPage: React.FC = () => {
       <div
         role="group"
         aria-label="Filtros rápidos del padrón"
-        className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap"
+        className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar s-fade-edge -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap"
       >
         <button
           type="button"
@@ -2131,7 +2131,7 @@ export const MiembrosPage: React.FC = () => {
       ) : (
         <>
           {/* Vista Móvil (< md): Tarjetas que abren página dedicada /miembros/:id */}
-          <div className="grid grid-cols-1 gap-3.5 md:hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 lg:hidden">
             {miembrosFiltrados.map((m) => (
               <MiembroCard
                 key={m.id}
@@ -2147,7 +2147,7 @@ export const MiembrosPage: React.FC = () => {
           </div>
 
           {/* Vista Escritorio (md+): Tabla limpia que abre DrawerMiembro360 */}
-          <div className="hidden md:block s-card rounded-2xl overflow-hidden">
+          <div className="hidden lg:block s-card rounded-2xl overflow-hidden">
             <table className="w-full text-left text-sm text-ink-2">
               <thead className="bg-paper-2 border-b border-rule text-ink font-semibold text-xs uppercase tracking-wide">
                 <tr>

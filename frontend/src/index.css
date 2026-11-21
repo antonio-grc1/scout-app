@@ -228,6 +228,16 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Indica que hay más contenido a la derecha en franjas con scroll horizontal (solo móvil) */
+@media (max-width: 639px) {
+  .s-scroll-strip,
+  .s-fade-edge {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    padding-right: 28px;
+  }
+}
+
 .s-scroll-strip > * {
   flex-shrink: 0;
 }
