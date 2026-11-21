@@ -1615,7 +1615,7 @@ export const EventoWorkspacePage: React.FC = () => {
             <div className="space-y-1">
               <h2 className="text-lg font-black text-ink flex items-center gap-2">
                 <Award className="w-5 h-5 text-brand shrink-0" />
-                <span>Pre-flight de Liquidación a Saldo a Favor</span>
+                <span>Revisión previa de la liquidación a Saldo a Favor</span>
               </h2>
               <p className="text-[13px] text-ink-muted leading-relaxed">
                 Revisá el detalle por vendedor scout antes de acreditar ganancias. Solo se liquidan pedidos pagados cuyos vales QR ya fueron retirados.

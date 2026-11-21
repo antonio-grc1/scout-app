@@ -127,9 +127,15 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
   if (!abierto || !ticket) return null;
 
   const handleCopiarToken = () => {
-    navigator.clipboard.writeText(ticket.tokenQr);
-    setCopiadoToken(true);
-    setTimeout(() => setCopiadoToken(false), 2000);
+    void navigator.clipboard
+      ?.writeText(ticket.tokenQr)
+      .then(() => {
+        setCopiadoToken(true);
+        setTimeout(() => setCopiadoToken(false), 2000);
+      })
+      .catch(() => {
+        /* sin permiso de portapapeles (p. ej. http en LAN): el token sigue visible para copiarlo a mano */
+      });
   };
 
   const handleDescargarQR = () => {

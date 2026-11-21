@@ -25,6 +25,7 @@ export const CambiarClave: React.FC = () => {
     requiereCambioClave,
     setRequiereCambioClave,
     setSesion,
+    logout,
   } = useAuthStore();
   const navigate = useNavigate();
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -292,6 +293,18 @@ export const CambiarClave: React.FC = () => {
           >
             {cargando ? 'Guardando…' : 'Confirmar Nueva Contraseña'}
           </Button>
+          {requiereCambioClave && (
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                navigate('/login', { replace: true });
+              }}
+              className="w-full min-h-[44px] mt-1 text-sm font-semibold text-ink-muted hover:text-ink underline underline-offset-2 cursor-pointer"
+            >
+              Cerrar sesión
+            </button>
+          )}
         </form>
       </div>
     </div>

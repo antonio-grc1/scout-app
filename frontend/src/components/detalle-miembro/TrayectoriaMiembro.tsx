@@ -134,7 +134,7 @@ export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaci
                         {/* Estado */}
                         {asig.activo ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-extrabold">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
                             Actual
                           </span>
                         ) : (

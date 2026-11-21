@@ -280,6 +280,11 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       return;
     }
 
+    if (fechaDesde && fechaHasta && fechaDesde > fechaHasta) {
+      setErrorLibro('La fecha "Desde" no puede ser posterior a "Hasta".');
+      return;
+    }
+
     setCargandoLibro(true);
     setErrorLibro(null);
 

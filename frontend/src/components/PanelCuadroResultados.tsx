@@ -410,7 +410,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
               ) : (
                 <TrendingDown className="w-4 h-4" />
               )}
-              {mostrarSkeleton ? 'Resultado del Período' : `Resultado (${esSuperavit ? 'Superávit' : 'Déficit'})`}
+              {mostrarSkeleton ? 'Resultado del Período' : `Resultado (${(datos?.resumen?.resultadoNeto ?? 0) === 0 ? 'Equilibrio' : esSuperavit ? 'Superávit' : 'Déficit'})`}
             </span>
             {mostrarSkeleton ? (
               <div className="h-4 w-16 rounded-full bg-paper-3 animate-pulse" />
