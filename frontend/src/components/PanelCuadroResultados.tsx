@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   TrendingUp,
   TrendingDown,
@@ -76,7 +76,11 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
   const [error, setError] = useState<string | null>(null);
   const [datos, setDatos] = useState<CuadroResultadosData | null>(null);
 
+  const ultimaSolicitudRef = useRef(0);
+
   const cargarCuadro = async () => {
+    const solicitudId = ++ultimaSolicitudRef.current;
+    const vigente = () => solicitudId === ultimaSolicitudRef.current;
     setCargando(true);
     setError(null);
     try {
@@ -86,8 +90,10 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
         params.append('mes', String(mesFiltro));
       }
       const res = await api.get(`/tesoreria/cuadro-resultados?${params.toString()}`);
+      if (!vigente()) return; // una consulta más nueva ya está en curso: se descarta esta respuesta
       setDatos(res.data);
     } catch (err) {
+      if (!vigente()) return;
       const msg = traducirErrorAmigable(err, 'No se pudo cargar el cuadro de resultados.');
       const esOffline =
         (typeof navigator !== 'undefined' && !navigator.onLine) ||
@@ -106,7 +112,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
         if (onToast) onToast(msg, 'error');
       }
     } finally {
-      setCargando(false);
+      if (vigente()) setCargando(false);
     }
   };
 

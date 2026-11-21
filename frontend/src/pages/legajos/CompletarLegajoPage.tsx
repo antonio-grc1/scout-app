@@ -125,16 +125,30 @@ export const CompletarLegajoPage: React.FC = () => {
     setErrorCarga(null);
     try {
       const ciclo = obtenerCicloAnioActual();
+      let fallaPlantillas = false;
       const [resPlantillas, resMiembro, resEntregas] = await Promise.all([
-        api.get(`/legajos/plantillas?cicloAnio=${ciclo}`).catch(() => ({ data: [] })),
+        api.get(`/legajos/plantillas?cicloAnio=${ciclo}`).catch(() => {
+          fallaPlantillas = true;
+          return { data: [] as any[] };
+        }),
         api.get(`/miembros/${targetUserId}`).catch(() => ({ data: null })),
         api.get(`/legajos/entregas?usuarioId=${targetUserId}&cicloAnio=${ciclo}`).catch(() => ({ data: [] })),
       ]);
 
       let listaPlantillas: any[] = Array.isArray(resPlantillas.data) ? resPlantillas.data : [];
       if (listaPlantillas.length === 0) {
-        const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
+        const resTodas = await api.get('/legajos/plantillas').catch(() => {
+          fallaPlantillas = true;
+          return { data: [] as any[] };
+        });
         listaPlantillas = Array.isArray(resTodas.data) ? resTodas.data : [];
+      }
+      if (fallaPlantillas && listaPlantillas.length === 0) {
+        setErrorCarga('No se pudieron cargar las plantillas de legajo. Revisá tu conexión y reintentá.');
+        setPlantillaSeleccionada(null);
+        setPrecarga(null);
+        setCargando(false);
+        return;
       }
 
       // Sin los datos del miembro no se puede caer al usuario de la sesión: el formulario se

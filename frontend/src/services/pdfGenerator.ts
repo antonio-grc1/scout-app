@@ -1450,6 +1450,17 @@ export async function estampadoDinamicoPdf(
   }
 
   if (!baseBytes) {
+    const declaroBase = Boolean(
+      mapeo?.pdfBaseDataUrl ||
+        (mapeo?.pdfBaseUrl &&
+          mapeo.pdfBaseUrl !== '__MOLDE_OFICIAL__' &&
+          mapeo.pdfBaseUrl !== '__UPLOADED_PDF__'),
+    );
+    // Si el mapeo declara un PDF base y no se pudo leer, no se genera una hoja en blanco que
+    // parezca el documento oficial: se informa el problema.
+    if (declaroBase) {
+      throw new Error('No se pudo cargar el PDF base de esta plantilla. Revisá tu conexión o volvé a subir el archivo en el editor.');
+    }
     baseBytes = await generarMoldeEnBlancoPdf();
   }
 

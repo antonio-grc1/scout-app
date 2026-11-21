@@ -496,3 +496,12 @@ Lista por cada pestaña, modal o ventana. Los ítems ya cubiertos en B0–B7 se 
 
 > **B8 — estado (parcial, primera tanda):** Cambiar clave obligatorio ahora tiene "Cerrar sesión"; `ErrorBoundary` por ruta dentro del `AppShell` (compacto, se reinicia al navegar, y ante error de carga de chunk ofrece solo "Recargar"); "Pre-flight de Liquidación" → "Revisión previa de la liquidación"; Cuadro de Resultados muestra "Equilibrio" con resultado 0; Ticket QR no falla si el portapapeles está bloqueado; Caja valida "Desde > Hasta"; `animate-pulse` de Trayectoria respeta `prefers-reduced-motion`.
 > **B8 — pendiente:** el resto de los ítems por pantalla de esta sección (alrededor de 100 hallazgos de pulido) quedan abiertos y se pueden tomar por pantalla a pedido.
+
+> **Paso 1 del plan (datos y permisos pendientes) — estado:**
+> - **B2-06/08/09/11/12:** los errores de carga ya no se muestran como vacío. Tesorería y Organización avisan qué solicitud falló ("No se pudieron cargar: …") con Reintentar; Completar Legajo muestra error si fallan las plantillas; Gestión de Rubros y Familias voluntarias tienen error con Reintentar; los modales de Gasto e Ingreso avisan si no cargan categorías y cuentas.
+> - **B1-25:** quien no ve el padrón (p. ej. solo Tesorería) ve el checklist personal y el acceso a Mi Espacio en Inicio. **B1-28:** los KPIs de Tesorería se muestran por permiso (Cobranzas / Planes).
+> - **B1-29:** un tesorero sin `padron.ver` busca integrantes con `GET /miembros/hermanos/buscar` (ya existente, acotado a su alcance) y puede abrir el cobro desde el resultado; no hizo falta endpoint nuevo.
+> - **B2-17:** si el mapeo declara un PDF base y no se puede cargar, se informa el error en lugar de generar una hoja en blanco que parezca oficial.
+> - **B2-25:** Cuadro de Resultados y Libro diario descartan respuestas viejas (id de solicitud). Quedan sin protección SelectorDestinatarios y el buscador Ctrl+K.
+> - **B2-36:** el KPI de gastos cuenta y suma solo no anulados y sigue a la búsqueda. La exportación de Caja no se revisó.
+> - **No hecho:** B2-21 (el router actual, `BrowserRouter`, no admite `useBlocker`; requiere pasar a router de datos), B7-15 (el caché offline depende de `localStorage` en varias lecturas síncronas; moverlo a IndexedDB necesita su propia sesión y pruebas offline).

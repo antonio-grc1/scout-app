@@ -191,6 +191,10 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
     });
   }, [gastos, busqueda]);
 
+  // Total y conteo del KPI siguen a la búsqueda (solo gastos no anulados)
+  const gastosFiltradosActivos = useMemo(() => gastosFiltrados.filter((g) => !g.anulado), [gastosFiltrados]);
+  const totalGastosFiltrado = gastosFiltradosActivos.reduce((acc, cur) => acc + Number(cur.monto), 0);
+
   return (
     <div className="space-y-4">
       {/* Barra Superior de Acciones de Egresos */}
@@ -252,10 +256,10 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
             ) : (
               <>
                 <span className="text-2xl sm:text-[1.75rem] font-black text-rose-600 dark:text-rose-400">
-                  {formatearMoneda(totalGastos)}
+                  {formatearMoneda(busqueda ? totalGastosFiltrado : totalGastos)}
                 </span>
                 <span className="text-[13px] font-bold text-ink-muted">
-                  {gastosFiltrados.length} {gastosFiltrados.length === 1 ? 'gasto' : 'gastos'}
+                  {gastosFiltradosActivos.length} {gastosFiltradosActivos.length === 1 ? 'gasto' : 'gastos'}
                   {busqueda && ` (de ${gastosActivos.length})`}
                 </span>
               </>

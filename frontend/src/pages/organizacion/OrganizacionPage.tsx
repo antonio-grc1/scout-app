@@ -104,6 +104,11 @@ export const OrganizacionPage: React.FC = () => {
 
     setCargando(true);
     setError(null);
+    const fallos: string[] = [];
+    const vacioSiFalla = (nombre: string) => () => {
+      fallos.push(nombre);
+      return { data: [] as any[] };
+    };
     try {
       const qInactivas = mostrarInactivas && caps.esGlobal ? '?incluirInactivas=true' : '';
       const qRolesInactivos = mostrarRolesInactivos && caps.esGlobal ? '?incluirInactivos=true' : '';
@@ -115,13 +120,16 @@ export const OrganizacionPage: React.FC = () => {
           ? api.get(`/organizacion/unidades${qInactivas}`)
           : Promise.resolve({ data: [] }),
         caps.canViewRoles
-          ? api.get(`/organizacion/roles${qRolesInactivos}`).catch(() => ({ data: [] }))
+          ? api.get(`/organizacion/roles${qRolesInactivos}`).catch(vacioSiFalla('roles'))
           : Promise.resolve({ data: [] }),
         caps.canViewRoles
-          ? api.get('/organizacion/permisos').catch(() => ({ data: [] }))
+          ? api.get('/organizacion/permisos').catch(vacioSiFalla('permisos'))
           : Promise.resolve({ data: [] }),
       ]);
 
+      if (fallos.length > 0) {
+        setError(`No se pudieron cargar: ${fallos.join(', ')}. Esa pestaña puede verse vacía por este error.`);
+      }
       setRamas(Array.isArray(resRamas.data) ? resRamas.data : []);
       setUnidades(Array.isArray(resUnidades.data) ? resUnidades.data : []);
       setRoles(Array.isArray(resRoles.data) ? resRoles.data : []);

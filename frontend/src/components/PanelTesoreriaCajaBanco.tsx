@@ -273,7 +273,10 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
   }, [cargarCuentas]);
 
   // Cargar libro diario de la cuenta seleccionada
+  const ultimaSolicitudLibroRef = useRef(0);
   const cargarLibroDiario = useCallback(async () => {
+    const solicitudId = ++ultimaSolicitudLibroRef.current;
+    const vigente = () => solicitudId === ultimaSolicitudLibroRef.current;
     if (!cuentaSeleccionadaId) {
       libroDiarioRef.current = null;
       setLibroDiario(null);
@@ -296,9 +299,11 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       const res = await api.get(`/tesoreria/cuentas/${cuentaSeleccionadaId}/libro-diario`, {
         params,
       });
+      if (!vigente()) return; // respuesta vieja de otra cuenta o rango
       libroDiarioRef.current = res.data;
       setLibroDiario(res.data);
     } catch (err: any) {
+      if (!vigente()) return;
       const msg = traducirErrorAmigable(err, 'No se pudo cargar el libro diario.');
       const esOffline =
         (typeof navigator !== 'undefined' && !navigator.onLine) ||
@@ -319,7 +324,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
         if (onToastRef.current) onToastRef.current(msg, 'error');
       }
     } finally {
-      setCargandoLibro(false);
+      if (vigente()) setCargandoLibro(false);
     }
   }, [cuentaSeleccionadaId, fechaDesde, fechaHasta]);
 

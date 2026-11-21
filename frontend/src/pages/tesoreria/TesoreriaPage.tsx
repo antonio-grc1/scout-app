@@ -85,6 +85,7 @@ export const TesoreriaPage: React.FC = () => {
 
   const puedeVerCobranzas =
     caps.canViewFamiliasTesoreria || caps.canViewCuotas || caps.canCobrar;
+  const puedeBuscarMiembros = caps.canViewMiembros || caps.canCobrar;
   const puedeVerPlanesYConceptos =
     caps.canGestionarPlanes || caps.hasAnyPermiso('planes.ver', 'planes.editar', 'cobranzas.ver', 'caja.editar');
   const puedeVerCajaOGastos = caps.canSeeCajaContabilidad || caps.canRegistrarGastos;
@@ -222,25 +223,34 @@ export const TesoreriaPage: React.FC = () => {
 
     setCargando(true);
     setError(null);
+    const fallos: string[] = [];
+    const vacioSiFalla = (nombre: string) => () => {
+      fallos.push(nombre);
+      return { data: [] as any[] };
+    };
     try {
       const [resPlanes, resConceptos, resFamilias, resUnidades, resCuentas] =
         await Promise.all([
           puedeVerPlanesYConceptos
-            ? api.get('/tesoreria/planes-mensuales').catch(() => ({ data: [] }))
+            ? api.get('/tesoreria/planes-mensuales').catch(vacioSiFalla('planes'))
             : Promise.resolve({ data: [] }),
           puedeVerPlanesYConceptos
-            ? api.get('/tesoreria/conceptos').catch(() => ({ data: [] }))
+            ? api.get('/tesoreria/conceptos').catch(vacioSiFalla('conceptos'))
             : Promise.resolve({ data: [] }),
           puedeVerCobranzas
-            ? api.get('/tesoreria/familias').catch(() => ({ data: [] }))
+            ? api.get('/tesoreria/familias').catch(vacioSiFalla('familias'))
             : Promise.resolve({ data: [] }),
           caps.canViewOrganizacion
-            ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
+            ? api.get('/organizacion/unidades').catch(vacioSiFalla('unidades'))
             : Promise.resolve({ data: [] }),
           caps.canSeeCajaContabilidad
-            ? api.get('/tesoreria/cuentas').catch(() => ({ data: [] }))
+            ? api.get('/tesoreria/cuentas').catch(vacioSiFalla('cuentas'))
             : Promise.resolve({ data: [] }),
         ]);
+
+      if (fallos.length > 0) {
+        setError(`No se pudieron cargar: ${fallos.join(', ')}. Los datos que ves pueden estar incompletos.`);
+      }
 
       setPlanesMensuales(Array.isArray(resPlanes.data) ? resPlanes.data : []);
       setConceptos(Array.isArray(resConceptos.data) ? resConceptos.data : []);
@@ -282,7 +292,7 @@ export const TesoreriaPage: React.FC = () => {
 
   // Buscador instantáneo de miembros individuales para cobro directo
   useEffect(() => {
-    if (subTab !== 'cobranzas' || !caps.canViewMiembros) {
+    if (subTab !== 'cobranzas' || !puedeBuscarMiembros) {
       setMiembrosBuscados([]);
       return;
     }
@@ -297,13 +307,16 @@ export const TesoreriaPage: React.FC = () => {
     setBuscandoMiembros(true);
     const timer = window.setTimeout(async () => {
       try {
-        const res = await api.get('/miembros', {
-          params: {
-            q,
-            porPagina: 10,
-            ...(activeUnitId !== 'ALL' ? { unidadId: activeUnitId } : {}),
-          },
-        });
+        // Sin permiso de padrón (p. ej. tesorero), se usa la búsqueda acotada al alcance de quien cobra
+        const res = caps.canViewMiembros
+          ? await api.get('/miembros', {
+              params: {
+                q,
+                porPagina: 10,
+                ...(activeUnitId !== 'ALL' ? { unidadId: activeUnitId } : {}),
+              },
+            })
+          : await api.get('/miembros/hermanos/buscar', { params: { q } });
         if (!cancelado) {
           // GET /miembros responde { items, total, pagina, porPagina }
           const lista = Array.isArray(res.data?.items)
@@ -324,7 +337,7 @@ export const TesoreriaPage: React.FC = () => {
       cancelado = true;
       window.clearTimeout(timer);
     };
-  }, [busquedaCobranzas, subTab, caps.canViewMiembros, activeUnitId]);
+  }, [busquedaCobranzas, subTab, caps.canViewMiembros, puedeBuscarMiembros, activeUnitId]);
 
   const unidadesEnAlcance = useMemo(
     () => filtrarUnidadesPorAlcance(unidades, { esGlobal: caps.esGlobal, asignaciones }),
@@ -679,6 +692,7 @@ export const TesoreriaPage: React.FC = () => {
       {/* Resumen compacto de indicadores */}
       {(puedeVerCobranzas || puedeVerPlanesYConceptos) && (
         <section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {puedeVerCobranzas && (
           <KpiCard
             label="Grupos familiares"
             value={cargando && familias.length === 0 ? '—' : familiasFiltradas.length}
@@ -686,6 +700,9 @@ export const TesoreriaPage: React.FC = () => {
             icon={<Users className="w-4 h-4" />}
             tone="brand"
           />
+          )}
+          {puedeVerPlanesYConceptos && (
+            <>
           <KpiCard
             label="Cobros Mensuales"
             value={cargando && planesMensuales.length === 0 ? '—' : planesFiltrados.length}
@@ -716,6 +733,8 @@ export const TesoreriaPage: React.FC = () => {
             icon={<CreditCard className="w-4 h-4" />}
             tone="ok"
           />
+            </>
+          )}
         </section>
       )}
 
@@ -757,7 +776,7 @@ export const TesoreriaPage: React.FC = () => {
             </div>
 
             {/* Resultado de búsqueda rápida individual de miembros para cobro directo */}
-            {busquedaCobranzas.trim().length >= 2 && caps.canViewMiembros && (
+            {busquedaCobranzas.trim().length >= 2 && puedeBuscarMiembros && (
               <div className="pt-2.5 border-t border-rule space-y-2.5">
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="font-bold text-ink-2">
@@ -780,7 +799,11 @@ export const TesoreriaPage: React.FC = () => {
                         >
                           <button
                             type="button"
-                            onClick={() => navigate(`/miembros/${m.id}?tab=cuotas`)}
+                            onClick={() =>
+                              caps.canViewMiembros
+                                ? navigate(`/miembros/${m.id}?tab=cuotas`)
+                                : void abrirCobroMiembro(m)
+                            }
                             className="min-w-0 text-left cursor-pointer group"
                           >
                             <span className="text-sm font-bold text-ink group-hover:text-brand group-hover:underline block truncate">

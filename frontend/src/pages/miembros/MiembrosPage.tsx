@@ -176,6 +176,7 @@ export const MiembrosPage: React.FC = () => {
   const [tabInicialDrawer, setTabInicialDrawer] = useState<TabExpediente360>('datos');
   const [drawerFamiliasAbierto, setDrawerFamiliasAbierto] = useState(false);
   const [familiasVoluntarias, setFamiliasVoluntarias] = useState<any[]>([]);
+  const [errorVoluntarias, setErrorVoluntarias] = useState<string | null>(null);
   const [cargandoVoluntarias, setCargandoVoluntarias] = useState(false);
 
   // Filtros y estado de URL
@@ -460,15 +461,13 @@ export const MiembrosPage: React.FC = () => {
     }
     setDrawerFamiliasAbierto(true);
     setCargandoVoluntarias(true);
+    setErrorVoluntarias(null);
     try {
       const res = await api.get(`/legajos/colaboradores-adultos?cicloAnio=${cicloAnio}`);
       setFamiliasVoluntarias(res.data || []);
     } catch (err) {
       if (esErrorOffline(err)) return;
-      mostrarToast(
-        traducirErrorAmigable(err, 'No se pudieron cargar las familias voluntarias.'),
-        'error',
-      );
+      setErrorVoluntarias(traducirErrorAmigable(err, 'No se pudieron cargar las familias voluntarias.'));
     } finally {
       setCargandoVoluntarias(false);
     }
@@ -2504,6 +2503,17 @@ export const MiembrosPage: React.FC = () => {
           <div className="py-12 flex flex-col items-center justify-center gap-2 text-ink-muted">
             <Loader2 className="w-6 h-6 animate-spin text-brand" />
             <span className="text-sm font-semibold">Cargando familias voluntarias...</span>
+          </div>
+        ) : errorVoluntarias ? (
+          <div role="alert" className="py-12 text-center space-y-3">
+            <p className="text-sm sm:text-base font-semibold text-ink">{errorVoluntarias}</p>
+            <button
+              type="button"
+              onClick={() => void handleAbrirFamiliasVoluntarias()}
+              className="s-btn-sec min-h-[42px] px-4 py-2 rounded-xl text-sm font-bold cursor-pointer"
+            >
+              Reintentar
+            </button>
           </div>
         ) : familiasVoluntarias.length === 0 ? (
           <div className="py-12 text-center text-ink-muted space-y-2">

@@ -48,6 +48,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
 }) => {
   const [rubros, setRubros] = useState<RubroContableCompleto[]>([]);
   const [cargando, setCargando] = useState(false);
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<'TODOS' | 'EGRESO' | 'INGRESO'>(tipoFiltroInicial);
   const [busqueda, setBusqueda] = useState('');
 
@@ -82,10 +83,12 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
   const cargarRubros = useCallback(async () => {
     try {
       setCargando(true);
+      setErrorCarga(null);
       const res = await api.get('/tesoreria/rubros');
       setRubros(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error('Error al cargar rubros:', err);
+      setErrorCarga(traducirErrorAmigable(err, 'No se pudieron cargar las categorías.'));
     } finally {
       setCargando(false);
     }
@@ -276,6 +279,17 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
             {cargando ? (
               <div className="py-12 text-center text-sm font-semibold text-ink-muted animate-pulse">
                 Cargando categorías contables...
+              </div>
+            ) : errorCarga ? (
+              <div role="alert" className="py-10 text-center space-y-3">
+                <p className="text-sm font-bold text-ink">{errorCarga}</p>
+                <button
+                  type="button"
+                  onClick={() => void cargarRubros()}
+                  className="s-btn-sec min-h-[42px] px-4 py-2 rounded-xl text-sm font-bold cursor-pointer"
+                >
+                  Reintentar
+                </button>
               </div>
             ) : rubrosFiltrados.length === 0 ? (
               <div className="py-12 text-center space-y-2">

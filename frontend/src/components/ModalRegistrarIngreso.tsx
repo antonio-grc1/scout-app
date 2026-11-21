@@ -121,7 +121,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
         }
       }
     } catch {
-      // Ignorar error inicial
+      setError('No se pudieron cargar las categorías y cuentas. Cerrá y volvé a abrir el formulario para reintentar.');
     } finally {
       setCargandoDatos(false);
     }

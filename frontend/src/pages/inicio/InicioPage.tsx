@@ -626,7 +626,7 @@ export const InicioPage: React.FC = () => {
             </button>
           )}
 
-          {caps.esPropio && (
+          {(caps.esPropio || !caps.canViewMiembros) && (
             <Link
               to="/mi-espacio"
               className="s-btn-brand s-touch px-5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2"
@@ -707,8 +707,8 @@ export const InicioPage: React.FC = () => {
         </div>
       )}
 
-      {/* Checklist personal destacado para perfiles PROPIO */}
-      {caps.esPropio && (
+      {/* Checklist personal destacado para perfiles PROPIO y para quienes no ven el padrón */}
+      {(caps.esPropio || !caps.canViewMiembros) && (
         <section className="space-y-3">
           <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted px-0.5">
             Mi Checklist del Ciclo {ciclo}
