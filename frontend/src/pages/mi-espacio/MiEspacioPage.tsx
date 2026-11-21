@@ -1,4 +1,6 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { validarNuevaContrasena } from '../../lib/formValidation';
+import { BotonVerContrasena } from '../../components/ui/BotonVerContrasena';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
@@ -862,22 +864,14 @@ export const MiEspacioPage: React.FC = () => {
     const nueva = formClave.passwordNueva.trim();
     const confirmar = formClave.confirmar.trim();
 
-    if (nueva.length < 8) {
-      setAlertaClave({
-        tipo: 'error',
-        texto: 'La nueva contraseña debe tener al menos 8 caracteres.',
-      });
-      return;
-    }
-    if (nueva !== confirmar) {
-      setAlertaClave({ tipo: 'error', texto: 'Las contraseñas nuevas no coinciden.' });
-      return;
-    }
-    if (nueva === actual) {
-      setAlertaClave({
-        tipo: 'error',
-        texto: 'La nueva contraseña debe ser distinta de la actual.',
-      });
+    const errorClave = validarNuevaContrasena({
+      nueva,
+      repetir: confirmar,
+      actual,
+      dni: usuario?.dni,
+    });
+    if (errorClave) {
+      setAlertaClave({ tipo: 'error', texto: errorClave });
       return;
     }
 
@@ -2030,16 +2024,9 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormClave({ ...formClave, passwordActual: e.target.value })
                         }
-                        className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+                        className="s-input w-full min-h-[46px] pl-3.5 pr-12 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setVerActual((v) => !v)}
-                        aria-label="Mostrar u ocultar clave actual"
-                        className="absolute right-0.5 top-1/2 -translate-y-1/2 p-2.5 text-ink-muted hover:text-ink cursor-pointer"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <BotonVerContrasena visible={verActual} onToggle={() => setVerActual((x) => !x)} etiqueta="contraseña actual" />
                     </div>
                   </div>
 
@@ -2053,16 +2040,9 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormClave({ ...formClave, passwordNueva: e.target.value })
                         }
-                        className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+                        className="s-input w-full min-h-[46px] pl-3.5 pr-12 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setVerNueva((v) => !v)}
-                        aria-label="Mostrar u ocultar clave nueva"
-                        className="absolute right-0.5 top-1/2 -translate-y-1/2 p-2.5 text-ink-muted hover:text-ink cursor-pointer"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <BotonVerContrasena visible={verNueva} onToggle={() => setVerNueva((x) => !x)} etiqueta="nueva contraseña" />
                     </div>
                   </div>
 
@@ -2076,16 +2056,9 @@ export const MiEspacioPage: React.FC = () => {
                         onChange={(e) =>
                           setFormClave({ ...formClave, confirmar: e.target.value })
                         }
-                        className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+                        className="s-input w-full min-h-[46px] pl-3.5 pr-12 py-2.5 rounded-xl text-base sm:text-[15px]"
                       />
-                      <button
-                        type="button"
-                        onClick={() => setVerConfirmar((v) => !v)}
-                        aria-label="Mostrar u ocultar confirmación"
-                        className="absolute right-0.5 top-1/2 -translate-y-1/2 p-2.5 text-ink-muted hover:text-ink cursor-pointer"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
+                      <BotonVerContrasena visible={verConfirmar} onToggle={() => setVerConfirmar((x) => !x)} etiqueta="repetición de contraseña" />
                     </div>
                   </div>
                 </div>

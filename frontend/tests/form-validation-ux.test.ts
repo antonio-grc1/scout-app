@@ -407,3 +407,17 @@ describe('parsearMontoAR: montos escritos en formato argentino', () => {
     assert.equal(parsearMontoAR('1.50.0'), null);
   });
 });
+
+describe('validarNuevaContrasena (B7-06)', () => {
+  it('aplica las mismas reglas en Cambiar clave y Mi Perfil', async () => {
+    const { validarNuevaContrasena } = await vite.ssrLoadModule('/src/lib/formValidation.ts');
+    assert.match(validarNuevaContrasena({ nueva: 'corta', repetir: 'corta' }), /8 caracteres/);
+    assert.match(validarNuevaContrasena({ nueva: 'larguisima1', repetir: 'otra' }), /no coinciden/);
+    assert.match(validarNuevaContrasena({ nueva: '12345678', repetir: '12345678', dni: '12345678' }), /DNI/);
+    assert.match(
+      validarNuevaContrasena({ nueva: 'larguisima1', repetir: 'larguisima1', actual: 'larguisima1' }),
+      /distinta a la actual/,
+    );
+    assert.equal(validarNuevaContrasena({ nueva: 'larguisima1', repetir: 'larguisima1', actual: 'vieja' }), null);
+  });
+});

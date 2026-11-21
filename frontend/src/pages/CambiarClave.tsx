@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { validarNuevaContrasena } from '../lib/formValidation';
+import { BotonVerContrasena } from '../components/ui/BotonVerContrasena';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
@@ -7,7 +9,7 @@ import { traducirErrorAmigable } from '../lib/formatters';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { AppShell } from '../components/layout/AppShell';
 import { Button } from '../components/ui/Button';
-import { KeyRound, AlertCircle, Eye, EyeOff, CheckCircle2, ArrowLeft, Check } from 'lucide-react';
+import { KeyRound, AlertCircle, CheckCircle2, ArrowLeft, Check } from 'lucide-react';
 
 export const CambiarClave: React.FC = () => {
   const [claveActual, setClaveActual] = useState('');
@@ -69,16 +71,14 @@ export const CambiarClave: React.FC = () => {
       setError('Ingresá tu contraseña actual.');
       return;
     }
-    if (!reglaLargoOk) {
-      setError('La nueva contraseña debe tener al menos 8 caracteres.');
-      return;
-    }
-    if (!reglaCoincideOk) {
-      setError('Las contraseñas nuevas no coinciden.');
-      return;
-    }
-    if (!reglaDistintaOk) {
-      setError('La nueva contraseña debe ser distinta a tu DNI y contraseña actual.');
+    const errorClave = validarNuevaContrasena({
+      nueva,
+      repetir,
+      actual: requiereCambioClave ? undefined : actual,
+      dni: usuario?.dni,
+    });
+    if (errorClave) {
+      setError(errorClave);
       return;
     }
 
@@ -185,16 +185,9 @@ export const CambiarClave: React.FC = () => {
                   value={claveActual}
                   onChange={(e) => setClaveActual(e.target.value)}
                   placeholder="••••••••"
-                  className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+                  className="s-input w-full min-h-[46px] pl-3.5 pr-12 py-2.5 rounded-xl text-base sm:text-[15px]"
                 />
-                <button
-                  type="button"
-                  onClick={() => setMostrarActual((v) => !v)}
-                  aria-label={mostrarActual ? 'Ocultar contraseña actual' : 'Ver contraseña actual'}
-                  className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                >
-                  {mostrarActual ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+                <BotonVerContrasena visible={mostrarActual} onToggle={() => setMostrarActual((x) => !x)} etiqueta="contraseña actual" />
               </div>
             </div>
           )}
@@ -212,16 +205,9 @@ export const CambiarClave: React.FC = () => {
                 value={claveNueva}
                 onChange={(e) => setClaveNueva(e.target.value)}
                 placeholder="••••••••"
-                className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+                className="s-input w-full min-h-[46px] pl-3.5 pr-12 py-2.5 rounded-xl text-base sm:text-[15px]"
               />
-              <button
-                type="button"
-                onClick={() => setMostrarNueva((v) => !v)}
-                aria-label={mostrarNueva ? 'Ocultar nueva contraseña' : 'Ver nueva contraseña'}
-                className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
-              >
-                {mostrarNueva ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+              <BotonVerContrasena visible={mostrarNueva} onToggle={() => setMostrarNueva((x) => !x)} etiqueta="nueva contraseña" />
             </div>
           </div>
 
@@ -238,20 +224,9 @@ export const CambiarClave: React.FC = () => {
                 value={claveRepetir}
                 onChange={(e) => setClaveRepetir(e.target.value)}
                 placeholder="••••••••"
-                className="s-input w-full min-h-[46px] pl-3.5 pr-11 py-2.5 rounded-xl text-base sm:text-[15px]"
+                className="s-input w-full min-h-[46px] pl-3.5 pr-12 py-2.5 rounded-xl text-base sm:text-[15px]"
               />
-              <button
-                type="button"
-                onClick={() => setMostrarRepetir((v) => !v)}
-                aria-label={
-                  mostrarRepetir
-                    ? 'Ocultar repetición de contraseña'
-                    : 'Ver repetición de contraseña'
-                }
-                className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
-              >
-                {mostrarRepetir ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
+              <BotonVerContrasena visible={mostrarRepetir} onToggle={() => setMostrarRepetir((x) => !x)} etiqueta="repetición de contraseña" />
             </div>
           </div>
 

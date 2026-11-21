@@ -505,3 +505,8 @@ Lista por cada pestaña, modal o ventana. Los ítems ya cubiertos en B0–B7 se 
 > - **B2-25:** Cuadro de Resultados y Libro diario descartan respuestas viejas (id de solicitud). Quedan sin protección SelectorDestinatarios y el buscador Ctrl+K.
 > - **B2-36:** el KPI de gastos cuenta y suma solo no anulados y sigue a la búsqueda. La exportación de Caja no se revisó.
 > - **No hecho:** B2-21 (el router actual, `BrowserRouter`, no admite `useBlocker`; requiere pasar a router de datos), B7-15 (el caché offline depende de `localStorage` en varias lecturas síncronas; moverlo a IndexedDB necesita su propia sesión y pruebas offline).
+
+> **Paso 2 del plan (primitivos y duplicados) — estado:**
+> - **B7-06:** toggle de contraseña unificado en `ui/BotonVerContrasena` (Login, Cambiar clave y Mi Perfil: ícono según estado, `aria-pressed`, área ≥ 44px); reglas de contraseña nueva unificadas en `validarNuevaContrasena` (`lib/formValidation.ts`, con test), así Mi Perfil ahora también exige que no sea igual al DNI; `formatearFecha` de Trayectoria reutiliza la compartida. El de `generadorValeQR` es un formato largo distinto a propósito y se deja. `esVerdadero` ya estaba unificada en B7.
+> - **B7-14:** Pases deja de pedir `/pases/solicitudes` dos veces: `PasesPage` las pide una vez y se las pasa a `PanelPasesPorCamada`. La deduplicación de GET concurrentes del cliente ya existía. Verificado en el navegador: 1 petición de candidatos y 1 de solicitudes al entrar.
+> - **No hecho:** B7-03 (migración masiva a `ui/Button`, `ui/Input`, `ui/Select`; son cientos de usos y conviene hacerla por módulo, junto con el pulido de B8), B7-13 (código muerto: sigue esperando tu OK), Inicio/Tesorería/Expediente siguen bajando datos repetidos y no pasaron a react-query.

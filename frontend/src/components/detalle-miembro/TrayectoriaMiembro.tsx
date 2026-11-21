@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatearFecha as formatearFechaCompartida } from '../../lib/formatters';
 import { History, ChevronDown, Calendar, Clock } from 'lucide-react';
 import type { AsignacionHistorial } from '../../types/miembro';
 import { obtenerConfigRama } from '../../lib/ramaColors';
@@ -7,21 +8,9 @@ export interface TrayectoriaMiembroProps {
   asignaciones?: AsignacionHistorial[];
 }
 
-function formatearFecha(fechaStr?: string | null): string {
-  if (!fechaStr) return '';
-  try {
-    const d = new Date(fechaStr);
-    if (isNaN(d.getTime())) return '';
-    return d.toLocaleDateString('es-AR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
-  } catch {
-    return '';
-  }
-}
+// Vacío cuando no hay fecha (la versión compartida devuelve '-')
+const formatearFecha = (fechaStr?: string | null): string =>
+  fechaStr ? formatearFechaCompartida(fechaStr) : '';
 
 export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaciones = [] }) => {
   const [abierto, setAbierto] = useState(true);

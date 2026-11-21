@@ -623,3 +623,21 @@ export function limpiarDependenciasDesactivadas(
 
   return out;
 }
+
+/**
+ * Reglas únicas para definir una contraseña nueva (Cambiar clave obligatorio y Mi Perfil).
+ * Devuelve el mensaje del primer incumplimiento o null si es válida.
+ */
+export function validarNuevaContrasena(params: {
+  nueva: string;
+  repetir: string;
+  actual?: string;
+  dni?: string | null;
+}): string | null {
+  const { nueva, repetir, actual, dni } = params;
+  if (nueva.length < 8) return 'La nueva contraseña debe tener al menos 8 caracteres.';
+  if (nueva !== repetir) return 'Las contraseñas nuevas no coinciden.';
+  if (dni && nueva === dni) return 'La nueva contraseña debe ser distinta a tu DNI.';
+  if (actual && nueva === actual) return 'La nueva contraseña debe ser distinta a la actual.';
+  return null;
+}

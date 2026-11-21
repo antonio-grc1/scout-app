@@ -37,7 +37,8 @@ export const PasesPage: React.FC = () => {
 
   const [fechaReferencia, setFechaReferencia] = useState<string>(fechaCorteDefault);
   const [candidatos, setCandidatos] = useState<any[]>([]);
-  const [solicitudesCount, setSolicitudesCount] = useState<number>(0);
+  const [solicitudes, setSolicitudes] = useState<any[]>([]);
+  const solicitudesCount = solicitudes.length;
   const [unidades, setUnidades] = useState<any[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export const PasesPage: React.FC = () => {
       ]);
 
       setCandidatos(Array.isArray(resCandidatos.data) ? resCandidatos.data : []);
-      setSolicitudesCount(Array.isArray(resSolicitudes.data) ? resSolicitudes.data.length : 0);
+      setSolicitudes(Array.isArray(resSolicitudes.data) ? resSolicitudes.data : []);
       setUnidades(Array.isArray(resUnidades.data) ? resUnidades.data : []);
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudieron cargar los candidatos de pase.');
@@ -219,6 +220,7 @@ export const PasesPage: React.FC = () => {
       ) : error && candidatos.length === 0 ? null : (
         <PanelPasesPorCamada
           candidatos={candidatos}
+          solicitudes={solicitudes}
           unidades={unidades}
           onRecargar={cargarDatos}
           onToast={mostrarToast}

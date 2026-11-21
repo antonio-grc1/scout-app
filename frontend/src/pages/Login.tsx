@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { BotonVerContrasena } from '../components/ui/BotonVerContrasena';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
@@ -8,7 +9,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { BotonInstalarPwa } from '../components/BotonInstalarPwa';
 import { Button } from '../components/ui/Button';
 import { BrandLogo } from '../components/ui/BrandLogo';
-import { AlertCircle, CheckCircle2, Eye, EyeOff, Mail, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Mail, Clock } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [dni, setDni] = useState('');
@@ -300,14 +301,7 @@ export const Login: React.FC = () => {
                       placeholder="••••••••"
                       className="s-input w-full min-h-[48px] pl-4 pr-12 py-2.5 rounded-xl text-base"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setMostrarPassword((prev) => !prev)}
-                      aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
-                      className="absolute inset-y-0 right-0 px-3.5 flex items-center justify-center text-ink-muted hover:text-ink transition-colors cursor-pointer"
-                    >
-                      {mostrarPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                    <BotonVerContrasena visible={mostrarPassword} onToggle={() => setMostrarPassword((x) => !x)} etiqueta="contraseña" />
                   </div>
                   <p className="text-[13px] text-ink-muted mt-2 leading-snug">
                     Si ingresás por primera vez o te restablecieron el acceso, usá tu DNI inicial o la clave temporal recibida.

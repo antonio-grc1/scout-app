@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
 import { calcularCamada, traducirErrorAmigable } from '../lib/formatters';
@@ -10,6 +10,7 @@ import { PanelSolicitudesPase } from './PanelSolicitudesPase';
 
 interface Props {
   candidatos: any[];
+  solicitudes: any[];
   unidades: any[];
   onRecargar: () => Promise<void>;
   onToast: (texto: string, tipo?: 'exito' | 'error') => void;
@@ -18,6 +19,7 @@ interface Props {
 
 export const PanelPasesPorCamada: React.FC<Props> = ({
   candidatos,
+  solicitudes,
   unidades,
   onRecargar,
   onToast,
@@ -32,25 +34,11 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
   const puedeEjecutarEn = (g: { unidadActualId: number | null }) =>
     tienePermisoSobreUnidades(asignacionesActor, 'pases.editar', [g.unidadActualId]);
   const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
-  const [solicitudes, setSolicitudes] = useState<any[]>([]);
   const [destinoPorCamada, setDestinoPorCamada] = useState<Record<string, number>>({});
   const [destinoIndividual, setDestinoIndividual] = useState<Record<number, number>>({});
   const [ejecutandoCamadaKey, setEjecutandoCamadaKey] = useState<string | null>(null);
   const [ejecutandoPaseId, setEjecutandoPaseId] = useState<number | null>(null);
   const [camadaAConfirmar, setCamadaAConfirmar] = useState<(typeof gruposCamada)[number] | null>(null);
-
-  const cargarSolicitudes = async () => {
-    try {
-      const res = await api.get('/pases/solicitudes');
-      setSolicitudes(res.data || []);
-    } catch {
-      setSolicitudes([]);
-    }
-  };
-
-  useEffect(() => {
-    void cargarSolicitudes();
-  }, [candidatos]);
 
   const unidadSinRamaFallback = useMemo(
     () =>
@@ -190,7 +178,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
           `Camada ${grupo.camada} (${elegibles.length} miembro${elegibles.length === 1 ? '' : 's'}) pasó a ${destNombre}.`,
         );
       }
-      await Promise.all([onRecargar(), cargarSolicitudes()]);
+      await onRecargar();
     } catch (err) {
       onToast(traducirErrorAmigable(err, 'No se pudo ejecutar el pase de la camada.'), 'error');
     } finally {
@@ -223,7 +211,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
           ? `Solicitud de pase de ${c.usuario.nombre} ${c.usuario.apellido} enviada a ${destNombre}.`
           : `${c.usuario.nombre} ${c.usuario.apellido} pasó a ${destNombre}.`,
       );
-      await Promise.all([onRecargar(), cargarSolicitudes()]);
+      await onRecargar();
     } catch (err) {
       onToast(traducirErrorAmigable(err, 'No se pudo realizar el pase.'), 'error');
     } finally {
@@ -238,7 +226,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
         solicitudes={solicitudes}
         puedeEjecutar={puedeEjecutarPases}
         onResuelto={async () => {
-          await Promise.all([onRecargar(), cargarSolicitudes()]);
+          await onRecargar();
         }}
         onToast={onToast}
         onAbrirMiembro={onAbrirMiembro}
