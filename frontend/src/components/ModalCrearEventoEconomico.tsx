@@ -16,6 +16,7 @@ import { obtenerHoyLocalISO, sumarDiasLocalISO, traducirErrorAmigable } from '..
 import { Button } from './ui/Button';
 import { ModalConfirmacion } from './ModalConfirmacion';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { Input, Select } from './ui';
 
 export interface EventoAEditar {
   id: number;
@@ -431,31 +432,25 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
 
           {/* Tipo y Estado de Evento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block text-[13px] font-bold text-ink mb-1.5">Tipo de Evento:</label>
-              <select
-                value={tipo}
-                onChange={(e) => setTipo(e.target.value as any)}
-                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
-              >
-                <option value="RECAUDACION_PEDIDOS">Venta / Pedidos (Pizzas, Empanadas, Rosas, etc.)</option>
-                <option value="FESTIVAL_ENTRADAS">Festival / Cumpleaños / Entradas para evento</option>
-              </select>
-            </div>
+            <Select
+              label="Tipo de Evento:"
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value as any)}
+            >
+              <option value="RECAUDACION_PEDIDOS">Venta / Pedidos (Pizzas, Empanadas, Rosas, etc.)</option>
+              <option value="FESTIVAL_ENTRADAS">Festival / Cumpleaños / Entradas para evento</option>
+            </Select>
 
-            <div>
-              <label className="block text-[13px] font-bold text-ink mb-1.5">Estado de Publicación:</label>
-              <select
-                value={estado}
-                onChange={(e) => setEstado(e.target.value as any)}
-                className="w-full min-h-[46px] py-2.5 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
-              >
-                <option value="PUBLICADO">Publicado (Habilitado para vender)</option>
-                <option value="BORRADOR">Borrador (Oculto para familias)</option>
-                <option value="FINALIZADO">Finalizado (Cerrado)</option>
-                <option value="CANCELADO">Cancelado</option>
-              </select>
-            </div>
+            <Select
+              label="Estado de Publicación:"
+              value={estado}
+              onChange={(e) => setEstado(e.target.value as any)}
+            >
+              <option value="PUBLICADO">Publicado (Habilitado para vender)</option>
+              <option value="BORRADOR">Borrador (Oculto para familias)</option>
+              <option value="FINALIZADO">Finalizado (Cerrado)</option>
+              <option value="CANCELADO">Cancelado</option>
+            </Select>
           </div>
 
           {/* Título y Descripción */}
@@ -635,35 +630,27 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                         />
                       </div>
 
-                      <div>
-                        <label className="block text-xs font-bold text-ink-muted mb-1">
-                          Costo Unitario ($)
-                        </label>
-                        <input
-                          type="number"
-                          step="1"
-                          min="0"
-                          value={it.costoUnitario}
-                          onChange={(e) => actualizarItem(idx, 'costoUnitario', e.target.value)}
-                          placeholder="0"
-                          className="w-full min-h-[40px] py-1.5 px-2.5 rounded-xl bg-surface border border-rule text-sm text-ink"
-                        />
-                      </div>
+                      <Input
+                        label="Costo Unitario ($)"
+                        className="min-h-[40px] py-1.5 px-2.5 text-sm sm:text-sm"
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={it.costoUnitario}
+                        onChange={(e) => actualizarItem(idx, 'costoUnitario', e.target.value)}
+                        placeholder="0"
+                      />
 
-                      <div>
-                        <label className="block text-xs font-bold text-ink-muted mb-1">
-                          Ganancia Scout ($)
-                        </label>
-                        <input
-                          type="number"
-                          step="1"
-                          min="0"
-                          value={gananciaVal}
-                          onChange={(e) => actualizarItem(idx, 'gananciaUnitaria', e.target.value)}
-                          placeholder="0"
-                          className="w-full min-h-[40px] py-1.5 px-2.5 rounded-xl bg-surface border border-rule text-sm font-black text-emerald-600 dark:text-emerald-400"
-                        />
-                      </div>
+                      <Input
+                        label="Ganancia Scout ($)"
+                        className="min-h-[40px] py-1.5 px-2.5 text-sm sm:text-sm"
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={gananciaVal}
+                        onChange={(e) => actualizarItem(idx, 'gananciaUnitaria', e.target.value)}
+                        placeholder="0"
+                      />
                     </div>
                   </div>
                 );

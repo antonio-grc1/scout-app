@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Download, Smartphone, Share, MoreVertical, PlusSquare, CheckCircle2, X } from 'lucide-react';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { Button } from './ui';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -100,15 +101,16 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
   return (
     <>
       {variante === 'navbar' ? (
-        <button
+        <Button
           type="button"
           onClick={handleClickInstalar}
           title="Instalar la App en este dispositivo"
-          className="min-h-[42px] px-3.5 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm flex items-center gap-2 shadow-2xs transition-colors cursor-pointer shrink-0"
+          size="sm"
+          className="shrink-0"
         >
           <Download className="w-4 h-4 shrink-0" />
           <span className="hidden md:inline">Instalar App</span>
-        </button>
+        </Button>
       ) : (
         <div className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
           <div className="flex items-center gap-3.5">
@@ -124,14 +126,14 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
               </p>
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={handleClickInstalar}
-            className="min-h-[46px] px-5 py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer shrink-0"
+            className="shrink-0"
           >
             <Download className="w-4 h-4" />
             <span>Instalar App</span>
-          </button>
+          </Button>
         </div>
       )}
 
@@ -236,13 +238,13 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                   </span>
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={() => setModalGuiaAbierto(false)}
-                  className="w-full min-h-[46px] py-2.5 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-bold text-sm transition-colors cursor-pointer"
+                  className="w-full"
                 >
                   Entendido
-                </button>
+                </Button>
               </div>
             </div>
           </div>,

@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   FileText,
 } from 'lucide-react';
+import { Button } from './ui';
 
 // Asignar el worker de PDF.js directamente en memoria en el hilo principal
 // para que funcione 100% offline sin hacer ninguna petición HTTP de red
@@ -310,16 +311,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           </a>
 
           {onDescargar && (
-            <button
+            <Button
               type="button"
               onClick={onDescargar}
               aria-label="Descargar PDF"
               title="Descargar PDF"
-              className="min-h-[40px] px-4 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast font-extrabold text-[13px] flex items-center gap-1.5 transition-colors cursor-pointer"
+              size="sm"
             >
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Descargar</span>
-            </button>
+            </Button>
           )}
 
           {!embedded && onCerrar && (
@@ -351,13 +352,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
             <AlertTriangle className="w-8 h-8 text-brand" />
             <p className="text-sm font-bold text-ink">{error}</p>
             {onDescargar && (
-              <button
+              <Button
                 type="button"
                 onClick={onDescargar}
-                className="min-h-[42px] px-4 py-2 rounded-xl bg-brand hover:opacity-90 active:opacity-100 text-brand-contrast text-sm font-extrabold cursor-pointer transition-colors"
+                size="sm"
               >
                 Descargar PDF
-              </button>
+              </Button>
             )}
           </div>
         ) : (

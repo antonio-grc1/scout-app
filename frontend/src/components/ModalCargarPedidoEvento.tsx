@@ -20,6 +20,7 @@ import { useToastStore, mostrarToastConDeshacer } from '../store/toastStore';
 import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { useModalOverlay } from '../hooks/useModalOverlay';
+import { Input } from './ui';
 
 export interface PedidoAEditar {
   id: number;
@@ -732,16 +733,13 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           </div>
 
           {/* Observaciones */}
-          <div>
-            <label className="block text-[13px] font-bold text-ink mb-1.5">Observaciones / Aclaraciones</label>
-            <input
-              type="text"
-              value={observaciones}
-              onChange={(e) => setObservaciones(e.target.value)}
-              placeholder="Aclaraciones u observaciones"
-              className="w-full min-h-[44px] py-2 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
-            />
-          </div>
+          <Input
+            label="Observaciones / Aclaraciones"
+            type="text"
+            value={observaciones}
+            onChange={(e) => setObservaciones(e.target.value)}
+            placeholder="Aclaraciones u observaciones"
+          />
 
           {/* Cobro en el momento (solo con alcance global y fuera de autogestión) */}
           {puedeImputarCuenta && (

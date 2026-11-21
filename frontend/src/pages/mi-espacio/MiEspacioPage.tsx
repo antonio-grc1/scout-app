@@ -50,7 +50,7 @@ import { DynamicFormRenderer, type EsquemaCampos } from '../../components/Dynami
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR } from '../../components/ModalTicketQR';
 import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
-import { Drawer, KpiCard, SegmentedTabs, type SegmentedTabItem } from '../../components/ui';
+import { Drawer, KpiCard, SegmentedTabs, type SegmentedTabItem, Input } from '../../components/ui';
 import { obtenerConfigRama } from '../../lib/ramaColors';
 import {
   ESTADO_CARGO_CONFIG,
@@ -1871,104 +1871,80 @@ export const MiEspacioPage: React.FC = () => {
 
                   {(edadPerfil === null || edadPerfil < 18) && (
                   <>
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Madre: Nombre Completo</label>
-                    <input
-                      type="text"
-                      value={formContacto.madreNombres}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, madreNombres: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Madre: Nombre Completo"
+                    type="text"
+                    value={formContacto.madreNombres}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, madreNombres: e.target.value })
+                    }
+                  />
 
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Madre: Teléfono</label>
-                    <input
-                      type="tel"
-                      value={formContacto.madreTelefono}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, madreTelefono: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Madre: Teléfono"
+                    type="tel"
+                    value={formContacto.madreTelefono}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, madreTelefono: e.target.value })
+                    }
+                  />
 
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Padre: Nombre Completo</label>
-                    <input
-                      type="text"
-                      value={formContacto.padreNombres}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, padreNombres: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Padre: Nombre Completo"
+                    type="text"
+                    value={formContacto.padreNombres}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, padreNombres: e.target.value })
+                    }
+                  />
 
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Padre: Teléfono</label>
-                    <input
-                      type="tel"
-                      value={formContacto.padreTelefono}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, padreTelefono: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Padre: Teléfono"
+                    type="tel"
+                    value={formContacto.padreTelefono}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, padreTelefono: e.target.value })
+                    }
+                  />
 
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Tutor/a Legal: Nombre</label>
-                    <input
-                      type="text"
-                      value={formContacto.tutorNombres}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, tutorNombres: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Tutor/a Legal: Nombre"
+                    type="text"
+                    value={formContacto.tutorNombres}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, tutorNombres: e.target.value })
+                    }
+                  />
 
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Tutor/a Legal: Teléfono</label>
-                    <input
-                      type="tel"
-                      value={formContacto.tutorTelefono}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, tutorTelefono: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Tutor/a Legal: Teléfono"
+                    type="tel"
+                    value={formContacto.tutorTelefono}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, tutorTelefono: e.target.value })
+                    }
+                  />
                   </>
                   )}
 
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Teléfono de Urgencias</label>
-                    <input
-                      type="tel"
-                      placeholder="Teléfono fijo o pariente cercano"
-                      value={formContacto.telefonoUrgencias}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, telefonoUrgencias: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Teléfono de Urgencias"
+                    type="tel"
+                    placeholder="Teléfono fijo o pariente cercano"
+                    value={formContacto.telefonoUrgencias}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, telefonoUrgencias: e.target.value })
+                    }
+                  />
 
-                  <div>
-                    <label className="block text-ink font-bold mb-1.5">Obra Social / Prepaga</label>
-                    <input
-                      type="text"
-                      value={formContacto.obraSocial}
-                      onChange={(e) =>
-                        setFormContacto({ ...formContacto, obraSocial: e.target.value })
-                      }
-                      className="s-input w-full min-h-[46px] px-3.5 py-2.5 rounded-xl text-base sm:text-[15px]"
-                    />
-                  </div>
+                  <Input
+                    label="Obra Social / Prepaga"
+                    type="text"
+                    value={formContacto.obraSocial}
+                    onChange={(e) =>
+                    setFormContacto({ ...formContacto, obraSocial: e.target.value })
+                    }
+                  />
 
                   <div className="sm:col-span-2">
                     <label className="block text-ink font-bold mb-1.5">Domicilio</label>
