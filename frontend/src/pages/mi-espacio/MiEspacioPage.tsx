@@ -39,6 +39,7 @@ import {
   type BorradorLegajoLocal,
 } from '../../core/offline/campamentoSync';
 import { useAuthStore } from '../../store/authStore';
+import { useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
 import { useCapabilities } from '../../core/capabilities';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
@@ -56,6 +57,7 @@ import {
   esErrorOffline,
   filtrarPlantillasParaMiembro,
   formatearFechaLargaUTC,
+  formatearFecha,
   formatearMoneda,
   obtenerCicloAnioActual,
   obtenerRolPrincipal,
@@ -66,6 +68,7 @@ import {
   crearUrlPdfBlob,
   descargarPdfBlob,
   generarFichaPdf,
+  PREFIJO_HASH_BORRADOR,
   type MapeoPdf,
 } from '../../services/pdfGenerator';
 
@@ -118,6 +121,8 @@ export const MiEspacioPage: React.FC = () => {
   const cambiarTab = (nuevoTab: TabMiEspacio) => {
     if (nuevoTab === tabActiva) return;
     if (tabActiva === 'legajo' && formDirty && !confirmarDescartarCambios()) return;
+    // Al salir del legajo (ya confirmado) los cambios se descartan: no seguir marcándolo sucio.
+    if (tabActiva === 'legajo') setFormDirty(false);
     setTabActiva(nuevoTab);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
@@ -139,12 +144,21 @@ export const MiEspacioPage: React.FC = () => {
   const [borradorLocal, setBorradorLocal] = useState<BorradorLegajoLocal | null>(null);
   const [sincronizandoBorrador, setSincronizandoBorrador] = useState(false);
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
+  const [estadoCuentaEstado, setEstadoCuentaEstado] = useState<'cargando' | 'ok' | 'error'>(
+    'cargando',
+  );
   const [cargandoInicial, setCargandoInicial] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [guardandoLegajo, setGuardandoLegajo] = useState(false);
   const [generandoVistaPrevia, setGenerandoVistaPrevia] = useState(false);
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [formDirty, setFormDirty] = useState(false);
+  const setCambiosPendientes = useCambiosSinGuardarStore((s) => s.setPendiente);
+  // Publica los cambios sin guardar del legajo para que la navegación del AppShell confirme antes de salir.
+  useEffect(() => {
+    setCambiosPendientes(formDirty && tabActiva === 'legajo');
+    return () => setCambiosPendientes(false);
+  }, [formDirty, tabActiva, setCambiosPendientes]);
   const [formResetNonce, setFormResetNonce] = useState(0);
   const [cambiandoDocumentoId, setCambiandoDocumentoId] = useState<number | null>(null);
   const obtenerValoresRef = useRef<(() => Record<string, unknown>) | null>(null);
@@ -283,10 +297,15 @@ export const MiEspacioPage: React.FC = () => {
     setErrorCarga(null);
 
     try {
+      // Estado propio para la cuenta: si falla, no se puede mostrar "Cuotas al día".
+      setEstadoCuentaEstado('cargando');
       api
         .get(`/tesoreria/estado-cuenta/${targetUserId}`)
-        .then((res) => setEstadoCuenta(res.data))
-        .catch(() => {});
+        .then((res) => {
+          setEstadoCuenta(res.data);
+          setEstadoCuentaEstado('ok');
+        })
+        .catch(() => setEstadoCuentaEstado('error'));
 
       const [resPlantillas, resMiembro, resEntregas] = await Promise.all([
         api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({
@@ -405,6 +424,19 @@ export const MiEspacioPage: React.FC = () => {
     }
   }, []);
 
+  const recargarEstadoCuenta = async () => {
+    const id = precarga?.usuario?.id || usuario?.id;
+    if (!id) return;
+    setEstadoCuentaEstado('cargando');
+    try {
+      const res = await api.get(`/tesoreria/estado-cuenta/${id}`);
+      setEstadoCuenta(res.data);
+      setEstadoCuentaEstado('ok');
+    } catch {
+      setEstadoCuentaEstado('error');
+    }
+  };
+
   const cargarPerfil = useCallback(async () => {
     setCargandoPerfil(true);
     try {
@@ -505,10 +537,16 @@ export const MiEspacioPage: React.FC = () => {
       entrega?.respuestasSnapshotJson ||
       valoresFormularioIniciales;
 
+    // El QR oficial solo va en un PDF idéntico a la entrega guardada; con cambios sin guardar
+    // o sin entrega finalizada se usa un hash BORRADOR (marca de agua, QR no válido).
+    const usarHashOficial =
+      Boolean(entrega?.hashVerificacion) && entrega?.estado !== 'BORRADOR' && !formDirty;
     return await generarFichaPdf(
       mapeo,
       respuestas,
-      entrega?.hashVerificacion || `FICHA-${usuarioParaPdf.dni}-${obtenerCicloAnioActual()}`,
+      usarHashOficial
+        ? entrega.hashVerificacion
+        : `${PREFIJO_HASH_BORRADOR}${usuarioParaPdf.dni}-${obtenerCicloAnioActual()}`,
       usuarioParaPdf,
       entrega?.versionImpresion || 1,
       plantillaSeleccionada?.esquemaCamposJson,
@@ -703,22 +741,33 @@ export const MiEspacioPage: React.FC = () => {
       const entrega = res.data;
 
       if (finalizarParaFirma && entrega.hashVerificacion) {
-        const mapeo: MapeoPdf = plantillaSeleccionada.mapeoPdfJson || { pdfBaseUrl: '', campos: {} };
-        const usuarioParaPdf = obtenerDatosUsuarioPdf();
-        const pdfBytes = await generarFichaPdf(
-          mapeo,
-          datos,
-          entrega.hashVerificacion,
-          usuarioParaPdf,
-          entrega.versionImpresion,
-          plantillaSeleccionada.esquemaCamposJson,
-        );
-        descargarPdfBlob(pdfBytes, `Ficha_${usuarioParaPdf.apellido}_${usuarioParaPdf.nombre}.pdf`);
-        mostrarToast('¡Listo! Imprimí y entregá el papel firmado a tu educador.', 'exito');
+        // La ficha ya quedó guardada: un fallo del PDF no debe informarse como fallo de guardado.
+        try {
+          const mapeo: MapeoPdf = plantillaSeleccionada.mapeoPdfJson || { pdfBaseUrl: '', campos: {} };
+          const usuarioParaPdf = obtenerDatosUsuarioPdf();
+          const pdfBytes = await generarFichaPdf(
+            mapeo,
+            datos,
+            entrega.hashVerificacion,
+            usuarioParaPdf,
+            entrega.versionImpresion,
+            plantillaSeleccionada.esquemaCamposJson,
+          );
+          descargarPdfBlob(pdfBytes, `Ficha_${usuarioParaPdf.apellido}_${usuarioParaPdf.nombre}.pdf`);
+          mostrarToast('¡Listo! Imprimí y entregá el papel firmado a tu educador.', 'exito');
+        } catch {
+          mostrarToast(
+            'Tu ficha se guardó, pero no se pudo generar el PDF. Reintentá con "Descargar PDF".',
+            'advertencia',
+          );
+        }
       } else {
         mostrarToast('Avance guardado.', 'exito');
       }
 
+      // Guardar el legajo puede actualizar datos fijos (teléfonos, domicilio): invalidar el perfil
+      // cacheado para que "Guardar contacto" no pise los datos nuevos con los viejos.
+      setPerfil(null);
       await inicializarMiEspacio({ silencioso: true });
     } catch (err) {
       if (esErrorOffline(err)) {
@@ -747,6 +796,14 @@ export const MiEspacioPage: React.FC = () => {
 
   const handleGuardarContacto = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Si el perfil no cargó, el formulario está vacío: guardar borraría los teléfonos reales.
+    if (!perfil) {
+      setAlertaContacto({
+        tipo: 'error',
+        texto: 'No pudimos cargar tus datos actuales. Reintentá antes de guardar.',
+      });
+      return;
+    }
     if (!isOnline) {
       mostrarToast(
         'Sin conexión. Recuperá señal para actualizar tus datos de contacto.',
@@ -779,6 +836,8 @@ export const MiEspacioPage: React.FC = () => {
         texto: 'Tus datos de contacto y teléfonos fueron actualizados.',
       });
       mostrarToast('Datos de contacto guardados.', 'exito');
+      // Refrescar la precarga del legajo, que se arma con estos mismos datos fijos.
+      void inicializarMiEspacio({ silencioso: true });
     } catch (err) {
       setAlertaContacto({
         tipo: 'error',
@@ -1074,7 +1133,7 @@ export const MiEspacioPage: React.FC = () => {
                           )}
                           <span className="text-[13px] truncate max-w-[220px]">{p.titulo}</span>
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${
+                            className={`px-2 py-0.5 rounded-full text-xs font-bold border whitespace-nowrap ${
                               activa ? 'bg-surface text-ink border-transparent' : estCfg.badgeClass
                             }`}
                           >
@@ -1110,7 +1169,11 @@ export const MiEspacioPage: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-rule pb-3.5">
             <span className="text-base font-extrabold text-ink">Estado de Cuenta Personal</span>
             <div className="flex items-center gap-2 flex-wrap">
-              {cargandoInicial ? (
+              {estadoCuentaEstado === 'error' ? (
+                <span className="px-3 py-1 rounded-xl text-[13px] font-extrabold s-badge-warn whitespace-nowrap shrink-0">
+                  Sin datos de cuotas
+                </span>
+              ) : cargandoInicial || estadoCuentaEstado === 'cargando' ? (
                 <div className="h-6 w-28 rounded-lg bg-paper-3 animate-pulse" />
               ) : (
                 <>
@@ -1134,7 +1197,23 @@ export const MiEspacioPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {cargandoInicial ? (
+            {estadoCuentaEstado === 'error' ? (
+              <div
+                role="alert"
+                className="col-span-full s-badge-warn rounded-xl p-4 flex items-center justify-between gap-3 flex-wrap"
+              >
+                <span className="text-sm font-semibold">
+                  No pudimos consultar tus cuotas. No es que estés al día: reintentá en un momento.
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void recargarEstadoCuenta()}
+                  className="s-btn-sec s-touch px-4 py-2 rounded-xl text-sm font-bold cursor-pointer"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : cargandoInicial || estadoCuentaEstado === 'cargando' ? (
               Array.from({ length: 2 }).map((_, idx) => (
                 <div
                   key={`skel-cuota-${idx}`}
@@ -1208,7 +1287,7 @@ export const MiEspacioPage: React.FC = () => {
                       <div className="min-w-0">
                         <span className="font-bold text-ink block truncate">{conceptosTexto}</span>
                         <span className="text-xs text-ink-muted">
-                          {new Date(pago.fechaPago).toLocaleDateString('es-AR')} ·{' '}
+                          {formatearFecha(pago.fechaPago)} ·{' '}
                           {METODO_PAGO_LABELS[pago.metodoPago] || 'Efectivo'}
                         </span>
                       </div>
@@ -1626,6 +1705,23 @@ export const MiEspacioPage: React.FC = () => {
             </div>
           ) : (
             <>
+              {!perfil && (
+                <div
+                  role="alert"
+                  className="s-badge-err rounded-2xl p-4 flex items-center justify-between gap-3 flex-wrap"
+                >
+                  <span className="text-sm font-semibold">
+                    No pudimos cargar tu perfil. Tus datos no se muestran ni se pueden guardar hasta reintentar.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void cargarPerfil()}
+                    className="s-btn-sec s-touch px-4 py-2 rounded-xl text-sm font-bold cursor-pointer"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
               {/* Identidad y asignaciones activas */}
               <div className="s-card rounded-2xl p-5 sm:p-6 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1869,7 +1965,7 @@ export const MiEspacioPage: React.FC = () => {
                 <div className="flex justify-end pt-1">
                   <button
                     type="submit"
-                    disabled={guardandoContacto}
+                    disabled={guardandoContacto || !perfil}
                     className="s-btn-brand s-touch px-5 py-2.5 rounded-xl text-sm inline-flex items-center gap-2 cursor-pointer disabled:opacity-50"
                   >
                     {guardandoContacto ? (

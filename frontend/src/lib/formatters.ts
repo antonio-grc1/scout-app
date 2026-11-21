@@ -129,6 +129,29 @@ export function formatearMoneda(valor: number | string | null | undefined): stri
   });
 }
 
+/**
+ * Interpreta un monto escrito a mano en formato argentino o "de computadora".
+ *  - "1.500" → 1500 (punto como separador de miles, grupos de 3)
+ *  - "1.500,50" / "1500,5" → 1500.5 (coma decimal)
+ *  - "1500.5" / "12.34" → decimal con punto (no son grupos de miles)
+ * Devuelve null si no es un número válido.
+ */
+export function parsearMontoAR(texto: string | null | undefined): number | null {
+  const t = String(texto ?? '').replace(/[\s$]/g, '');
+  if (!t) return null;
+  let normalizado: string;
+  if (t.includes(',')) {
+    normalizado = t.replace(/\./g, '').replace(',', '.');
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) {
+    normalizado = t.replace(/\./g, '');
+  } else {
+    normalizado = t;
+  }
+  if (!/^-?\d+(\.\d+)?$/.test(normalizado)) return null;
+  const n = Number(normalizado);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function obtenerHoyLocalISO(fecha: Date = new Date()): string {
   const y = fecha.getFullYear();
   const m = String(fecha.getMonth() + 1).padStart(2, '0');

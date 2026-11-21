@@ -1172,7 +1172,7 @@ export const LegajosPage: React.FC = () => {
                               {badge.label}
                             </span>
                             {totalAplicables > 1 && (
-                              <span className="px-2 py-0.5 rounded-full bg-paper-2 border border-rule text-[11px] font-bold text-ink-2 s-tabular">
+                              <span className="px-2 py-0.5 rounded-full bg-paper-2 border border-rule text-xs font-bold text-ink-2 s-tabular">
                                 {completadasCount}/{totalAplicables} docs
                               </span>
                             )}

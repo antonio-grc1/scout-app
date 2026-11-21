@@ -2281,12 +2281,16 @@ export const MiembrosPage: React.FC = () => {
                           abrirMiembro(m.id, 'ficha');
                         }}
                       >
+                        {/* Sin permiso de legajos las entregas no se cargan: mostrar "Sin ficha"
+                            para todos sería información falsa. */}
+                        {!puedeVerFichas ? (
+                          <span className="text-xs text-ink-muted" title="Sin acceso a legajos">
+                            —
+                          </span>
+                        ) : (
                         <button
                           type="button"
-                          disabled={!puedeVerFichas}
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap shrink-0 ${
-                            puedeVerFichas ? 'cursor-pointer' : 'cursor-default'
-                          } ${cfgFicha.badgeClass}`}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap shrink-0 cursor-pointer ${cfgFicha.badgeClass}`}
                         >
                           {entrega?.estado === 'VALIDADO_FISICAMENTE' ? (
                             <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
@@ -2297,6 +2301,7 @@ export const MiembrosPage: React.FC = () => {
                           )}
                           <span>{cfgFicha.shortLabel}</span>
                         </button>
+                        )}
                       </td>
 
                       <td className="py-4 px-4 text-right" onClick={(e) => e.stopPropagation()}>

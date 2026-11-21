@@ -162,7 +162,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
             )}
             <span>{cfgFicha.shortLabel}</span>
           </button>
-        ) : (
+        ) : !puedeVerFicha ? null : (
           <div
             className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-bold border ${cfgFicha.badgeClass}`}
           >

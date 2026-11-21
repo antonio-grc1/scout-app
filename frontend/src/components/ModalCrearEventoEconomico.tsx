@@ -253,6 +253,22 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
       return;
     }
 
+    // La ganancia que se acredita al scout no puede superar lo que se cobra por unidad.
+    const productoConGananciaExcesiva = productosBloqueados
+      ? undefined
+      : items.find(
+          (it) =>
+            it.gananciaUnitaria !== undefined &&
+            it.gananciaUnitaria !== '' &&
+            Number(it.gananciaUnitaria) > Number(it.precioVenta),
+        );
+    if (productoConGananciaExcesiva) {
+      setError(
+        `La ganancia de "${productoConGananciaExcesiva.nombre.trim()}" no puede ser mayor que su precio de venta.`,
+      );
+      return;
+    }
+
     setGuardando(true);
     try {
       const itemsPayload = items.map((it) => {

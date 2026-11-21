@@ -346,7 +346,7 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                             {infoMedica.alergiasLabels.map((lbl) => (
                               <span
                                 key={lbl}
-                                className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[11px] font-bold"
+                                className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-xs font-bold"
                               >
                                 {lbl}
                               </span>
@@ -369,14 +369,14 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                         </div>
                         {infoMedica.tomaMedicacion && (
                           <div className="space-y-1">
-                            <span className="text-[11px] font-bold uppercase text-ink-muted block">
+                            <span className="text-xs font-bold uppercase text-ink-muted block">
                               Medicación
                             </span>
                             <div className="flex flex-wrap gap-1">
                               {infoMedica.medicacionLabels.map((lbl) => (
                                 <span
                                   key={lbl}
-                                  className="px-2 py-0.5 rounded-md bg-brand text-brand-contrast text-[11px] font-bold"
+                                  className="px-2 py-0.5 rounded-md bg-brand text-brand-contrast text-xs font-bold"
                                 >
                                   {lbl}
                                 </span>
@@ -391,14 +391,14 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
                         )}
                         {infoMedica.tieneCondicionCronica && (
                           <div className="space-y-1">
-                            <span className="text-[11px] font-bold uppercase text-ink-muted block">
+                            <span className="text-xs font-bold uppercase text-ink-muted block">
                               Condición crónica
                             </span>
                             <div className="flex flex-wrap gap-1">
                               {infoMedica.condicionesLabels.map((lbl) => (
                                 <span
                                   key={lbl}
-                                  className="px-2 py-0.5 rounded-md bg-surface border border-rule text-ink text-[11px] font-bold"
+                                  className="px-2 py-0.5 rounded-md bg-surface border border-rule text-ink text-xs font-bold"
                                 >
                                   {lbl}
                                 </span>

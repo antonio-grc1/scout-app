@@ -35,6 +35,7 @@ import {
   NOMBRES_MESES_CORTOS,
   NOMBRES_MESES_LARGOS,
   esErrorOffline,
+  formatearFecha,
   formatearMoneda,
   normalizarTextoBusqueda,
   obtenerRolPrincipal,
@@ -623,7 +624,7 @@ export const TesoreriaPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-5 s-anim-fade-up">
+    <div className="space-y-4 sm:space-y-5 s-anim-view">
       {/* Cabecera de módulo + SegmentedTabs por capacidades */}
       <section className="s-card rounded-2xl p-5 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1219,7 +1220,7 @@ export const TesoreriaPage: React.FC = () => {
                         <div className="flex items-center gap-1.5 text-xs text-brand font-semibold">
                           <Calendar className="w-3.5 h-3.5" />
                           <span>
-                            Vence: {new Date(con.fechaVencimiento).toLocaleDateString('es-AR')}
+                            Vence: {formatearFecha(con.fechaVencimiento)}
                           </span>
                         </div>
                       )}

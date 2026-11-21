@@ -20,6 +20,8 @@ export interface PanelConfiguracionCorreoProps {
 
 export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> = ({ onToast }) => {
   const [cargando, setCargando] = useState(true);
+  // Si la carga falla no se muestra el formulario: guardarlo vacío borraría la configuración SMTP real.
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [probando, setProbando] = useState(false);
 
@@ -39,6 +41,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
 
   const cargarConfig = async () => {
     setCargando(true);
+    setErrorCarga(null);
     try {
       const res = await api.get<ConfiguracionCorreo>('/configuracion/correo');
       const d = res.data;
@@ -52,7 +55,9 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
       setAppUrl(d.appUrl || (typeof window !== 'undefined' ? window.location.origin : ''));
       setFuente(d.fuente || 'sin_configurar');
     } catch (err: any) {
-      onToast(traducirErrorAmigable(err, 'No se pudo cargar la configuración de correo.'), 'error');
+      const msg = traducirErrorAmigable(err, 'No se pudo cargar la configuración de correo.');
+      setErrorCarga(msg);
+      onToast(msg, 'error');
     } finally {
       setCargando(false);
     }
@@ -133,6 +138,26 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
       <div className="bg-surface rounded-2xl border border-rule p-8 flex items-center justify-center gap-2 text-sm text-ink-muted">
         <Loader2 className="w-5 h-5 animate-spin text-brand" />
         <span>Cargando configuración de correo...</span>
+      </div>
+    );
+  }
+
+  if (errorCarga) {
+    return (
+      <div
+        role="alert"
+        className="s-badge-err rounded-2xl p-5 flex items-center justify-between gap-3 flex-wrap"
+      >
+        <span className="text-sm font-semibold">
+          {errorCarga} Para no sobrescribir la configuración guardada, el formulario no se muestra.
+        </span>
+        <button
+          type="button"
+          onClick={() => void cargarConfig()}
+          className="s-btn-sec s-touch px-4 py-2 rounded-xl text-sm font-bold cursor-pointer"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }

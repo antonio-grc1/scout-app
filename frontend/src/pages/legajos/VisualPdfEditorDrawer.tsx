@@ -1522,7 +1522,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                               Importar {validacionAcro.sinPreguntaEnFormulario.length} faltante(s)
                             </Button>
                           ) : (
-                            <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-300">
+                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-300">
                               Todos vinculados ✓
                             </span>
                           )}
@@ -1612,7 +1612,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                             className="s-input w-full rounded-xl px-3 py-2 text-sm resize-y"
                           />
                           <div className="space-y-1">
-                            <span className="text-[11px] font-bold text-ink-muted block">
+                            <span className="text-xs font-bold text-ink-muted block">
                               Tocá para insertar datos automáticos del miembro en el texto:
                             </span>
                             <div className="flex flex-wrap gap-1">
@@ -1621,7 +1621,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                                   key={v.key}
                                   type="button"
                                   onClick={() => handleInsertarVariableLegal(v.key)}
-                                  className="px-2 py-0.5 rounded-md bg-paper-2 hover:bg-brand/15 border border-rule text-[11px] font-semibold text-ink-2 hover:text-brand cursor-pointer transition"
+                                  className="px-2 py-0.5 rounded-md bg-paper-2 hover:bg-brand/15 border border-rule text-xs font-semibold text-ink-2 hover:text-brand cursor-pointer transition"
                                 >
                                   + {v.label}
                                 </button>
@@ -1631,7 +1631,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                                   key={`var_${c.key}`}
                                   type="button"
                                   onClick={() => handleInsertarVariableLegal(c.key)}
-                                  className="px-2 py-0.5 rounded-md bg-brand/5 hover:bg-brand/15 border border-brand/30 text-[11px] font-semibold text-brand cursor-pointer transition"
+                                  className="px-2 py-0.5 rounded-md bg-brand/5 hover:bg-brand/15 border border-brand/30 text-xs font-semibold text-brand cursor-pointer transition"
                                 >
                                   + {c.label.slice(0, 22)}
                                 </button>
@@ -1768,7 +1768,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                       >
                         <div className="min-w-0 flex-1">
                           <div className="font-bold text-ink truncate">{campo.label}</div>
-                          <div className="text-[11px] text-ink-muted flex items-center gap-2 flex-wrap">
+                          <div className="text-xs text-ink-muted flex items-center gap-2 flex-wrap">
                             <span>{tipoFriendly}</span>
                             {campo.categoriaMedica && (
                               <span className="text-brand font-bold">

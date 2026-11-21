@@ -386,11 +386,11 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                           </div>
                           <div className="text-[13px] text-ink-muted mt-1 flex items-center gap-2 flex-wrap">
                             <span>Nac.: {fechaNacStr}</span>
-                            <span className="text-ink-muted/50">/</span>
+                            <span aria-hidden="true" className="text-ink-muted/50">/</span>
                             <span>
                               Edad actual: <strong>{c.edadActual ?? c.edad} años</strong>
                             </span>
-                            <span className="text-ink-muted/50">/</span>
+                            <span aria-hidden="true" className="text-ink-muted/50">/</span>
                             <span className="text-brand font-semibold">
                               Edad de pase: {c.edad} años
                             </span>

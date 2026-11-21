@@ -182,6 +182,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
 
   const [miembro, setMiembro] = useState<any | null>(null);
   const [estadoCuenta, setEstadoCuenta] = useState<any | null>(null);
+  const [estadoCuentaNoDisponible, setEstadoCuentaNoDisponible] = useState(false);
+  const usuarioIdEnCursoRef = useRef<number | null>(null);
   const [entregas, setEntregas] = useState<any[]>([]);
   // true si la consulta de fichas falló (403/red): no se puede afirmar "sin alertas".
   const [entregasNoDisponibles, setEntregasNoDisponibles] = useState(false);
@@ -374,7 +376,8 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         ] = await Promise.all([
           api.get(`/miembros/${id}`),
           api.get(`/tesoreria/estado-cuenta/${id}`).catch(() => null),
-          api.get(`/legajos/entregas?usuarioId=${id}`).catch(() => null),
+          // Solo el ciclo actual: sin filtro se mezclaban fichas y alertas de años anteriores.
+          api.get(`/legajos/entregas?usuarioId=${id}&cicloAnio=${obtenerCicloAnioActual()}`).catch(() => null),
           api.get(`/legajos/plantillas?cicloAnio=${obtenerCicloAnioActual()}`).catch(() => ({ data: [] })),
           capsCarga.canViewOrganizacion
             ? api.get('/organizacion/unidades').catch(() => ({ data: [] }))
@@ -388,9 +391,12 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             : Promise.resolve({ data: [] }),
         ]);
 
+        // Si mientras tanto se abrió otro miembro, descartar esta respuesta.
+        if (usuarioIdEnCursoRef.current !== id) return;
         const m = resMiembro.data;
         setMiembro(m);
         if (resCuenta) setEstadoCuenta(resCuenta.data);
+        setEstadoCuentaNoDisponible(!resCuenta);
         if (resEntregas) setEntregas(resEntregas.data);
         setEntregasNoDisponibles(!resEntregas);
 
@@ -581,6 +587,12 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   );
 
   useEffect(() => {
+    // Limpiar el miembro anterior: si no, el header y la tira médica mostraban a la persona
+    // previa mientras cargaba (o para siempre si la carga fallaba).
+    usuarioIdEnCursoRef.current = usuarioId;
+    setMiembro(null);
+    setEstadoCuenta(null);
+    setEntregas([]);
     setAlerta(null);
     setClaveTemporalGenerada(null);
     setEditandoFicha(false);
@@ -655,6 +667,31 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
             formData.regimenDietarioTipos.length > 0 ||
             Boolean(formData.regimenDietarioDetalle.trim()),
         };
+
+        // Solo reescribir datos médicos si el usuario los tocó: si no, guardar un teléfono
+        // pisaba regimen_dietario/sufre_alergia (a veces texto con el detalle) con booleanos.
+        const prev = datosFijosPrevios as Record<string, any>;
+        const mismaLista = (a: unknown, b: unknown) =>
+          JSON.stringify(Array.isArray(a) ? a : []) === JSON.stringify(Array.isArray(b) ? b : []);
+        const dietaCambio =
+          !mismaLista(formData.regimenDietarioTipos, prev.regimen_dietario_tipos) ||
+          formData.regimenDietarioDetalle.trim() !==
+            String(prev.regimen_dietario_detalle || prev.dieta_especial_detalle || '').trim();
+        const alergiaCambio =
+          !mismaLista(formData.alergiasTipos, prev.alergias_tipos) ||
+          formData.alergias.trim() !==
+            String(prev.sufre_alergia_detalle || prev.alergias || '').trim();
+        if (!dietaCambio) {
+          delete camposEditados.regimen_dietario_tipos;
+          delete camposEditados.regimen_dietario_detalle;
+          delete camposEditados.regimen_dietario;
+        }
+        if (!alergiaCambio) {
+          delete camposEditados.alergias;
+          delete camposEditados.sufre_alergia_detalle;
+          delete camposEditados.alergias_tipos;
+          delete camposEditados.sufre_alergia;
+        }
 
         const datosFijosMergeados: Record<string, any> = { ...datosFijosPrevios };
         for (const [k, v] of Object.entries(camposEditados)) {
@@ -1912,6 +1949,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
                 <PestanaCuotasTesoreria
                   miembro={miembro}
                   estadoCuenta={estadoCuenta}
+                  estadoCuentaNoDisponible={estadoCuentaNoDisponible}
                   saldoPendiente={saldoPendiente}
                   saldoAFavor={saldoAFavor}
                   puedeGestionarTesoreria={puedeGestionarTesoreria}

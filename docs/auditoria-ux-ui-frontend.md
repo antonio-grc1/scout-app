@@ -23,8 +23,8 @@
 |---|---|---|---|---|
 | B0 | Bugs funcionales que rompen flujos ✅ corregido | 7 | 5 | 2 |
 | B1 | Permisos y vistas por rol ✅ corregido (salvo B1-25, B1-28 y B1-29) | 4 | 12 | 13 |
-| B2 | Integridad de datos (errores tragados, PDFs, dinero) | — | 11 | 26 |
-| B3 | Sistema de diseño: color, contraste, tipografía | — | 6 | 8 |
+| B2 | Integridad de datos (errores tragados, PDFs, dinero) ✅ corregido en su mayoría | — | 11 | 26 |
+| B3 | Sistema de diseño: color, contraste, tipografía ✅ corregido (salvo B3-10) | — | 6 | 8 |
 | B4 | Accesibilidad estructural (foco, diálogos, labels, ARIA) | — | 8 | 10 |
 | B5 | Mobile / responsive | — | 3 | 14 |
 | B6 | Confirmaciones de acciones destructivas | — | 3 | 13 |
@@ -123,6 +123,24 @@
 
 ## B2 — Integridad de datos y estados (carga / error / vacío)
 
+> **Estado (21/11/2026): corregido en su mayoría**, sin commitear.
+> - **Corregidos:** B2-01 a 04, 07, 10, 13 a 16, 20 a 24 y 26 a 35.
+> - **Novedades técnicas:**
+>   - Marca de agua "BORRADOR - NO VÁLIDO" en `pdfGenerator` cuando el hash no es el oficial.
+>   - Store `cambiosSinGuardarStore`: la navegación del AppShell pide confirmación antes de salir con cambios sin guardar. `useBlocker` no está disponible porque la app usa `BrowserRouter`.
+>   - `parsearMontoAR` (con test) para el monto recibido en Cobrar deuda.
+>   - `/auth/me` ya no vuelve a setear la sesión si no cambió nada.
+> - **Verificado en el navegador:** la marca de agua en la vista previa con cambios sin guardar, y la confirmación al cambiar de pestaña y al navegar desde el menú lateral.
+> - **Pendientes:**
+>   - B2-05: ya estaba resuelto en B0.
+>   - B2-06, 08, 09, 11 y 12: estados de error en Tesorería, Completar legajo, roles de Organización, modales de rubros, gastos e ingresos, y Familias y Expediente sin "Reintentar".
+>   - B2-17: el molde A4 en blanco cuando falta el PDF base.
+>   - B2-25: respuestas viejas que pisan a las nuevas en el libro diario, el cuadro de resultados y los buscadores.
+>   - B2-36: los totales exportados.
+>   - B2-37: el orden de las cuotas es intencional en el backend (ciclo más reciente primero).
+>   - B2-21 sigue sin cubrir el botón Atrás del navegador ni el editor visual de plantillas.
+>   - El parser de montos solo se aplicó al monto recibido de Cobrar deuda; los demás campos de monto siguen como `type="number"`.
+
 ### B2.a Error tratado como dato real (patrón `.catch(() => ({ data: [] }))`)
 
 | ID | Sev. | Dónde | Lo que ve el usuario cuando falla |
@@ -185,6 +203,23 @@
 ---
 
 ## B3 — Sistema de diseño: color, contraste, tipografía
+
+> **Estado (21/11/2026): corregido** (sin commitear), salvo B3-10.
+> - **B3-01:** en modo claro, `text-brand` se remapea a `--color-brand-ink` mediante un override en `index.css`, solo para texto; los íconos SVG conservan el ámbar. Cubre los 342 usos de una vez.
+> - **B3-02:** `--color-focus` pasa a `brand-ink` en claro, y el borde de foco de `.s-input` usa ese token. En oscuro se mantiene el ámbar claro.
+> - **B3-03:** los tonos de texto emerald/rose/blue/teal/amber 500-600 se remapean a tokens nuevos `--color-text-*` (≥ 4.5:1) en modo claro.
+> - **B3-04 y B3-05:** botones y avatares blancos se pasaron a tonos -700 (emerald, sky), y el chip de saldo seleccionado usa `text-brand-contrast`.
+> - **B3-06:** Inter Variable autoalojada (`@fontsource-variable/inter`, solo `latin` y `latin-ext`, ~130 KB) y precacheada por la PWA. Es una dependencia nueva.
+> - **B3-07:** los 23 textos de 10–11px pasaron a `text-xs`.
+> - **B3-08, 09, 11, 13 y 14:**
+>   - Variantes `dark:` en los hovers.
+>   - KpiCard y los montos del cuadro dejan de truncarse.
+>   - El anillo de foco del modal de deuda usa el token de marca.
+>   - `s-anim-fade-up` se reemplazó por `s-anim-view`.
+>   - Se sacó el hex técnico del subtítulo del tema.
+> - **B3-12:** se corrigió el README (existe un solo preset, `scout`). No se implementó el preset AAA.
+> - **Verificado en el navegador** con `getComputedStyle` y cálculo de contraste: las pantallas de los tres roles en modo claro y varias en oscuro, más el modal de rol y el expediente (4 pestañas), dan 0 fallas. Quedan solo dos símbolos decorativos ("·" de mes no habilitado y el separador "/").
+> - **Pendiente:** B3-10 (estados solo por color) se trata junto con `aria-pressed` en B4.
 
 | ID | Sev. | Dónde | Problema | Fix |
 |---|---|---|---|---|

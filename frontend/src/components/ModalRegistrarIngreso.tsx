@@ -420,7 +420,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
                 type="submit"
                 variant="primary"
                 disabled={guardando || rubros.length === 0}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white"
               >
                 {guardando
                   ? 'Guardando...'

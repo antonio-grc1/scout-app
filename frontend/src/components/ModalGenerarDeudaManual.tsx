@@ -160,7 +160,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
               value={nombreConcepto}
               onChange={(e) => setNombreConcepto(e.target.value)}
               placeholder="Ej. Pañuelo y Camisa Scout, Campamento Verano, Ajuste..."
-              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand-ink/50 focus:border-brand-ink transition"
             />
           </div>
 
@@ -171,7 +171,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
             <select
               value={tipo}
               onChange={(e) => setTipo(e.target.value as any)}
-              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+              className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand-ink/50 focus:border-brand-ink transition"
             >
               <option value="CAMPAMENTO">Campamento</option>
               <option value="CUOTA_MENSUAL">Cuota Mensual</option>
@@ -201,7 +201,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
                 value={monto}
                 onChange={(e) => setMonto(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="5000.00"
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-bold text-ink focus:outline-none focus:ring-2 focus:ring-brand-ink/50 focus:border-brand-ink transition"
               />
             </div>
           </div>
@@ -221,7 +221,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
                 value={montoDescuento}
                 onChange={(e) => setMontoDescuento(e.target.value === '' ? '' : Number(e.target.value))}
                 placeholder="0.00"
-                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand-ink/50 focus:border-brand-ink transition"
               />
             </div>
           </div>

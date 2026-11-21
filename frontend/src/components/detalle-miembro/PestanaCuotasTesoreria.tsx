@@ -41,6 +41,8 @@ export interface PagoEditando {
 export interface PestanaCuotasTesoreriaProps {
   miembro: any;
   estadoCuenta: any;
+  /** true si la consulta del estado de cuenta falló (no mostrar $0 como si fuera real). */
+  estadoCuentaNoDisponible?: boolean;
   saldoPendiente: number;
   saldoAFavor: number;
   puedeGestionarTesoreria: boolean;
@@ -85,6 +87,7 @@ export interface PestanaCuotasTesoreriaProps {
 export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
   miembro,
   estadoCuenta,
+  estadoCuentaNoDisponible = false,
   saldoPendiente,
   saldoAFavor,
   puedeGestionarTesoreria,
@@ -143,6 +146,12 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
 
   return (
     <div className="space-y-4">
+      {estadoCuentaNoDisponible && (
+        <div role="alert" className="s-badge-warn rounded-2xl p-3.5 text-[13px] font-semibold">
+          No se pudo consultar el estado de cuenta. Los montos de abajo no son reales: actualizá el
+          expediente antes de cobrar o ajustar.
+        </div>
+      )}
       {/* Resumen Financiero + Botones de Acción Directa */}
       <div className="p-4 sm:p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
         <div className="flex items-center gap-5 flex-wrap">

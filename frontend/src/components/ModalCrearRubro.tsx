@@ -108,16 +108,20 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
       } else {
         setNombre('');
         setTipo(tipoDefault);
-        setUnidadId(
-          !esGlobalRubros && unidadesDisponibles.length > 0
-            ? String(unidadesDisponibles[0].id)
-            : '',
-        );
+        setUnidadId('');
         setPermiteDescuentoDefault(tipoDefault === 'INGRESO');
       }
       setError(null);
     }
-  }, [abierto, tipoDefault, rubroAEditar, esGlobalRubros, unidadesDisponibles]);
+    // Solo al abrir: si dependiera de unidadesDisponibles, la llegada de /organizacion/unidades
+    // borraba lo que el usuario ya había escrito.
+  }, [abierto, tipoDefault, rubroAEditar]);
+
+  // Preseleccionar la unidad cuando llegan las unidades, sin tocar el resto del formulario.
+  useEffect(() => {
+    if (!abierto || rubroAEditar || esGlobalRubros || unidadesDisponibles.length === 0) return;
+    setUnidadId((prev) => prev || String(unidadesDisponibles[0].id));
+  }, [abierto, rubroAEditar, esGlobalRubros, unidadesDisponibles]);
 
   if (!abierto) return null;
 

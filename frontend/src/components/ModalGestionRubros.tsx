@@ -220,7 +220,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                   onClick={() => setFiltroTipo('INGRESO')}
                   className={`min-h-[38px] px-3 py-1.5 rounded-lg text-[13px] font-bold transition cursor-pointer text-center ${
                     filtroTipo === 'INGRESO'
-                      ? 'bg-emerald-600 text-white shadow-xs'
+                      ? 'bg-emerald-700 text-white shadow-xs'
                       : 'text-ink-muted hover:text-ink'
                   }`}
                 >
@@ -300,7 +300,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                       >
                         {r.tipo === 'EGRESO' ? 'Gasto' : 'Ingreso'}
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-paper-2 text-ink-2 border border-rule">
+                      <span className="text-xs px-2 py-0.5 rounded-md font-semibold bg-paper-2 text-ink-2 border border-rule">
                         {r.unidad?.nombre || 'General'}
                       </span>
                       {r.permiteDescuentoDefault && r.tipo === 'INGRESO' && (

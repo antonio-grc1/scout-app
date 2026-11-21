@@ -1,3 +1,4 @@
+@import "./fonts.css";
 @import "./tokens.css";
 @import "./base.css" layer(base);
 @import "tailwindcss";
@@ -165,8 +166,8 @@
 
 .s-input:focus {
   outline: none;
-  border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px var(--color-brand-soft);
+  border-color: var(--color-focus);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-focus) 28%, transparent);
 }
 
 .s-nav-item {
@@ -345,3 +346,28 @@
     transform: none !important;
   }
 }
+
+/* ============================================================================
+   Contraste del texto en modo claro (WCAG AA)
+   El ámbar de marca (#f59e0b) y los tonos -500/-600 de Tailwind no llegan a 4.5:1 sobre
+   superficies claras. Se remapean SOLO como color de texto (los íconos SVG conservan su tono
+   y los fondos no se tocan). En modo oscuro no aplica: esos tonos ya contrastan.
+   ============================================================================ */
+:root:not(.dark) .text-brand:not(svg),
+:root:not(.dark) .hover\:text-brand:hover:not(svg),
+:root:not(.dark) .group:hover .group-hover\:text-brand:not(svg) {
+  color: var(--color-brand-ink);
+}
+
+:root:not(.dark) .text-emerald-500:not(svg),
+:root:not(.dark) .text-emerald-600:not(svg) { color: var(--color-text-ok); }
+
+:root:not(.dark) .text-rose-500:not(svg),
+:root:not(.dark) .text-rose-600:not(svg) { color: var(--color-text-err); }
+
+:root:not(.dark) .text-blue-600:not(svg) { color: var(--color-text-info); }
+
+:root:not(.dark) .text-teal-600:not(svg) { color: var(--color-text-teal); }
+
+:root:not(.dark) .text-amber-500:not(svg),
+:root:not(.dark) .text-amber-600:not(svg) { color: var(--color-text-warn); }

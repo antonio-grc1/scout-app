@@ -198,6 +198,11 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
       return;
     }
 
+    if (mesesHabilitados.length === 0) {
+      setError('Habilitá al menos un mes para el cobro mensual.');
+      return;
+    }
+
     setGuardando(true);
     try {
       const payload: any = {

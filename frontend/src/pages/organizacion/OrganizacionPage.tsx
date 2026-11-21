@@ -168,7 +168,7 @@ export const OrganizacionPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-5 s-anim-fade-up">
+    <div className="space-y-4 sm:space-y-5 s-anim-view">
       {/* Cabecera + Sub-tabs */}
       <section className="s-card rounded-2xl p-4 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">

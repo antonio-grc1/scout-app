@@ -32,7 +32,7 @@ React 19 + TypeScript single-page and Progressive Web Application (PWA) frontend
 ## Global Invariants
 - `[api/client.ts:api.interceptors.request]` / `[lib/offlineCache.ts:obtenerDeCache]` — Offline GET requests resolve from memory/IndexedDB/localStorage cache without waiting for timeout; offline server mutations (`POST`, `PUT`, `PATCH`, `DELETE`, excluding `/auth/logout`) fail fast with a visible warning toast.
 - `[core/offline/campamentoSync.ts]` — Proactive download caches roster, entregas, plantillas, units, branches, and pases candidates; legajo drafts edited offline persist in IndexedDB (`PENDIENTE_SINCRONIZAR`) and are purged along with `offlineCache` on `logout()`.
-- `[store/themeStore.ts:useThemeStore]` — Exposes strictly 3 WCAG-audited presets (`Claro`, `Oscuro`, `AAA`) plus typography scaling (`100%`, `110%`, `125%`) with no button glow effects.
+- `[store/themeStore.ts:useThemeStore]` — Exposes a single WCAG-audited preset (`scout`) with light, dark and system modes, plus typography scaling (`100%`, `110%`, `125%`) with no button glow effects. A high-contrast (AAA) preset is not implemented yet.
 
 ## System Verification
 - Run: `npm run build && npm run lint && npm test`

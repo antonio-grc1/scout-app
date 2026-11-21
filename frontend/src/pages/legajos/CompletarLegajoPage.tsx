@@ -23,6 +23,7 @@ import {
   type BorradorLegajoLocal,
 } from '../../core/offline/campamentoSync';
 import { useAuthStore } from '../../store/authStore';
+import { useCambiosSinGuardarStore } from '../../store/cambiosSinGuardarStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
 import {
@@ -38,6 +39,7 @@ import {
   crearUrlPdfBlob,
   descargarPdfBlob,
   generarFichaPdf,
+  PREFIJO_HASH_BORRADOR,
   type MapeoPdf,
 } from '../../services/pdfGenerator';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
@@ -96,6 +98,12 @@ export const CompletarLegajoPage: React.FC = () => {
   const [previewBytes, setPreviewBytes] = useState<Uint8Array | null>(null);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [formDirty, setFormDirty] = useState(false);
+  const setCambiosPendientes = useCambiosSinGuardarStore((s) => s.setPendiente);
+  // Publica los cambios sin guardar para que la navegación del AppShell confirme antes de salir.
+  useEffect(() => {
+    setCambiosPendientes(formDirty);
+    return () => setCambiosPendientes(false);
+  }, [formDirty, setCambiosPendientes]);
   const [formResetNonce, setFormResetNonce] = useState(0);
   const [hermanoPayload, setHermanoPayload] = useState<{
     nonce: number;
@@ -125,6 +133,16 @@ export const CompletarLegajoPage: React.FC = () => {
       if (listaPlantillas.length === 0) {
         const resTodas = await api.get('/legajos/plantillas').catch(() => ({ data: [] }));
         listaPlantillas = Array.isArray(resTodas.data) ? resTodas.data : [];
+      }
+
+      // Sin los datos del miembro no se puede caer al usuario de la sesión: el formulario se
+      // precargaría con datos del educador y se guardaría en el legajo de otra persona.
+      if (esOtroMiembro && !resMiembro.data) {
+        setErrorCarga('No se pudieron cargar los datos de este miembro. Reintentá en un momento.');
+        setPlantillaSeleccionada(null);
+        setPrecarga(null);
+        setCargando(false);
+        return;
       }
 
       setEntregasMiembro(Array.isArray(resEntregas.data) ? resEntregas.data : []);
@@ -289,10 +307,15 @@ export const CompletarLegajoPage: React.FC = () => {
       entrega?.respuestasSnapshotJson ||
       valoresFormularioIniciales;
 
+    // QR oficial solo si el PDF coincide con la entrega guardada (sin cambios pendientes).
+    const usarHashOficial =
+      Boolean(entrega?.hashVerificacion) && entrega?.estado !== 'BORRADOR' && !formDirty;
     return await generarFichaPdf(
       mapeo,
       respuestas,
-      entrega?.hashVerificacion || `BORRADOR-${usuarioParaPdf.dni}-${obtenerCicloAnioActual()}`,
+      usarHashOficial
+        ? entrega.hashVerificacion
+        : `${PREFIJO_HASH_BORRADOR}${usuarioParaPdf.dni}-${obtenerCicloAnioActual()}`,
       usuarioParaPdf,
       entrega?.versionImpresion || 1,
       plantillaSeleccionada.esquemaCamposJson,
@@ -438,18 +461,26 @@ export const CompletarLegajoPage: React.FC = () => {
 
       const entrega = res.data;
       if (finalizarParaFirma && entrega.hashVerificacion) {
-        const mapeo: MapeoPdf = plantillaSeleccionada.mapeoPdfJson;
-        const usuarioParaPdf = obtenerDatosUsuarioPdf();
-        const pdfBytes = await generarFichaPdf(
-          mapeo,
-          datos,
-          entrega.hashVerificacion,
-          usuarioParaPdf,
-          entrega.versionImpresion,
-          plantillaSeleccionada.esquemaCamposJson,
-        );
-        descargarPdfBlob(pdfBytes, `Ficha_${usuarioParaPdf.apellido}_${usuarioParaPdf.nombre}.pdf`);
-        mostrarToast('¡Listo! Ficha finalizada y PDF descargado para firma.');
+        // La ficha ya quedó guardada: un fallo del PDF no debe informarse como fallo de guardado.
+        try {
+          const mapeo: MapeoPdf = plantillaSeleccionada.mapeoPdfJson;
+          const usuarioParaPdf = obtenerDatosUsuarioPdf();
+          const pdfBytes = await generarFichaPdf(
+            mapeo,
+            datos,
+            entrega.hashVerificacion,
+            usuarioParaPdf,
+            entrega.versionImpresion,
+            plantillaSeleccionada.esquemaCamposJson,
+          );
+          descargarPdfBlob(pdfBytes, `Ficha_${usuarioParaPdf.apellido}_${usuarioParaPdf.nombre}.pdf`);
+          mostrarToast('¡Listo! Ficha finalizada y PDF descargado para firma.');
+        } catch {
+          mostrarToast(
+            'La ficha se guardó, pero no se pudo generar el PDF. Reintentá desde "Descargar".',
+            'advertencia',
+          );
+        }
       } else {
         mostrarToast('Avance del legajo guardado como borrador.');
       }
@@ -619,7 +650,7 @@ export const CompletarLegajoPage: React.FC = () => {
                   >
                     <span className="text-[13px] truncate max-w-[220px]">{p.titulo}</span>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${
+                      className={`px-2 py-0.5 rounded-full text-xs font-bold border whitespace-nowrap ${
                         activa ? 'bg-surface text-ink border-transparent' : estCfg.badgeClass
                       }`}
                     >

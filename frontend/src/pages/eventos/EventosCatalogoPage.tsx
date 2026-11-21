@@ -277,8 +277,14 @@ export const EventosCatalogoPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="s-badge-err rounded-2xl p-4 text-sm font-semibold">
-          {error}
+        <div
+          role="alert"
+          className="s-badge-err rounded-2xl p-4 text-sm font-semibold flex items-center justify-between gap-3 flex-wrap"
+        >
+          <span>{error}</span>
+          <Button type="button" variant="secondary" size="sm" onClick={() => void cargarEventos()}>
+            Reintentar
+          </Button>
         </div>
       )}
 
@@ -294,7 +300,7 @@ export const EventosCatalogoPage: React.FC = () => {
             </div>
           ))}
         </div>
-      ) : eventosFiltrados.length === 0 ? (
+      ) : error && eventos.length === 0 ? null : eventosFiltrados.length === 0 ? (
         <div className="s-card rounded-2xl p-8 sm:p-12 text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center mx-auto">
             <Sparkles className="w-6 h-6" />

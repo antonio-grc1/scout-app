@@ -391,3 +391,19 @@ describe('formValidation: reglas integrales de formulario y UX', () => {
     assert.equal(limpios.mat_carpas_prestamo, false);
   });
 });
+
+describe('parsearMontoAR: montos escritos en formato argentino', () => {
+  it('interpreta miles con punto, decimales con coma y decimales con punto', async () => {
+    const { parsearMontoAR } = await vite.ssrLoadModule('/src/lib/formatters.ts');
+    assert.equal(parsearMontoAR('1.500'), 1500);
+    assert.equal(parsearMontoAR('12.345.678'), 12345678);
+    assert.equal(parsearMontoAR('1.500,50'), 1500.5);
+    assert.equal(parsearMontoAR('1500,5'), 1500.5);
+    assert.equal(parsearMontoAR('1500.5'), 1500.5);
+    assert.equal(parsearMontoAR('12.34'), 12.34);
+    assert.equal(parsearMontoAR('$ 2.000'), 2000);
+    assert.equal(parsearMontoAR(''), null);
+    assert.equal(parsearMontoAR('abc'), null);
+    assert.equal(parsearMontoAR('1.50.0'), null);
+  });
+});

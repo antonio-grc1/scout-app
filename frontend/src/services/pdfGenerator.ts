@@ -1,4 +1,5 @@
 import {
+  degrees,
   PDFCheckBox,
   PDFDocument,
   PDFDropdown,
@@ -2712,32 +2713,56 @@ export async function generarFichaPdf(
     esquemaEfectivo,
   );
 
-  if (
-    mapeo?.modoRender === 'DISENO_SECCIONES' ||
-    mapeo?.pdfBaseUrl === '__DISENO_SECCIONES__'
-  ) {
-    return await generarPdfPorSecciones(
-      esquemaEfectivo,
-      respuestasFormateadas,
-      hashVerificacion,
-      usuario,
-      versionImpresion,
-      Boolean(opcionesExtra?.blank),
-    );
-  }
+  const bytes =
+    mapeo?.modoRender === 'DISENO_SECCIONES' || mapeo?.pdfBaseUrl === '__DISENO_SECCIONES__'
+      ? await generarPdfPorSecciones(
+          esquemaEfectivo,
+          respuestasFormateadas,
+          hashVerificacion,
+          usuario,
+          versionImpresion,
+          Boolean(opcionesExtra?.blank),
+        )
+      : await estampadoDinamicoPdf(mapeo, respuestasFormateadas, hashVerificacion, versionImpresion, {
+          esquema: esquemaEfectivo,
+          rawRespuestas: respuestas,
+          usuario,
+          blank: Boolean(opcionesExtra?.blank),
+        });
 
-  return await estampadoDinamicoPdf(
-    mapeo,
-    respuestasFormateadas,
-    hashVerificacion,
-    versionImpresion,
-    {
-      esquema: esquemaEfectivo,
-      rawRespuestas: respuestas,
-      usuario,
-      blank: Boolean(opcionesExtra?.blank),
-    },
-  );
+  return esHashBorrador(hashVerificacion) ? await aplicarMarcaBorrador(bytes) : bytes;
+}
+
+/** Prefijo de hash para PDFs que NO corresponden a una entrega finalizada en el servidor. */
+export const PREFIJO_HASH_BORRADOR = 'BORRADOR-';
+
+export function esHashBorrador(hash: string | null | undefined): boolean {
+  return typeof hash === 'string' && hash.startsWith(PREFIJO_HASH_BORRADOR);
+}
+
+/**
+ * Estampa "BORRADOR — NO VÁLIDO" en diagonal sobre cada página, para que un PDF con datos
+ * sin guardar no pueda confundirse con el documento oficial que valida el QR.
+ */
+async function aplicarMarcaBorrador(bytes: Uint8Array): Promise<Uint8Array> {
+  const doc = await PDFDocument.load(bytes);
+  const font = await doc.embedFont(StandardFonts.HelveticaBold);
+  const texto = sanitizarTextoWinAnsi('BORRADOR - NO VÁLIDO');
+  for (const page of doc.getPages()) {
+    const { width, height } = page.getSize();
+    const size = Math.min(width, height) / 9;
+    const ancho = font.widthOfTextAtSize(texto, size);
+    page.drawText(texto, {
+      x: width / 2 - (ancho / 2) * Math.cos(Math.PI / 4),
+      y: height / 2 - (ancho / 2) * Math.sin(Math.PI / 4),
+      size,
+      font,
+      color: rgb(0.8, 0.1, 0.1),
+      opacity: 0.18,
+      rotate: degrees(45),
+    });
+  }
+  return await doc.save();
 }
 
 /**
@@ -2767,5 +2792,6 @@ export function descargarPdfBlob(bytes: Uint8Array, nombreArchivo: string): void
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Revocar en el acto puede cortar la descarga en iOS Safari/Firefox.
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }

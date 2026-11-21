@@ -182,6 +182,16 @@ export const useAuthStore = create<AuthState>((set, get) => {
             data.requiereCambioClave === undefined
               ? get().requiereCambioClave
               : Boolean(data.requiereCambioClave);
+          // Si nada cambió, no crear objetos nuevos: las vistas dependen de usuario/asignaciones
+          // y cada foco de ventana disparaba recargas completas (p. ej. Inicio) sin motivo.
+          const actual = get();
+          if (
+            cambioClave === actual.requiereCambioClave &&
+            JSON.stringify(data.usuario) === JSON.stringify(actual.usuario) &&
+            JSON.stringify(data.asignaciones) === JSON.stringify(actual.asignaciones)
+          ) {
+            return;
+          }
           get().setSesion({
             usuario: data.usuario,
             requiereCambioClave: cambioClave,

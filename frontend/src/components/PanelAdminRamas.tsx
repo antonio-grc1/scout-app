@@ -504,7 +504,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                           disabled={enProceso}
                           onClick={() => handleQuitarRama(r)}
                           title="Desactivar rama"
-                          className="min-h-[38px] px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          className="min-h-[38px] px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                           {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                           <span>Desactivar</span>
@@ -626,7 +626,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                             disabled={enProceso}
                             onClick={() => handleQuitarUnidad(u)}
                             title="Desactivar sección"
-                            className="min-h-[38px] px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            className="min-h-[38px] px-3 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 font-bold text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                           >
                             {enProceso ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                             <span>Desactivar</span>

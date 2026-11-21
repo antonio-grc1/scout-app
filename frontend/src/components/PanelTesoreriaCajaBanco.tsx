@@ -637,7 +637,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   <span
                     className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
                       estaSeleccionada
-                        ? 'bg-black/15 text-white dark:bg-black/30'
+                        ? 'bg-black/10 text-brand-contrast'
                         : 'bg-paper-2 text-ink-2'
                     }`}
                   >
@@ -724,7 +724,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   setModalIngresoAbierto(true);
                 }}
                 leftIcon={<PlusCircle className="w-4 h-4 shrink-0" />}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white justify-center text-[13px] sm:text-sm"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white justify-center text-[13px] sm:text-sm"
                 title="Registrar ingreso de dinero a esta cuenta"
               >
                 + Ingreso

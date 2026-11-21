@@ -54,7 +54,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     {
       id: 'light',
       title: 'Modo Claro',
-      subtitle: 'Lienzo cálido #f6f6f2 y texto carbón de alta lectura',
+      subtitle: 'Fondo cálido y texto carbón de alta lectura',
       badge: 'Claro',
       icon: Sun,
       active: theme === 'light',

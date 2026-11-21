@@ -138,7 +138,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
                 >
                   <span className="truncate max-w-[190px]">{p.titulo}</span>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold border whitespace-nowrap ${
+                    className={`px-2 py-0.5 rounded-full text-xs font-bold border whitespace-nowrap ${
                       activa ? 'bg-surface text-ink border-transparent' : estCfg.badgeClass
                     }`}
                   >

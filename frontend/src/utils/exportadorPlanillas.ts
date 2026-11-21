@@ -37,6 +37,11 @@ export function sanitizarCeldaPlanilla(valor: unknown): string | number {
 
 function escaparValorCSV(valor: unknown): string {
   if (valor === null || valor === undefined) return '';
+  // El CSV usa ";" (Excel en es-AR), así que los decimales van con coma: con punto, Excel
+  // regional lee "1234.5" como texto o como 12345.
+  if (typeof valor === 'number') {
+    return Number.isFinite(valor) ? String(valor).replace('.', ',') : '';
+  }
   const str = String(sanitizarCeldaPlanilla(valor));
   if (str.includes(';') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
@@ -52,7 +57,8 @@ function descargarBlob(blob: Blob, nombreCompleto: string): void {
   document.body.appendChild(enlace);
   enlace.click();
   document.body.removeChild(enlace);
-  URL.revokeObjectURL(url);
+  // Revocar en el acto puede cortar la descarga en iOS Safari/Firefox.
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 function obtenerValorCelda<T>(col: ColumnaExportacion<T>, fila: T): string | number {

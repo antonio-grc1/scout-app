@@ -540,7 +540,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                     <span className="font-bold text-ink block text-xs sm:text-[13px]">
                       {cat.titulo}
                     </span>
-                    <span className="text-[11px] text-ink-muted block mt-0.5 leading-snug">
+                    <span className="text-xs text-ink-muted block mt-0.5 leading-snug">
                       {cat.desc}
                     </span>
                   </button>

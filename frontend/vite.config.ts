@@ -13,7 +13,7 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'favicon.svg', 'pwa-icon.svg', 'pwa-icon-192.png', 'pwa-icon-512.png', 'apple-touch-icon.png', 'pdf-templates/*_acroform.pdf'],
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,pdf}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,pdf,woff2}'],
         globIgnores: ['**/pdf-templates/*original*.pdf', '**/pdf-templates/Papeles*.pdf'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],

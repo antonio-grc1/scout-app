@@ -104,7 +104,7 @@ export const PasesPage: React.FC = () => {
   );
 
   return (
-    <div className="space-y-4 sm:space-y-5 s-anim-fade-up">
+    <div className="space-y-4 sm:space-y-5 s-anim-view">
       {/* Cabecera de módulo + selector de fecha de corte */}
       <section className="s-card rounded-2xl p-4 sm:p-6 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">

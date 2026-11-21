@@ -106,15 +106,19 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
       } else {
         setNombre('');
         setTipo('BANCO');
-        setUnidadId(
-          !esGlobalCuentas && unidadesDisponibles.length > 0
-            ? String(unidadesDisponibles[0].id)
-            : '',
-        );
+        setUnidadId('');
         setActiva(true);
       }
       setError(null);
     }
+    // Solo al abrir: si dependiera de unidadesDisponibles, la llegada de /organizacion/unidades
+    // borraba lo que el usuario ya había escrito.
+  }, [abierto, cuentaAEditar]);
+
+  // Preseleccionar la unidad cuando llegan las unidades, sin tocar el resto del formulario.
+  useEffect(() => {
+    if (!abierto || cuentaAEditar || esGlobalCuentas || unidadesDisponibles.length === 0) return;
+    setUnidadId((prev) => prev || String(unidadesDisponibles[0].id));
   }, [abierto, cuentaAEditar, esGlobalCuentas, unidadesDisponibles]);
 
   const { backdropProps, contentProps } = useModalOverlay({

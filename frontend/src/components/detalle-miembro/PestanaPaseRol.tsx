@@ -361,7 +361,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
               onClick={() => onCambioCategoria('SIN_RAMA')}
               className={`min-h-[46px] p-2.5 rounded-xl border font-bold text-[13px] transition cursor-pointer ${
                 categoriaDestino === 'SIN_RAMA'
-                  ? 'border-neutral-900 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 ring-2 ring-neutral-400/30 font-bold'
+                  ? 'border-neutral-900 dark:border-neutral-100 bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 ring-2 ring-neutral-400/30 font-bold'
                   : 'border-rule text-ink-2'
               }`}
             >

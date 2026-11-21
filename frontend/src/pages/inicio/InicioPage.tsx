@@ -107,6 +107,8 @@ export const InicioPage: React.FC = () => {
 
   // Estado personal
   const [miEstadoCuenta, setMiEstadoCuenta] = useState<any | null>(null);
+  // true si la consulta de cuotas falló: no se puede afirmar "al día".
+  const [miCuentaError, setMiCuentaError] = useState(false);
   const [miUltimaEntrega, setMiUltimaEntrega] = useState<any | null>(null);
   const [cargandoPersonal, setCargandoPersonal] = useState(true);
 
@@ -164,6 +166,8 @@ export const InicioPage: React.FC = () => {
         ]);
 
         setMiEstadoCuenta(resCuenta.data);
+        setMiCuentaError(resCuenta.data == null);
+        setMiCuentaError(resCuenta.data == null);
 
         let plantillas: any[] = Array.isArray(resPlantillasAnio.data) ? resPlantillasAnio.data : [];
         if (plantillas.length === 0) {
@@ -537,14 +541,16 @@ export const InicioPage: React.FC = () => {
 
                 <span
                   className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 ${
-                    miSaldoPendiente > 0 ? 's-badge-err' : 's-badge-ok'
+                    miCuentaError ? 's-badge-warn' : miSaldoPendiente > 0 ? 's-badge-err' : 's-badge-ok'
                   }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
                   <span>
-                    {miSaldoPendiente > 0
-                      ? `Deuda: ${formatearMoneda(miSaldoPendiente)}`
-                      : 'Cuotas al día'}
+                    {miCuentaError
+                      ? 'Cuotas: sin datos'
+                      : miSaldoPendiente > 0
+                        ? `Deuda: ${formatearMoneda(miSaldoPendiente)}`
+                        : 'Cuotas al día'}
                   </span>
                 </span>
 
@@ -749,18 +755,20 @@ export const InicioPage: React.FC = () => {
                   </div>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 ${
-                      miSaldoPendiente > 0 ? 's-badge-err' : 's-badge-ok'
+                      miCuentaError ? 's-badge-warn' : miSaldoPendiente > 0 ? 's-badge-err' : 's-badge-ok'
                     }`}
                   >
-                    {miSaldoPendiente > 0 ? 'Con deuda' : 'Al día'}
+                    {miCuentaError ? 'Sin datos' : miSaldoPendiente > 0 ? 'Con deuda' : 'Al día'}
                   </span>
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-ink">2. Mis Cuotas y Recibos</h3>
                   <p className="text-sm text-ink-muted mt-1 leading-snug">
-                    {miSaldoPendiente > 0
-                      ? `Saldo pendiente actual: ${formatearMoneda(miSaldoPendiente)}.`
-                      : 'No registrás cuotas pendientes.'}
+                    {miCuentaError
+                      ? 'No pudimos consultar tus cuotas en este momento.'
+                      : miSaldoPendiente > 0
+                        ? `Saldo pendiente actual: ${formatearMoneda(miSaldoPendiente)}.`
+                        : 'No registrás cuotas pendientes.'}
                     {miSaldoAFavor > 0
                       ? ` Tenés ${formatearMoneda(miSaldoAFavor)} a favor.`
                       : ''}

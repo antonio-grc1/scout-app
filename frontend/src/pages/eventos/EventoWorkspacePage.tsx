@@ -139,6 +139,24 @@ export const EventoWorkspacePage: React.FC = () => {
     'PENDIENTE',
   );
   const [posCuentaId, setPosCuentaId] = useState<string>('');
+  // El backend rechaza efectivo en banco y transferencia en caja: ofrecer solo cuentas compatibles.
+  const cuentasParaMetodo = useMemo(
+    () =>
+      cuentas.filter((c) =>
+        posMetodoPago === 'EFECTIVO'
+          ? c.tipo === 'CAJA_EFECTIVO'
+          : posMetodoPago === 'TRANSFERENCIA'
+            ? c.tipo === 'BANCO' || c.tipo === 'MERCADOPAGO'
+            : true,
+      ),
+    [cuentas, posMetodoPago],
+  );
+  useEffect(() => {
+    if (cuentasParaMetodo.length === 0) return;
+    if (!cuentasParaMetodo.some((c) => String(c.id) === posCuentaId)) {
+      setPosCuentaId(String(cuentasParaMetodo[0].id));
+    }
+  }, [cuentasParaMetodo, posCuentaId]);
   const [posGuardando, setPosGuardando] = useState(false);
 
   const cargarTodo = useCallback(async () => {
@@ -190,9 +208,12 @@ export const EventoWorkspacePage: React.FC = () => {
       }
     } catch (err) {
       const msg = traducirErrorAmigable(err, 'No se pudo cargar el detalle del evento.');
-      if (!esErrorOffline(err, msg)) {
-        setError(msg);
-      }
+      // Sin conexión también hay que decirlo: si no, se mostraba "No se encontró el evento".
+      setError(
+        esErrorOffline(err, msg)
+          ? 'Sin conexión: no se pudo cargar el evento. Reintentá cuando vuelva la señal.'
+          : msg,
+      );
     } finally {
       setCargando(false);
     }
@@ -1130,12 +1151,18 @@ export const EventoWorkspacePage: React.FC = () => {
                     onChange={(e) => setPosCuentaId(e.target.value)}
                     disabled={evento.estado !== 'PUBLICADO'}
                   >
-                    {cuentas.map((c) => (
+                    {cuentasParaMetodo.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.nombre}
                       </option>
                     ))}
                   </Select>
+                )}
+                {posMetodoPago !== 'PENDIENTE' && cuentasParaMetodo.length === 0 && (
+                  <p role="note" className="s-badge-warn rounded-xl p-3 text-[13px] font-semibold">
+                    No hay {posMetodoPago === 'EFECTIVO' ? 'caja de efectivo' : 'cuenta bancaria'} activa
+                    para este método de pago.
+                  </p>
                 )}
               </div>
             )}

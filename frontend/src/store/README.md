@@ -17,7 +17,7 @@ Global client-side state management built on Zustand (`zustand`), managing authe
 - `[themeStore.ts:ThemePresetDefinition]` — `interface { id: ThemePreset; label: string; description: string; light: PresetTokens; dark: PresetTokens }`.
 - `[themeStore.ts:ThemeCustomizationConfig]` — `interface { preset: ThemePreset; brandColor?: string; brandContrast?: string; paperColor?: string; surfaceColor?: string; navColor?: string; navContrast?: string; inkColor?: string; inkMutedColor?: string; ruleColor?: string; fontScale: FontScale; logoScale: number; logoUrl?: string }`.
 - `[themeStore.ts:ThemeState]` — Interface defining state and actions exposed by `useThemeStore`.
-- `[themeStore.ts:THEME_PRESETS]` — `Record<Exclude<ThemePreset, 'custom'>, ThemePresetDefinition>` defining the `'scout'`, `'nautical'`, `'forest'`, and `'contrast'` theme presets.
+- `[themeStore.ts:THEME_PRESETS]` — `Record<ThemePreset, ThemePresetDefinition>`; currently defines only the `'scout'` preset (light and dark token sets).
 - `[themeStore.ts:DEFAULT_THEME_CUSTOMIZATION]` — Default `ThemeCustomizationConfig` (`{ preset: 'scout', fontScale: '100%', logoScale: 1.0, logoUrl: '/brand/Logo%20Juancho%20Icono.png' }`).
 - `[themeStore.ts:getContrastTextColor]` — `(hexColor: string) => '#ffffff' | '#090a0f'` WCAG relative luminance contrast helper.
 - `[themeStore.ts:updateMetaThemeColor]` — `(color: string) => void` updates the browser `<meta name="theme-color">` tag.

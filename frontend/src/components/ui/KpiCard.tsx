@@ -45,18 +45,18 @@ export const KpiCard: React.FC<KpiCardProps> = ({
       )}
     >
       <div className="flex items-center justify-between gap-2 min-w-0">
-        <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
+        <span className="text-xs font-bold uppercase tracking-wider text-ink-muted line-clamp-2">
           {label}
         </span>
         {icon && <span className={cn('shrink-0', VALUE_TONE_CLASS[tone])}>{icon}</span>}
       </div>
 
-      <div className={cn('text-2xl sm:text-[1.625rem] font-extrabold s-tabular leading-tight truncate', VALUE_TONE_CLASS[tone])}>
+      <div className={cn('text-xl sm:text-[1.625rem] font-extrabold s-tabular leading-tight break-words', VALUE_TONE_CLASS[tone])}>
         {value}
       </div>
 
       {hint && (
-        <div className="text-xs sm:text-[13px] text-ink-muted leading-snug truncate">
+        <div className="text-xs sm:text-[13px] text-ink-muted leading-snug line-clamp-2">
           {hint}
         </div>
       )}

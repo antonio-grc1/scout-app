@@ -35,6 +35,7 @@ import { BotonInstalarPwa } from '../BotonInstalarPwa';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { QrScannerUniversalModal } from '../qr/QrScannerUniversalModal';
 import { useQrModalStore } from '../../core/qrModalStore';
+import { confirmarSalidaSiHayCambios } from '../../store/cambiosSinGuardarStore';
 
 export const InsideAppShellContext = React.createContext(false);
 export const useInsideAppShell = () => React.useContext(InsideAppShellContext);
@@ -207,8 +208,22 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
   };
 
   const handleLogout = () => {
+    if (!confirmarSalidaSiHayCambios()) return;
     logout();
     navigate('/login', { replace: true });
+  };
+
+  // Cualquier link interno del shell (sidebar, header, barra móvil o contenido) pide
+  // confirmación si la vista marcó cambios sin guardar (p. ej. el legajo a medio completar).
+  const protegerNavegacion = (e: React.MouseEvent) => {
+    const link = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null;
+    if (!link || link.target === '_blank' || link.origin !== window.location.origin) return;
+    const destino = link.pathname + link.search;
+    if (destino === window.location.pathname + window.location.search) return;
+    if (!confirmarSalidaSiHayCambios()) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
   };
 
   // Barra inferior móvil (4 tabs + FAB central). Solo enlaza rutas permitidas y no repite destinos.
@@ -240,7 +255,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
 
   return (
     <InsideAppShellContext.Provider value={true}>
-      <div className="min-h-screen flex bg-paper text-ink">
+      <div className="min-h-screen flex bg-paper text-ink" onClickCapture={protegerNavegacion}>
       {/* Sidebar Desktop */}
       <aside className="hidden md:flex w-64 lg:w-[272px] shrink-0 border-r border-rule bg-paper-2 flex-col justify-between p-3.5 sticky top-0 h-screen">
         <div className="space-y-5 overflow-y-auto no-scrollbar pr-0.5">
@@ -346,7 +361,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
               <span className="flex-1 text-left truncate">
                 Buscar miembro, DNI o acción…
               </span>
-              <kbd className="px-2 py-0.5 rounded text-[11px] border border-rule bg-paper-2 font-mono">
+              <kbd className="px-2 py-0.5 rounded text-xs border border-rule bg-paper-2 font-mono">
                 Ctrl K
               </kbd>
             </button>
@@ -440,7 +455,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
               <div key={`fab-${idx}`} className="flex justify-center -mt-6">
                 <button
                   type="button"
-                  onClick={fabModo === 'qr' ? handleOpenQr : () => navigate('/eventos')}
+                  onClick={
+                    fabModo === 'qr'
+                      ? handleOpenQr
+                      : () => {
+                          if (confirmarSalidaSiHayCambios()) navigate('/eventos');
+                        }
+                  }
                   aria-label={fabModo === 'qr' ? 'Abrir escáner QR' : 'Ver Eventos'}
                   className="s-btn-brand s-fab-btn w-14 h-14 rounded-full flex items-center justify-center border-4 border-paper cursor-pointer"
                 >
@@ -465,7 +486,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                 type="button"
                 onClick={() => setMobileMoreOpen(true)}
                 aria-label="Más módulos y ajustes"
-                className={`s-mob-tab flex flex-col items-center justify-center py-1 text-[11px] font-semibold cursor-pointer ${
+                className={`s-mob-tab flex flex-col items-center justify-center py-1 text-xs font-semibold cursor-pointer ${
                   mobileMoreOpen ? 'is-active text-brand' : 'text-ink-muted hover:text-ink'
                 }`}
               >
@@ -481,7 +502,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
               key={slot.to}
               to={slot.to}
               aria-current={active ? 'page' : undefined}
-              className={`s-mob-tab flex flex-col items-center justify-center py-1 text-[11px] font-semibold ${
+              className={`s-mob-tab flex flex-col items-center justify-center py-1 text-xs font-semibold ${
                 active ? 'is-active text-brand font-bold' : 'text-ink-muted hover:text-ink'
               }`}
             >
@@ -509,6 +530,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                 key={it.id}
                 type="button"
                 onClick={() => {
+                  if (!confirmarSalidaSiHayCambios()) return;
                   setMobileMoreOpen(false);
                   navigate(it.to);
                 }}

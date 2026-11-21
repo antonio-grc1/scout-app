@@ -79,7 +79,7 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
           const destId = seccionSeleccionada[s.id] ?? s.unidadDestinoId;
           const secciones = s.seccionesMismaRama ?? [];
           const fechaStr = s.createdAt
-            ? new Date(s.createdAt).toLocaleDateString('es-AR', { timeZone: 'UTC' })
+            ? new Date(s.createdAt).toLocaleDateString('es-AR')
             : '';
 
           return (

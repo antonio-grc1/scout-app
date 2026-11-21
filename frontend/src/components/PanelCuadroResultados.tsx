@@ -536,16 +536,16 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                       <CheckCircle2 className="w-3.5 h-3.5 text-brand" />
                     )}
                   </div>
-                  <div className="mt-1.5 space-y-0.5 text-[11px]">
-                    <div className="text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+                  <div className="mt-1.5 space-y-0.5 text-xs">
+                    <div className="text-emerald-600 dark:text-emerald-400 font-semibold break-words">
                       +{formatearMoneda(m.ingresos)}
                     </div>
-                    <div className="text-rose-600 dark:text-rose-400 font-semibold truncate">
+                    <div className="text-rose-600 dark:text-rose-400 font-semibold break-words">
                       -{formatearMoneda(m.egresos)}
                     </div>
                   </div>
                   <div
-                    className={`mt-1.5 pt-1 border-t border-rule text-xs font-black truncate ${
+                    className={`mt-1.5 pt-1 border-t border-rule text-xs font-black break-words ${
                       mesPositivo
                         ? 'text-emerald-700 dark:text-emerald-300'
                         : 'text-rose-700 dark:text-rose-300'

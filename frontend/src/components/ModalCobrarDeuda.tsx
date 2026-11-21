@@ -10,7 +10,7 @@ import {
   Wallet,
   Landmark,
 } from 'lucide-react';
-import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
+import { formatearMoneda, parsearMontoAR, traducirErrorAmigable } from '../lib/formatters';
 
 interface Props {
   abierto: boolean;
@@ -77,6 +77,12 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
   const [imputaciones, setImputaciones] = useState<Record<number, number>>({});
   const [usarSaldoAFavor, setUsarSaldoAFavor] = useState(false);
   const [montoTotalIngresado, setMontoTotalIngresado] = useState<number | ''>('');
+  // Texto tal como lo escribe el usuario ("1.500" = mil quinientos); el número se deriva con parsearMontoAR.
+  const [montoTexto, setMontoTexto] = useState('');
+  const fijarMonto = (valor: number | '') => {
+    setMontoTotalIngresado(valor);
+    setMontoTexto(valor === '' ? '' : String(valor).replace('.', ','));
+  };
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TRANSFERENCIA' | 'OTRO'>('EFECTIVO');
   const [cuentas, setCuentas] = useState<CuentaSimple[]>([]);
   const [cuentaId, setCuentaId] = useState<number | ''>('');
@@ -106,7 +112,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
       ) / 100;
     const saldoUsado = aplicarSaldo ? Math.min(saldoAFavorDisponible, suma) : 0;
     const efectivoNecesario = Math.max(0, Math.round((suma - saldoUsado) * 100) / 100);
-    setMontoTotalIngresado(efectivoNecesario);
+    fijarMonto(efectivoNecesario);
   };
 
   useEffect(() => {
@@ -280,13 +286,18 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
   const deseleccionarTodos = () => {
     setImputaciones({});
     setUsarSaldoAFavor(false);
-    setMontoTotalIngresado('');
+    fijarMonto('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (enviandoRef.current || procesando) return;
     setError(null);
+
+    if (montoTexto.trim() !== '' && parsearMontoAR(montoTexto) === null) {
+      setError('El monto recibido no es válido. Escribilo como 1.500 o 1500,50.');
+      return;
+    }
 
     const itemsAImputar = Object.entries(imputaciones)
       .map(([cargoIdStr, monto]) => ({
@@ -574,18 +585,28 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
                   $
                 </span>
+                {/* type="text" + inputMode decimal: con type="number" "1.500" se leía como 1,5 */}
                 <input
-                  type="number"
-                  step="0.01"
-                  min={minimoEfectivoRequerido}
-                  value={montoTotalIngresado}
-                  onChange={(e) =>
-                    setMontoTotalIngresado(e.target.value === '' ? '' : Number(e.target.value))
-                  }
-                  placeholder={minimoEfectivoRequerido.toString()}
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  aria-describedby="monto-recibido-ayuda"
+                  value={montoTexto}
+                  onChange={(e) => {
+                    const texto = e.target.value;
+                    setMontoTexto(texto);
+                    const n = parsearMontoAR(texto);
+                    setMontoTotalIngresado(texto.trim() === '' || n === null ? '' : n);
+                  }}
+                  placeholder={formatearMoneda(minimoEfectivoRequerido).replace(/^\$\s?/, '')}
                   className="w-full min-h-[46px] rounded-xl border border-rule bg-surface pl-8 pr-3.5 py-2.5 text-base sm:text-[15px] font-extrabold text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
                 />
               </div>
+              <p id="monto-recibido-ayuda" className="mt-1 text-xs text-ink-muted" aria-live="polite">
+                {montoTexto.trim() !== '' && parsearMontoAR(montoTexto) === null
+                  ? 'Monto no válido. Ejemplos: 1.500 o 1500,50'
+                  : `Se registrará: ${formatearMoneda(montoEfectivoFinal)}`}
+              </p>
             </div>
 
             <div>
@@ -604,6 +625,20 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               </select>
             </div>
           </div>
+
+          {/* Sin cuenta para el método elegido el cobro no entra en ningún libro diario: avisarlo */}
+          {puedeSeleccionarCuenta &&
+            montoEfectivoFinal > 0 &&
+            !(
+              (metodoPago === 'TRANSFERENCIA' && cuentas.some((c) => c.tipo === 'BANCO')) ||
+              (metodoPago === 'EFECTIVO' && cuentas.some((c) => c.tipo === 'CAJA_EFECTIVO'))
+            ) && (
+              <p role="note" className="s-badge-warn rounded-xl p-3 text-[13px] font-semibold">
+                {metodoPago === 'OTRO'
+                  ? 'Con "Otro medio" el cobro no se imputa a ninguna caja ni banco: no aparecerá en el libro diario.'
+                  : `No hay ${metodoPago === 'TRANSFERENCIA' ? 'cuenta bancaria' : 'caja de efectivo'} activa: el cobro no aparecerá en el libro diario. Creala en Tesorería → Caja, Bancos y Gastos.`}
+              </p>
+            )}
 
           {/* Selector o indicador de Cuenta Financiera según método de pago */}
           {puedeSeleccionarCuenta && montoEfectivoFinal > 0 && metodoPago === 'TRANSFERENCIA' && cuentas.some((c) => c.tipo === 'BANCO') && (

@@ -10,8 +10,8 @@
   --z-base: 1; --z-raised: 10; --z-dropdown: 100; --z-sticky: 200; --z-sticky-nav: 300; --z-modal: 400; --z-toast: 500; --z-tooltip: 600;
 
   /* Typography & Geometry */
-  --font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: 'Inter Variable', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-body: 'Inter Variable', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-outlier: var(--font-body);
   --radius-card: 14px;
   --radius-pill: 9999px;
@@ -48,8 +48,17 @@
   --color-rule-strong: rgba(24, 24, 27, 0.24); /* Borde legible para inputs y controles táctiles */
   --color-accent: var(--color-brand);
   --color-accent-ink: var(--color-brand-contrast);
-  --color-focus: var(--color-brand);
+  /* Foco: el ámbar de marca da ~2.1:1 sobre blanco (WCAG pide 3:1 para indicadores); en claro
+     se usa el ámbar oscuro. En modo oscuro el ámbar claro sí contrasta. */
+  --color-focus: var(--color-brand-ink);
   --s-shell-glow: radial-gradient(620px circle at 15% -5%, rgba(245, 158, 11, 0.06), transparent 60%);
+
+  /* Texto de estado sobre superficies claras (>= 4.5:1 incluso sobre paper-2). */
+  --color-text-ok: #065f46;      /* emerald-800 */
+  --color-text-err: #be123c;     /* rose-700 */
+  --color-text-info: #1d4ed8;    /* blue-700 */
+  --color-text-teal: #0f766e;    /* teal-700 */
+  --color-text-warn: #92400e;    /* amber-800 */
 
   /* Semantic Status Badges */
   --s-ok-bg: #dcfce7;
