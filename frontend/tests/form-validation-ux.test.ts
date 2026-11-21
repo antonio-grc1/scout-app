@@ -421,3 +421,17 @@ describe('validarNuevaContrasena (B7-06)', () => {
     assert.equal(validarNuevaContrasena({ nueva: 'larguisima1', repetir: 'larguisima1', actual: 'vieja' }), null);
   });
 });
+
+describe('esDniValido (alta de miembro)', () => {
+  it('acepta DNI de 7 a 9 dígitos y rechaza el resto', async () => {
+    const { esDniValido } = await vite.ssrLoadModule('/src/lib/formValidation.ts');
+    assert.equal(esDniValido('12345678'), true);
+    assert.equal(esDniValido('1234567'), true);
+    assert.equal(esDniValido('123456789'), true);
+    assert.equal(esDniValido(' 45123456 '), true);
+    assert.equal(esDniValido('123456'), false);
+    assert.equal(esDniValido('1234567890'), false);
+    assert.equal(esDniValido('12.345.678'), false);
+    assert.equal(esDniValido(''), false);
+  });
+});

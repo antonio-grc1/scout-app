@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { esDniValido } from '../lib/formValidation';
 import { traducirErrorAmigable } from '../lib/formatters';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
@@ -195,7 +196,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!/^d{7,9}$/.test(dni.trim())) {
+    if (!esDniValido(dni)) {
       setError('Ingresá un DNI válido (7 a 9 números).');
       return;
     }

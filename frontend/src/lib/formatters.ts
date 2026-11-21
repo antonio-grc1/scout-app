@@ -433,6 +433,14 @@ export function traducirErrorAmigable(err: any, mensajePorDefecto = 'No pudimos 
       /(cannot read|is not (a function|defined|iterable)|undefined|failed to execute|pdf-lib|pdfjs|atob|invalid (array|string) length|unexpected token)/i.test(texto));
   if (esErrorTecnicoDelNavegador) return mensajePorDefecto;
 
+  // Mensajes de validación del servidor (zod) que llegan en inglés
+  if (/too small: expected|too big: expected|invalid input|expected (string|number|boolean)/i.test(texto)) {
+    const resto = texto
+      .split('. ')
+      .filter((p) => p && !/too small|too big|invalid input|expected (string|number|boolean)/i.test(p));
+    return ['Hay campos obligatorios vacíos o con formato inválido.', ...new Set(resto)].join(' ');
+  }
+
   if (texto && !lower.includes('prisma') && !lower.includes('sql') && !lower.includes('constraint') && !lower.includes('exception')) {
     return texto;
   }

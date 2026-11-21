@@ -767,3 +767,16 @@ describe('traducirErrorAmigable (B7): sesión vencida y errores técnicos', () =
     );
   });
 });
+
+describe('traducirErrorAmigable traduce validaciones zod en inglés', () => {
+  it('no expone "Too small: expected string"', async () => {
+    const { traducirErrorAmigable } = await vite.ssrLoadModule('/src/lib/formatters.ts');
+    const msg = traducirErrorAmigable({
+      response: {
+        status: 400,
+        data: { message: 'Too small: expected string to have >=1 characters. Fecha inválida (AAAA-MM-DD)' },
+      },
+    });
+    assert.equal(msg, 'Hay campos obligatorios vacíos o con formato inválido. Fecha inválida (AAAA-MM-DD)');
+  });
+});

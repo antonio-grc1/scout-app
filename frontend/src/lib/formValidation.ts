@@ -641,3 +641,8 @@ export function validarNuevaContrasena(params: {
   if (actual && nueva === actual) return 'La nueva contraseña debe ser distinta a la actual.';
   return null;
 }
+
+/** DNI argentino: solo dígitos, entre 7 y 9 (ya sin puntos ni espacios). */
+export function esDniValido(dni: string | null | undefined): boolean {
+  return /^\d{7,9}$/.test(String(dni ?? '').trim());
+}
