@@ -36,6 +36,8 @@ interface PageCanvasProps {
   pageNumber: number;
   zoom: number;
   containerWidth: number;
+  /** Contenedor con scroll del visor: raíz del IntersectionObserver (así aplica el margen de precarga). */
+  scrollRootRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 const PdfPageCanvas: React.FC<PageCanvasProps> = ({
@@ -43,13 +45,44 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
   pageNumber,
   zoom,
   containerWidth,
+  scrollRootRef,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const contenedorRef = useRef<HTMLDivElement | null>(null);
   const [renderizando, setRenderizando] = useState(true);
+  // B5-17: cada hoja se dibuja solo cuando está cerca de la vista y libera su canvas al alejarse
+  // (antes se renderizaban todas a la vez, con riesgo de memoria en celulares de gama baja).
+  const [cerca, setCerca] = useState(pageNumber <= 2);
+  const [proporcion, setProporcion] = useState(1.414); // alto/ancho; A4 hasta medir la hoja real
+  const anchoObjetivo = Math.max(280, Math.min(containerWidth - 24, 860)) * zoom;
+
+  useEffect(() => {
+    const el = contenedorRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setCerca(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entrada]) => setCerca(entrada.isIntersecting), {
+      root: scrollRootRef?.current ?? null,
+      rootMargin: '600px 0px',
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [scrollRootRef]);
 
   useEffect(() => {
     let cancelado = false;
     let renderTask: pdfjsLib.RenderTask | null = null;
+
+    if (!cerca) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      setRenderizando(true);
+      return;
+    }
 
     const renderPage = async () => {
       if (!canvasRef.current || containerWidth <= 0) return;
@@ -60,12 +93,12 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
         if (cancelado) return;
 
         const baseViewport = page.getViewport({ scale: 1 });
+        setProporcion(baseViewport.height / baseViewport.width);
         // Ajustar el ancho de la página al contenedor disponible (con margen) multiplicado por el zoom
-        const targetWidth = Math.max(280, Math.min(containerWidth - 24, 860)) * zoom;
-        const scale = targetWidth / baseViewport.width;
+        const scale = anchoObjetivo / baseViewport.width;
         const viewport = page.getViewport({ scale });
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -107,7 +140,7 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
         }
       }
     };
-  }, [pdfDoc, pageNumber, zoom, containerWidth]);
+  }, [pdfDoc, pageNumber, zoom, containerWidth, cerca, anchoObjetivo]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -120,12 +153,19 @@ const PdfPageCanvas: React.FC<PageCanvasProps> = ({
   }, []);
 
   return (
-    <div className="relative bg-white shadow-md rounded-lg overflow-hidden border border-rule my-2.5 w-fit">
+    <div
+      ref={contenedorRef}
+      className="relative bg-white shadow-md rounded-lg overflow-hidden border border-rule my-2.5 w-fit"
+    >
       <div className="bg-paper-2 px-3.5 py-1.5 text-xs font-bold text-ink-muted flex items-center justify-between border-b border-rule select-none">
         <span>Hoja {pageNumber}</span>
         {renderizando && <span className="animate-pulse">Renderizando…</span>}
       </div>
-      <div className="flex justify-center bg-white select-none">
+      <div
+        className="flex justify-center bg-white select-none"
+        // Mientras la hoja no está dibujada, reserva su alto estimado para que el scroll no salte.
+        style={renderizando ? { minWidth: anchoObjetivo, minHeight: anchoObjetivo * proporcion } : undefined}
+      >
         <canvas
           ref={canvasRef}
           aria-label={`Página ${pageNumber} del documento PDF`}
@@ -375,6 +415,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
                   pageNumber={idx + 1}
                   zoom={zoom}
                   containerWidth={containerWidth}
+                  scrollRootRef={containerRef}
                 />
               ))}
           </div>

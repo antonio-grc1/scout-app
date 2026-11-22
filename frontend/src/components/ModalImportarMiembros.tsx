@@ -560,9 +560,14 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
           actualizados++;
         }
       } catch (err: any) {
+        // Un DNI que existe en una sección fuera del alcance no figura en la lista local, se marca
+        // "Nuevo" y el alta choca con el índice único (409): explicarlo en lugar de "ya existe".
+        const fueraDeAlcance = f.estado === 'VALIDO_NUEVO' && err?.response?.status === 409;
         errores.push({
           fila: f,
-          mensaje: traducirErrorAmigable(err, 'No se pudo guardar este registro.'),
+          mensaje: fueraDeAlcance
+            ? `El DNI ${f.dni} ya está registrado en una sección fuera de tu alcance. Pedile a la jefatura del grupo que lo incorpore.`
+            : traducirErrorAmigable(err, 'No se pudo guardar este registro.'),
         });
       }
     }

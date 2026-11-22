@@ -15,7 +15,7 @@ import {
   Utensils,
   Pill,
 } from 'lucide-react';
-import { esVerdadero, extraerInfoMedicaMiembro } from '../lib/alertasMedicas';
+import { combinarRespuestas, esVerdadero, extraerInfoMedicaMiembro } from '../lib/alertasMedicas';
 import { obtenerCicloAnioActual } from '../lib/formatters';
 
 const PdfViewerModal = lazy(() =>
@@ -54,20 +54,8 @@ export const VisorFichaMiembro: React.FC<VisorFichaMiembroProps> = ({
 }) => {
   const [seccion, setSeccion] = useState<SeccionVista>('salud');
 
-  // Combinamos los datos del snapshot de la(s) entrega(s) con los datos fijos del usuario
-  const datos: Record<string, any> = {
-    ...(miembro?.datosFijosJson || {}),
-  };
-  if (Array.isArray(entrega)) {
-    const ordenadas = [...entrega].sort((a, b) => Number(a?.id ?? 0) - Number(b?.id ?? 0));
-    for (const ent of ordenadas) {
-      if (ent?.respuestasSnapshotJson && typeof ent.respuestasSnapshotJson === 'object') {
-        Object.assign(datos, ent.respuestasSnapshotJson);
-      }
-    }
-  } else if (entrega?.respuestasSnapshotJson && typeof entrega.respuestasSnapshotJson === 'object') {
-    Object.assign(datos, entrega.respuestasSnapshotJson);
-  }
+  // B7-06: misma combinación que usan las alertas médicas (antes había una copia acá).
+  const datos = combinarRespuestas(miembro, entrega);
 
   const tieneDatosCargados =
     (Array.isArray(entrega)

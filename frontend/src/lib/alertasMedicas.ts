@@ -282,7 +282,8 @@ function inferirCondicionesDesdeTexto(texto: string, target: Set<string>): void 
   if (/hipotens|presion baja/.test(norm)) target.add('HIPOTENSION');
 }
 
-function combinarRespuestas(miembro: any, entregaOEntregas?: any): Record<string, any> {
+/** Datos fijos del miembro + respuestas de sus entregas (de la más antigua a la más reciente). */
+export function combinarRespuestas(miembro: any, entregaOEntregas?: any): Record<string, any> {
   const datos: Record<string, any> = {
     ...(miembro?.datosFijosJson && typeof miembro.datosFijosJson === 'object'
       ? miembro.datosFijosJson

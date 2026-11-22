@@ -235,7 +235,11 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
               <Compass className="w-4 h-4 text-brand" />
               Vista previa en tiempo real
             </span>
-            <div className="p-3 rounded-xl border border-rule bg-surface flex flex-wrap items-center justify-between gap-2.5">
+            {/* Muestra decorativa: inerte (sin foco ni clicks) para que sus botones no parezcan funcionar. */}
+            <div
+              inert
+              className="p-3 rounded-xl border border-rule bg-surface flex flex-wrap items-center justify-between gap-2.5 select-none"
+            >
               <BrandLogo variant="icon" size="sm" showSubtitle subtitleText="Juan XXIII" className="m-0" />
               <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="primary" size="sm">

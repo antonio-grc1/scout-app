@@ -27,6 +27,7 @@ import {
   esRolDeEducador,
   esRolDeProtagonista,
   TIPO_UNIDAD_LABELS,
+  formatearFecha,
 } from '../lib/formatters';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 
@@ -42,17 +43,9 @@ export interface ModalHistorialSeccionProps {
   onCerrar: () => void;
 }
 
-function formatearFechaUTC(fechaStr?: string | null): string {
-  if (!fechaStr) return '';
-  const d = new Date(fechaStr);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('es-AR', {
-    timeZone: 'UTC',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
+// B7-06: usa el formateador compartido (respeta fechas sin hora sin correr el día por zona horaria).
+const formatearFechaUTC = (fechaStr?: string | null): string =>
+  fechaStr ? formatearFecha(fechaStr) : '';
 
 function obtenerPersona(asig: AsignacionHistorialUnidad): PersonaHistorialUnidad {
   if (asig.miembro) return asig.miembro;

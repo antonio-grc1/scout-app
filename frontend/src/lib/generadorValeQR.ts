@@ -68,8 +68,13 @@ function formatearFecha(f?: string): string {
  */
 export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> {
   // 1. Generar imagen base del QR
+  // Se dibuja al doble de resolución (ESCALA) para que el vale se vea nítido en pantallas de
+  // celular; el QR se genera acorde para no estirarse.
+  const ESCALA = 2;
+  const ANCHO = 600;
+  const ALTO = 820;
   const qrDataUrl = await QRCode.toDataURL(ticket.tokenQr, {
-    width: 320,
+    width: 256 * ESCALA,
     margin: 1,
     color: {
       dark: '#0f172a',
@@ -86,21 +91,22 @@ export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> 
 
   // 2. Crear Canvas de alta resolución
   const canvas = document.createElement('canvas');
-  canvas.width = 600;
-  canvas.height = 820;
+  canvas.width = ANCHO * ESCALA;
+  canvas.height = ALTO * ESCALA;
   const ctx = canvas.getContext('2d');
   if (!ctx) return qrDataUrl;
+  ctx.scale(ESCALA, ESCALA);
 
   // Fondo blanco con bordes redondeados
   ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, ANCHO, ALTO);
 
   // 3. Encabezado Verde Scout
-  const headerGrad = ctx.createLinearGradient(0, 0, canvas.width, 130);
+  const headerGrad = ctx.createLinearGradient(0, 0, ANCHO, 130);
   headerGrad.addColorStop(0, '#065f46'); // emerald-800
   headerGrad.addColorStop(1, '#047857'); // emerald-700
   ctx.fillStyle = headerGrad;
-  ctx.fillRect(0, 0, canvas.width, 125);
+  ctx.fillRect(0, 0, ANCHO, 125);
 
   // Subtítulo Grupo Scout
   ctx.font = 'bold 12px sans-serif';
@@ -175,13 +181,13 @@ export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> 
   ctx.font = 'bold 15px sans-serif';
   ctx.fillStyle = '#0f172a';
   const lugar = ticket.pedido.evento.lugarEntrega || 'Sede del Grupo Scout';
-  ctx.fillText(`📍 Retiro: ${lugar}`, 44, 648);
+  ctx.fillText(`Retiro: ${lugar}`, 44, 648);
 
   const fechaStr = formatearFecha(ticket.pedido.evento.fechaEvento);
   if (fechaStr) {
     ctx.font = '14px sans-serif';
     ctx.fillStyle = '#334155';
-    ctx.fillText(`📅 Fecha: ${fechaStr}`, 44, 674);
+    ctx.fillText(`Fecha: ${fechaStr}`, 44, 674);
   }
 
   ctx.font = 'italic 12px sans-serif';
