@@ -273,7 +273,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               <p className="text-ink-2">
                 {altaResultado.claveTemporal ? (
                   <>
-                    Entregá esta clave temporal a <strong>{altaResultado.nombreCompleto}</strong>{' '}
+                    Entregá esta contraseña temporal a <strong>{altaResultado.nombreCompleto}</strong>{' '}
                     (DNI <strong>{altaResultado.dni}</strong>). Al ingresar por primera vez el
                     sistema le pedirá elegir una contraseña propia.
                     {altaResultado.emailEnviado && altaResultado.emailDestino && (
@@ -321,7 +321,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                   className="min-h-[40px] px-3.5 rounded-xl border border-rule bg-surface hover:bg-paper-3 text-ink font-bold inline-flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   {copiadaClave ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                  <span>{copiadaClave ? 'Copiada' : 'Copiar clave'}</span>
+                  <span>{copiadaClave ? 'Copiada' : 'Copiar contraseña'}</span>
                 </button>
               </div>
             )}

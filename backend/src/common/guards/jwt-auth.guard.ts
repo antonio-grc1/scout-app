@@ -145,7 +145,7 @@ export class JwtAuthGuard implements CanActivate {
     if (usuarioHidratado.requiereCambioClave && !permitePendiente) {
       throw new ForbiddenException({
         code: 'REQUIERE_CAMBIO_CLAVE',
-        message: 'Debe cambiar su clave antes de continuar',
+        message: 'Debe cambiar su contraseña antes de continuar',
       });
     }
     return true;

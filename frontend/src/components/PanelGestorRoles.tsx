@@ -64,7 +64,7 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
     titulo: 'Padrón y Ficha de Miembro',
     pestanas: 'Menú Miembros + Pestañas Datos y Seguridad',
     detalle:
-      'Solo lectura consulta el padrón; Edición permite inscribir, modificar datos (identidad, contacto, familia), dar de baja y resetear clave.',
+      'Solo lectura consulta el padrón; Edición permite inscribir, modificar datos (identidad, contacto, familia), dar de baja y restablecer contraseña.',
     permisoVer: 'padron.ver',
     permisoEditar: 'padron.editar',
     alcanceMinimoVer: 'PROPIO',

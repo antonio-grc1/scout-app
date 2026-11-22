@@ -406,7 +406,7 @@ export class MailerService {
             ${
               safeClaveTemporal
                 ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña temporal inicial:</strong> <code style="background: #fff; padding: 2px 6px; border-radius: 4px;">${safeClaveTemporal}</code></p>`
-                : `<p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña temporal inicial:</strong> solicitá la clave generada al momento del alta a tu educador/a.</p>`
+                : `<p style="margin: 4px 0; font-size: 14px;"><strong>Contraseña temporal inicial:</strong> solicitá la contraseña generada al momento del alta a tu educador/a.</p>`
             }
           </div>
 

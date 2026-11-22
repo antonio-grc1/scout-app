@@ -23,7 +23,7 @@ export const CATALOGO_PERMISOS = [
     clave: 'padron.editar',
     modulo: 'Padrón y Miembros',
     nombre: 'Padrón: Edición',
-    descripcion: 'Padrón y Ficha de Miembro: Alta, edición de datos, baja y reseteo de clave',
+    descripcion: 'Padrón y Ficha de Miembro: Alta, edición de datos, baja y restablecimiento de contraseña',
     alcanceMinimo: AlcanceRol.PROPIO,
     requiere: ['padron.ver'],
   },

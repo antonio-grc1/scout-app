@@ -128,7 +128,7 @@ export const CambiarClave: React.FC = () => {
           <div className="flex items-center gap-2.5 min-w-0">
             <KeyRound className="w-5 h-5 text-brand shrink-0" />
             <h1 className="text-xl sm:text-2xl font-extrabold text-ink truncate">
-              {obligatorio ? 'Cambio Obligatorio de Clave' : 'Cambiar Contraseña'}
+              {obligatorio ? 'Cambio Obligatorio de Contraseña' : 'Cambiar Contraseña'}
             </h1>
           </div>
 
@@ -153,8 +153,8 @@ export const CambiarClave: React.FC = () => {
           } mb-5 leading-relaxed`}
         >
           {obligatorio
-            ? 'Ingresaste con clave temporal o alta inicial. Por seguridad, definí una contraseña personal de al menos 8 caracteres para continuar.'
-            : 'Ingresá tu contraseña actual y definí una nueva clave personal de al menos 8 caracteres.'}
+            ? 'Ingresaste con contraseña temporal o alta inicial. Por seguridad, definí una contraseña personal de al menos 8 caracteres para continuar.'
+            : 'Ingresá tu contraseña actual y definí una nueva contraseña personal de al menos 8 caracteres.'}
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>

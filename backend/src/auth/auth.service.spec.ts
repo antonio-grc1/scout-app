@@ -97,7 +97,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
         claveActual: 'claveIncorrecta',
         claveNueva: 'nuevaClaveSegura88',
       }),
-    ).rejects.toThrow('La clave actual es incorrecta');
+    ).rejects.toThrow('La contraseña actual es incorrecta');
   });
 
   it('cambiarClave rechaza si la nueva clave es igual al DNI', async () => {
@@ -127,7 +127,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
         claveActual: 'claveVieja123',
         claveNueva: '40111222',
       }),
-    ).rejects.toThrow('La nueva clave no puede ser igual al DNI');
+    ).rejects.toThrow('La nueva contraseña no puede ser igual al DNI');
   });
 
   it('cambiarClave actualiza passwordHash y devuelve nueva sesión con requiereCambioClave: false', async () => {
@@ -190,7 +190,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
 
     await expect(
       serviceInicial.cambiarClave(actor, { claveActual: '', claveNueva: 'TempPass123' }),
-    ).rejects.toThrow('La nueva clave debe ser distinta de la actual');
+    ).rejects.toThrow('La nueva contraseña debe ser distinta de la actual');
 
     const resOk = await serviceInicial.cambiarClave(actor, {
       claveActual: '',
@@ -211,7 +211,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
     const serviceVoluntario = new AuthService(prismaVoluntario, mockJwt);
     await expect(
       serviceVoluntario.cambiarClave(actor, { claveActual: '', claveNueva: 'MiClavePersonal88' }),
-    ).rejects.toThrow('Debe ingresar su clave actual');
+    ).rejects.toThrow('Debe ingresar su contraseña actual');
   });
 });
 

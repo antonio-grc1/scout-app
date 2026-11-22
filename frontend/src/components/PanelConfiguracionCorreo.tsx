@@ -212,7 +212,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
             <div>
               <h2 className="text-base font-extrabold text-ink">Correo Saliente y Envío de Contraseñas</h2>
               <p className="text-[13px] text-ink-muted mt-0.5">
-                Configurá el correo saliente para enviar altas, contraseñas temporales y recuperación de clave.
+                Configurá el correo saliente para enviar altas, contraseñas temporales y recuperación de contraseña.
               </p>
             </div>
           </div>
@@ -247,7 +247,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
             <div className="text-sm">
               <span className="font-bold text-ink block">Habilitar envío automático de contraseñas y credenciales por correo</span>
               <span className="text-[13px] text-ink-muted">
-                Permite enviar la clave inicial al dar de alta miembros, restablecer contraseñas y usar "¿Olvidaste tu contraseña?" en el login.
+                Permite enviar la contraseña inicial al dar de alta miembros, restablecer contraseñas y usar "¿Olvidaste tu contraseña?" en el login.
               </span>
             </div>
           </label>
@@ -328,14 +328,14 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
                   type={mostrarPass ? 'text' : 'password'}
                   value={pass}
                   onChange={(e) => setPass(e.target.value)}
-                  placeholder={tienePassword ? 'Dejar vacío para mantener la actual' : 'Clave de aplicación o SMTP key'}
+                  placeholder={tienePassword ? 'Dejar vacío para mantener la actual' : 'Contraseña de aplicación o SMTP key'}
                   autoComplete="new-password"
                   className="w-full min-h-[46px] pl-3.5 pr-10 py-2.5 rounded-xl border border-rule bg-surface text-base sm:text-[15px] text-ink focus:border-[var(--color-focus)] outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setMostrarPass((prev) => !prev)}
-                  aria-label={mostrarPass ? 'Ocultar clave SMTP' : 'Ver clave SMTP'}
+                  aria-label={mostrarPass ? 'Ocultar contraseña SMTP' : 'Ver contraseña SMTP'}
                   className="absolute inset-y-0 right-0 px-3 flex items-center text-ink-muted hover:text-ink cursor-pointer"
                 >
                   {mostrarPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

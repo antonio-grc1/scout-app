@@ -72,16 +72,16 @@ export class AuthService {
 
     const claveActual = dto.claveActual ?? '';
     if (!usuario.requiereCambioClave && claveActual.length === 0) {
-      throw new BadRequestException('Debe ingresar su clave actual');
+      throw new BadRequestException('Debe ingresar su contraseña actual');
     }
     if (claveActual.length > 0 && !(await bcrypt.compare(claveActual, usuario.passwordHash))) {
-      throw new BadRequestException('La clave actual es incorrecta');
+      throw new BadRequestException('La contraseña actual es incorrecta');
     }
     if (await bcrypt.compare(dto.claveNueva, usuario.passwordHash)) {
-      throw new BadRequestException('La nueva clave debe ser distinta de la actual');
+      throw new BadRequestException('La nueva contraseña debe ser distinta de la actual');
     }
     if (dto.claveNueva.trim() === usuario.dni.trim()) {
-      throw new BadRequestException('La nueva clave no puede ser igual al DNI');
+      throw new BadRequestException('La nueva contraseña no puede ser igual al DNI');
     }
 
     const actualizado = await this.prisma.usuario.update({
@@ -166,7 +166,7 @@ export class AuthService {
     emailDestino: string | null;
   }> {
     if (usuarioId === actor.sub) {
-      throw new BadRequestException('Para su propia cuenta use el cambio de clave');
+      throw new BadRequestException('Para su propia cuenta use el cambio de contraseña');
     }
 
     const objetivo = await this.prisma.usuario.findFirst({
@@ -184,7 +184,7 @@ export class AuthService {
       const esGlobal = objetivo.asignaciones.some(
         (a) => a.rol.alcancePorDefecto === AlcanceRol.GLOBAL,
       );
-      if (esGlobal) throw new ForbiddenException('No puede resetear la clave de un usuario con alcance global');
+      if (esGlobal) throw new ForbiddenException('No puede restablecer la contraseña de un usuario con alcance global');
 
       if (alcance.tipo === 'UNIDAD') {
         const tieneOtrasUnidades = objetivo.asignaciones.some(
@@ -194,7 +194,7 @@ export class AuthService {
         );
         if (tieneOtrasUnidades) {
           throw new ForbiddenException(
-            'No puede resetear la clave de un usuario con asignaciones en unidades fuera de su alcance',
+            'No puede restablecer la contraseña de un usuario con asignaciones en unidades fuera de su alcance',
           );
         }
       }
@@ -203,7 +203,7 @@ export class AuthService {
     assertActorDominaObjetivo(
       actor,
       objetivo.asignaciones,
-      'No puede resetear la clave de un usuario con permisos o alcance superiores a los suyos',
+      'No puede restablecer la contraseña de un usuario con permisos o alcance superiores a los suyos',
     );
 
     const claveTemporal = generarClaveTemporal();
@@ -213,12 +213,12 @@ export class AuthService {
     if (soloPorCorreo) {
       if (!emailDestino) {
         throw new BadRequestException(
-          'El miembro no tiene un correo electrónico de contacto registrado para enviar la clave.',
+          'El miembro no tiene un correo electrónico de contacto registrado para enviar la contraseña.',
         );
       }
       if (!this.mailer || !(await this.mailer.estaDisponibleParaEnvio())) {
         throw new BadRequestException(
-          'El envío de correos no está configurado o está deshabilitado. Configuralo en Panel de Gestión → Correo y Claves.',
+          'El envío de correos no está configurado o está deshabilitado. Configuralo en Organización → Correo Institucional.',
         );
       }
 
@@ -246,7 +246,7 @@ export class AuthService {
       });
 
       return {
-        mensaje: `Se generó una nueva clave temporal y se envió por correo a ${emailDestino}`,
+        mensaje: `Se generó una nueva contraseña temporal y se envió por correo a ${emailDestino}`,
         emailEnviado: true,
         emailDestino,
       };
@@ -273,7 +273,7 @@ export class AuthService {
         : false;
 
     return {
-      mensaje: `Se generó una nueva clave temporal para ${objetivo.nombre} ${objetivo.apellido}`,
+      mensaje: `Se generó una nueva contraseña temporal para ${objetivo.nombre} ${objetivo.apellido}`,
       claveTemporal,
       emailEnviado,
       emailDestino,

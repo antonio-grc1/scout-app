@@ -21,11 +21,11 @@ export const CambiarClaveSchema = z
   }))
   .refine((d) => d.claveNueva.length >= 8, {
     path: ['claveNueva'],
-    message: 'La nueva clave debe tener al menos 8 caracteres',
+    message: 'La nueva contraseña debe tener al menos 8 caracteres',
   })
   .refine((d) => d.claveActual.length === 0 || d.claveActual !== d.claveNueva, {
     path: ['claveNueva'],
-    message: 'La nueva clave debe ser distinta de la actual',
+    message: 'La nueva contraseña debe ser distinta de la actual',
   });
 export type CambiarClaveDto = z.infer<typeof CambiarClaveSchema>;
 

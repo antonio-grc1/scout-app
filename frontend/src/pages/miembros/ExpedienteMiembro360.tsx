@@ -1015,11 +1015,11 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     if (!miembro || guardOffline('restablecer la contraseña')) return;
     setConfirmInline({
       tipo: 'peligro',
-      titulo: soloPorCorreo ? 'Enviar Clave Solo por Correo' : 'Restablecer Contraseña',
+      titulo: soloPorCorreo ? 'Enviar Contraseña Solo por Correo' : 'Restablecer Contraseña',
       mensaje: soloPorCorreo
-        ? `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido}, se enviará únicamente a ${miembro.emailContacto || 'su correo'} (sin mostrarla en pantalla) y se revocarán sus sesiones activas.`
-        : `Se generará una nueva clave temporal para ${miembro.nombre} ${miembro.apellido} y se revocarán sus sesiones activas.`,
-      textoConfirmar: soloPorCorreo ? 'Enviar por correo' : 'Generar clave temporal',
+        ? `Se generará una nueva contraseña temporal para ${miembro.nombre} ${miembro.apellido}, se enviará únicamente a ${miembro.emailContacto || 'su correo'} (sin mostrarla en pantalla) y se revocarán sus sesiones activas.`
+        : `Se generará una nueva contraseña temporal para ${miembro.nombre} ${miembro.apellido} y se revocarán sus sesiones activas.`,
+      textoConfirmar: soloPorCorreo ? 'Enviar por correo' : 'Generar contraseña temporal',
       textoCancelar: 'Cancelar',
       cargando: false,
       onConfirmar: async () => {
@@ -1044,13 +1044,13 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           setAlerta({
             tipo: 'exito',
             texto: claveTemporal
-              ? `Nueva clave temporal generada (se muestra en la sección Clave).${detalleEmail}`
+              ? `Nueva contraseña temporal generada (se muestra en la sección Contraseña).${detalleEmail}`
               : res.data?.mensaje ||
                 (emailDestino
-                  ? `Se generó una nueva clave temporal y se envió únicamente por correo a ${emailDestino}.`
-                  : 'Se generó una nueva clave temporal.'),
+                  ? `Se generó una nueva contraseña temporal y se envió únicamente por correo a ${emailDestino}.`
+                  : 'Se generó una nueva contraseña temporal.'),
           });
-          onClaveReseteada?.(res.data?.mensaje || 'Clave restablecida.');
+          onClaveReseteada?.(res.data?.mensaje || 'Contraseña restablecida.');
           void cargarDatos(miembro.id);
         } catch (err: any) {
           setConfirmInline(null);
@@ -1552,7 +1552,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     if (puedeResetearClave) {
       items.push({
         id: 'seguridad',
-        label: 'Clave',
+        label: 'Contraseña',
         icon: <KeyRound className="w-3.5 h-3.5" />,
       });
     }

@@ -34,7 +34,7 @@ export const PestanaSeguridad: React.FC<PestanaSeguridadProps> = ({
         ¿Olvidó su contraseña?
       </span>
       <p className="text-ink-2 text-sm leading-relaxed">
-        Genera una clave temporal aleatoria para{' '}
+        Genera una contraseña temporal aleatoria para{' '}
         <strong>{miembro ? `${miembro.nombre} ${miembro.apellido}` : 'este miembro'}</strong> y
         cierra sus sesiones activas. Al ingresar deberá cambiarla por una personal.
       </p>
@@ -43,7 +43,7 @@ export const PestanaSeguridad: React.FC<PestanaSeguridadProps> = ({
         <div className="p-3.5 rounded-xl bg-surface border border-brand/40 flex items-center justify-between gap-2.5">
           <div>
             <span className="block text-xs font-semibold text-ink-muted">
-              Nueva clave temporal (se muestra una sola vez):
+              Nueva contraseña temporal (se muestra una sola vez):
             </span>
             <code className="text-base font-mono font-extrabold text-ink select-all">
               {claveTemporalGenerada}
@@ -68,7 +68,7 @@ export const PestanaSeguridad: React.FC<PestanaSeguridadProps> = ({
         >
           <KeyRound className="w-4 h-4" />
           <span>
-            {reseteandoClave ? 'Generando clave...' : 'Generar clave temporal'}
+            {reseteandoClave ? 'Generando contraseña...' : 'Generar contraseña temporal'}
           </span>
         </Button>
 
@@ -78,19 +78,19 @@ export const PestanaSeguridad: React.FC<PestanaSeguridadProps> = ({
           disabled={reseteandoClave || !miembro?.emailContacto}
           title={
             miembro?.emailContacto
-              ? `Enviar nueva clave únicamente a ${miembro.emailContacto}`
+              ? `Enviar nueva contraseña únicamente a ${miembro.emailContacto}`
               : 'El miembro no tiene un correo electrónico registrado'
           }
           className="min-h-[46px] px-4.5 border border-brand/40 bg-surface hover:bg-paper-2 text-ink font-bold rounded-xl text-sm inline-flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Mail className="w-4 h-4 text-brand" />
-          <span>Enviar nueva clave solo por correo</span>
+          <span>Enviar nueva contraseña solo por correo</span>
         </button>
       </div>
 
       {miembro?.emailContacto ? (
         <p className="text-xs sm:text-[13px] text-ink-muted">
-          Si usás <strong>Enviar nueva clave solo por correo</strong>, la contraseña se enviará a{' '}
+          Si usás <strong>Enviar nueva contraseña solo por correo</strong>, la contraseña se enviará a{' '}
           <strong className="text-ink-2">{miembro.emailContacto}</strong> y no se mostrará en
           pantalla.
         </p>

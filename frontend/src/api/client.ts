@@ -172,7 +172,7 @@ api.interceptors.response.use(
     } else if (
       error.response?.status === 403 &&
       (error.response?.data?.code === 'REQUIERE_CAMBIO_CLAVE' ||
-        error.response?.data?.message?.toLowerCase()?.includes('cambio de clave'))
+        /cambi(o|ar) (de |su )?(clave|contraseña)/.test(error.response?.data?.message?.toLowerCase?.() ?? ''))
     ) {
       if (onRequirePasswordChangeCallback) {
         try {

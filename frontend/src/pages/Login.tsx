@@ -312,7 +312,7 @@ export const Login: React.FC = () => {
                     <BotonVerContrasena visible={mostrarPassword} onToggle={() => setMostrarPassword((x) => !x)} etiqueta="contraseña" />
                   </div>
                   <p className="text-[13px] text-ink-muted mt-2 leading-snug">
-                    Si ingresás por primera vez o te restablecieron el acceso, usá tu DNI inicial o la clave temporal recibida.
+                    Si ingresás por primera vez o te restablecieron el acceso, usá tu DNI inicial o la contraseña temporal recibida.
                   </p>
                 </div>
 

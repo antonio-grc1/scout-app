@@ -675,25 +675,25 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                 <div className="p-3.5 bg-paper-2 border border-rule rounded-2xl space-y-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-bold text-ink">
-                      Claves temporales generadas ({resumenFin.clavesGeneradas.length}):
+                      Contraseñas temporales generadas ({resumenFin.clavesGeneradas.length}):
                     </span>
                     <button
                       type="button"
                       onClick={() =>
                         exportarACSV({
-                          nombreArchivo: 'claves-temporales-alta',
+                          nombreArchivo: 'contrasenas-temporales-alta',
                           columnas: [
                             { header: 'DNI', clave: 'dni' },
                             { header: 'Apellido', clave: 'apellido' },
                             { header: 'Nombre', clave: 'nombre' },
-                            { header: 'Clave Temporal', clave: 'claveTemporal' },
+                            { header: 'Contraseña Temporal', clave: 'claveTemporal' },
                           ],
                           filas: resumenFin.clavesGeneradas,
                         })
                       }
                       className="min-h-[38px] px-3.5 py-1.5 rounded-lg border border-rule bg-surface hover:bg-paper-3 text-ink font-bold text-xs cursor-pointer"
                     >
-                      Descargar CSV de claves
+                      Descargar CSV de contraseñas
                     </button>
                   </div>
                   <div className="max-h-44 overflow-y-auto rounded-xl border border-rule bg-surface">
@@ -702,7 +702,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                         <tr>
                           <th className="py-2 px-3">DNI</th>
                           <th className="py-2 px-3">Miembro</th>
-                          <th className="py-2 px-3">Clave Temporal</th>
+                          <th className="py-2 px-3">Contraseña Temporal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-rule">
