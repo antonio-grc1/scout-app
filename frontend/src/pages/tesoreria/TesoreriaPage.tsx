@@ -231,11 +231,15 @@ export const TesoreriaPage: React.FC = () => {
   ];
   const cargando = consultasPrincipales.some(({ q }) => q.isFetching);
   const fallos = consultasPrincipales.filter(({ q }) => q.isError);
+  const hayDatosGuardados = planesMensuales.length > 0 || conceptos.length > 0 || familias.length > 0;
   const error =
     fallos.length === 0
       ? null
       : fallos.some(({ q }) => esErrorOffline(q.error))
-        ? 'Sin conexión: mostrando información guardada en este dispositivo.'
+        ? // Tesorería no se descarga para el modo campamento (datos financieros; cobrar requiere conexión).
+          hayDatosGuardados
+          ? 'Sin conexión: mostrando lo último que se vio en este dispositivo. Para cobrar o registrar movimientos necesitás conexión.'
+          : 'Sin conexión: Tesorería no se descarga para usar sin internet. Conectate para ver cobranzas, planes y caja.'
         : `No se pudieron cargar: ${fallos.map(({ nombre }) => nombre).join(', ')}. Los datos que ves pueden estar incompletos.`;
 
   // Pre-cachear libro diario de las cuentas para resiliencia offline (el interceptor guarda la respuesta).

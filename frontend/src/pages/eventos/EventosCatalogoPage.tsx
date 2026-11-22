@@ -82,7 +82,9 @@ export const EventosCatalogoPage: React.FC = () => {
       if (esErrorOffline(err, msg)) {
         setEventos((prev) => {
           if (prev.length === 0) {
-            setError('Sin conexión y sin eventos guardados en este dispositivo.');
+            setError(
+              'Sin conexión: los eventos no se descargan para usar sin internet. Conectate para cargar pedidos y canjear vales.',
+            );
           }
           return prev;
         });

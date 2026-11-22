@@ -11,7 +11,6 @@ import {
   FileText,
   HeartPulse,
   Phone,
-  QrCode,
   Repeat,
   Shield,
   Sparkles,
@@ -36,7 +35,10 @@ import {
   obtenerNombreUnidadActiva,
 } from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
+import { useConfirmar } from '../../hooks/useConfirmar';
+import { limpiarCacheApi } from '../../lib/offlineCache';
 import {
+  limpiarSyncCampamento,
   listarBorradoresLegajoLocales,
   obtenerUltimoSyncCampamento,
   sincronizarBorradoresLegajoLocales,
@@ -107,6 +109,7 @@ export const InicioPage: React.FC = () => {
 
   const queryClient = useQueryClient();
   const usuarioId = usuario?.id;
+  const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
   // Datos de Inicio con react-query: al volver a la pantalla se muestran al instante desde la
   // caché y se refrescan en segundo plano (antes se pedía todo de nuevo en cada visita y foco,
   // y un error se trataba como "sin datos").
@@ -589,16 +592,7 @@ export const InicioPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {caps.canUseQrScanner && (
-            <button
-              type="button"
-              onClick={() => useQrModalStore.getState().abrirQr('auto')}
-              className="s-btn-sec s-touch px-4 py-2.5 rounded-xl text-sm font-bold inline-flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <QrCode className="w-[18px] h-[18px] text-brand" />
-              <span>Escanear QR</span>
-            </button>
-          )}
+          {/* B7-09: el escáner QR queda en la barra superior y en el botón central del celular. */}
 
           {!caps.esPropio && caps.canViewMiembros && (
             <button
@@ -648,7 +642,8 @@ export const InicioPage: React.FC = () => {
                 </span>
                 {/* B7-15: incluye datos personales y de salud guardados en este dispositivo. */}
                 <span className="block text-xs mt-0.5">
-                  Incluye datos personales y de salud. Quedan en este dispositivo hasta 24 h y se
+                  Incluye padrón, fichas de salud y documentos (datos personales y de salud);
+                  Tesorería y Eventos necesitan conexión. Quedan en este dispositivo hasta 24 h y se
                   borran al cerrar sesión: cerrala si el equipo es compartido.
                 </span>
               </span>
@@ -670,8 +665,36 @@ export const InicioPage: React.FC = () => {
               />
             </div>
           )}
+
+          {/* En lugar de cifrar (la clave quedaría en el mismo dispositivo), se puede borrar todo. */}
+          {!sincronizando && ultimoSync && (
+            <button
+              type="button"
+              onClick={() =>
+                pedirConfirmacion(
+                  {
+                    titulo: 'Borrar datos de este dispositivo',
+                    mensaje:
+                      'Se borran el padrón, las fichas y los documentos guardados para usar sin conexión. Las fichas sin enviar se conservan.',
+                    textoConfirmar: 'Borrar datos',
+                  },
+                  () => {
+                    limpiarCacheApi();
+                    limpiarSyncCampamento(usuarioId);
+                    setUltimoSync(null);
+                    void refrescarInicio();
+                    mostrarToast('Se borraron los datos guardados en este dispositivo.');
+                  },
+                )
+              }
+              className="s-btn-sec min-h-[40px] px-3.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+            >
+              Borrar datos de este dispositivo
+            </button>
+          )}
         </div>
       )}
+      {dialogoConfirmacion}
 
       {/* Borradores locales de legajo pendientes de sincronizar */}
       {borradoresPendientesCount > 0 && (

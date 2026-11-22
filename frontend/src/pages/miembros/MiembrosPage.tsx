@@ -20,7 +20,6 @@ import {
   HeartPulse,
   Loader2,
   Phone,
-  QrCode,
   RotateCcw,
   Search,
   Shield,
@@ -133,7 +132,6 @@ export const MiembrosPage: React.FC = () => {
   const caps = useCapabilities();
   const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
   const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
-  const abrirQr = useQrModalStore((s) => s.abrirQr);
   const isOnline = useOfflineStore((s) => s.isOnline);
   const mostrarToast = useToastStore((s) => s.mostrarToast);
   const { pedir: pedirConfirmacion, dialogo: dialogoConfirmacion } = useConfirmar();
@@ -1083,13 +1081,7 @@ export const MiembrosPage: React.FC = () => {
       icono: <ShoppingBag className="w-4 h-4 text-brand shrink-0" />,
       onClick: () => navigate('/eventos'),
     },
-    (caps.canUseQrScanner || puedeValidarFisico || caps.canSellEventos || caps.canCobrar) && {
-      key: 'escanear-qr',
-      texto: 'Escanear QR',
-      titulo: 'Escanear y validar QR de fichas médicas o vales de eventos',
-      icono: <QrCode className="w-4 h-4 text-brand shrink-0" />,
-      onClick: () => abrirQr('auto'),
-    },
+    // B7-09: el escáner QR queda en la barra superior y en el botón central del celular.
     puedeVerFichas && {
       key: 'familias',
       texto: 'Familias',

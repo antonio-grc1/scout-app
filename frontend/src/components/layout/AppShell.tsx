@@ -535,9 +535,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
           })}
         </div>
 
+        {/* B7-09: "Instalar app" queda en la barra superior y en Mi perfil. */}
         <div className="pt-3 border-t border-rule space-y-2.5">
-          <BotonInstalarPwa variante="card" />
-
           <button
             type="button"
             onClick={() => {
