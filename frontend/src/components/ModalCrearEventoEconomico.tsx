@@ -579,12 +579,9 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                 const pVenta = Number(it.precioVenta) || 0;
                 const pCosto = Number(it.costoUnitario) || 0;
                 const gananciaCalc = Math.max(0, pVenta - pCosto);
-                const gananciaVal =
-                  it.gananciaUnitaria !== undefined && it.gananciaUnitaria !== ''
-                    ? it.gananciaUnitaria
-                    : pVenta > 0
-                    ? String(gananciaCalc)
-                    : '';
+                // Antes el valor calculado se mostraba como si estuviera cargado: al borrarlo para
+                // escribir otro, volvía a aparecer. Ahora es el placeholder y el campo queda libre.
+                const gananciaVal = it.gananciaUnitaria ?? '';
 
                 return (
                   <div
@@ -620,7 +617,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                         </label>
                         <input
                           type="number"
-                          step="1"
+                          step="0.01"
                           min="0"
                           value={it.precioVenta}
                           onChange={(e) => actualizarItem(idx, 'precioVenta', e.target.value)}
@@ -634,7 +631,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                         label="Costo Unitario ($)"
                         className="min-h-[40px] py-1.5 px-2.5 text-sm sm:text-sm"
                         type="number"
-                        step="1"
+                        step="0.01"
                         min="0"
                         value={it.costoUnitario}
                         onChange={(e) => actualizarItem(idx, 'costoUnitario', e.target.value)}
@@ -645,11 +642,13 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                         label="Ganancia Scout ($)"
                         className="min-h-[40px] py-1.5 px-2.5 text-sm sm:text-sm"
                         type="number"
-                        step="1"
+                        step="0.01"
                         min="0"
+                        inputMode="decimal"
                         value={gananciaVal}
                         onChange={(e) => actualizarItem(idx, 'gananciaUnitaria', e.target.value)}
-                        placeholder="0"
+                        placeholder={pVenta > 0 ? String(gananciaCalc) : '0'}
+                        helperText="Vacío = precio − costo"
                       />
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { BotonVerContrasena } from '../components/ui/BotonVerContrasena';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -21,6 +21,17 @@ export const Login: React.FC = () => {
   const [modoRecuperar, setModoRecuperar] = useState(false);
   const [enviandoRecupero, setEnviandoRecupero] = useState(false);
   const [mensajeRecupero, setMensajeRecupero] = useState<string | null>(null);
+
+  // Al alternar login/recuperar, el botón que se tocó desaparece y el foco caía en <body>:
+  // se lleva al DNI de la vista nueva (no en la carga inicial).
+  const primerRenderRef = useRef(true);
+  useEffect(() => {
+    if (primerRenderRef.current) {
+      primerRenderRef.current = false;
+      return;
+    }
+    document.getElementById(modoRecuperar ? 'dni-recuperar' : 'dni')?.focus();
+  }, [modoRecuperar]);
 
   const autenticado = useAuthStore((state) => state.autenticado);
   const usuario = useAuthStore((state) => state.usuario);

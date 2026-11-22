@@ -40,9 +40,16 @@ export const CambiarClave: React.FC = () => {
     };
   }, []);
 
-  const actual = claveActual.trim();
-  const nueva = claveNueva.trim();
-  const repetir = claveRepetir.trim();
+  // Sin .trim(): el login y el backend no recortan la contraseña; recortarla acá guardaba una
+  // clave distinta de la tipeada (con un espacio al final, después no coincidía al ingresar).
+  const actual = claveActual;
+  const nueva = claveNueva;
+  const repetir = claveRepetir;
+
+  // El modo (obligatorio o normal) queda fijo desde que se guarda hasta redirigir: antes el store
+  // pasaba a "no obligatorio" al instante y la pantalla cambiaba de layout durante 900ms.
+  const [obligatorioAlGuardar, setObligatorioAlGuardar] = useState<boolean | null>(null);
+  const obligatorio = obligatorioAlGuardar ?? requiereCambioClave;
 
   const reglaLargoOk = nueva.length >= 8;
   const reglaDistintaOk =
@@ -89,6 +96,7 @@ export const CambiarClave: React.FC = () => {
         claveNueva: nueva,
       });
 
+      setObligatorioAlGuardar(requiereCambioClave);
       const payload = res.data;
       if (payload?.usuario && Array.isArray(payload?.asignaciones)) {
         setSesion({
@@ -99,9 +107,6 @@ export const CambiarClave: React.FC = () => {
       }
       setRequiereCambioClave(false);
       setExito('Contraseña actualizada correctamente.');
-      setClaveActual('');
-      setClaveNueva('');
-      setClaveRepetir('');
 
       if (redirectTimeoutRef.current) {
         clearTimeout(redirectTimeoutRef.current);
@@ -123,17 +128,19 @@ export const CambiarClave: React.FC = () => {
           <div className="flex items-center gap-2.5 min-w-0">
             <KeyRound className="w-5 h-5 text-brand shrink-0" />
             <h1 className="text-xl sm:text-2xl font-extrabold text-ink truncate">
-              {requiereCambioClave ? 'Cambio Obligatorio de Clave' : 'Cambiar Contraseña'}
+              {obligatorio ? 'Cambio Obligatorio de Clave' : 'Cambiar Contraseña'}
             </h1>
           </div>
 
-          {!requiereCambioClave && (
+          {!obligatorio && (
             <Button
               type="button"
               variant="secondary"
               size="sm"
               leftIcon={<ArrowLeft className="w-4 h-4" />}
-              onClick={() => navigate(-1)}
+              onClick={() =>
+                (window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/mi-espacio?tab=perfil')
+              }
             >
               Volver
             </Button>
@@ -142,10 +149,10 @@ export const CambiarClave: React.FC = () => {
 
         <div
           className={`${
-            requiereCambioClave ? 's-badge-warn rounded-xl p-3.5 text-sm font-medium' : 'text-sm text-ink-muted'
+            obligatorio ? 's-badge-warn rounded-xl p-3.5 text-sm font-medium' : 'text-sm text-ink-muted'
           } mb-5 leading-relaxed`}
         >
-          {requiereCambioClave
+          {obligatorio
             ? 'Ingresaste con clave temporal o alta inicial. Por seguridad, definí una contraseña personal de al menos 8 caracteres para continuar.'
             : 'Ingresá tu contraseña actual y definí una nueva clave personal de al menos 8 caracteres.'}
         </div>
@@ -171,7 +178,7 @@ export const CambiarClave: React.FC = () => {
             </div>
           )}
 
-          {!requiereCambioClave && (
+          {!obligatorio && (
             <div>
               <label htmlFor="clave-actual" className="block text-sm font-semibold text-ink">
                 Contraseña Actual
@@ -268,7 +275,7 @@ export const CambiarClave: React.FC = () => {
           >
             {cargando ? 'Guardando…' : 'Confirmar Nueva Contraseña'}
           </Button>
-          {requiereCambioClave && (
+          {obligatorio && (
             <button
               type="button"
               onClick={() => {
@@ -285,7 +292,7 @@ export const CambiarClave: React.FC = () => {
     </div>
   );
 
-  if (!requiereCambioClave) {
+  if (!obligatorio) {
     return (
       <AppShell title="Cambiar Contraseña">
         <div className="py-4 sm:py-8 flex justify-center">{cardContenido}</div>

@@ -468,7 +468,8 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
         titulo={`Confirmar Pase de Camada ${camadaAConfirmar?.camada ?? ''}`}
         mensaje={
           camadaAConfirmar
-            ? `¿Confirmás pasar los ${camadaAConfirmar.miembros.length} integrante(s) de ${camadaAConfirmar.unidadActualNombre} hacia ${
+            ? // Solo cuentan quienes no tienen ya una solicitud pendiente (el lote los excluye).
+              `¿Confirmás pasar los ${camadaAConfirmar.miembros.filter((m) => !m.solicitudPendiente).length} integrante(s) de ${camadaAConfirmar.unidadActualNombre} hacia ${
                 camadaAConfirmar.unidadesDestino.find(
                   (u) =>
                     u.id ===

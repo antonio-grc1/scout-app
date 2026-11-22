@@ -69,7 +69,8 @@ export const MiembroDetallePage: React.FC = () => {
           <span>Volver a Miembros</span>
         </Link>
 
-        <span className="text-[13px] font-bold text-ink-muted">Expediente #{usuarioId}</span>
+        {/* B7-10: sin el id interno ("Expediente #4"); el nombre del miembro está en el encabezado del expediente. */}
+        <span className="text-[13px] font-bold text-ink-muted">Expediente</span>
       </div>
 
       <div className="s-card rounded-2xl p-5 sm:p-6">

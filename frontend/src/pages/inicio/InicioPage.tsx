@@ -448,6 +448,9 @@ export const InicioPage: React.FC = () => {
           `Se sincronizaron ${sincronizados} borrador(es), pero ${fallidos} quedaron pendientes.`,
           'advertencia',
         );
+      } else {
+        // Antes no pasaba nada visible si no había borradores para enviar.
+        mostrarToast('No había borradores pendientes: todo está al día.', 'info');
       }
     } catch (err) {
       mostrarToast(traducirErrorAmigable(err, 'No se pudieron sincronizar los borradores.'), 'error');
