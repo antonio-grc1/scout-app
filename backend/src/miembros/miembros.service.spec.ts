@@ -42,8 +42,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actor: AuthUser = {
       sub: 99,
       dni: '99999999',
-      nombre: 'Educador',
-      apellido: 'Solo Lectura',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -71,8 +70,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actor: AuthUser = {
       sub: 99,
       dni: '99999999',
-      nombre: 'Jefe',
-      apellido: 'Grupo',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -101,8 +99,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actorEducadorUnidad: AuthUser = {
       sub: 88,
       dni: '88888888',
-      nombre: 'Educador',
-      apellido: 'Rama',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -116,7 +113,6 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
 
     const alcanceUnidad: AlcanceAcceso = {
       tipo: 'UNIDAD',
-      unidadId: 1,
       unidadIds: [1],
     };
 
@@ -179,8 +175,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actor: AuthUser = {
       sub: 99,
       dni: '99999999',
-      nombre: 'Educador',
-      apellido: 'Rama',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -210,8 +205,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actor: AuthUser = {
       sub: 99,
       dni: '99999999',
-      nombre: 'Educador',
-      apellido: 'Rama',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -239,8 +233,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actor: AuthUser = {
       sub: 99,
       dni: '99999999',
-      nombre: 'Secretario',
-      apellido: 'Grupo',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -287,8 +280,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actor: AuthUser = {
       sub: 1,
       dni: '11111111',
-      nombre: 'Admin',
-      apellido: 'Global',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -327,8 +319,7 @@ describe('MiembrosService - Permisos Granulares por Campo', () => {
     const actor: AuthUser = {
       sub: 1,
       dni: '11111111',
-      nombre: 'Admin',
-      apellido: 'Global',
+      requiereCambioClave: false,
       asignaciones: [
         {
           unidadId: 1,
@@ -449,7 +440,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       },
     };
     const service = new MiembrosService(mockPrisma);
-    const alcanceUnidad: AlcanceAcceso = { tipo: 'UNIDAD', unidadId: 99, unidadIds: [99] };
+    const alcanceUnidad: AlcanceAcceso = { tipo: 'UNIDAD', unidadIds: [99] };
 
     await expect(service.obtener(alcanceUnidad, 5)).rejects.toThrow(NotFoundException);
   });
@@ -474,6 +465,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
     const service = new MiembrosService(mockPrisma);
     const actor: AuthUser = {
       sub: 50,
+      requiereCambioClave: false,
       dni: '33000111',
       asignaciones: [
         { unidadId: 1, unidadNombre: 'U1', rol: 'Educador', alcance: 'UNIDAD', permisos: ['padron.editar'] },
@@ -647,7 +639,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
     };
     const service = new MiembrosService(mockPrisma);
 
-    const res = await service.listar({ tipo: 'GLOBAL' }, { q: 'perez', pagina: 2, porPagina: 1 });
+    const res = await service.listar({ tipo: 'GLOBAL' }, { q: 'perez', pagina: 2, porPagina: 1, ids: undefined });
     expect(res.total).toBe(2);
     expect(res.items.map((i: any) => i.id)).toEqual([3]);
     expect(mockPrisma.usuario.findMany).toHaveBeenNthCalledWith(
@@ -758,13 +750,15 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
 
     const res = await service.crear(actorCrearGlobal, { tipo: 'GLOBAL' }, {
       dni: '44555666',
+      copiarDatosHermano: false,
+      soloEnviarPorCorreo: false,
       nombre: 'Lucia',
       apellido: 'Scout',
       fechaNacimiento: '2014-05-10',
       unidadId: 1,
       rolId: 2,
     });
-    expect(res.claveTemporal).toBe('44555666');
+    expect((res as Record<string, unknown>).claveTemporal).toBe('44555666');
     expect(mailerMock.enviarBienvenidaAlta).toHaveBeenCalledWith(
       expect.objectContaining({
         dni: '44555666',
@@ -826,6 +820,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       { tipo: 'GLOBAL' },
       {
         dni: '44555777',
+        copiarDatosHermano: false,
         nombre: 'Mateo',
         apellido: 'Scout',
         fechaNacimiento: '2014-05-10',
@@ -836,9 +831,9 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
       },
     );
 
-    expect(res.claveTemporal).toBeUndefined();
-    expect(res.emailEnviado).toBe(true);
-    expect(res.emailDestino).toBe('mateo@scout.test');
+    expect((res as Record<string, unknown>).claveTemporal).toBeUndefined();
+    expect((res as Record<string, unknown>).emailEnviado).toBe(true);
+    expect((res as Record<string, unknown>).emailDestino).toBe('mateo@scout.test');
     expect(mailerMock.enviarBienvenidaAlta).toHaveBeenCalledWith(
       expect.objectContaining({
         destinatario: 'mateo@scout.test',
@@ -852,6 +847,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
         { tipo: 'GLOBAL' },
         {
           dni: '44555888',
+          copiarDatosHermano: false,
           nombre: 'SinMail',
           apellido: 'Scout',
           fechaNacimiento: '2014-05-10',
@@ -900,7 +896,7 @@ describe('MiembrosService - Trayectoria y MIEMBRO_SELECT', () => {
 
     const listado = await service.listar(
       { tipo: 'GLOBAL' },
-      { pagina: 1, porPagina: 10, q: 'jose perez' },
+      { pagina: 1, porPagina: 10, q: 'jose perez', ids: undefined },
     );
     expect(listado.total).toBe(1);
     expect(listado.items).toHaveLength(1);

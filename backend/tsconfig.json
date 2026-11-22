@@ -19,5 +19,11 @@
     "strict": true,
     "strictPropertyInitialization": false,
     "types": ["vitest/globals", "node"]
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test/fechas-gmt3.spec.ts",
+    "test/tesoreria-frontend-validation.spec.ts"
+  ]
 }

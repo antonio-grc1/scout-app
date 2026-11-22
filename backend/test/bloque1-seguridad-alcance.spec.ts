@@ -347,14 +347,13 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
         findFirst: vi.fn(),
       },
     };
-    const service = new AuthService(mockPrisma);
+    const service = new AuthService(mockPrisma, {} as never);
 
     it('bloquea resetear clave si el educador objetivo tiene asignaciones activas en unidades fuera del alcance del actor', async () => {
       const actor: AuthUser = {
         sub: 99,
         dni: '12345678',
-        nombre: 'Educador',
-        apellido: 'Unidad 1',
+        requiereCambioClave: false,
         asignaciones: [
           {
             unidadId: 1,
@@ -580,7 +579,7 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
           update: vi.fn().mockResolvedValue({ id: 500 }),
         },
       };
-      const authService = new AuthService(mockPrisma);
+      const authService = new AuthService(mockPrisma, {} as never);
 
       await expect(authService.resetearClave(secretaria, alcanceGlobal, 1)).rejects.toThrow(ForbiddenException);
       const resProta = await authService.resetearClave(secretaria, alcanceGlobal, 500);
@@ -624,7 +623,7 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
           update: vi.fn(),
         },
       };
-      const authService = new AuthService(mockPrisma);
+      const authService = new AuthService(mockPrisma, {} as never);
 
       await expect(
         authService.resetearClave(educadorAcotado, { tipo: 'UNIDAD', unidadIds: [1], usuarioIdPropio: 40 }, 41),
@@ -718,6 +717,8 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
       await expect(
         miembrosService.crear(secretaria, alcanceGlobal, {
           dni: '99111222',
+          copiarDatosHermano: false,
+          soloEnviarPorCorreo: false,
           nombre: 'Nuevo',
           apellido: 'Jefe',
           fechaNacimiento: '1990-01-01',
@@ -1088,6 +1089,8 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
       await expect(
         service.crear(actorUnidad, alcanceUnidad, {
           dni: '50111222',
+          copiarDatosHermano: false,
+          soloEnviarPorCorreo: false,
           nombre: 'Hijo',
           apellido: 'Prueba',
           fechaNacimiento: '2016-01-01',
@@ -1170,6 +1173,8 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
       await expect(
         miembrosService.crear(actorGlobal, alcanceGlobal, {
           dni: '50111222',
+          copiarDatosHermano: false,
+          soloEnviarPorCorreo: false,
           nombre: 'Test',
           apellido: 'Archivado',
           fechaNacimiento: '2016-01-01',

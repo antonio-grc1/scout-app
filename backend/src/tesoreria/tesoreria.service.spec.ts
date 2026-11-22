@@ -13,14 +13,11 @@ import { TesoreriaService } from './tesoreria.service.js';
 describe('TesoreriaService - Flujo Completo Reversible y Modificable', () => {
   const alcanceGlobal: AlcanceAcceso = {
     tipo: 'GLOBAL',
-    usuarioId: 1,
-    permisos: new Set(['caja.editar', 'cobranzas.editar', 'cobranzas.ver']),
   };
 
   const alcancePropio: AlcanceAcceso = {
     tipo: 'PROPIO',
     usuarioId: 2,
-    permisos: new Set(['cobranzas.ver']),
   };
 
   it('eliminarConcepto: rechaza acceso si alcance es PROPIO', async () => {
@@ -472,14 +469,11 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
 
   const alcanceGlobal: AlcanceAcceso = {
     tipo: 'GLOBAL',
-    usuarioId: 10,
-    permisos: new Set(['caja.editar', 'cobranzas.editar', 'cobranzas.ver']),
   };
 
   const alcancePropio: AlcanceAcceso = {
     tipo: 'PROPIO',
     usuarioId: 2,
-    permisos: new Set(['cobranzas.ver']),
   };
 
   describe('Cuentas Financieras', () => {
@@ -2723,7 +2717,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
         usuario: { findMany },
       } as any);
 
-      const res = await service.generarCargos(alcanceGlobal, { conceptoId: 5 });
+      const res = await service.generarCargos(alcanceGlobal, { conceptoId: 5, aplicarDescuentoFamiliar: false });
       expect(res.totalGenerados).toBe(0);
       const wherePassed = findMany.mock.calls[0][0].where;
       expect(wherePassed.tipoMiembro).toBe('EDUCADOR');
@@ -3127,7 +3121,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
 
       // 6) COD-08: generarCargos rechaza especificar dto.unidadId distinto de concepto.unidadId
       await expect(
-        service.generarCargos({ tipo: 'GLOBAL' }, { conceptoId: 30, unidadId: 2 }),
+        service.generarCargos({ tipo: 'GLOBAL' }, { conceptoId: 30, unidadId: 2, aplicarDescuentoFamiliar: false }),
       ).rejects.toThrow(BadRequestException);
 
       // 7) COD-08: listarPagos en alcance UNIDAD incluye usuarioIdPropio del actor

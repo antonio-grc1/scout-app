@@ -199,7 +199,7 @@ describe('BLOQUE 2 - Integridad Transaccional, Saldos, Stock, Fechas y Rendimien
       await expect(
         service.generarCargoIndividual(actorGlobal, alcanceGlobal, {
           usuarioId: 10,
-          conceptoNombre: 'Uniforme',
+          nombreConcepto: 'Uniforme',
           monto: 5000,
           montoDescuento: 6000,
         }),
@@ -247,7 +247,7 @@ describe('BLOQUE 2 - Integridad Transaccional, Saldos, Stock, Fechas y Rendimien
       } as any;
 
       const service = new TesoreriaService(mockPrisma);
-      await expect(service.revertirPago(actorGlobal, alcanceGlobal, 99)).rejects.toThrow(BadRequestException);
+      await expect(service.revertirPago(alcanceGlobal, 99)).rejects.toThrow(BadRequestException);
     });
 
     it('eliminarIngreso rechaza si la cuenta financiera quedaría con saldo negativo', async () => {
@@ -281,6 +281,7 @@ describe('BLOQUE 2 - Integridad Transaccional, Saldos, Stock, Fechas y Rendimien
       await expect(
         service.crearEvento(actorGlobal, alcanceGlobal, {
           titulo: 'Rifa Anual',
+          tipo: 'RECAUDACION_PEDIDOS',
           fechaEvento: '2026-10-10',
           cuentaId: 3,
           items: [{ nombre: 'Numero Rifa', precioVenta: 1000 }],
@@ -315,7 +316,7 @@ describe('BLOQUE 2 - Integridad Transaccional, Saldos, Stock, Fechas y Rendimien
       const service = new TesoreriaService(mockPrisma);
       await service.generarCargoIndividual(actorGlobal, alcanceGlobal, {
         usuarioId: 10,
-        conceptoNombre: 'Beca Campamento',
+        nombreConcepto: 'Beca Campamento',
         monto: 15000,
         montoDescuento: 15000, // 100% descuento
       });

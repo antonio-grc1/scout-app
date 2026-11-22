@@ -16,6 +16,7 @@
     "start:prod": "node dist/main.js",
     "start:render": "prisma migrate deploy && tsx prisma/seed-plantillas.ts && node dist/main.js",
     "lint": "oxlint --type-aware src/ test/",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",

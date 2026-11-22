@@ -27,8 +27,6 @@ describe('Integración Real PostgreSQL - Concurrencia, Constraints, SQL y Búsqu
   let actor: AuthUser;
   const alcanceGlobal: AlcanceAcceso = {
     tipo: 'GLOBAL',
-    usuarioId: 0,
-    permisos: new Set(['caja.editar', 'cobranzas.editar', 'cobranzas.ver', 'eventos.editar']),
   };
 
   // IDs creados para limpieza ordenada al finalizar
@@ -67,12 +65,10 @@ describe('Integración Real PostgreSQL - Concurrencia, Constraints, SQL y Búsqu
     created.adminId = admin.id;
     created.unidadId = unidad.id;
     created.rolId = rol.id;
-    alcanceGlobal.usuarioId = admin.id;
     actor = {
       sub: admin.id,
       dni: admin.dni,
-      nombre: admin.nombre,
-      apellido: admin.apellido,
+      requiereCambioClave: false,
       asignaciones: [],
     };
   });
@@ -496,6 +492,7 @@ describe('Integración Real PostgreSQL - Concurrencia, Constraints, SQL y Búsqu
       pagina: 1,
       porPagina: 20,
       q: 'maria jose',
+      ids: undefined,
     });
     expect(listado.items.some((u) => u.id === miembroTilde.id)).toBe(true);
 
@@ -509,7 +506,6 @@ describe('Integración Real PostgreSQL - Concurrencia, Constraints, SQL y Búsqu
       montoBase: 1200,
       cicloAnio: 2026,
       excepcionesIds: [miembroTilde.id],
-      sincronizarCargos: false,
     });
     created.conceptoIds.push(conceptoConExc.id);
     expect(conceptoConExc.excepcionesJson).toEqual([miembroTilde.id]);

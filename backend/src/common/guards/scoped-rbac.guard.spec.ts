@@ -263,7 +263,7 @@ describe('JwtAuthGuard (P2 & Etapa 3 Cookie-Only)', () => {
   });
 
   it('A7 & ARQ-06: extraerTokenDeRequest solo acepta cookie scout_access_token (ignora Bearer) y JwtAuthGuard falla cerrado sin Prisma', async () => {
-    expect(extraerTokenDeRequest({ headers: { authorization: 'Bearer tok-header' } })).toBeNull();
+    expect(extraerTokenDeRequest({ headers: { authorization: 'Bearer tok-header' } } as never)).toBeNull();
     expect(
       extraerTokenDeRequest({ headers: { cookie: 'pref=1; scout_access_token=tok%2Dcookie; otro=2' } }),
     ).toBe('tok-cookie');

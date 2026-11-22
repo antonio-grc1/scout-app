@@ -99,8 +99,8 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
       actorGlobalPases,
     );
 
-    expect(resultado.asignacionNueva.rolId).toBe(4);
-    expect(resultado.asignacionNueva.unidadId).toBe(3);
+    expect((resultado as unknown as { asignacionNueva: Record<string, unknown> }).asignacionNueva.rolId).toBe(4);
+    expect((resultado as unknown as { asignacionNueva: Record<string, unknown> }).asignacionNueva.unidadId).toBe(3);
   });
 
   it('rechaza si un Educador de Unidad (alcance UNIDAD) intenta otorgar Jefe de Grupo', async () => {
@@ -165,7 +165,7 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
 
     expect(resultado).toBeDefined();
     expect(resultado.usuarioId).toBe(100);
-    expect(resultado.asignacionNueva.unidadId).toBe(3);
+    expect((resultado as unknown as { asignacionNueva: Record<string, unknown> }).asignacionNueva.unidadId).toBe(3);
   });
 
   it('asigna automáticamente Educador Sin Rama al pasar a SIN_RAMA_APOYO sin especificar rol', async () => {
@@ -225,7 +225,7 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
         orderBy: { id: 'asc' },
       }),
     );
-    expect(resultado.asignacionNueva.rolId).toBe(4);
+    expect((resultado as unknown as { asignacionNueva: Record<string, unknown> }).asignacionNueva.rolId).toBe(4);
   });
 
   it('asigna automáticamente Educador de Rama al pasar un Rover egresado a una sección de rama sin rol especificado', async () => {
@@ -267,7 +267,7 @@ describe('PasesService - Validaciones de Rama y Rol', () => {
     );
 
     expect(resultado).toBeDefined();
-    expect(resultado.asignacionNueva.rolId).toBe(2);
+    expect((resultado as unknown as { asignacionNueva: Record<string, unknown> }).asignacionNueva.rolId).toBe(2);
   });
 
   it('candidatos incluye secciones de rama y sin rama para un pase de egreso (Rover >= 22 años)', async () => {

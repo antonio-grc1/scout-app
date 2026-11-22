@@ -5,7 +5,7 @@ import type { AlcanceAcceso, AuthUser } from '../src/common/types/auth.types.js'
 import { LegajosService, CAMPOS_DATOS_FIJOS_PERMITIDOS, CAMPOS_FAMILIARES_PERMITIDOS_COMPARTIR } from '../src/legajos/legajos.service.js';
 
 describe('BLOQUE 3 - Backend Legajos, Formularios de Salud y Auditoría Médica', () => {
-  const actorEducador: AuthUser = { sub: 10, username: 'educador1', roles: ['EDUCADOR'] };
+  const actorEducador: AuthUser = { sub: 10, dni: '10', requiereCambioClave: false, asignaciones: [] };
   const alcanceGlobal: AlcanceAcceso = { tipo: 'GLOBAL' };
 
   describe('Validación de plantillas según edad y tipo de miembro', () => {

@@ -80,8 +80,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
     const actor: AuthUser = {
       sub: 5,
       dni: '40111222',
-      nombre: 'Juan',
-      apellido: 'Pérez',
+      requiereCambioClave: false,
       asignaciones: [],
     };
 
@@ -117,8 +116,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
     const actor: AuthUser = {
       sub: 5,
       dni: '40111222',
-      nombre: 'Juan',
-      apellido: 'Pérez',
+      requiereCambioClave: false,
       asignaciones: [],
     };
 
@@ -149,8 +147,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
     const actor: AuthUser = {
       sub: 5,
       dni: '40111222',
-      nombre: 'Juan',
-      apellido: 'Pérez',
+      requiereCambioClave: false,
       asignaciones: [],
     };
 
@@ -169,8 +166,7 @@ describe('AuthService - Cambio y Reset de Clave', () => {
     const actor: AuthUser = {
       sub: 5,
       dni: '40111222',
-      nombre: 'Juan',
-      apellido: 'Pérez',
+      requiereCambioClave: false,
       asignaciones: [],
     };
 

@@ -135,7 +135,7 @@ describe('BLOQUE 4 - Backend Organización, Roles, Asignaciones, Historial y Pas
         actorGlobal,
       );
 
-      expect(res.asignacionNueva.id).toBe(25);
+      expect((res as unknown as { asignacionNueva: Record<string, unknown> }).asignacionNueva.id).toBe(25);
       expect(mockTesoreria.sincronizarCuotasMiembroActivoEnTx).toHaveBeenCalledWith(
         mockPrisma,
         8,
