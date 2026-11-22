@@ -363,7 +363,7 @@ export async function sincronizarParaCampamento(
 ): Promise<CampamentoSyncResumen> {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new Error(
-      'Necesitás conexión a internet para descargar los datos antes del campamento.',
+      'Necesitás conexión a internet para guardar los datos en este dispositivo.',
     );
   }
 

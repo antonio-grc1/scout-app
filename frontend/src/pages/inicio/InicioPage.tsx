@@ -404,7 +404,7 @@ export const InicioPage: React.FC = () => {
   const handleSincronizarCampamento = async () => {
     if (!isOnline) {
       mostrarToast(
-        'Necesitás conexión a internet para descargar los datos antes del campamento.',
+        'Necesitás conexión a internet para guardar los datos en este dispositivo.',
         'advertencia',
       );
       return;
@@ -419,11 +419,11 @@ export const InicioPage: React.FC = () => {
       });
       setUltimoSync(resumen);
       mostrarToast(
-        `Listo para campamento: ${resumen.totalMiembros} miembros y ${resumen.totalEntregas} fichas guardadas en este dispositivo.`,
+        `Listo para usar sin conexión: ${resumen.totalMiembros} miembros y ${resumen.totalEntregas} fichas guardadas en este dispositivo.`,
         'exito',
       );
     } catch (err) {
-      mostrarToast(traducirErrorAmigable(err, 'No se pudieron descargar los datos para campamento.'), 'error');
+      mostrarToast(traducirErrorAmigable(err, 'No se pudieron guardar los datos para usar sin conexión.'), 'error');
     } finally {
       setSincronizando(false);
     }
@@ -608,7 +608,7 @@ export const InicioPage: React.FC = () => {
               ) : (
                 <DownloadCloud className="w-[18px] h-[18px]" />
               )}
-              <span>{sincronizando ? 'Sincronizando…' : 'Preparar para campamento'}</span>
+              <span>{sincronizando ? 'Guardando…' : 'Guardar datos sin conexión'}</span>
             </button>
           )}
 
@@ -636,7 +636,7 @@ export const InicioPage: React.FC = () => {
             ) : ultimoSync ? (
               <span className="text-ink-muted min-w-0">
                 <span className="block truncate">
-                  <strong className="text-ink">Datos de campamento listos:</strong>{' '}
+                  <strong className="text-ink">Datos sin conexión listos:</strong>{' '}
                   {ultimoSync.totalMiembros} miembros y {ultimoSync.totalEntregas} fichas guardadas (
                   {formatearSyncFecha(ultimoSync.sincronizadoEn)}).
                 </span>
