@@ -215,8 +215,8 @@ export const ModalCobroCampamento: React.FC<Props> = ({
             <div>
               <h3 className="font-bold text-ink text-lg">
                 {conceptoAEditar
-                  ? 'Editar Cobro Puntual'
-                  : 'Nuevo Cobro Puntual'}
+                  ? 'Editar cobro puntual'
+                  : 'Nuevo cobro puntual'}
               </h3>
               <p className="text-[13px] text-ink-muted">
                 Definí el monto, a quiénes aplica y quiénes están becados o exentos
@@ -243,7 +243,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3.5">
             <div className="sm:col-span-2">
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Nombre del Cobro Puntual *
+                Nombre del cobro puntual *
               </label>
               <input
                 type="text"
@@ -265,16 +265,16 @@ export const ModalCobroCampamento: React.FC<Props> = ({
 
             >
               <option value="CAMPAMENTO">Campamento</option>
-              <option value="EVENTO">Evento Especial</option>
-              <option value="INSCRIPCION">Inscripción / Afiliación</option>
-              <option value="MATERIALES">Materiales / Indumentaria</option>
-              <option value="OTRO">Otro Cobro</option>
+              <option value="EVENTO">Evento especial</option>
+              <option value="INSCRIPCION">Inscripción / afiliación</option>
+              <option value="MATERIALES">Materiales / indumentaria</option>
+              <option value="OTRO">Otro cobro</option>
 
             </Select>
 
             <Select
 
-              label="Rubro Contable"
+              label="Rubro contable"
 
               value={rubroId ?? ''}
 
@@ -295,7 +295,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div>
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Monto Base ($) *
+                Monto base ($) *
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
@@ -316,7 +316,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
 
             <Input
 
-              label="Ciclo / Año"
+              label="Ciclo / año"
 
               type="number"
 
@@ -332,7 +332,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
 
             <Input
 
-              label="Fecha de Vencimiento (opcional)"
+              label="Fecha de vencimiento (opcional)"
 
               type="date"
 
@@ -404,7 +404,7 @@ export const ModalCobroCampamento: React.FC<Props> = ({
 
           {/* Nota informativa */}
           <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/30 text-xs text-ink-2 leading-relaxed">
-            Al guardar, las deudas se asignan y actualizan automáticamente en la cuenta de los miembros seleccionados. Si quitás a alguien que ya había pagado, el dinero pagado pasa automáticamente a su <strong>Saldo a Favor</strong>.
+            Al guardar, las deudas se asignan y actualizan automáticamente en la cuenta de los miembros seleccionados. Si quitás a alguien que ya había pagado, el dinero pagado pasa automáticamente a su <strong>Saldo a favor</strong>.
           </div>
 
           {/* Footer del Formulario */}
@@ -425,8 +425,8 @@ export const ModalCobroCampamento: React.FC<Props> = ({
                 {guardando
                   ? 'Guardando...'
                   : conceptoAEditar
-                    ? 'Guardar Cambios'
-                    : 'Crear y Asignar Cobro'}
+                    ? 'Guardar cambios'
+                    : 'Crear y asignar cobro'}
               </span>
             </Button>
           </div>

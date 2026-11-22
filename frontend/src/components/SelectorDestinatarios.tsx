@@ -206,7 +206,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             }`}
           >
             {destinatarioTipo === 'PROTAGONISTAS' && <Check className="w-4 h-4" />}
-            <span>Solo Protagonistas</span>
+            <span>Solo protagonistas</span>
           </button>
 
           <button
@@ -221,7 +221,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             }`}
           >
             {destinatarioTipo === 'EDUCADORES' && <Check className="w-4 h-4" />}
-            <span>Solo Educadores</span>
+            <span>Solo educadores</span>
           </button>
 
           <button
@@ -236,7 +236,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
             }`}
           >
             {destinatarioTipo === 'TODOS' && <Check className="w-4 h-4" />}
-            <span>Todos (Ambos)</span>
+            <span>Todos (ambos)</span>
           </button>
         </div>
       </div>
@@ -256,7 +256,7 @@ export const SelectorDestinatarios: React.FC<SelectorDestinatariosProps> = ({
           className="w-full min-h-[44px] rounded-xl border border-rule bg-surface px-3.5 py-2 text-base sm:text-[15px] font-medium text-ink focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors disabled:opacity-75"
         >
           {esGlobal && (
-            <option value="">Todo el Grupo Scout (Todas las Ramas y Secciones)</option>
+            <option value="">Todo el grupo scout (todas las ramas y secciones)</option>
           )}
           {unidadesPermitidas.map((u) => (
             <option key={u.id} value={u.id}>

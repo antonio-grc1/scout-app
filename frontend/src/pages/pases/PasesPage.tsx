@@ -112,7 +112,7 @@ export const PasesPage: React.FC = () => {
           <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight">
-                Pases de Rama y Progresión
+                Pases de rama y progresión
               </h1>
               <span className="s-badge-brand px-3 py-0.5 rounded-full text-xs font-bold">
                 {unidadActivaNombre}
@@ -187,9 +187,9 @@ export const PasesPage: React.FC = () => {
           tone={solicitudesCount > 0 ? 'warn' : 'ok'}
         />
         <KpiCard
-          label="Egresos a Educador"
+          label="Egresos a educador"
           value={cargando ? '—' : metricas.egresos}
-          hint={caps.canExecuteEgreso ? 'Habilitado (Global)' : 'Requiere alcance Global'}
+          hint={caps.canExecuteEgreso ? 'Habilitado (global)' : 'Requiere alcance global'}
           icon={<ArrowRightLeft className="w-4 h-4" />}
           tone={metricas.egresos > 0 ? 'warn' : 'neutral'}
         />

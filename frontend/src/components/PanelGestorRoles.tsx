@@ -61,8 +61,8 @@ function alcanceMayor(a: AlcanceRolUI, b: AlcanceRolUI): AlcanceRolUI {
 export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   {
     id: 'padron',
-    titulo: 'Padrón y Ficha de Miembro',
-    pestanas: 'Menú Miembros + Pestañas Datos y Seguridad',
+    titulo: 'Padrón y ficha de miembro',
+    pestanas: 'Menú miembros + pestañas datos y seguridad',
     detalle:
       'Solo lectura consulta el padrón; Edición permite inscribir, modificar datos (identidad, contacto, familia), dar de baja y restablecer contraseña.',
     permisoVer: 'padron.ver',
@@ -72,8 +72,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'legajos',
-    titulo: 'Legajos y Colaboradores',
-    pestanas: 'Legajos (Cumplimiento y Colaboradores) + Pestaña Ficha',
+    titulo: 'Legajos y colaboradores',
+    pestanas: 'Legajos (cumplimiento y colaboradores) + pestaña ficha',
     detalle:
       'Solo lectura consulta entregas y descarga PDF; Edición permite completar fichas médicas y validar entregas físicas con lector QR.',
     permisoVer: 'legajos.ver',
@@ -83,8 +83,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'plantillas',
-    titulo: 'Plantillas de Formularios PDF',
-    pestanas: 'Legajos → Pestaña Plantillas',
+    titulo: 'Plantillas de formularios PDF',
+    pestanas: 'Legajos → pestaña plantillas',
     detalle:
       'Solo lectura consulta plantillas de formularios; Edición (Todo el grupo) permite diseñar y editar los moldes anuales.',
     permisoVer: 'plantillas.ver',
@@ -94,8 +94,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'pases',
-    titulo: 'Pases y Progresión',
-    pestanas: 'Menú Pases + Pestaña Pase y Rol',
+    titulo: 'Pases y progresión',
+    pestanas: 'Menú pases + pestaña pase y rol',
     detalle:
       'Solo lectura consulta candidatos por camada; Edición ejecuta pases de rama y gestiona asignaciones de rol.',
     permisoVer: 'pases.ver',
@@ -105,8 +105,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'cobranzas',
-    titulo: 'Cobranzas y Estado de Cuenta',
-    pestanas: 'Tesorería → Cobranzas y Familias + Pestaña Cuotas',
+    titulo: 'Cobranzas y estado de cuenta',
+    pestanas: 'Tesorería → cobranzas y familias + pestaña cuotas',
     detalle:
       'Solo lectura consulta deudas y pagos; Edición habilita cobrar, generar/anular cargos, ajustar saldos y descuentos familiares.',
     permisoVer: 'cobranzas.ver',
@@ -116,8 +116,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'planes',
-    titulo: 'Planes y Conceptos',
-    pestanas: 'Tesorería → Pestaña Planes y Conceptos',
+    titulo: 'Planes y conceptos',
+    pestanas: 'Tesorería → pestaña planes y conceptos',
     detalle:
       'Solo lectura consulta cobros mensuales y cobros puntuales; Edición permite crear y modificar cobros mensuales y cobros puntuales.',
     permisoVer: 'planes.ver',
@@ -127,8 +127,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'caja',
-    titulo: 'Caja, Bancos y Balance',
-    pestanas: 'Tesorería → Caja, Bancos y Gastos + Cuadro de Resultados',
+    titulo: 'Caja, bancos y balance',
+    pestanas: 'Tesorería → caja, bancos y gastos + cuadro de resultados',
     detalle:
       'Solo lectura consulta saldos, libro diario y balance de su alcance (sección o grupo); Edición permite registrar ingresos/gastos, traspasos, cuentas y rubros.',
     permisoVer: 'caja.ver',
@@ -138,8 +138,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'eventos',
-    titulo: 'Eventos Económicos',
-    pestanas: 'Menú Eventos + Mi Espacio (Ventas propias) + POS y Pedidos',
+    titulo: 'Eventos económicos',
+    pestanas: 'Menú eventos + mi espacio (ventas propias) + POS y pedidos',
     detalle:
       'Solo lectura consulta eventos y permite registrar ventas propias en Mi Espacio; Edición habilita vender en POS, gestionar pedidos y validar QR (cobro PAGADO y Venta General en Todo el grupo).',
     permisoVer: 'eventos.ver',
@@ -149,8 +149,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'organizacion',
-    titulo: 'Organización y Correo Institucional',
-    pestanas: 'Menú Organización → Ramas, Unidades y Correo SMTP',
+    titulo: 'Organización y correo institucional',
+    pestanas: 'Menú organización → ramas, unidades y correo SMTP',
     detalle:
       'Solo lectura consulta estructura de ramas y secciones; Edición (Todo el grupo) administra ramas, unidades y correo institucional SMTP.',
     permisoVer: 'organizacion.ver',
@@ -160,8 +160,8 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
   },
   {
     id: 'roles',
-    titulo: 'Roles y Permisos del Sistema',
-    pestanas: 'Menú Organización → Pestaña Roles y Permisos',
+    titulo: 'Roles y permisos del sistema',
+    pestanas: 'Menú organización → pestaña roles y permisos',
     detalle:
       'Solo lectura consulta roles y permisos; Edición (Todo el grupo) permite crear, modificar, archivar y reactivar roles.',
     permisoVer: 'roles.ver',
@@ -632,7 +632,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
         <div>
           <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-brand shrink-0" />
-            <span>Roles y Permisos del Grupo</span>
+            <span>Roles y permisos del grupo</span>
           </h2>
           <p className="text-[13px] text-ink-muted mt-0.5">
             Cada rol define qué paneles puede consultar o editar y sobre qué alcance (ficha propia, sección asignada o todo el grupo).
@@ -659,7 +659,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
               className="shrink-0"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Crear Nuevo Rol</span>
+              <span>Crear nuevo rol</span>
             </Button>
           )}
         </div>
@@ -759,7 +759,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                     ))}
                     {panelesRol.length === 0 && (
                       <span className="text-[13px] text-ink-muted italic">
-                        Solo acceso a Inicio y Mi Espacio personal
+                        Solo acceso a inicio y mi espacio personal
                       </span>
                     )}
                   </div>
@@ -780,7 +780,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                       ) : (
                         <RotateCcw className="w-4 h-4" />
                       )}
-                      <span>Reactivar Rol</span>
+                      <span>Reactivar rol</span>
                     </button>
                   ) : (
                     <button
@@ -819,7 +819,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                     className="flex-1 sm:flex-initial"
                   >
                     <Pencil className="w-4 h-4" />
-                    <span>Editar Rol y Paneles</span>
+                    <span>Editar rol y paneles</span>
                   </Button>
                   {(!puedeOperarEsteRol || r.esSistema || (esUltimo && !esInactivo)) && (
                     <p className="basis-full text-[13px] text-ink-muted leading-snug">
@@ -853,7 +853,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
               <div className="p-4 sm:p-5 border-b border-rule flex items-center justify-between bg-paper-2 shrink-0">
                 <div>
                   <h3 className="text-lg font-extrabold text-ink">
-                    {rolEditando ? `Editar Rol: ${rolEditando.nombre}` : 'Crear Nuevo Rol'}
+                    {rolEditando ? `Editar Rol: ${rolEditando.nombre}` : 'Crear nuevo rol'}
                   </h3>
                   <p className="text-[13px] text-ink-muted mt-0.5">
                     Definí el nombre del rol y elegí el nivel y alcance para cada panel del sistema.
@@ -896,14 +896,14 @@ export const PanelGestorRoles: React.FC<Props> = ({
                         onClick={() => aplicarNivelATodos('EDITAR')}
                         className="px-3 py-1.5 rounded-xl bg-paper-3 hover:bg-brand/10 text-ink-2 hover:text-brand font-bold text-xs cursor-pointer transition-colors"
                       >
-                        Todo en Edición
+                        Todo en edición
                       </button>
                       <button
                         type="button"
                         onClick={() => aplicarNivelATodos('VER')}
                         className="px-3 py-1.5 rounded-xl bg-paper-3 hover:bg-brand/10 text-ink-2 hover:text-brand font-bold text-xs cursor-pointer transition-colors"
                       >
-                        Todo en Lectura
+                        Todo en lectura
                       </button>
                       <button
                         type="button"
@@ -982,7 +982,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                                 </span>
                                 {panel.alcanceMinimoEditar === 'GLOBAL' && (
                                   <span className="px-2 py-0.5 rounded-md bg-paper-3 text-ink-2 text-xs font-bold">
-                                    Edición en Todo el grupo
+                                    Edición en todo el grupo
                                   </span>
                                 )}
                               </div>
@@ -1096,7 +1096,7 @@ export const PanelGestorRoles: React.FC<Props> = ({
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  <span>{rolEditando ? 'Guardar Cambios' : 'Crear Rol'}</span>
+                  <span>{rolEditando ? 'Guardar cambios' : 'Crear rol'}</span>
                 </Button>
               </div>
             </div>

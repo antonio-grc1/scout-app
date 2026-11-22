@@ -41,7 +41,7 @@ export const TrayectoriaMiembro: React.FC<TrayectoriaMiembroProps> = ({ asignaci
         <div className="flex items-center gap-2.5 flex-wrap">
           <History className="w-[18px] h-[18px] text-brand shrink-0" />
           <span className="font-extrabold text-ink text-sm sm:text-[15px]">
-            Trayectoria en el Grupo
+            Trayectoria en el grupo
           </span>
           <span className="px-2.5 py-0.5 rounded-full bg-brand/15 text-brand font-bold text-xs">
             {totalEtapas} {totalEtapas === 1 ? 'asignación' : 'asignaciones'}

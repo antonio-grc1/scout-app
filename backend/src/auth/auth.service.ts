@@ -218,7 +218,7 @@ export class AuthService {
       }
       if (!this.mailer || !(await this.mailer.estaDisponibleParaEnvio())) {
         throw new BadRequestException(
-          'El envío de correos no está configurado o está deshabilitado. Configuralo en Organización → Correo Institucional.',
+          'El envío de correos no está configurado o está deshabilitado. Configuralo en Organización → Correo institucional.',
         );
       }
 

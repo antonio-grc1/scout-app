@@ -109,7 +109,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
           className="shrink-0"
         >
           <Download className="w-4 h-4 shrink-0" />
-          <span className="hidden md:inline">Instalar App</span>
+          <span className="hidden md:inline">Instalar app</span>
         </Button>
       ) : (
         <div className="bg-surface rounded-2xl p-5 border border-rule shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
@@ -132,7 +132,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
             className="shrink-0"
           >
             <Download className="w-4 h-4" />
-            <span>Instalar App</span>
+            <span>Instalar app</span>
           </Button>
         </div>
       )}
@@ -156,7 +156,7 @@ export const BotonInstalarPwa: React.FC<Props> = ({ variante = 'navbar' }) => {
                   />
                   <div>
                     <h4 className="text-base font-extrabold text-ink font-display">
-                      Instalar App en tu Celular
+                      Instalar app en tu celular
                     </h4>
                     <p className="text-xs text-ink-muted">
                       Grupo Scout Juan XXIII

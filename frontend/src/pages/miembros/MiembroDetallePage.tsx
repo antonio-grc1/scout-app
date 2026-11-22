@@ -44,7 +44,7 @@ export const MiembroDetallePage: React.FC = () => {
           className="s-btn-sec s-touch px-4 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Volver a Miembros</span>
+          <span>Volver a miembros</span>
         </Link>
 
         <div className="s-card rounded-2xl p-8 text-center space-y-2.5">
@@ -66,7 +66,7 @@ export const MiembroDetallePage: React.FC = () => {
           className="s-btn-sec s-touch px-4 py-2.5 rounded-xl text-sm font-bold inline-flex items-center gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Volver a Miembros</span>
+          <span>Volver a miembros</span>
         </Link>
 
         {/* B7-10: sin el id interno ("Expediente #4"); el nombre del miembro está en el encabezado del expediente. */}

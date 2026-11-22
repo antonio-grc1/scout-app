@@ -875,7 +875,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
         <div key={campo.key} className="md:col-span-2 space-y-3 pt-1">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-sm font-semibold text-ink-2">
-              Materiales para Prestar o Donar
+              Materiales para prestar o donar
             </span>
             <div
               role="tablist"
@@ -1441,7 +1441,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
             </p>
             <p>
               Habilita paseos barriales, visitas a parques, actividades comunitarias y traslados del
-              Grupo Scout.
+              Grupo scout.
             </p>
             {Boolean(formData.autorizante_nombre) && (
               <p className="pt-1 text-brand-ink font-bold">
@@ -1610,7 +1610,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
           <div className="p-4 rounded-xl bg-paper-2 border border-rule text-[13px] leading-relaxed text-ink-2 space-y-1.5">
             <div className="text-xs font-extrabold uppercase tracking-wider text-brand-ink flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 shrink-0" />
-              <span>Declaración / Texto del Documento</span>
+              <span>Declaración / texto del documento</span>
             </div>
             <p className="whitespace-pre-line text-ink">
               {interpolarTextoLegalPreview(seccionActual.textoLegal, formData, etiquetasCampos)}
@@ -1663,7 +1663,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                     className="text-brand-ink hover:bg-brand/10 font-bold text-[13px] flex items-center gap-1.5 transition-colors py-1.5 px-3 rounded-lg cursor-pointer disabled:opacity-50"
                   >
                     <Eye className="w-4 h-4 shrink-0" />
-                    <span>Vista Previa PDF</span>
+                    <span>Vista previa PDF</span>
                   </button>
                 )}
                 <button
@@ -1700,7 +1700,7 @@ export const DynamicFormRenderer: React.FC<Props> = ({
                 className="min-h-[52px] sm:min-h-[56px] px-4 rounded-2xl border border-rule-strong bg-paper-2 hover:bg-paper-3 text-ink font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors disabled:opacity-50"
               >
                 <Eye className="w-4 h-4 text-brand-ink shrink-0" />
-                <span>Vista Previa PDF</span>
+                <span>Vista previa PDF</span>
               </button>
             )}
 

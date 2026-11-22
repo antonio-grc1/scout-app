@@ -227,7 +227,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-black text-ink">
-                  {esModoEdicion ? 'Modificar Ingreso Manual' : 'Registrar Ingreso Manual'}
+                  {esModoEdicion ? 'Modificar ingreso manual' : 'Registrar ingreso manual'}
                 </h3>
                 <p className="text-[13px] text-ink-muted">
                   {esModoEdicion
@@ -272,7 +272,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
 
               <div>
                 <label className="text-[13px] font-bold text-ink block mb-1.5">
-                  Fecha y Hora del Ingreso *
+                  Fecha y hora del ingreso *
                 </label>
                 <Input
                   type="datetime-local"
@@ -286,7 +286,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
             {/* Cuenta de destino (Caja o Banco) */}
             <div>
               <label className="text-[13px] font-bold text-ink block mb-1.5">
-                Cuenta de Ingreso (¿Dónde entra la plata?) *
+                Cuenta de ingreso (¿Dónde entra la plata?) *
               </label>
               <select
                 value={cuentaId}
@@ -306,7 +306,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
             <div>
               <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
                 <label className="text-[13px] font-bold text-ink">
-                  Rubro / Categoría de Ingreso *
+                  Rubro / categoría de ingreso *
                 </label>
                 <div className="flex items-center gap-2.5">
                   {rubroId &&
@@ -345,7 +345,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
                     className="text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <PlusCircle className="w-4 h-4" />
-                    <span>+ Nuevo Rubro</span>
+                    <span>+ Nuevo rubro</span>
                   </button>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
             {/* Descripción */}
             <div>
               <label className="text-[13px] font-bold text-ink block mb-1.5">
-                Descripción / Detalle *
+                Descripción / detalle *
               </label>
               <Input
                 type="text"
@@ -391,7 +391,7 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
             {/* Comprobante / Recibo */}
             <div>
               <label className="text-[13px] font-bold text-ink block mb-1.5">
-                N° de Recibo / Comprobante (Opcional)
+                N° de recibo / comprobante (Opcional)
               </label>
               <Input
                 type="text"
@@ -420,8 +420,8 @@ export const ModalRegistrarIngreso: React.FC<ModalRegistrarIngresoProps> = ({
                 {guardando
                   ? 'Guardando...'
                   : esModoEdicion
-                  ? 'Guardar Cambios'
-                  : 'Registrar Ingreso'}
+                  ? 'Guardar cambios'
+                  : 'Registrar ingreso'}
               </Button>
             </div>
           </form>

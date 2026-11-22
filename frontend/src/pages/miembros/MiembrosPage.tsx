@@ -851,7 +851,7 @@ export const MiembrosPage: React.FC = () => {
           edadAlCorte: c.edad,
           unidadActual: c.unidadActual?.nombre || 'Rama',
           ramaSugeridaNombre:
-            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Educador / Apoyo',
+            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Educador / apoyo',
           tipo: c.tipo,
           requiereAlcanceGlobal: Boolean(c.requiereAlcanceGlobal),
           unidadesDestino: c.unidadesDestino || [],
@@ -972,17 +972,17 @@ export const MiembrosPage: React.FC = () => {
     { header: 'Nombre', formatear: (m) => m.nombre || '' },
     { header: 'DNI', formatear: (m) => m.dni || '' },
     {
-      header: 'Fecha Nacimiento',
+      header: 'Fecha nacimiento',
       formatear: (m) => (m.fechaNacimiento ? formatearFecha(m.fechaNacimiento) : ''),
     },
     { header: 'Edad', formatear: (m) => calcularEdad(m.fechaNacimiento) ?? '' },
     { header: 'Camada', formatear: (m) => calcularCamada(m.fechaNacimiento) ?? '' },
     {
-      header: 'Rama / Sección',
+      header: 'Rama / sección',
       formatear: (m) => obtenerConfigRama(m, unidades).nombre || '',
     },
     {
-      header: 'Rol / Función',
+      header: 'Rol / función',
       formatear: (m) => {
         const asig = obtenerRolPrincipal(m) ?? m.asignaciones?.[0];
         return asig?.rol?.nombre || (typeof asig?.rol === 'string' ? asig.rol : '') || '';
@@ -1005,7 +1005,7 @@ export const MiembrosPage: React.FC = () => {
 
   const columnasFichaPadron = (): ColumnaExportacion<any>[] => [
     {
-      header: 'Ficha Médica',
+      header: 'Ficha médica',
       formatear: (m) => {
         const entrega = entregasPorUsuario.get(m.id);
         if (entrega?.estado === 'VALIDADO_FISICAMENTE') return 'Validada Físicamente';
@@ -1014,7 +1014,7 @@ export const MiembrosPage: React.FC = () => {
       },
     },
     {
-      header: 'Régimen Alimentario',
+      header: 'Régimen alimentario',
       formatear: (m) => {
         const info = alertasPorUsuario.get(m.id);
         if (!info) return '';
@@ -1022,7 +1022,7 @@ export const MiembrosPage: React.FC = () => {
       },
     },
     {
-      header: 'Alertas Médicas',
+      header: 'Alertas médicas',
       formatear: (m) => alertasPorUsuario.get(m.id)?.resumenAlertas || '',
     },
   ];
@@ -1045,10 +1045,10 @@ export const MiembrosPage: React.FC = () => {
       filas: miembrosFiltrados,
       resumenSuperior: [
         { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
-        { etiqueta: 'Reporte', valor: 'Padrón de Miembros' },
+        { etiqueta: 'Reporte', valor: 'Padrón de miembros' },
         { etiqueta: 'Ciclo', valor: String(cicloAnio) },
-        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
-        { etiqueta: 'Total de Registros', valor: miembrosFiltrados.length },
+        { etiqueta: 'Fecha de emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Total de registros', valor: miembrosFiltrados.length },
       ],
     });
     mostrarToast('Padrón exportado exitosamente a Excel.');
@@ -1066,10 +1066,10 @@ export const MiembrosPage: React.FC = () => {
       filas: miembrosFiltrados,
       resumenSuperior: [
         { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
-        { etiqueta: 'Reporte', valor: 'Padrón de Miembros' },
+        { etiqueta: 'Reporte', valor: 'Padrón de miembros' },
         { etiqueta: 'Ciclo', valor: String(cicloAnio) },
-        { etiqueta: 'Fecha de Emisión', valor: formatearFecha(new Date().toISOString()) },
-        { etiqueta: 'Total de Registros', valor: miembrosFiltrados.length },
+        { etiqueta: 'Fecha de emisión', valor: formatearFecha(new Date().toISOString()) },
+        { etiqueta: 'Total de registros', valor: miembrosFiltrados.length },
       ],
     });
     mostrarToast('Padrón exportado exitosamente a CSV.');
@@ -1110,7 +1110,7 @@ export const MiembrosPage: React.FC = () => {
   // El título refleja el alcance real: un Jefe de Rama o una unidad elegida no es "todo el grupo".
   const tituloPadron =
     caps.esGlobal && activeUnitId === 'ALL'
-      ? 'Padrón del Grupo'
+      ? 'Padrón del grupo'
       : `Padrón · ${obtenerNombreUnidadActiva(activeUnitId, caps, unidades, 'Tus unidades')}`;
 
   return (
@@ -1236,7 +1236,7 @@ export const MiembrosPage: React.FC = () => {
               className="s-btn-brand flex-1 sm:flex-initial min-h-[44px] px-4 rounded-xl text-[13px] sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <UserPlus className="w-4 h-4 shrink-0" />
-              <span>Nuevo Miembro</span>
+              <span>Nuevo miembro</span>
             </button>
           )}
         </div>
@@ -1712,10 +1712,10 @@ export const MiembrosPage: React.FC = () => {
                 aria-label="Criterio de ordenamiento"
                 className="s-input w-full min-h-[46px] px-3.5 py-2 rounded-xl text-sm font-semibold cursor-pointer"
               >
-                <option value="seccion">Sección y Rol (orden de edades)</option>
-                <option value="miembro">Nombre y Apellido</option>
-                <option value="edad">Edad / Fecha de nacimiento</option>
-                <option value="ficha">Estado de Ficha Médica</option>
+                <option value="seccion">Sección y rol (orden de edades)</option>
+                <option value="miembro">Nombre y apellido</option>
+                <option value="edad">Edad / fecha de nacimiento</option>
+                <option value="ficha">Estado de ficha médica</option>
               </select>
             </div>
 
@@ -1849,7 +1849,7 @@ export const MiembrosPage: React.FC = () => {
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
-            <span>Falta Ficha ({conteos.faltaFicha})</span>
+            <span>Falta ficha ({conteos.faltaFicha})</span>
           </button>
         )}
 
@@ -1865,7 +1865,7 @@ export const MiembrosPage: React.FC = () => {
             }`}
           >
             <CreditCard className="w-4 h-4" />
-            <span>Con Deuda ({conteos.conDeuda})</span>
+            <span>Con deuda ({conteos.conDeuda})</span>
           </button>
         )}
 
@@ -1883,7 +1883,7 @@ export const MiembrosPage: React.FC = () => {
             }`}
           >
             <HeartPulse className="w-4 h-4" />
-            <span>Alerta Médica ({conteos.conAlertaMedica})</span>
+            <span>Alerta médica ({conteos.conAlertaMedica})</span>
           </button>
         )}
 
@@ -1901,7 +1901,7 @@ export const MiembrosPage: React.FC = () => {
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>Pases por Camada ({candidatosPase.length})</span>
+            <span>Pases por camada ({candidatosPase.length})</span>
           </button>
         )}
 
@@ -1931,9 +1931,9 @@ export const MiembrosPage: React.FC = () => {
           {(
             [
               { id: 'TODAS', label: 'Todas las alertas' },
-              { id: 'DIETA', label: 'Régimen / Dieta' },
+              { id: 'DIETA', label: 'Régimen / dieta' },
               { id: 'ALERGIA', label: 'Alergias' },
-              { id: 'MEDICACION', label: 'Medicación / Crónicas' },
+              { id: 'MEDICACION', label: 'Medicación / crónicas' },
               { id: 'RESTRICCION', label: 'Restricciones / CUD' },
             ] as const
           ).map((sf) => (
@@ -1974,7 +1974,7 @@ export const MiembrosPage: React.FC = () => {
             <div>
               <h2 className="text-base font-extrabold text-brand flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-brand" />
-                <span>Sugerencias de Pase por Camada</span>
+                <span>Sugerencias de pase por camada</span>
               </h2>
               <p className="text-[13px] text-ink-muted mt-0.5">
                 Podés pasar a toda una camada junta eligiendo la sección de destino, o revisar
@@ -2034,7 +2034,7 @@ export const MiembrosPage: React.FC = () => {
                     {puedeEjecutarPases ? (
                       !puedeEjecutarEgreso && (g.tipo === 'EGRESO' || g.requiereAlcanceGlobal) ? (
                         <span className="text-[13px] font-bold text-amber-700 dark:text-amber-300 px-2">
-                          Requiere alcance Global
+                          Requiere alcance global
                         </span>
                       ) : (
                         <button
@@ -2212,7 +2212,7 @@ export const MiembrosPage: React.FC = () => {
                       onClick={() => handleOrdenar('miembro')}
                       className="flex items-center w-full py-4 px-4 text-left uppercase tracking-wide font-semibold cursor-pointer"
                     >
-                      <span>Nombre y Familia</span>
+                      <span>Nombre y familia</span>
                       {renderIconoOrden('miembro')}
                     </button>
                   </th>
@@ -2225,7 +2225,7 @@ export const MiembrosPage: React.FC = () => {
                       onClick={() => handleOrdenar('seccion')}
                       className="flex items-center w-full py-4 px-4 text-left uppercase tracking-wide font-semibold cursor-pointer"
                     >
-                      <span>Sección y Rol</span>
+                      <span>Sección y rol</span>
                       {renderIconoOrden('seccion')}
                     </button>
                   </th>
@@ -2238,7 +2238,7 @@ export const MiembrosPage: React.FC = () => {
                       onClick={() => handleOrdenar('edad')}
                       className="flex items-center w-full py-4 px-4 text-left uppercase tracking-wide font-semibold cursor-pointer"
                     >
-                      <span>Edad / Camada</span>
+                      <span>Edad / camada</span>
                       {renderIconoOrden('edad')}
                     </button>
                   </th>
@@ -2255,7 +2255,7 @@ export const MiembrosPage: React.FC = () => {
                       {renderIconoOrden('ficha')}
                     </button>
                   </th>
-                  <th className="py-4 px-4 text-right">Acciones Rápidas</th>
+                  <th className="py-4 px-4 text-right">Acciones rápidas</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
@@ -2404,7 +2404,7 @@ export const MiembrosPage: React.FC = () => {
                               ) : (
                                 <FileCheck2 className="w-3.5 h-3.5 shrink-0" />
                               )}
-                              <span>Recibir Ficha</span>
+                              <span>Recibir ficha</span>
                             </button>
                           )}
 
@@ -2415,7 +2415,7 @@ export const MiembrosPage: React.FC = () => {
                               className="s-btn-brand min-h-[38px] px-3 rounded-xl text-[13px] inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
                             >
                               <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                              <span>Pasar de Rama</span>
+                              <span>Pasar de rama</span>
                             </button>
                           )}
 
@@ -2478,7 +2478,7 @@ export const MiembrosPage: React.FC = () => {
       <Drawer
         abierto={modalAltaAbierto}
         onCerrar={() => setModalAltaAbierto(false)}
-        titulo="Registrar Nuevo Miembro"
+        titulo="Registrar nuevo miembro"
         subtitulo="Alta rápida e integración a grupo de hermanos"
         mode="sheet"
         maxWidthClass="sm:max-w-2xl"
@@ -2501,7 +2501,7 @@ export const MiembrosPage: React.FC = () => {
         abierto={modalImportarAbierto}
         bloqueado={importacionEnCurso}
         onCerrar={() => setModalImportarAbierto(false)}
-        titulo="Importar Padrón desde Hoja de Cálculo"
+        titulo="Importar padrón desde hoja de cálculo"
         subtitulo="Soporta Excel (.xlsx) y CSV con vista previa"
         mode="sheet"
         maxWidthClass="sm:max-w-3xl"
@@ -2524,7 +2524,7 @@ export const MiembrosPage: React.FC = () => {
       <Drawer
         abierto={drawerFamiliasAbierto}
         onCerrar={() => setDrawerFamiliasAbierto(false)}
-        titulo="Familias Voluntarias y Oficios"
+        titulo="Familias voluntarias y oficios"
         subtitulo={`Ofrecimientos declarados en fichas médicas del ciclo ${cicloAnio}`}
         mode="sheet"
         maxWidthClass="sm:max-w-2xl"
@@ -2589,7 +2589,7 @@ export const MiembrosPage: React.FC = () => {
                   )}
                   {col.areas?.campamento && (
                     <span className="text-xs bg-paper text-ink border border-rule px-2.5 py-0.5 rounded-md font-medium">
-                      Apoyo en Campamento
+                      Apoyo en campamento
                     </span>
                   )}
                   {(col.areas?.transporte ||
@@ -2607,7 +2607,7 @@ export const MiembrosPage: React.FC = () => {
                   )}
                   {col.areas?.donaciones && (
                     <span className="text-xs bg-paper text-ink border border-rule px-2.5 py-0.5 rounded-md font-medium">
-                      Donaciones / Materiales
+                      Donaciones / materiales
                     </span>
                   )}
                 </div>

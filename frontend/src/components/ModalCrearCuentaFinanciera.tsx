@@ -244,7 +244,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                 </div>
                 <div>
                   <h3 id="modal-cuenta-title" className="text-lg font-bold text-ink leading-snug">
-                    {esModoEdicion ? 'Editar Cuenta Financiera' : 'Nueva Cuenta Financiera'}
+                    {esModoEdicion ? 'Editar cuenta financiera' : 'Nueva cuenta financiera'}
                   </h3>
                   <p className="text-[13px] text-ink-muted">
                     {esModoEdicion
@@ -268,7 +268,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
             {/* Formulario */}
             <form onSubmit={handleSubmit} className="mt-5 space-y-4">
               <Input
-                label="Nombre de la Cuenta"
+                label="Nombre de la cuenta"
                 required
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
@@ -279,7 +279,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
               />
 
               <Select
-                label="Tipo de Cuenta"
+                label="Tipo de cuenta"
                 required
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value as 'CAJA_EFECTIVO' | 'BANCO')}
@@ -291,20 +291,20 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                     : 'Caja chica física o efectivo en mano para gastos diarios.'
                 }
               >
-                <option value="BANCO">Cuenta Bancaria / Billetera Virtual</option>
-                <option value="CAJA_EFECTIVO">Caja Chica / Efectivo Físico</option>
+                <option value="BANCO">Cuenta bancaria / billetera virtual</option>
+                <option value="CAJA_EFECTIVO">Caja chica / efectivo físico</option>
               </Select>
 
               {esGlobalCuentas ? (
                 <Select
-                  label="Alcance / Rama de la Cuenta"
+                  label="Alcance / rama de la cuenta"
                   value={unidadId}
                   onChange={(e) => setUnidadId(e.target.value)}
                   disabled={guardando || eliminando}
                   leftIcon={<Building2 className="w-4 h-4" />}
                   helperText="Indicá si pertenece al grupo general o exclusivamente a una rama."
                 >
-                  <option value="">General del Grupo (Central)</option>
+                  <option value="">General del grupo (central)</option>
                   {unidadesDisponibles.map((u) => (
                     <option key={u.id} value={String(u.id)}>
                       {u.nombre}
@@ -313,7 +313,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                 </Select>
               ) : unidadesDisponibles.length > 1 ? (
                 <Select
-                  label="Rama de la Cuenta"
+                  label="Rama de la cuenta"
                   required
                   value={unidadId}
                   onChange={(e) => setUnidadId(e.target.value)}
@@ -341,7 +341,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
 
               {esModoEdicion && (
                 <Select
-                  label="Estado de la Cuenta"
+                  label="Estado de la cuenta"
                   required
                   value={activa ? 'ACTIVA' : 'INACTIVA'}
                   onChange={(e) => setActiva(e.target.value === 'ACTIVA')}
@@ -353,13 +353,13 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                   }
                 >
                   <option value="ACTIVA">Activa</option>
-                  <option value="INACTIVA">Inactiva (Deshabilitada)</option>
+                  <option value="INACTIVA">Inactiva (deshabilitada)</option>
                 </Select>
               )}
 
               {esModoEdicion && cuentaAEditar && (
                 <div className="p-3.5 rounded-xl bg-paper-2 border border-rule text-sm flex justify-between items-center text-ink-2">
-                  <span>Saldo Actual:</span>
+                  <span>Saldo actual:</span>
                   <span className="font-bold text-ink">{formatearMoneda(cuentaAEditar.saldoActual)}</span>
                 </div>
               )}
@@ -416,7 +416,7 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
                     loadingText={esModoEdicion ? 'Guardando...' : 'Creando...'}
                     disabled={eliminando}
                   >
-                    {esModoEdicion ? 'Guardar Cambios' : 'Crear Cuenta'}
+                    {esModoEdicion ? 'Guardar cambios' : 'Crear cuenta'}
                   </Button>
                 </div>
               </div>
@@ -430,9 +430,9 @@ export const ModalCrearCuentaFinanciera: React.FC<ModalCrearCuentaFinancieraProp
           abierto={modalConfirmarEliminar}
           onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
           onConfirmar={handleEliminarCuenta}
-          titulo="Eliminar Cuenta Financiera"
+          titulo="Eliminar cuenta financiera"
           tipo="peligro"
-          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Cuenta'}
+          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, eliminar cuenta'}
           textoCancelar="Cancelar"
           cargando={eliminando}
           mensaje={

@@ -210,7 +210,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
               <Mail className="w-5 h-5 text-brand" />
             </div>
             <div>
-              <h2 className="text-base font-extrabold text-ink">Correo Saliente y Envío de Contraseñas</h2>
+              <h2 className="text-base font-extrabold text-ink">Correo saliente y envío de contraseñas</h2>
               <p className="text-[13px] text-ink-muted mt-0.5">
                 Configurá el correo saliente para enviar altas, contraseñas temporales y recuperación de contraseña.
               </p>
@@ -272,7 +272,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-bold text-ink mb-1.5">Servidor SMTP (Host)</label>
+              <label className="block text-sm font-bold text-ink mb-1.5">Servidor SMTP (host)</label>
               <input
                 type="text"
                 value={host}
@@ -345,7 +345,7 @@ export const PanelConfiguracionCorreo: React.FC<PanelConfiguracionCorreoProps> =
 
             <Input
 
-              label="Remitente (From)"
+              label="Remitente (from)"
 
               type="text"
 

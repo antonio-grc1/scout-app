@@ -257,7 +257,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="font-bold text-ink text-lg">
-                {planAEditar ? 'Editar Cobro Mensual' : 'Nuevo Cobro Mensual'}
+                {planAEditar ? 'Editar cobro mensual' : 'Nuevo cobro mensual'}
               </h3>
               <p className="text-[13px] text-ink-muted">
                 Configurá el monto mensual y los casilleros de meses del año
@@ -284,7 +284,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
             <div className="sm:col-span-2">
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Nombre del Cobro Mensual *
+                Nombre del cobro mensual *
               </label>
               <input
                 type="text"
@@ -298,7 +298,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
 
             <Input
 
-              label="Ciclo / Año"
+              label="Ciclo / año"
 
               type="number"
 
@@ -319,7 +319,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-[13px] font-bold text-ink-2">
-                Categoría / Rubro Contable (Opcional)
+                Categoría / rubro contable (Opcional)
               </label>
               <div className="flex items-center gap-2.5">
                 {rubroId !== '' &&
@@ -368,7 +368,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
               onChange={(e) => setRubroId(Number(e.target.value) || '')}
               className="w-full min-h-[46px] rounded-xl border border-rule bg-surface px-3.5 py-2.5 text-base sm:text-[15px] font-medium text-ink focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none transition-colors"
             >
-              <option value="">Sin categoría específica (Cuota General)</option>
+              <option value="">Sin categoría específica (cuota general)</option>
               {rubros.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.nombre}
@@ -381,7 +381,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Monto Mensual por Miembro ($) *
+                Monto mensual por miembro ($) *
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
@@ -402,7 +402,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
 
             <div>
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Día de Vencimiento de Cada Mes
+                Día de vencimiento de cada mes
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] font-bold text-ink-muted pointer-events-none">
@@ -425,7 +425,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rule pb-3">
               <div>
                 <label className="text-sm font-bold text-ink block">
-                  Casilleros de Meses del Año ({mesesHabilitados.length} seleccionados)
+                  Casilleros de meses del año ({mesesHabilitados.length} seleccionados)
                 </label>
                 <p className="text-xs text-ink-muted">
                   Cada mes habilitado genera y acumula la deuda mensual para los destinatarios
@@ -556,7 +556,7 @@ export const ModalPlanCuotaMensual: React.FC<Props> = ({
               disabled={guardando}
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{guardando ? 'Guardando...' : planAEditar ? 'Guardar Cambios' : 'Crear Cobro Mensual'}</span>
+              <span>{guardando ? 'Guardando...' : planAEditar ? 'Guardar cambios' : 'Crear cobro mensual'}</span>
             </Button>
           </div>
         </form>

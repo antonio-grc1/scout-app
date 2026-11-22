@@ -192,7 +192,7 @@ export const EventosCatalogoPage: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <Sparkles className="w-5 h-5 text-brand shrink-0" />
             <h1 className="text-xl sm:text-2xl font-black text-ink tracking-tight">
-              Eventos Económicos y Vales QR
+              Eventos económicos y vales QR
             </h1>
           </div>
           <p className="text-sm text-ink-muted leading-relaxed">
@@ -234,7 +234,7 @@ export const EventosCatalogoPage: React.FC = () => {
               onClick={() => setModalCrearAbierto(true)}
               leftIcon={<PlusCircle className="w-4 h-4" />}
             >
-              Nuevo Evento
+              Nuevo evento
             </Button>
           )}
         </div>
@@ -260,7 +260,7 @@ export const EventosCatalogoPage: React.FC = () => {
         <KpiCard
           label="Ganancia familias"
           value={`+${formatearMoneda(kpisGlobales.totalGanancia)}`}
-          hint="Asignable a Saldo a Favor"
+          hint="Asignable a saldo a favor"
           tone="info"
           icon={<Ticket className="w-4 h-4" />}
         />
@@ -332,7 +332,7 @@ export const EventosCatalogoPage: React.FC = () => {
                 onClick={() => setModalCrearAbierto(true)}
                 leftIcon={<PlusCircle className="w-4 h-4" />}
               >
-                Crear Primer Evento
+                Crear primer evento
               </Button>
             </div>
           )}
@@ -357,7 +357,7 @@ export const EventosCatalogoPage: React.FC = () => {
                       <span>{st.label}</span>
                     </span>
                     <span className="px-2.5 py-0.5 rounded-lg bg-paper-2 border border-rule text-xs font-bold text-ink-2">
-                      {ev.tipo === 'FESTIVAL_ENTRADAS' ? 'Entradas / Festival' : 'Recaudación'}
+                      {ev.tipo === 'FESTIVAL_ENTRADAS' ? 'Entradas / festival' : 'Recaudación'}
                     </span>
                   </div>
 
@@ -419,7 +419,7 @@ export const EventosCatalogoPage: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
-                            Pedidos / Vales
+                            Pedidos / vales
                           </span>
                           <span className="text-base font-black text-brand s-tabular">
                             {ev.metricas?.cantidadPedidos || 0} · {ev.metricas?.ticketsRetirados || 0}/{ev.metricas?.totalTickets || 0}

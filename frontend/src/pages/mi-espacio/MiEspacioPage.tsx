@@ -953,24 +953,24 @@ export const MiEspacioPage: React.FC = () => {
   const tabsItemsTodos: readonly SegmentedTabItem<TabMiEspacio>[] = [
     {
       id: 'legajo',
-      label: 'Mi Legajo',
+      label: 'Mi legajo',
       icon: <FileText className="w-4 h-4" />,
     },
     {
       id: 'cuotas',
-      label: 'Mis Cuotas',
+      label: 'Mis cuotas',
       icon: <CreditCard className="w-4 h-4" />,
       badge: saldoPendiente > 0 ? formatearMoneda(saldoPendiente) : undefined,
     },
     {
       id: 'pedidos',
-      label: 'Mis Pedidos y Vales',
+      label: 'Mis pedidos y vales',
       icon: <ShoppingBag className="w-4 h-4" />,
       badge: misPedidos.length > 0 ? misPedidos.length : undefined,
     },
     {
       id: 'perfil',
-      label: 'Mi Perfil',
+      label: 'Mi perfil',
       icon: <User className="w-4 h-4" />,
     },
   ];
@@ -1021,7 +1021,7 @@ export const MiEspacioPage: React.FC = () => {
                 ) : (
                   <Eye className="w-4 h-4 text-brand-ink" />
                 )}
-                <span>Ver Ficha</span>
+                <span>Ver ficha</span>
               </button>
 
               <button
@@ -1187,7 +1187,7 @@ export const MiEspacioPage: React.FC = () => {
       {tabActiva === 'cuotas' && (
         <div className="s-anim-tab s-card rounded-2xl p-5 sm:p-6 space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-rule pb-3.5">
-            <span className="text-base font-extrabold text-ink">Estado de Cuenta Personal</span>
+            <span className="text-base font-extrabold text-ink">Estado de cuenta personal</span>
             <div className="flex items-center gap-2 flex-wrap">
               {estadoCuentaEstado === 'error' ? (
                 <span className="px-3 py-1 rounded-xl text-[13px] font-extrabold s-badge-warn whitespace-nowrap shrink-0">
@@ -1287,7 +1287,7 @@ export const MiEspacioPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-brand" />
                 <h2 className="text-xs sm:text-[13px] font-bold text-ink-muted uppercase tracking-wider">
-                  Pagos y Recibos Realizados
+                  Pagos y recibos realizados
                 </h2>
               </div>
 
@@ -1363,7 +1363,7 @@ export const MiEspacioPage: React.FC = () => {
                   {eventosHabilitados.length > 0 && (
                     <div className="space-y-3">
                       <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-                        Habilitados para Venta ({eventosHabilitados.length})
+                        Habilitados para venta ({eventosHabilitados.length})
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         {eventosHabilitados.map((ev) => {
@@ -1513,7 +1513,7 @@ export const MiEspacioPage: React.FC = () => {
                     className="s-btn-brand s-touch px-4.5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2 cursor-pointer shrink-0"
                   >
                     <PlusCircle className="w-4 h-4" />
-                    <span>Cargar Nueva Venta</span>
+                    <span>Cargar nueva venta</span>
                   </button>
                 ) : (
                   <span className="px-3 py-1.5 rounded-xl s-badge-info text-[13px] font-bold inline-flex items-center gap-1.5 shrink-0">
@@ -1526,12 +1526,12 @@ export const MiEspacioPage: React.FC = () => {
               {/* Resumen KPI del Evento */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 <KpiCard
-                  label="Pedidos en Evento"
+                  label="Pedidos en evento"
                   value={pedidosEventoSeleccionado.length}
                   tone="neutral"
                 />
                 <KpiCard
-                  label="Ganancia Acumulada"
+                  label="Ganancia acumulada"
                   value={`+${formatearMoneda(
                     pedidosEventoSeleccionado.reduce(
                       (acc, p) => acc + Number(p.totalGanancia || 0),
@@ -1542,7 +1542,7 @@ export const MiEspacioPage: React.FC = () => {
                   icon={<Sparkles className="w-[18px] h-[18px]" />}
                 />
                 <KpiCard
-                  label="Saldo a Favor en Grupo"
+                  label="Saldo a favor en grupo"
                   value={formatearMoneda(saldoAFavor)}
                   tone="brand"
                 />
@@ -1601,7 +1601,7 @@ export const MiEspacioPage: React.FC = () => {
                               Total: {formatearMoneda(Number(p.total))}
                             </span>
                             <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                              Tu Ganancia: +{formatearMoneda(Number(p.totalGanancia))}
+                              Tu ganancia: +{formatearMoneda(Number(p.totalGanancia))}
                               {p.gananciaAcreditada && ' (Acreditada ✓)'}
                             </span>
                           </div>
@@ -1668,7 +1668,7 @@ export const MiEspacioPage: React.FC = () => {
                               className="s-btn-sec px-3 py-1.5 rounded-lg text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
-                              <span>Editar Pedido</span>
+                              <span>Editar pedido</span>
                             </button>
                           )}
                         </div>
@@ -1790,7 +1790,7 @@ export const MiEspacioPage: React.FC = () => {
                   <div className="pt-3.5 border-t border-rule flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1.5 text-sm font-bold text-ink-muted">
                       <Users className="w-4 h-4 text-brand" />
-                      Grupo Familiar:
+                      Grupo familiar:
                     </span>
                     {hermanos.map((h: any) => (
                       <span
@@ -1812,7 +1812,7 @@ export const MiEspacioPage: React.FC = () => {
                   <Phone className="w-5 h-5 text-brand" />
                   <div>
                     <h2 className="text-base font-extrabold text-ink">
-                      Datos de Contacto y Teléfonos
+                      Datos de contacto y teléfonos
                     </h2>
                     <p className="text-xs sm:text-[13px] text-ink-muted">
                       Información vital ante emergencias y salidas de grupo.
@@ -1838,7 +1838,7 @@ export const MiEspacioPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-sm">
                   <div>
-                    <label className="block text-ink font-bold mb-1.5">Email de Contacto</label>
+                    <label className="block text-ink font-bold mb-1.5">Email de contacto</label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
@@ -1854,7 +1854,7 @@ export const MiEspacioPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1.5">Teléfono del Miembro</label>
+                    <label className="block text-ink font-bold mb-1.5">Teléfono del miembro</label>
                     <div className="relative">
                       <Phone className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                       <input
@@ -1872,7 +1872,7 @@ export const MiEspacioPage: React.FC = () => {
                   {(edadPerfil === null || edadPerfil < 18) && (
                   <>
                   <Input
-                    label="Madre: Nombre Completo"
+                    label="Madre: nombre completo"
                     type="text"
                     value={formContacto.madreNombres}
                     onChange={(e) =>
@@ -1881,7 +1881,7 @@ export const MiEspacioPage: React.FC = () => {
                   />
 
                   <Input
-                    label="Madre: Teléfono"
+                    label="Madre: teléfono"
                     type="tel"
                     value={formContacto.madreTelefono}
                     onChange={(e) =>
@@ -1890,7 +1890,7 @@ export const MiEspacioPage: React.FC = () => {
                   />
 
                   <Input
-                    label="Padre: Nombre Completo"
+                    label="Padre: nombre completo"
                     type="text"
                     value={formContacto.padreNombres}
                     onChange={(e) =>
@@ -1899,7 +1899,7 @@ export const MiEspacioPage: React.FC = () => {
                   />
 
                   <Input
-                    label="Padre: Teléfono"
+                    label="Padre: teléfono"
                     type="tel"
                     value={formContacto.padreTelefono}
                     onChange={(e) =>
@@ -1908,7 +1908,7 @@ export const MiEspacioPage: React.FC = () => {
                   />
 
                   <Input
-                    label="Tutor/a Legal: Nombre"
+                    label="Tutor/a legal: nombre"
                     type="text"
                     value={formContacto.tutorNombres}
                     onChange={(e) =>
@@ -1917,7 +1917,7 @@ export const MiEspacioPage: React.FC = () => {
                   />
 
                   <Input
-                    label="Tutor/a Legal: Teléfono"
+                    label="Tutor/a legal: teléfono"
                     type="tel"
                     value={formContacto.tutorTelefono}
                     onChange={(e) =>
@@ -1928,7 +1928,7 @@ export const MiEspacioPage: React.FC = () => {
                   )}
 
                   <Input
-                    label="Teléfono de Urgencias"
+                    label="Teléfono de urgencias"
                     type="tel"
                     placeholder="Teléfono fijo o pariente cercano"
                     value={formContacto.telefonoUrgencias}
@@ -1938,7 +1938,7 @@ export const MiEspacioPage: React.FC = () => {
                   />
 
                   <Input
-                    label="Obra Social / Prepaga"
+                    label="Obra social / prepaga"
                     type="text"
                     value={formContacto.obraSocial}
                     onChange={(e) =>
@@ -1973,7 +1973,7 @@ export const MiEspacioPage: React.FC = () => {
                     ) : (
                       <Save className="w-4 h-4" />
                     )}
-                    <span>Guardar Contacto</span>
+                    <span>Guardar contacto</span>
                   </button>
                 </div>
               </form>
@@ -1983,7 +1983,7 @@ export const MiEspacioPage: React.FC = () => {
                 <div className="flex items-center gap-2.5 border-b border-rule pb-3.5">
                   <KeyRound className="w-5 h-5 text-brand" />
                   <div>
-                    <h2 className="text-base font-extrabold text-ink">Cambiar Contraseña</h2>
+                    <h2 className="text-base font-extrabold text-ink">Cambiar contraseña</h2>
                     <p className="text-xs sm:text-[13px] text-ink-muted">
                       Mínimo 8 caracteres. Tu sesión actual seguirá activa al actualizarla.
                     </p>
@@ -2008,7 +2008,7 @@ export const MiEspacioPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 text-sm">
                   <div>
-                    <label className="block text-ink font-bold mb-1.5">Contraseña Actual</label>
+                    <label className="block text-ink font-bold mb-1.5">Contraseña actual</label>
                     <div className="relative">
                       <input
                         type={verActual ? 'text' : 'password'}
@@ -2024,7 +2024,7 @@ export const MiEspacioPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1.5">Nueva Contraseña</label>
+                    <label className="block text-ink font-bold mb-1.5">Nueva contraseña</label>
                     <div className="relative">
                       <input
                         type={verNueva ? 'text' : 'password'}
@@ -2040,7 +2040,7 @@ export const MiEspacioPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-ink font-bold mb-1.5">Confirmar Nueva</label>
+                    <label className="block text-ink font-bold mb-1.5">Confirmar nueva</label>
                     <div className="relative">
                       <input
                         type={verConfirmar ? 'text' : 'password'}
@@ -2067,7 +2067,7 @@ export const MiEspacioPage: React.FC = () => {
                     ) : (
                       <KeyRound className="w-4 h-4 text-brand" />
                     )}
-                    <span>Actualizar Contraseña</span>
+                    <span>Actualizar contraseña</span>
                   </button>
                 </div>
               </form>

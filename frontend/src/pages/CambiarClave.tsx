@@ -128,7 +128,7 @@ export const CambiarClave: React.FC = () => {
           <div className="flex items-center gap-2.5 min-w-0">
             <KeyRound className="w-5 h-5 text-brand shrink-0" />
             <h1 className="text-xl sm:text-2xl font-extrabold text-ink truncate">
-              {obligatorio ? 'Cambio Obligatorio de Contraseña' : 'Cambiar Contraseña'}
+              {obligatorio ? 'Cambio obligatorio de contraseña' : 'Cambiar contraseña'}
             </h1>
           </div>
 
@@ -181,7 +181,7 @@ export const CambiarClave: React.FC = () => {
           {!obligatorio && (
             <div>
               <label htmlFor="clave-actual" className="block text-sm font-semibold text-ink">
-                Contraseña Actual
+                Contraseña actual
               </label>
               <div className="mt-1.5 relative">
                 <input
@@ -201,7 +201,7 @@ export const CambiarClave: React.FC = () => {
 
           <div>
             <label htmlFor="clave-nueva" className="block text-sm font-semibold text-ink">
-              Nueva Contraseña
+              Nueva contraseña
             </label>
             <div className="mt-1.5 relative">
               <input
@@ -220,7 +220,7 @@ export const CambiarClave: React.FC = () => {
 
           <div>
             <label htmlFor="clave-repetir" className="block text-sm font-semibold text-ink">
-              Repetir Nueva Contraseña
+              Repetir nueva contraseña
             </label>
             <div className="mt-1.5 relative">
               <input
@@ -273,7 +273,7 @@ export const CambiarClave: React.FC = () => {
             size="lg"
             className="w-full"
           >
-            {cargando ? 'Guardando…' : 'Confirmar Nueva Contraseña'}
+            {cargando ? 'Guardando…' : 'Confirmar nueva contraseña'}
           </Button>
           {obligatorio && (
             <button
@@ -294,7 +294,7 @@ export const CambiarClave: React.FC = () => {
 
   if (!obligatorio) {
     return (
-      <AppShell title="Cambiar Contraseña">
+      <AppShell title="Cambiar contraseña">
         <div className="py-4 sm:py-8 flex justify-center">{cardContenido}</div>
       </AppShell>
     );

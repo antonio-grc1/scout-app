@@ -466,7 +466,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             )}
             <div>
               <h3 className="text-lg font-black text-ink">
-                {esModoEdicion ? `Editar Pedido #${pedidoAEditar?.id}` : 'Cargar Pedido / Venta'}
+                {esModoEdicion ? `Editar Pedido #${pedidoAEditar?.id}` : 'Cargar pedido / venta'}
               </h3>
               <span className="text-[13px] text-ink-muted">{eventoTitulo}</span>
             </div>
@@ -493,7 +493,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             <div>
               <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
                 <User className="w-4 h-4 text-brand" />
-                Nombre del Comprador *
+                Nombre del comprador *
               </label>
               <input
                 type="text"
@@ -525,7 +525,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
             <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
-                Scout / Familia Vendedora (Acredita Ganancia)
+                Scout / familia vendedora (Acredita Ganancia)
               </span>
               <span className="text-xs text-ink-muted">
                 {bloquearVendedor
@@ -600,7 +600,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                             }}
                             className="w-full px-3.5 py-2.5 text-left text-[13px] text-ink-muted hover:bg-paper-2 flex items-center justify-between cursor-pointer"
                           >
-                            <span>(Venta general del Grupo Scout - sin vendedor)</span>
+                            <span>(Venta general del grupo scout - sin vendedor)</span>
                             <span className="text-xs text-ink-muted">Sin ganancia individual</span>
                           </button>
                         )}
@@ -718,14 +718,14 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           {/* Resumen de Importes */}
           <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
             <div>
-              <span className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200 block">Total a Cobrar:</span>
+              <span className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200 block">Total a cobrar:</span>
               <span className="text-xl font-black text-emerald-700 dark:text-emerald-300">
                 {formatearMoneda(totalCobrar)}
               </span>
             </div>
 
             <div className="text-right">
-              <span className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200 block">Ganancia Familiar:</span>
+              <span className="text-[13px] font-bold text-emerald-800 dark:text-emerald-200 block">Ganancia familiar:</span>
               <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
                 +{formatearMoneda(totalGanancia)}
               </span>
@@ -734,7 +734,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
           {/* Observaciones */}
           <Input
-            label="Observaciones / Aclaraciones"
+            label="Observaciones / aclaraciones"
             type="text"
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
@@ -744,7 +744,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           {/* Cobro en el momento (solo con alcance global y fuera de autogestión) */}
           {puedeImputarCuenta && (
             <div className="space-y-2.5 pt-2.5 border-t border-rule">
-              <label className="block text-[13px] font-bold text-ink">Estado del Cobro:</label>
+              <label className="block text-[13px] font-bold text-ink">Estado del cobro:</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <button
                   aria-pressed={metodoPago === 'PENDIENTE'}
@@ -762,7 +762,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                       : 'bg-surface border-rule text-ink-muted'
                   }`}
                 >
-                  Cobrar al Retirar
+                  Cobrar al retirar
                 </button>
 
                 <button
@@ -775,7 +775,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                       : 'bg-surface border-rule text-ink-muted'
                   }`}
                 >
-                  Pagó en Efectivo
+                  Pagó en efectivo
                 </button>
 
                 <button
@@ -839,7 +839,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                       onClick={handleEliminarPedido}
                       disabled={eliminando}
                     >
-                      {eliminando ? 'Eliminando...' : 'Sí, Eliminar Pedido'}
+                      {eliminando ? 'Eliminando...' : 'Sí, eliminar pedido'}
                     </Button>
                   </div>
                 </div>
@@ -854,7 +854,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                   title={valesRetirados ? 'No se puede eliminar un pedido con vales ya retirados' : undefined}
                 >
                   <Trash2 className="w-4 h-4" />
-                  <span>Eliminar Pedido</span>
+                  <span>Eliminar pedido</span>
                 </Button>
               )
             ) : (
@@ -878,9 +878,9 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                       ? 'Guardando...'
                       : esModoEdicion
                       ? metodoPago !== 'PENDIENTE' && (!pedidoAEditar?.metodoPago || pedidoAEditar.metodoPago === 'PENDIENTE')
-                        ? 'Confirmar Cobro'
-                        : 'Guardar Modificaciones'
-                      : 'Confirmar Pedido y Generar Vales QR'}
+                        ? 'Confirmar cobro'
+                        : 'Guardar modificaciones'
+                      : 'Confirmar pedido y generar vales QR'}
                   </span>
                 </Button>
               </div>

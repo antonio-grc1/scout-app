@@ -449,7 +449,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
       { header: 'DNI', clave: 'dni' },
       { header: 'Apellido', clave: 'apellido' },
       { header: 'Nombre', clave: 'nombre' },
-      { header: 'Fecha de Nacimiento', clave: 'fechaNacimiento' },
+      { header: 'Fecha de nacimiento', clave: 'fechaNacimiento' },
       { header: 'Teléfono', clave: 'telefonoContacto' },
       { header: 'Email', clave: 'emailContacto' },
       { header: 'Domicilio', clave: 'domicilio' },
@@ -601,7 +601,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
               </div>
               <div>
                 <h2 className="text-lg font-extrabold text-ink leading-tight">
-                  Importar Miembros desde Hoja de Cálculo
+                  Importar miembros desde hoja de cálculo
                 </h2>
                 <p className="text-[13px] text-ink-muted">
                   Carga un archivo Excel (.xlsx) o CSV con el listado de personas
@@ -654,7 +654,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                     <span className="block font-black text-xl text-emerald-600">
                       {resumenFin.creados}
                     </span>
-                    <span className="text-xs text-ink-muted font-semibold">Nuevos Creados</span>
+                    <span className="text-xs text-ink-muted font-semibold">Nuevos creados</span>
                   </div>
                   <div className="p-2.5 bg-surface rounded-xl border border-rule">
                     <span className="block font-black text-xl text-blue-600">
@@ -686,7 +686,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                             { header: 'DNI', clave: 'dni' },
                             { header: 'Apellido', clave: 'apellido' },
                             { header: 'Nombre', clave: 'nombre' },
-                            { header: 'Contraseña Temporal', clave: 'claveTemporal' },
+                            { header: 'Contraseña temporal', clave: 'claveTemporal' },
                           ],
                           filas: resumenFin.clavesGeneradas,
                         })
@@ -702,7 +702,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                         <tr>
                           <th className="py-2 px-3">DNI</th>
                           <th className="py-2 px-3">Miembro</th>
-                          <th className="py-2 px-3">Contraseña Temporal</th>
+                          <th className="py-2 px-3">Contraseña temporal</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-rule">
@@ -837,14 +837,14 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                       }
                       className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-semibold focus:border-brand outline-none cursor-pointer"
                     >
-                      <option value="PROTAGONISTA">Protagonista / Beneficiario</option>
-                      <option value="EDUCADOR">Educador / Adulto</option>
+                      <option value="PROTAGONISTA">Protagonista / beneficiario</option>
+                      <option value="EDUCADOR">Educador / adulto</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="text-[13px] font-bold text-ink-muted block mb-1.5">
-                      Rama / Sección de destino:
+                      Rama / sección de destino:
                     </label>
                     <select
                       value={unidadId}
@@ -852,7 +852,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                       className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-semibold focus:border-brand outline-none cursor-pointer"
                     >
                       {(esGlobal || unidadesPermitidas.length !== 1) && (
-                        <option value="">-- Seleccionar Rama / Sección --</option>
+                        <option value="">-- Seleccionar rama / sección --</option>
                       )}
                       {unidadesPermitidas.map((u) => (
                         <option key={u.id} value={u.id}>
@@ -864,14 +864,14 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
 
                   <div>
                     <label className="text-[13px] font-bold text-ink-muted block mb-1.5">
-                      Rol / Permisos asignados:
+                      Rol / permisos asignados:
                     </label>
                     <select
                       value={rolId}
                       onChange={(e) => setRolId(Number(e.target.value) || '')}
                       className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-rule bg-surface text-ink text-sm font-semibold focus:border-brand outline-none cursor-pointer"
                     >
-                      <option value="">-- Seleccionar Rol --</option>
+                      <option value="">-- Seleccionar rol --</option>
                       {rolesFiltrados.map((r) => (
                         <option key={r.id} value={r.id}>
                           {r.nombre}
@@ -942,8 +942,8 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                         <tr>
                           <th className="py-2.5 px-3">Estado</th>
                           <th className="py-2.5 px-3">DNI</th>
-                          <th className="py-2.5 px-3">Nombre y Apellido</th>
-                          <th className="py-2.5 px-3">Fecha Nac.</th>
+                          <th className="py-2.5 px-3">Nombre y apellido</th>
+                          <th className="py-2.5 px-3">Fecha nac.</th>
                           <th className="py-2.5 px-3">Teléfono</th>
                           <th className="py-2.5 px-3">Email</th>
                         </tr>
@@ -970,7 +970,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
                               {f.estado === 'VALIDO_EXISTENTE' && (
                                 <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600" title={`Ya registrado: ${f.nombreExistente}`}>
                                   <UserCheck className="w-3.5 h-3.5" />
-                                  <span>{actualizarExistentes ? 'Se Actualizará' : 'Se Omitirá'}</span>
+                                  <span>{actualizarExistentes ? 'Se actualizará' : 'Se omitirá'}</span>
                                 </span>
                               )}
                               {f.estado === 'ERROR' && (
@@ -1058,7 +1058,7 @@ export const ModalImportarMiembros: React.FC<ModalImportarMiembrosProps> = ({
               }}
               className="min-h-[44px] px-5 py-2.5 rounded-xl bg-brand text-brand-contrast font-bold text-sm hover:opacity-95 transition cursor-pointer"
             >
-              Cerrar y Ver Padrón
+              Cerrar y ver padrón
             </button>
           ) : (
             <>

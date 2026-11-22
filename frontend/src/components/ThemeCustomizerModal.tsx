@@ -53,7 +53,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
   const presetCards = [
     {
       id: 'light',
-      title: 'Modo Claro',
+      title: 'Modo claro',
       subtitle: 'Fondo cálido y texto carbón de alta lectura',
       badge: 'Claro',
       icon: Sun,
@@ -68,7 +68,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     },
     {
       id: 'dark',
-      title: 'Modo Oscuro',
+      title: 'Modo oscuro',
       subtitle: 'Pizarra nocturna descansada con acento ámbar Scout',
       badge: 'Oscuro',
       icon: Moon,
@@ -83,7 +83,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
     },
     {
       id: 'system',
-      title: 'Automático del Sistema',
+      title: 'Automático del sistema',
       subtitle: 'Sigue el tema claro u oscuro de tu dispositivo',
       badge: 'Auto',
       icon: Monitor,
@@ -147,7 +147,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
           {/* Claro / Oscuro / Sistema */}
           <div className="space-y-3">
             <span className="text-sm font-bold text-ink block">
-              Tema Visual
+              Tema visual
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {presetCards.map((card) => {
@@ -243,7 +243,7 @@ export const ThemeCustomizerModal: React.FC<ThemeCustomizerModalProps> = ({
               <BrandLogo variant="icon" size="sm" showSubtitle subtitleText="Juan XXIII" className="m-0" />
               <div className="flex items-center gap-2 flex-wrap">
                 <Button variant="primary" size="sm">
-                  Acción Principal
+                  Acción principal
                 </Button>
                 <Button variant="secondary" size="sm">
                   Secundario

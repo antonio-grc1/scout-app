@@ -462,49 +462,49 @@ export const InicioPage: React.FC = () => {
   const accesosRapidos = [
     {
       to: '/mi-espacio',
-      title: 'Mi Espacio Personal',
+      title: 'Mi espacio personal',
       desc: 'Mi legajo anual, cuotas, vales QR y perfil.',
       icon: <User className="w-5 h-5 text-brand" />,
       show: true,
     },
     {
       to: '/miembros',
-      title: 'Padrón de Miembros',
+      title: 'Padrón de miembros',
       desc: 'Listado operativo, filtros, ficha y altas.',
       icon: <Users className="w-5 h-5 text-brand" />,
       show: caps.canViewMiembros,
     },
     {
       to: '/legajos',
-      title: 'Legajos y Plantillas',
+      title: 'Legajos y plantillas',
       desc: 'Cumplimiento del ciclo, adultos colaboradores y PDFs.',
       icon: <FileText className="w-5 h-5 text-brand" />,
       show: caps.canViewLegajosModule,
     },
     {
       to: '/pases',
-      title: 'Progresiones y Pases',
+      title: 'Progresiones y pases',
       desc: 'Pases por camada y bandeja de solicitudes.',
       icon: <Repeat className="w-5 h-5 text-brand" />,
       show: caps.canViewPases,
     },
     {
       to: '/eventos',
-      title: 'Eventos y Vales QR',
+      title: 'Eventos y vales QR',
       desc: 'Campañas del grupo, ventas y control en puerta.',
       icon: <Ticket className="w-5 h-5 text-brand" />,
       show: caps.canViewEventos,
     },
     {
       to: '/tesoreria',
-      title: 'Tesorería y Cobranzas',
+      title: 'Tesorería y cobranzas',
       desc: 'Cobros familiares, planes, caja y balance.',
       icon: <Wallet className="w-5 h-5 text-brand" />,
       show: caps.canSeeTesoreriaGestion,
     },
     {
       to: '/organizacion',
-      title: 'Organización y Roles',
+      title: 'Organización y roles',
       desc: 'Ramas, unidades, roles y correo institucional.',
       icon: <Shield className="w-5 h-5 text-brand" />,
       show: caps.canViewOrganizacion,
@@ -518,7 +518,7 @@ export const InicioPage: React.FC = () => {
         <div className="s-panel rounded-2xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 min-w-0">
           <div className="flex items-center gap-2.5 flex-wrap min-w-0">
             <span className="text-xs font-extrabold uppercase tracking-wider text-ink-muted shrink-0">
-              Mi Estado Personal:
+              Mi estado personal:
             </span>
             {cargandoPersonal ? (
               <span className="text-sm text-ink-muted">Consultando…</span>
@@ -560,7 +560,7 @@ export const InicioPage: React.FC = () => {
             to="/mi-espacio"
             className="text-sm font-extrabold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
           >
-            <span>Mi Espacio</span>
+            <span>Mi espacio</span>
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -572,7 +572,7 @@ export const InicioPage: React.FC = () => {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-brand whitespace-nowrap shrink-0">
               <Compass className="w-4 h-4" />
-              <span>Ciclo Operativo {ciclo}</span>
+              <span>Ciclo operativo {ciclo}</span>
             </span>
             {!caps.esPropio && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-info whitespace-nowrap shrink-0">
@@ -614,7 +614,7 @@ export const InicioPage: React.FC = () => {
               ) : (
                 <DownloadCloud className="w-[18px] h-[18px]" />
               )}
-              <span>{sincronizando ? 'Sincronizando…' : 'Preparar para Campamento'}</span>
+              <span>{sincronizando ? 'Sincronizando…' : 'Preparar para campamento'}</span>
             </button>
           )}
 
@@ -623,7 +623,7 @@ export const InicioPage: React.FC = () => {
               to="/mi-espacio"
               className="s-btn-brand s-touch px-5 py-2.5 rounded-xl text-sm inline-flex items-center justify-center gap-2"
             >
-              <span>Ir a Mi Espacio</span>
+              <span>Ir a mi espacio</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
           )}
@@ -710,7 +710,7 @@ export const InicioPage: React.FC = () => {
       {(caps.esPropio || !caps.canViewMiembros) && (
         <section className="space-y-3">
           <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted px-0.5">
-            Mi Checklist del Ciclo {ciclo}
+            Mi checklist del ciclo {ciclo}
           </h2>
 
           <div className="s-stagger grid grid-cols-1 md:grid-cols-3 gap-3.5">
@@ -731,7 +731,7 @@ export const InicioPage: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-ink">1. Mi Legajo Anual</h3>
+                  <h3 className="text-base font-extrabold text-ink">1. Mi legajo anual</h3>
                   <p className="text-sm text-ink-muted mt-1 leading-snug">
                     {miEstadoFichaKey === 'VALIDADO_FISICAMENTE'
                       ? 'Tu ficha física fue recibida y validada para este ciclo.'
@@ -768,7 +768,7 @@ export const InicioPage: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-ink">2. Mis Cuotas y Recibos</h3>
+                  <h3 className="text-base font-extrabold text-ink">2. Mis cuotas y recibos</h3>
                   <p className="text-sm text-ink-muted mt-1 leading-snug">
                     {miCuentaError
                       ? 'No pudimos consultar tus cuotas en este momento.'
@@ -803,7 +803,7 @@ export const InicioPage: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-ink">3. Mis Eventos y Vales</h3>
+                  <h3 className="text-base font-extrabold text-ink">3. Mis eventos y vales</h3>
                   <p className="text-sm text-ink-muted mt-1 leading-snug">
                     Consultá campañas habilitadas, cargá pedidos para sumar a tu saldo y descargá tus QR.
                   </p>
@@ -855,7 +855,7 @@ export const InicioPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
-                    Legajos Pendientes
+                    Legajos pendientes
                   </span>
                   <Clock className="w-[18px] h-[18px] text-amber-500 shrink-0" />
                 </div>
@@ -876,7 +876,7 @@ export const InicioPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
-                    Cuotas con Deuda
+                    Cuotas con deuda
                   </span>
                   <CreditCard className="w-[18px] h-[18px] text-rose-500 shrink-0" />
                 </div>
@@ -905,7 +905,7 @@ export const InicioPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
-                    Pases Sugeridos
+                    Pases sugeridos
                   </span>
                   <Repeat className="w-[18px] h-[18px] text-brand shrink-0" />
                 </div>
@@ -936,7 +936,7 @@ export const InicioPage: React.FC = () => {
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-ink-muted truncate">
-                  Alertas Médicas
+                  Alertas médicas
                 </span>
                 <HeartPulse className="w-[18px] h-[18px] text-rose-500 shrink-0" />
               </div>
@@ -966,7 +966,7 @@ export const InicioPage: React.FC = () => {
           <div className="flex items-center justify-between gap-2 px-0.5">
             <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-brand" />
-              <span>Resumen Ejecutivo Financiero {ciclo}</span>
+              <span>Resumen ejecutivo financiero {ciclo}</span>
             </h2>
             {caps.canSeeTesoreriaGestion && (
               <Link
@@ -981,27 +981,27 @@ export const InicioPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
             <KpiCard
-              label="Ingresos Totales"
+              label="Ingresos totales"
               value={formatearMoneda(Number(balanceData.resumen.totalIngresos || 0))}
               tone="ok"
               icon={<TrendingUp className="w-[18px] h-[18px]" />}
               hint={`Ciclo anual ${ciclo}`}
             />
             <KpiCard
-              label="Egresos y Gastos"
+              label="Egresos y gastos"
               value={formatearMoneda(Number(balanceData.resumen.totalEgresos || 0))}
               tone="err"
               icon={<Wallet className="w-[18px] h-[18px]" />}
               hint="Comprobantes vigentes"
             />
             <KpiCard
-              label="Resultado Neto"
+              label="Resultado neto"
               value={formatearMoneda(Number(balanceData.resumen.resultadoNeto || 0))}
               tone={Number(balanceData.resumen.resultadoNeto || 0) >= 0 ? 'brand' : 'err'}
               hint={`Margen operativo ${Number(balanceData.resumen.margenOperativoPorcentaje || 0).toFixed(1)}%`}
             />
             <KpiCard
-              label="Disponibilidad Actual"
+              label="Disponibilidad actual"
               value={formatearMoneda(Number(balanceData.disponibilidadActual?.totalDisponible || 0))}
               tone="info"
               hint={`Caja: ${formatearMoneda(Number(balanceData.disponibilidadActual?.totalCaja || 0))}`}
@@ -1013,7 +1013,7 @@ export const InicioPage: React.FC = () => {
       {/* Módulos Habilitados */}
       <section className="space-y-3">
         <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted px-0.5">
-          Módulos Habilitados en tu Perfil
+          Módulos habilitados en tu perfil
         </h2>
 
         <div className="s-stagger grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -1050,7 +1050,7 @@ export const InicioPage: React.FC = () => {
         titulo={
           telefonosEmergencia
             ? `Llamar · ${telefonosEmergencia.miembro.nombre} ${telefonosEmergencia.miembro.apellido}`
-            : 'Alertas Médicas y Salud'
+            : 'Alertas médicas y salud'
         }
         subtitulo={
           telefonosEmergencia
@@ -1076,7 +1076,7 @@ export const InicioPage: React.FC = () => {
                 onClick={() => setDrawerAlertasAbierto(false)}
                 className="s-btn-brand s-touch px-4 py-2.5 rounded-xl text-sm inline-flex items-center gap-1.5"
               >
-                <span>Ver en Padrón</span>
+                <span>Ver en padrón</span>
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <button

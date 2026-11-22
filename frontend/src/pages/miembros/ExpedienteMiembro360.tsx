@@ -1015,7 +1015,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     if (!miembro || guardOffline('restablecer la contraseña')) return;
     setConfirmInline({
       tipo: 'peligro',
-      titulo: soloPorCorreo ? 'Enviar Contraseña Solo por Correo' : 'Restablecer Contraseña',
+      titulo: soloPorCorreo ? 'Enviar contraseña solo por correo' : 'Restablecer contraseña',
       mensaje: soloPorCorreo
         ? `Se generará una nueva contraseña temporal para ${miembro.nombre} ${miembro.apellido}, se enviará únicamente a ${miembro.emailContacto || 'su correo'} (sin mostrarla en pantalla) y se revocarán sus sesiones activas.`
         : `Se generará una nueva contraseña temporal para ${miembro.nombre} ${miembro.apellido} y se revocarán sus sesiones activas.`,
@@ -1078,7 +1078,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
 
     setConfirmInline({
       tipo: 'peligro',
-      titulo: 'Anular Cuota',
+      titulo: 'Anular cuota',
       mensaje: mensajeDetalle,
       textoConfirmar: 'Sí, anular cuota',
       textoCancelar: 'Cancelar',
@@ -1131,7 +1131,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     if (guardOffline('eliminar el cargo')) return;
     setConfirmInline({
       tipo: 'peligro',
-      titulo: 'Eliminar Cuota Definitivamente',
+      titulo: 'Eliminar cuota definitivamente',
       mensaje: `¿Seguro que quieres borrar para siempre "${conceptoNombre}"?`,
       textoConfirmar: 'Eliminar definitivamente',
       textoCancelar: 'Cancelar',
@@ -1229,7 +1229,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     if (guardOffline('revertir el pago')) return;
     setConfirmInline({
       tipo: 'peligro',
-      titulo: 'Revertir / Anular Pago',
+      titulo: 'Revertir / anular pago',
       mensaje: `¿Seguro que quieres revertir este pago de ${formatearMoneda(pago.montoTotal)}? Las cuotas volverán a quedar pendientes por ese importe y se ajustará el saldo a favor correspondiente.`,
       textoConfirmar: 'Sí, revertir pago',
       textoCancelar: 'Cancelar',
@@ -1571,11 +1571,11 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
   const tabVisible: TabExpediente360 = tabsItems.some((t) => t.id === tab) ? tab : 'datos';
 
   const titulosSubVista: Record<Exclude<SubVistaExpediente, null>, string> = {
-    cobrar: 'Registrar Cobro',
-    'nuevo-cargo': 'Generar Cargo Individual',
-    'editar-familia': 'Descuento y Grupo Familiar',
-    'vincular-hermano': 'Vincular con Hermano / Familia',
-    llamar: 'Contactos de Emergencia',
+    cobrar: 'Registrar cobro',
+    'nuevo-cargo': 'Generar cargo individual',
+    'editar-familia': 'Descuento y grupo familiar',
+    'vincular-hermano': 'Vincular con hermano / familia',
+    llamar: 'Contactos de emergencia',
     pdf: `Ficha Médica · ${miembro?.apellido || ''}, ${miembro?.nombre || ''}`,
     confirmar: confirmInline?.titulo || 'Confirmar Acción',
   };
@@ -1666,7 +1666,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 font-extrabold">
               <HeartPulse className="w-4 h-4 shrink-0" />
-              <span>Seguridad Vital</span>
+              <span>Seguridad vital</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap text-xs">
               {infoMedica.grupoSanguineo && (
@@ -1750,7 +1750,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               className="s-btn-sec min-h-[40px] px-3.5 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Volver al Expediente</span>
+              <span>Volver al expediente</span>
             </button>
             <span className="text-sm font-extrabold text-ink truncate">
               {titulosSubVista[subVista]}

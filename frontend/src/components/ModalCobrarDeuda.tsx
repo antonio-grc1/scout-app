@@ -400,7 +400,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           </div>
           <div>
             <h3 className="font-bold text-ink text-lg">
-              Registrar Pago / Cobrar Cuotas
+              Registrar pago / cobrar cuotas
             </h3>
             <p className="text-[13px] text-ink-muted">
               Miembro: <strong>{miembro.nombre} {miembro.apellido}</strong> (DNI {miembro.dni})
@@ -544,7 +544,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
               <div>
                 <span className="text-[13px] font-bold text-teal-950 dark:text-teal-100 flex items-center gap-1.5">
                   <Wallet className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-                  Usar Saldo a Favor disponible ({formatearMoneda(saldoAFavorDisponible)})
+                  Usar saldo a favor disponible ({formatearMoneda(saldoAFavorDisponible)})
                 </span>
                 <span className="text-xs text-teal-700 dark:text-teal-300 block mt-0.5">
                   {usarSaldoAFavor
@@ -573,7 +573,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           </div>
           {saldoAFavorAUsar > 0 && (
             <div className="flex items-center justify-between text-teal-700 dark:text-teal-300">
-              <span className="font-semibold">Cubierto con Saldo a Favor:</span>
+              <span className="font-semibold">Cubierto con saldo a favor:</span>
               <span className="font-bold">-{formatearMoneda(saldoAFavorAUsar)}</span>
             </div>
           )}
@@ -592,7 +592,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-                Monto Recibido Hoy ($) *
+                Monto recibido hoy ($) *
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
@@ -624,7 +624,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
             <Select
 
-              label="Método de Pago"
+              label="Método de pago"
 
               value={metodoPago}
 
@@ -634,8 +634,8 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
 
             >
               <option value="EFECTIVO">Efectivo</option>
-              <option value="TRANSFERENCIA">Transferencia Bancaria</option>
-              <option value="OTRO">Otro Medio</option>
+              <option value="TRANSFERENCIA">Transferencia bancaria</option>
+              <option value="OTRO">Otro medio</option>
 
             </Select>
           </div>
@@ -659,7 +659,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
             <div className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2 animate-in fade-in">
               <label className="block text-[13px] font-bold text-ink-2 flex items-center gap-1.5">
                 <Landmark className="w-4 h-4 text-brand" />
-                <span>Cuenta Bancaria Destino</span>
+                <span>Cuenta bancaria destino</span>
               </label>
               <select
                 value={cuentaId}
@@ -684,7 +684,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
             <div className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2 animate-in fade-in">
               <label className="block text-[13px] font-bold text-ink-2 flex items-center gap-1.5">
                 <Wallet className="w-4 h-4 text-brand" />
-                <span>Cuenta de Efectivo / Caja Chica</span>
+                <span>Cuenta de efectivo / caja chica</span>
               </label>
               {cuentas.filter((c) => c.tipo === 'CAJA_EFECTIVO').length > 1 ? (
                 <select
@@ -741,7 +741,7 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
           {montoEfectivoFinal > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <Input
-                label="N° Comprobante / Referencia (opcional)"
+                label="N° comprobante / referencia (opcional)"
                 type="text"
                 value={referenciaComprobante}
                 onChange={(e) => setReferenciaComprobante(e.target.value)}

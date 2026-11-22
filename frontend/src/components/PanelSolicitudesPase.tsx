@@ -69,7 +69,7 @@ export const PanelSolicitudesPase: React.FC<Props> = ({
         <div>
           <h3 className="text-base font-extrabold text-ink flex items-center gap-2">
             <Clock className="w-[18px] h-[18px] text-amber-600 dark:text-amber-400" />
-            <span>Solicitudes de Pase Pendientes ({solicitudes.length})</span>
+            <span>Solicitudes de pase pendientes ({solicitudes.length})</span>
           </h3>
           <p className="text-[13px] text-ink-muted mt-0.5">
             Pases hacia ramas con múltiples secciones que esperan confirmación de la sección receptora.

@@ -204,7 +204,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
             ) : (
               <FileCheck2 className="w-4 h-4" />
             )}
-            <span>Recibir Ficha</span>
+            <span>Recibir ficha</span>
           </Button>
         )}
 
@@ -215,7 +215,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
             onClick={() => onAbrirDetalle('pase')}
           >
             <Sparkles className="w-4 h-4" />
-            <span>Pasar de Rama</span>
+            <span>Pasar de rama</span>
           </Button>
         )}
 
@@ -227,7 +227,7 @@ export const MiembroCard: React.FC<MiembroCardProps> = ({
             className="min-h-[44px] px-3.5 rounded-xl bg-paper-2 hover:bg-surface text-ink font-semibold text-[13px] flex items-center gap-1.5 transition cursor-pointer border border-rule"
           >
             <FileText className="w-4 h-4 text-brand" />
-            <span>Ver Ficha</span>
+            <span>Ver ficha</span>
           </button>
         )}
 

@@ -118,7 +118,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
       {plantillasAplicables.length > 1 && onSeleccionarPlantilla && (
         <div className="p-3 bg-paper-2 rounded-2xl border border-rule space-y-2">
           <span className="text-xs font-bold uppercase tracking-wide text-ink-muted block">
-            Documentos del Miembro ({plantillasAplicables.length})
+            Documentos del miembro ({plantillasAplicables.length})
           </span>
           <div className="flex flex-wrap gap-1.5">
             {plantillasAplicables.map((p) => {
@@ -185,7 +185,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
             >
               <FileCheck2 className="w-4 h-4" />
               <span>
-                {validandoFichaId === ent?.id ? 'Guardando...' : 'Recibir Papel'}
+                {validandoFichaId === ent?.id ? 'Guardando...' : 'Recibir papel'}
               </span>
             </Button>
           )}
@@ -201,7 +201,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
             ) : (
               <Eye className="w-4 h-4 text-brand-ink" />
             )}
-            <span>Ver Planilla PDF</span>
+            <span>Ver planilla PDF</span>
           </button>
 
           <button
@@ -230,7 +230,7 @@ export const PestanaLegajosFichas: React.FC<PestanaLegajosFichasProps> = ({
               ) : (
                 <Pencil className="w-4 h-4 text-brand-ink" />
               )}
-              <span>{ent ? 'Editar Ficha' : 'Rellenar Ficha'}</span>
+              <span>{ent ? 'Editar ficha' : 'Rellenar ficha'}</span>
             </button>
           )}
         </div>

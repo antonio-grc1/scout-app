@@ -137,7 +137,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
   };
 
   const construirFilasExportacion = () => {
-    const periodoLabel = mesFiltro ? NOMBRES_MESES_COMPLETO[mesFiltro - 1] : 'Consolidado Anual';
+    const periodoLabel = mesFiltro ? NOMBRES_MESES_COMPLETO[mesFiltro - 1] : 'Consolidado anual';
     const filas: Array<{
       ejercicio: number;
       periodo: string;
@@ -180,9 +180,9 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
       { header: 'Ejercicio', formatear: (f) => f.ejercicio, ancho: 12 },
       { header: 'Período', formatear: (f) => f.periodo, ancho: 20 },
       { header: 'Categoría', formatear: (f) => f.categoria, ancho: 16 },
-      { header: 'Rubro / Concepto', formatear: (f) => f.rubro, ancho: 32 },
+      { header: 'Rubro / concepto', formatear: (f) => f.rubro, ancho: 32 },
       { header: 'Monto', formatear: (f) => f.monto, ancho: 16 },
-      { header: '% Composición / Margen', formatear: (f) => f.porcentaje, ancho: 22 },
+      { header: '% Composición / margen', formatear: (f) => f.porcentaje, ancho: 22 },
     ];
 
     return { filas, columnas };
@@ -219,7 +219,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
         <div className="flex items-center gap-3.5 flex-wrap">
           <div className="flex items-center gap-2">
             <Scale className="w-5 h-5 text-brand shrink-0" />
-            <h2 className="text-lg font-black text-ink">Cuadro de Resultados y Balance</h2>
+            <h2 className="text-lg font-black text-ink">Cuadro de resultados y balance</h2>
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
@@ -253,7 +253,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
                 }}
                 className="min-h-[42px] py-1.5 px-3 rounded-xl bg-surface border border-rule text-[13px] font-bold text-ink focus:outline-brand cursor-pointer"
               >
-                <option value="ANUAL">Todo el Año (Consolidado)</option>
+                <option value="ANUAL">Todo el año (consolidado)</option>
                 {NOMBRES_MESES_COMPLETO.map((nom, idx) => (
                   <option key={idx + 1} value={String(idx + 1)}>
                     {nom}
@@ -314,8 +314,8 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
       <div className="hidden print:block mb-4 border-b border-gray-300 pb-2">
         <h1 className="text-xl font-bold">Grupo Scout Juan XXIII - Cuadro de Resultados</h1>
         <p className="text-xs text-gray-600">
-          Ejercicio Contable: {anio} — Período:{' '}
-          {mesFiltro ? NOMBRES_MESES_COMPLETO[mesFiltro - 1] : 'Consolidado Anual'}
+          Ejercicio contable: {anio} — Período:{' '}
+          {mesFiltro ? NOMBRES_MESES_COMPLETO[mesFiltro - 1] : 'Consolidado anual'}
           {' • '}Generado el {new Date().toLocaleDateString('es-AR')}
         </p>
       </div>
@@ -334,7 +334,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
           <div className="flex items-center justify-between gap-2">
             <span className="text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
               <ArrowDownLeft className="w-4 h-4" />
-              Ingresos del Período
+              Ingresos del período
             </span>
             <span className="text-xs font-bold text-ink-muted">
               {mesFiltro ? NOMBRES_MESES_CORTO[mesFiltro - 1] : anio}
@@ -364,7 +364,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
           <div className="flex items-center justify-between gap-2">
             <span className="text-[13px] font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
               <ArrowUpRight className="w-4 h-4" />
-              Egresos del Período
+              Egresos del período
             </span>
             <span className="text-xs font-bold text-ink-muted">
               {mesFiltro ? NOMBRES_MESES_CORTO[mesFiltro - 1] : anio}
@@ -416,7 +416,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
               ) : (
                 <TrendingDown className="w-4 h-4" />
               )}
-              {mostrarSkeleton ? 'Resultado del Período' : `Resultado (${(datos?.resumen?.resultadoNeto ?? 0) === 0 ? 'Equilibrio' : esSuperavit ? 'Superávit' : 'Déficit'})`}
+              {mostrarSkeleton ? 'Resultado del período' : `Resultado (${(datos?.resumen?.resultadoNeto ?? 0) === 0 ? 'Equilibrio' : esSuperavit ? 'Superávit' : 'Déficit'})`}
             </span>
             {mostrarSkeleton ? (
               <div className="h-4 w-16 rounded-full bg-paper-3 animate-pulse" />
@@ -454,7 +454,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
           <div className="flex items-center justify-between gap-2">
             <span className="text-[13px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
               <Landmark className="w-4 h-4" />
-              Disponibilidad Total (Hoy)
+              Disponibilidad total (Hoy)
             </span>
             <span className="text-xs font-bold text-ink-muted">En vivo</span>
           </div>
@@ -494,7 +494,7 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-ink-muted" />
-              <span className="text-[13px] font-bold text-ink">Evolución Mensual del Ejercicio {anio}</span>
+              <span className="text-[13px] font-bold text-ink">Evolución mensual del ejercicio {anio}</span>
             </div>
             {mesFiltro !== null && (
               <button
@@ -591,10 +591,10 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-rule bg-paper-2/60 text-xs text-ink-muted">
-                  <th className="py-3 px-4 font-bold">Rubro de Ingreso</th>
+                  <th className="py-3 px-4 font-bold">Rubro de ingreso</th>
                   <th className="py-3 px-4 font-bold text-center w-40 print:hidden">Composición</th>
-                  <th className="py-3 px-4 font-bold text-right w-40">Total Recaudado</th>
-                  <th className="py-3 px-4 font-bold text-right w-28">% del Total</th>
+                  <th className="py-3 px-4 font-bold text-right w-40">Total recaudado</th>
+                  <th className="py-3 px-4 font-bold text-right w-28">% del total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule font-medium">
@@ -688,10 +688,10 @@ export const PanelCuadroResultados: React.FC<PanelCuadroResultadosProps> = ({ on
             <table className="w-full text-sm text-left">
               <thead>
                 <tr className="border-b border-rule bg-paper-2/60 text-xs text-ink-muted">
-                  <th className="py-3 px-4 font-bold">Rubro de Gasto</th>
+                  <th className="py-3 px-4 font-bold">Rubro de gasto</th>
                   <th className="py-3 px-4 font-bold text-center w-40 print:hidden">Composición</th>
-                  <th className="py-3 px-4 font-bold text-right w-40">Total Invertido</th>
-                  <th className="py-3 px-4 font-bold text-right w-28">% del Total</th>
+                  <th className="py-3 px-4 font-bold text-right w-40">Total invertido</th>
+                  <th className="py-3 px-4 font-bold text-right w-28">% del total</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule font-medium">

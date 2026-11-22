@@ -45,7 +45,7 @@ interface AppShellProps {
   title?: string;
 }
 
-type NavGroup = 'Personal' | 'Operación Scout' | 'Administración';
+type NavGroup = 'Personal' | 'Operación scout' | 'Administración';
 
 interface NavItem {
   id: string;
@@ -139,7 +139,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
     {
       id: 'mi-espacio',
       to: '/mi-espacio',
-      label: 'Mi Espacio',
+      label: 'Mi espacio',
       icon: <User className="w-[18px] h-[18px] shrink-0" />,
       group: 'Personal',
       show: true,
@@ -149,7 +149,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       to: '/miembros',
       label: 'Miembros',
       icon: <Users className="w-[18px] h-[18px] shrink-0" />,
-      group: 'Operación Scout',
+      group: 'Operación scout',
       show: caps.canViewMiembros,
     },
     {
@@ -157,7 +157,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       to: '/legajos',
       label: 'Legajos',
       icon: <FileText className="w-[18px] h-[18px] shrink-0" />,
-      group: 'Operación Scout',
+      group: 'Operación scout',
       show: caps.canViewLegajosModule,
     },
     {
@@ -165,7 +165,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       to: '/pases',
       label: 'Pases',
       icon: <Repeat className="w-[18px] h-[18px] shrink-0" />,
-      group: 'Operación Scout',
+      group: 'Operación scout',
       show: caps.canViewPases,
     },
     {
@@ -173,7 +173,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       to: '/eventos',
       label: 'Eventos',
       icon: <Ticket className="w-[18px] h-[18px] shrink-0" />,
-      group: 'Operación Scout',
+      group: 'Operación scout',
       show: caps.canViewEventos,
     },
     {
@@ -226,7 +226,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       : null;
   const segundoSlot: SlotLink = caps.canViewMiembros
     ? { kind: 'link', to: '/miembros', label: 'Miembros', icon: <Users className="w-5 h-5" /> }
-    : { kind: 'link', to: '/mi-espacio', label: 'Mi Espacio', icon: <User className="w-5 h-5" /> };
+    : { kind: 'link', to: '/mi-espacio', label: 'Mi espacio', icon: <User className="w-5 h-5" /> };
   const tercerSlot: SlotLink | null = caps.canSeeTesoreriaGestion
     ? { kind: 'link', to: '/tesoreria', label: 'Tesorería', icon: <Wallet className="w-5 h-5" /> }
     : caps.canViewEventos && fabModo !== 'eventos'
@@ -234,7 +234,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       : caps.canViewLegajosModule
         ? { kind: 'link', to: '/legajos', label: 'Legajos', icon: <FileText className="w-5 h-5" /> }
         : caps.canViewMiembros
-          ? { kind: 'link', to: '/mi-espacio', label: 'Mi Espacio', icon: <User className="w-5 h-5" /> }
+          ? { kind: 'link', to: '/mi-espacio', label: 'Mi espacio', icon: <User className="w-5 h-5" /> }
           : null;
   const mobileBottomSlots: Array<SlotLink | { kind: 'fab' } | { kind: 'more' } | { kind: 'spacer' }> = [
     { kind: 'link', to: '/inicio', label: 'Inicio', icon: <Home className="w-5 h-5" /> },
@@ -260,7 +260,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
             </div>
           </Link>
 
-          {(['Personal', 'Operación Scout', 'Administración'] as NavGroup[]).map((group) => {
+          {(['Personal', 'Operación scout', 'Administración'] as NavGroup[]).map((group) => {
             const items = navItems.filter((n) => n.group === group);
             if (!items.length) return null;
             return (
@@ -300,7 +300,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
               {usuario.nombre} {usuario.apellido}
             </div>
             <div className="text-ink-muted truncate">{caps.rolPrincipalLabel}</div>
-            <div className="text-xs font-bold text-brand pt-0.5">Ver Mi Perfil →</div>
+            <div className="text-xs font-bold text-brand pt-0.5">Ver mi perfil →</div>
           </Link>
 
           <button
@@ -453,7 +453,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                           navigate('/eventos');
                         }
                   }
-                  aria-label={fabModo === 'qr' ? 'Abrir escáner QR' : 'Ver Eventos'}
+                  aria-label={fabModo === 'qr' ? 'Abrir escáner QR' : 'Ver eventos'}
                   className="s-btn-brand s-fab-btn w-14 h-14 rounded-full flex items-center justify-center border-4 border-paper cursor-pointer"
                 >
                   {fabModo === 'qr' ? (
@@ -508,7 +508,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       <Drawer
         abierto={mobileMoreOpen}
         onCerrar={() => setMobileMoreOpen(false)}
-        titulo="Módulos y Cuenta"
+        titulo="Módulos y cuenta"
         subtitulo={`${usuario.nombre} ${usuario.apellido} · ${caps.rolPrincipalLabel}`}
         mode="sheet"
         maxWidthClass="sm:max-w-md"
@@ -548,7 +548,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
           >
             <span className="flex items-center gap-2.5">
               <Palette className="w-[18px] h-[18px] text-brand" />
-              <span>Apariencia (Claro / Oscuro)</span>
+              <span>Apariencia (claro / oscuro)</span>
             </span>
             <span className="text-ink-muted text-xs">Ajustar →</span>
           </button>

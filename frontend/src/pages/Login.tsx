@@ -145,7 +145,7 @@ export const Login: React.FC = () => {
             Grupo Scout Juan XXIII N° 196
           </p>
           <p className="max-w-md text-4xl font-black leading-[1.06] tracking-tight text-ink">
-            Portal de Gestión y Familias
+            Portal de gestión y familias
           </p>
           <p className="max-w-md text-sm sm:text-base leading-relaxed text-ink-muted">
             Ingresá con tu DNI para consultar tu legajo, cuotas, eventos y gestionar las secciones del grupo.
@@ -160,7 +160,7 @@ export const Login: React.FC = () => {
                 Grupo Scout Juan XXIII
               </h1>
               <p className="mt-1 text-sm sm:text-[15px] text-ink-muted leading-snug">
-                Ingreso exclusivo para Protagonistas, Familias y Educadores
+                Ingreso exclusivo para protagonistas, familias y educadores
               </p>
             </div>
           </div>

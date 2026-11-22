@@ -150,31 +150,31 @@ function obtenerEtiquetaTipoMovimiento(tipo: MovimientoFinancieroItem['tipo']): 
   switch (tipo) {
     case 'INGRESO_COBRANZA':
       return {
-        texto: 'Cobro de Cuota / Evento',
+        texto: 'Cobro de cuota / evento',
         badgeClass:
           'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       };
     case 'INGRESO_OTRO':
       return {
-        texto: 'Ingreso Extra',
+        texto: 'Ingreso extra',
         badgeClass:
           'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
       };
     case 'EGRESO_GASTO':
       return {
-        texto: 'Egreso / Gasto',
+        texto: 'Egreso / gasto',
         badgeClass:
           'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300 border-rose-200 dark:border-rose-800',
       };
     case 'TRANSFERENCIA_SALIDA':
       return {
-        texto: 'Traspaso Emitido',
+        texto: 'Traspaso emitido',
         badgeClass:
           'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 border-amber-200 dark:border-amber-800',
       };
     case 'TRANSFERENCIA_ENTRADA':
       return {
-        texto: 'Traspaso Recibido',
+        texto: 'Traspaso recibido',
         badgeClass:
           'bg-blue-100 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border-blue-200 dark:border-blue-800',
       };
@@ -493,15 +493,15 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       header: 'Fecha',
       formatear: (m) => (m.fecha ? formatearFecha(m.fecha) : ''),
     },
-    { header: 'Concepto / Detalle', formatear: (m) => m.conceptoTexto || '' },
+    { header: 'Concepto / detalle', formatear: (m) => m.conceptoTexto || '' },
     {
       header: 'Tipo',
       formatear: (m) => obtenerEtiquetaTipoMovimiento(m.tipo).texto,
     },
     { header: 'Miembro', formatear: (m) => m.miembroNombre || '' },
-    { header: 'Rubro Contable', formatear: (m) => m.rubro?.nombre || '' },
+    { header: 'Rubro contable', formatear: (m) => m.rubro?.nombre || '' },
     {
-      header: 'N° Comprobante',
+      header: 'N° comprobante',
       // Los ingresos manuales guardan el comprobante dentro del concepto.
       formatear: (m) =>
         m.gasto?.comprobanteNro ||
@@ -509,7 +509,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     },
     { header: 'Ingreso (+)', formatear: (m) => Number(m.montoIngreso || 0) },
     { header: 'Egreso (-)', formatear: (m) => Number(m.montoEgreso || 0) },
-    { header: 'Saldo Acumulado', formatear: (m) => Number(m.saldoAcumulado || 0) },
+    { header: 'Saldo acumulado', formatear: (m) => Number(m.saldoAcumulado || 0) },
     {
       header: 'Registrado Por',
       formatear: (m) =>
@@ -528,13 +528,13 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
       { etiqueta: 'Grupo', valor: 'Grupo Scout Juan XXIII' },
       { etiqueta: 'Cuenta', valor: cuentaActiva?.nombre || '' },
       {
-        etiqueta: 'Tipo de Cuenta',
-        valor: cuentaActiva?.tipo === 'CAJA_EFECTIVO' ? 'Caja Chica / Efectivo' : 'Cuenta Bancaria',
+        etiqueta: 'Tipo de cuenta',
+        valor: cuentaActiva?.tipo === 'CAJA_EFECTIVO' ? 'Caja chica / efectivo' : 'Cuenta bancaria',
       },
       { etiqueta: 'Período', valor: periodoTexto },
       ...(termino ? [{ etiqueta: 'Filtro de búsqueda', valor: `"${termino}" (${movimientosAExportar.length} movimientos)` }] : []),
       { etiqueta: 'Saldo Anterior ($)', valor: libroDiario?.saldoAnterior ?? 0 },
-      { etiqueta: 'Fecha de Emisión', valor: formatearFecha(obtenerHoyLocalISO()) },
+      { etiqueta: 'Fecha de emisión', valor: formatearFecha(obtenerHoyLocalISO()) },
     ];
     if (termino) {
       const centavos = (valor: unknown) => Math.round(Number(valor || 0) * 100);
@@ -573,7 +573,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
     }
     await exportarAExcel({
       nombreArchivo: nombreArchivoLibro(),
-      nombreHoja: 'Libro Diario',
+      nombreHoja: 'Libro diario',
       columnas: prepararColumnasLibroDiario(),
       filas: movimientosAExportar,
       ...construirResumenesExportacion(),
@@ -700,7 +700,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
               }}
               leftIcon={<PlusCircle className="w-4 h-4" />}
             >
-              Nueva Cuenta
+              Nueva cuenta
             </Button>
           )}
         </div>
@@ -725,8 +725,8 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs px-2.5 py-0.5 rounded-md font-semibold bg-paper-3 text-ink-2">
                     {cuentaActiva.tipo === 'CAJA_EFECTIVO'
-                      ? 'Caja Chica / Efectivo'
-                      : 'Cuenta Bancaria'}
+                      ? 'Caja chica / efectivo'
+                      : 'Cuenta bancaria'}
                   </span>
                   {cuentaArchivada ? (
                     <span className="text-xs px-2.5 py-0.5 rounded-md font-bold s-badge-warn">
@@ -744,7 +744,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
             <div className="p-3.5 sm:p-0 rounded-xl bg-surface sm:bg-transparent border sm:border-0 border-rule flex flex-col md:items-end">
               <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
-                Saldo Disponible en Tiempo Real
+                Saldo disponible en tiempo real
               </span>
               {estaCargando && cuentaActiva.saldoActual === undefined ? (
                 <div
@@ -908,7 +908,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   : 'bg-paper-2 text-ink-2 hover:text-ink border-rule'
               }`}
             >
-              Esta Semana
+              Esta semana
             </button>
 
             <button
@@ -921,7 +921,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   : 'bg-paper-2 text-ink-2 hover:text-ink border-rule'
               }`}
             >
-              Este Mes
+              Este mes
             </button>
 
             <button
@@ -934,7 +934,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                   : 'bg-paper-2 text-ink-2 hover:text-ink border-rule'
               }`}
             >
-              Todo el Histórico
+              Todo el histórico
             </button>
           </div>
 
@@ -995,7 +995,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           <div className="flex items-center gap-2">
             <FileSpreadsheet className="w-5 h-5 text-brand" />
             <h4 className="font-extrabold text-ink text-lg">
-              Libro Diario de Movimientos
+              Libro diario de movimientos
             </h4>
           </div>
           <div className="flex items-center gap-3">
@@ -1109,11 +1109,11 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             <table className="w-full text-left text-sm border-collapse">
               <thead className="bg-paper-2 border-b border-rule text-xs uppercase tracking-wider text-ink-muted font-bold">
                 <tr>
-                  <th scope="col" className="py-3.5 px-4">Fecha / Hora</th>
-                  <th scope="col" className="py-3.5 px-4">Concepto y Tipo</th>
+                  <th scope="col" className="py-3.5 px-4">Fecha / hora</th>
+                  <th scope="col" className="py-3.5 px-4">Concepto y tipo</th>
                   <th scope="col" className="py-3.5 px-4 text-right">Ingreso (+)</th>
                   <th scope="col" className="py-3.5 px-4 text-right">Salida (-)</th>
-                  <th scope="col" className="py-3.5 px-4 text-right">Saldo Acumulado</th>
+                  <th scope="col" className="py-3.5 px-4 text-right">Saldo acumulado</th>
                   <th scope="col" className="py-3.5 px-4">Registrado Por</th>
                   {puedeGestionarTesoreria && (
                     <th scope="col" className="py-3.5 px-4 text-center">Acciones</th>
@@ -1276,7 +1276,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
                     </td>
                     <td className="py-3 px-4">
                       <span className="font-bold text-ink">
-                        Saldo Anterior / Arrastre
+                        Saldo anterior / arrastre
                       </span>
                     </td>
                     <td className="py-3 px-4 text-right text-ink-muted">-</td>
@@ -1429,7 +1429,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             {hayFiltroFecha && (!hayMasMovimientos || !expandido) && (
               <div className="p-4 bg-paper-2/60 space-y-1 text-[13px]">
                 <div className="flex justify-between items-center">
-                  <span className="font-bold text-ink">Saldo Anterior</span>
+                  <span className="font-bold text-ink">Saldo anterior</span>
                   <span className="font-black text-ink">
                     {formatearMoneda(saldoAnterior)}
                   </span>
@@ -1507,7 +1507,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-left">
               <div className="p-3.5 rounded-xl bg-surface border border-rule">
                 <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
-                  Total Ingresos Período
+                  Total ingresos período
                 </span>
                 <span className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">
                   +{formatearMoneda(libroDiario.totalIngresosPeriodo)}
@@ -1516,7 +1516,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
               <div className="p-3.5 rounded-xl bg-surface border border-rule">
                 <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
-                  Total Salidas Período
+                  Total salidas período
                 </span>
                 <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400">
                   -{formatearMoneda(libroDiario.totalEgresosPeriodo)}
@@ -1525,7 +1525,7 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
 
               <div className="p-3.5 rounded-xl bg-surface border border-rule">
                 <span className="block text-xs font-bold uppercase tracking-wider text-ink-muted">
-                  Saldo Final del Período
+                  Saldo final del período
                 </span>
                 <span className="text-base sm:text-lg font-black text-ink">
                   {formatearMoneda(libroDiario.saldoFinalPeriodo)}
@@ -1631,9 +1631,9 @@ export const PanelTesoreriaCajaBanco: React.FC<PanelTesoreriaCajaBancoProps> = (
           abierto={modalConfirmarEliminar}
           onCerrar={() => !eliminandoId && setModalConfirmarEliminar(false)}
           onConfirmar={ejecutarEliminacionIngreso}
-          titulo="Eliminar Ingreso"
+          titulo="Eliminar ingreso"
           tipo="peligro"
-          textoConfirmar={eliminandoId ? 'Eliminando...' : 'Sí, Eliminar Ingreso'}
+          textoConfirmar={eliminandoId ? 'Eliminando...' : 'Sí, eliminar ingreso'}
           textoCancelar="Cancelar"
           cargando={Boolean(eliminandoId)}
           mensaje={

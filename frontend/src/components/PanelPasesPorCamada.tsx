@@ -106,7 +106,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
           unidadActualNombre: c.unidadActual?.nombre || 'Sección',
           ramaActualNombre: c.ramaActual?.nombre || 'Rama',
           ramaSugeridaNombre:
-            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Pase a Educador',
+            c.tipo === 'PROGRESION' ? c.ramaSugerida?.nombre || 'Siguiente Rama' : 'Pase a educador',
           tipo: c.tipo,
           unidadesDestino: dests,
           miembros: [],
@@ -237,7 +237,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
         <div>
           <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-brand" />
-            <span>Sugerencias de Pases de Rama por Camada</span>
+            <span>Sugerencias de pases de rama por camada</span>
           </h2>
           <p className="text-sm text-ink-muted mt-1">
             Se agrupan en la misma camada quienes cumplen la edad reglamentaria de pase en este ciclo.
@@ -295,7 +295,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                   {puedeEjecutarEn(g) && (!esGlobal && g.tipo === 'EGRESO' ? (
                     <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-[13px] font-bold shrink-0">
                       <ShieldAlert className="w-4 h-4" />
-                      Requiere Jefatura (Global)
+                      Requiere jefatura (Global)
                     </span>
                   ) : (
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
@@ -333,7 +333,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                           <ArrowRightLeft className="w-4 h-4" />
                         )}
                         <span>
-                          Pasar toda la Camada {g.camada} ({g.miembros.filter((m) => !m.solicitudPendiente).length})
+                          Pasar toda la camada {g.camada} ({g.miembros.filter((m) => !m.solicitudPendiente).length})
                         </span>
                       </Button>
                     </div>
@@ -399,7 +399,7 @@ export const PanelPasesPorCamada: React.FC<Props> = ({
                           </span>
                         ) : !esGlobal && g.tipo === 'EGRESO' ? (
                           <span className="text-[13px] font-semibold text-amber-700 dark:text-amber-300 self-end sm:self-center shrink-0">
-                            Requiere Jefatura (Global)
+                            Requiere jefatura (Global)
                           </span>
                         ) : (
                           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">

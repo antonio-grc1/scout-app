@@ -158,7 +158,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
         <div className="flex items-center gap-5 flex-wrap">
           <div>
             <span className="text-xs sm:text-[13px] font-semibold text-ink-muted block">
-              Deuda Total
+              Deuda total
             </span>
             <span
               className={`text-2xl font-black ${
@@ -174,7 +174,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
           <div className="pl-5 border-l border-rule">
             <div className="flex items-center gap-2">
               <span className="text-xs sm:text-[13px] font-semibold text-teal-600 dark:text-teal-400">
-                Saldo a Favor
+                Saldo a favor
               </span>
               {habilitarAjustes && (
                 <button
@@ -214,7 +214,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               onClick={() => onCobrarCargo(null)}
             >
               <CreditCard className="w-4 h-4" />
-              <span>{saldoPendiente > 0 ? 'Cobrar / Pagar' : 'Registrar Adelanto'}</span>
+              <span>{saldoPendiente > 0 ? 'Cobrar / pagar' : 'Registrar adelanto'}</span>
             </Button>
           )}
         </div>
@@ -229,7 +229,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
           <div className="flex items-center justify-between">
             <span className="text-sm font-extrabold text-teal-950 dark:text-teal-100 flex items-center gap-2">
               <Wallet className="w-4 h-4 text-teal-600" />
-              Ajustar Saldo a Favor Manualmente
+              Ajustar saldo a favor manualmente
             </span>
             <button
               type="button"
@@ -243,7 +243,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
           <div className="grid grid-cols-3 gap-2">
             {([
               { k: 'CARGAR', label: '+ Cargar saldo' },
-              { k: 'DESCONTAR', label: '- Devolver / Descontar' },
+              { k: 'DESCONTAR', label: '- Devolver / descontar' },
               { k: 'FIJAR', label: '= Fijar saldo exacto' },
             ] as const).map((opt) => (
               <button
@@ -279,7 +279,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
             </div>
             <div>
               <label className="block text-xs sm:text-[13px] font-bold text-teal-900 dark:text-teal-200 mb-1.5">
-                Motivo / Nota (opcional)
+                Motivo / nota (opcional)
               </label>
               <input
                 type="text"
@@ -304,7 +304,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
               disabled={procesandoAccionCuota || montoAjusteSaldo === ''}
               className="min-h-[40px] px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[13px] font-bold cursor-pointer disabled:opacity-50"
             >
-              {procesandoAccionCuota ? 'Guardando...' : 'Aplicar Ajuste'}
+              {procesandoAccionCuota ? 'Guardando...' : 'Aplicar ajuste'}
             </button>
           </div>
         </form>
@@ -327,7 +327,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
       {/* Lista de Cuotas / Cargos en Tarjetas Mobile-First */}
       <div className="space-y-2.5">
         <span className="text-[13px] font-semibold text-ink-muted block">
-          Cuotas y Conceptos Activos ({estadoCuenta?.cargos?.length || 0})
+          Cuotas y conceptos activos ({estadoCuenta?.cargos?.length || 0})
         </span>
 
         {estadoCuenta?.cargos?.length > 0 ? (
@@ -439,7 +439,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                       {cargoEditando.esIndividual && (
                         <div className="sm:col-span-3">
                           <label className="block text-xs font-bold text-ink-2 mb-1">
-                            Concepto / Motivo
+                            Concepto / motivo
                           </label>
                           <input
                             type="text"
@@ -457,7 +457,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                       )}
                       <div>
                         <label className="block text-xs font-bold text-ink-2 mb-1">
-                          Monto Original ($)
+                          Monto original ($)
                         </label>
                         <input
                           type="number"
@@ -596,7 +596,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
         <div className="space-y-2.5 pt-2.5 border-t border-rule">
           <span className="text-[13px] font-semibold text-ink-muted flex items-center gap-1.5">
             <Receipt className="w-4 h-4" />
-            <span>Pagos Registrados ({estadoCuenta.pagos.length})</span>
+            <span>Pagos registrados ({estadoCuenta.pagos.length})</span>
           </span>
 
           <div className="space-y-2">
@@ -694,7 +694,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                             referenciaComprobante: e.target.value,
                           })
                         }
-                        placeholder="N° Comprobante"
+                        placeholder="N° comprobante"
                         className="min-h-[40px] px-3 py-1.5 rounded-xl border border-rule bg-surface text-[13px]"
                       />
                       <div className="flex items-center gap-2">

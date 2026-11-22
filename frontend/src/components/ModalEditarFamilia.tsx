@@ -155,7 +155,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
           </div>
           <div>
             <h3 className="font-extrabold text-ink text-lg">
-              Grupo Familiar y Descuento por Hermanos
+              Grupo familiar y descuento por hermanos
             </h3>
             <p className="text-[13px] text-ink-muted">
               Al guardar, se recalculan automáticamente las cuotas pendientes de los hermanos
@@ -185,7 +185,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
         {/* Nombre de la Familia */}
         <div>
           <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
-            Nombre del Grupo Familiar *
+            Nombre del grupo familiar *
           </label>
           <input
             type="text"
@@ -203,7 +203,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <Percent className="w-4 h-4 text-brand" />
               <span className="text-sm font-bold text-ink">
-                Porcentaje de Descuento por Hermanos
+                Porcentaje de descuento por hermanos
               </span>
             </div>
             <span className="text-xl font-black text-brand">
@@ -357,7 +357,7 @@ export const ModalEditarFamilia: React.FC<Props> = ({
               disabled={guardando}
             >
               <Check className="w-4 h-4" />
-              <span>{guardando ? 'Guardando...' : 'Guardar Descuento'}</span>
+              <span>{guardando ? 'Guardando...' : 'Guardar descuento'}</span>
             </Button>
           </div>
         </div>

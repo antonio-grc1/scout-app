@@ -558,7 +558,7 @@ export const CompletarLegajoPage: React.FC = () => {
             className="s-btn-sec min-h-[40px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5"
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />
-            <span>{esOtroMiembro ? 'Volver a Legajos' : 'Volver a Mi Espacio'}</span>
+            <span>{esOtroMiembro ? 'Volver a legajos' : 'Volver a mi espacio'}</span>
           </Link>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -584,7 +584,7 @@ export const CompletarLegajoPage: React.FC = () => {
                   onClick={() => void handleVistaPreviaPdf()}
                   leftIcon={<Eye className="w-4 h-4 text-brand-ink" />}
                 >
-                  Vista Previa PDF
+                  Vista previa PDF
                 </Button>
                 {precarga?.ultimaEntrega && (
                   <Button

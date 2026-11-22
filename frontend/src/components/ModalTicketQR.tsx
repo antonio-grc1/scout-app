@@ -261,7 +261,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
           <div className="flex items-center gap-2.5">
             <QrCode className="w-5 h-5 text-brand" />
             <div>
-              <h3 className="text-base sm:text-lg font-black text-ink">Vale Digital / Entrada</h3>
+              <h3 className="text-base sm:text-lg font-black text-ink">Vale digital / entrada</h3>
               <span className="text-[13px] text-ink-muted">
                 Pedido #{ticket.pedido.id} • Vale #{ticket.id}
               </span>
@@ -336,7 +336,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                 <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 transition rounded-2xl flex items-center justify-center pointer-events-none">
                   <span className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-black/80 text-white text-[13px] font-bold backdrop-blur-xs shadow-md">
                     <Maximize2 className="w-4 h-4" />
-                    <span>Pantalla Completa</span>
+                    <span>Pantalla completa</span>
                   </span>
                 </div>
               </div>
@@ -367,7 +367,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
               className="gap-2 w-full py-2.5 font-bold cursor-pointer"
             >
               <Download className="w-4 h-4" />
-              <span>Descargar Vale (PNG)</span>
+              <span>Descargar vale (PNG)</span>
             </Button>
 
             {/* Acciones secundarias */}
@@ -380,7 +380,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                 title="Ver entrada en pantalla completa"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
-                <span>Pantalla Completa</span>
+                <span>Pantalla completa</span>
               </Button>
 
               <Button
@@ -391,7 +391,7 @@ export const ModalTicketQR: React.FC<ModalTicketQRProps> = ({ abierto, onCerrar,
                 title="Copiar imagen al portapapeles"
               >
                 {copiadaImagen ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <ImageIcon className="w-3.5 h-3.5" />}
-                <span>{copiadaImagen ? 'Copiada!' : 'Copiar Foto'}</span>
+                <span>{copiadaImagen ? 'Copiada!' : 'Copiar foto'}</span>
               </Button>
 
               <Button

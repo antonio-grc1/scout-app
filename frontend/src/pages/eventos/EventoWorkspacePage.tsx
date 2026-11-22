@@ -699,7 +699,7 @@ export const EventoWorkspacePage: React.FC = () => {
         </h2>
         <Button type="button" variant="secondary" onClick={() => navigate('/eventos')}>
           <ArrowLeft className="w-4 h-4 mr-1.5" />
-          Volver al Catálogo de Eventos
+          Volver al catálogo de eventos
         </Button>
       </div>
     );
@@ -707,25 +707,25 @@ export const EventoWorkspacePage: React.FC = () => {
 
   const tabsWorkspace = caps.canSellEventos
     ? [
-        { id: 'pos' as const, label: 'POS Venta Rápida', icon: <ShoppingCart className="w-4 h-4" /> },
+        { id: 'pos' as const, label: 'POS venta rápida', icon: <ShoppingCart className="w-4 h-4" /> },
         {
           id: 'pedidos' as const,
-          label: 'Pedidos y Vales',
+          label: 'Pedidos y vales',
           icon: <ShoppingBag className="w-4 h-4" />,
           badge: contadoresPedidos.todos,
         },
         {
           id: 'liquidacion' as const,
-          label: 'Liquidación a Familias',
+          label: 'Liquidación a familias',
           icon: <Award className="w-4 h-4" />,
           badge: resumenLiquidacion.pedidosListos > 0 ? resumenLiquidacion.pedidosListos : undefined,
         },
       ]
     : [
-        { id: 'pos' as const, label: 'Cargar Mi Pedido', icon: <ShoppingCart className="w-4 h-4" /> },
+        { id: 'pos' as const, label: 'Cargar mi pedido', icon: <ShoppingCart className="w-4 h-4" /> },
         {
           id: 'pedidos' as const,
-          label: 'Mis Pedidos y Vales',
+          label: 'Mis pedidos y vales',
           icon: <QrCode className="w-4 h-4" />,
           badge: contadoresPedidos.todos,
         },
@@ -750,7 +750,7 @@ export const EventoWorkspacePage: React.FC = () => {
             className="s-btn-sec min-h-[40px] px-3.5 py-2 rounded-xl text-[13px] font-bold inline-flex items-center gap-1.5"
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />
-            <span>Volver a Eventos</span>
+            <span>Volver a eventos</span>
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -783,7 +783,7 @@ export const EventoWorkspacePage: React.FC = () => {
                   onClick={() => setModalEditarEventoAbierto(true)}
                   leftIcon={<Settings className="w-3.5 h-3.5" />}
                 >
-                  Configurar Evento
+                  Configurar evento
                 </Button>
                 <div className="relative">
                   <Button
@@ -852,7 +852,7 @@ export const EventoWorkspacePage: React.FC = () => {
                 </span>
               </span>
               <span className="px-2.5 py-0.5 rounded-lg bg-paper-2 border border-rule text-xs font-bold text-ink-2">
-                {evento.tipo === 'FESTIVAL_ENTRADAS' ? 'Festival / Entradas' : 'Recaudación por Pedidos'}
+                {evento.tipo === 'FESTIVAL_ENTRADAS' ? 'Festival / entradas' : 'Recaudación por pedidos'}
               </span>
             </div>
 
@@ -907,7 +907,7 @@ export const EventoWorkspacePage: React.FC = () => {
           <KpiCard
             label="Ganancia familias"
             value={`+${formatearMoneda(evento.metricas.totalGanancia)}`}
-            hint="Acreditable a Saldo a Favor"
+            hint="Acreditable a saldo a favor"
             tone="brand"
             icon={<Award className="w-4 h-4" />}
           />
@@ -961,7 +961,7 @@ export const EventoWorkspacePage: React.FC = () => {
           {/* Catálogo de Productos con Stock en vivo */}
           <div className="lg:col-span-7 s-card rounded-2xl p-5 space-y-4">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-base font-black text-ink">1. Productos y Stock en Vivo</h2>
+              <h2 className="text-base font-black text-ink">1. Productos y stock en vivo</h2>
               <span className="text-[13px] font-bold text-ink-muted s-tabular">
                 {posTotals.unidades} unid. seleccionadas
               </span>
@@ -1059,7 +1059,7 @@ export const EventoWorkspacePage: React.FC = () => {
 
           {/* Datos del Comprador, Vendedor y Cobro */}
           <div className="lg:col-span-5 s-card rounded-2xl p-5 space-y-4">
-            <h2 className="text-base font-black text-ink">2. Comprador y Cobro</h2>
+            <h2 className="text-base font-black text-ink">2. Comprador y cobro</h2>
 
             <Input
               label="Nombre del comprador / cliente"
@@ -1081,7 +1081,7 @@ export const EventoWorkspacePage: React.FC = () => {
             {caps.canSellEventos ? (
               <div className="space-y-1.5 relative">
                 <label className="block text-sm font-bold text-ink-2">
-                  Vendedor Scout (acreditación a Saldo a Favor)
+                  Vendedor scout (acreditación a Saldo a Favor)
                 </label>
                 {vendedorSeleccionado ? (
                   <div className="p-3 rounded-xl bg-brand-soft/30 border border-brand flex items-center justify-between gap-2 text-[13px]">
@@ -1274,7 +1274,7 @@ export const EventoWorkspacePage: React.FC = () => {
               </div>
               <div className="text-right">
                 <span className="text-xs font-bold uppercase tracking-wider text-ink-muted block">
-                  Ganancia Scout
+                  Ganancia scout
                 </span>
                 <span className="text-[15px] font-black text-emerald-600 dark:text-emerald-400 s-tabular">
                   +{formatearMoneda(posTotals.ganancia)}
@@ -1291,7 +1291,7 @@ export const EventoWorkspacePage: React.FC = () => {
               disabled={evento.estado !== 'PUBLICADO' || posTotals.unidades <= 0 || posGuardando}
               leftIcon={<QrCode className="w-4 h-4" />}
             >
-              Registrar Pedido y Generar QR
+              Registrar pedido y generar QR
             </Button>
           </div>
         </form>
@@ -1379,10 +1379,10 @@ export const EventoWorkspacePage: React.FC = () => {
                   <thead>
                     <tr className="border-b border-rule bg-paper-2/70 text-xs uppercase tracking-wider text-ink-muted">
                       <th className="py-3.5 px-4 font-bold">Comprador</th>
-                      <th className="py-3.5 px-4 font-bold">Vendedor Scout</th>
+                      <th className="py-3.5 px-4 font-bold">Vendedor scout</th>
                       <th className="py-3.5 px-4 font-bold">Productos</th>
                       <th className="py-3.5 px-4 font-bold text-right">Total</th>
-                      <th className="py-3.5 px-4 font-bold text-center">Estado Pago</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Estado pago</th>
                       <th className="py-3.5 px-4 font-bold text-center">Vales QR</th>
                       <th className="py-3.5 px-4 font-bold text-right">Acciones</th>
                     </tr>
@@ -1408,7 +1408,7 @@ export const EventoWorkspacePage: React.FC = () => {
                                 {p.vendedorUsuario.nombre} {p.vendedorUsuario.apellido}
                               </span>
                             ) : (
-                              <span className="text-ink-muted italic">Venta General</span>
+                              <span className="text-ink-muted italic">Venta general</span>
                             )}
                           </td>
                           <td className="py-3.5 px-4">
@@ -1542,7 +1542,7 @@ export const EventoWorkspacePage: React.FC = () => {
                           <p className="text-xs text-ink-muted mt-0.5">
                             {p.vendedorUsuario
                               ? `Scout: ${p.vendedorUsuario.nombre} ${p.vendedorUsuario.apellido}`
-                              : 'Venta General'}
+                              : 'Venta general'}
                           </p>
                         </div>
                         <div className="text-right shrink-0 s-tabular">
@@ -1663,7 +1663,7 @@ export const EventoWorkspacePage: React.FC = () => {
             <div className="space-y-1">
               <h2 className="text-lg font-black text-ink flex items-center gap-2">
                 <Award className="w-5 h-5 text-brand shrink-0" />
-                <span>Revisión previa de la liquidación a Saldo a Favor</span>
+                <span>Revisión previa de la liquidación a saldo a favor</span>
               </h2>
               <p className="text-[13px] text-ink-muted leading-relaxed">
                 Revisá el detalle por vendedor scout antes de acreditar ganancias. Solo se liquidan pedidos pagados cuyos vales QR ya fueron retirados.
@@ -1700,12 +1700,12 @@ export const EventoWorkspacePage: React.FC = () => {
                 <table className="w-full text-sm text-left">
                   <thead>
                     <tr className="border-b border-rule bg-paper-2 text-xs uppercase tracking-wider text-ink-muted">
-                      <th className="py-3.5 px-4 font-bold">Scout Vendedor</th>
-                      <th className="py-3.5 px-4 font-bold text-center">Pedidos Totales</th>
+                      <th className="py-3.5 px-4 font-bold">Scout vendedor</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Pedidos totales</th>
                       <th className="py-3.5 px-4 font-bold text-center">Pend. pago o retiro</th>
-                      <th className="py-3.5 px-4 font-bold text-center">Listos p/ Liquidar</th>
-                      <th className="py-3.5 px-4 font-bold text-right">Ya Acreditado</th>
-                      <th className="py-3.5 px-4 font-bold text-right">A Acreditar Hoy</th>
+                      <th className="py-3.5 px-4 font-bold text-center">Listos p/ liquidar</th>
+                      <th className="py-3.5 px-4 font-bold text-right">Ya acreditado</th>
+                      <th className="py-3.5 px-4 font-bold text-right">A acreditar hoy</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rule s-tabular">
@@ -1806,11 +1806,11 @@ export const EventoWorkspacePage: React.FC = () => {
         abierto={confirmAcreditar}
         onCerrar={() => setConfirmAcreditar(false)}
         onConfirmar={ejecutarAcreditarGanancias}
-        titulo="Confirmar Liquidación a Familias"
+        titulo="Confirmar liquidación a familias"
         peligroso={false}
         tipoImpacto="info"
         cargando={acreditando}
-        textoConfirmar="Acreditar Ganancias"
+        textoConfirmar="Acreditar ganancias"
         mensaje={
           <span>
             Se acreditarán las ganancias de <strong>{resumenLiquidacion.pedidosListos} pedido(s)</strong>{' '}
@@ -1820,7 +1820,7 @@ export const EventoWorkspacePage: React.FC = () => {
         impacto={
           <span>
             Impacto total: <strong>+{formatearMoneda(resumenLiquidacion.montoListo)}</strong> en el{' '}
-            <strong>Saldo a Favor</strong> de los scouts vendedores. Esta operación no se puede revertir automáticamente.
+            <strong>Saldo a favor</strong> de los scouts vendedores. Esta operación no se puede revertir automáticamente.
           </span>
         }
       />
@@ -1829,7 +1829,7 @@ export const EventoWorkspacePage: React.FC = () => {
         abierto={Boolean(pedidoAEliminar)}
         onCerrar={() => setPedidoAEliminar(null)}
         onConfirmar={ejecutarEliminarPedido}
-        titulo="Eliminar Pedido"
+        titulo="Eliminar pedido"
         peligroso={true}
         tipoImpacto="warn"
         cargando={eliminandoPedido}
@@ -1850,7 +1850,7 @@ export const EventoWorkspacePage: React.FC = () => {
         abierto={confirmEliminarEvento}
         onCerrar={() => setConfirmEliminarEvento(false)}
         onConfirmar={ejecutarEliminarEvento}
-        titulo="Eliminar Evento Económico"
+        titulo="Eliminar evento económico"
         peligroso={true}
         tipoImpacto="danger"
         cargando={eliminandoEvento}

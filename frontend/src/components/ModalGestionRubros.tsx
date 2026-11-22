@@ -175,7 +175,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                 <Tag className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-lg font-black text-ink">Administrar Rubros y Categorías</h3>
+                <h3 className="text-lg font-black text-ink">Administrar rubros y categorías</h3>
                 <p className="text-[13px] text-ink-muted">
                   Gestiona las categorías de egresos (gastos) e ingresos (cuotas, eventos).
                 </p>
@@ -247,7 +247,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                   leftIcon={<PlusCircle className="w-4 h-4 shrink-0" />}
                   className="w-full sm:w-auto justify-center"
                 >
-                  Nuevo Rubro
+                  Nuevo rubro
                 </Button>
               )}
             </div>
@@ -322,7 +322,7 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
                       </span>
                       {r.permiteDescuentoDefault && r.tipo === 'INGRESO' && (
                         <span className="text-xs px-2 py-0.5 rounded bg-brand/10 text-brand font-semibold">
-                          Desc. Hermanos
+                          Desc. hermanos
                         </span>
                       )}
                     </div>
@@ -409,9 +409,9 @@ export const ModalGestionRubros: React.FC<ModalGestionRubrosProps> = ({
           abierto={modalConfirmarEliminar}
           onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
           onConfirmar={handleEliminar}
-          titulo="Eliminar Rubro Contable"
+          titulo="Eliminar rubro contable"
           tipo="peligro"
-          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Rubro'}
+          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, eliminar rubro'}
           textoCancelar="Cancelar"
           cargando={eliminando}
           mensaje={

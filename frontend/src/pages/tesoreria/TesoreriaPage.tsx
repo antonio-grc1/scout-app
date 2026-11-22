@@ -102,28 +102,28 @@ export const TesoreriaPage: React.FC = () => {
     if (puedeVerCobranzas) {
       items.push({
         id: 'cobranzas',
-        label: 'Cobranzas y Familias',
+        label: 'Cobranzas y familias',
         icon: <Users className="w-3.5 h-3.5" />,
       });
     }
     if (puedeVerPlanesYConceptos) {
       items.push({
         id: 'planes',
-        label: 'Planes y Conceptos',
+        label: 'Planes y conceptos',
         icon: <Layers className="w-3.5 h-3.5" />,
       });
     }
     if (puedeVerCajaOGastos) {
       items.push({
         id: 'caja-gastos',
-        label: 'Caja, Bancos y Gastos',
+        label: 'Caja, bancos y gastos',
         icon: <Landmark className="w-3.5 h-3.5" />,
       });
     }
     if (puedeVerBalance) {
       items.push({
         id: 'balance',
-        label: 'Cuadro de Resultados',
+        label: 'Cuadro de resultados',
         icon: <Scale className="w-3.5 h-3.5" />,
       });
     }
@@ -492,7 +492,7 @@ export const TesoreriaPage: React.FC = () => {
       plan.recaudacion?.totalRecaudado ?? plan.resumenRecaudacion?.totalRecaudado ?? 0,
     );
     setImpactoDialog({
-      titulo: 'Eliminar Cobro Mensual',
+      titulo: 'Eliminar cobro mensual',
       mensaje: `¿Confirmás eliminar "${plan.nombre}"?`,
       impacto:
         cobrado > 0
@@ -567,7 +567,7 @@ export const TesoreriaPage: React.FC = () => {
       con.recaudacion?.totalRecaudado ?? con.resumenRecaudacion?.totalRecaudado ?? 0,
     );
     setImpactoDialog({
-      titulo: 'Eliminar Cobro Puntual',
+      titulo: 'Eliminar cobro puntual',
       mensaje: `¿Seguro que querés eliminar "${con.nombre}"?`,
       impacto:
         cobrado > 0
@@ -648,7 +648,7 @@ export const TesoreriaPage: React.FC = () => {
           <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight">
-                Tesorería y Finanzas
+                Tesorería y finanzas
               </h1>
             </div>
             <p className="text-sm text-ink-muted">
@@ -665,7 +665,7 @@ export const TesoreriaPage: React.FC = () => {
                 onClick={() => setModalGestionRubrosAbierto(true)}
               >
                 <Tag className="w-4 h-4 text-brand" />
-                <span>Rubros Contables</span>
+                <span>Rubros contables</span>
               </Button>
             )}
             <Button
@@ -704,14 +704,14 @@ export const TesoreriaPage: React.FC = () => {
           {puedeVerPlanesYConceptos && (
             <>
           <KpiCard
-            label="Cobros Mensuales"
+            label="Cobros mensuales"
             value={cargando && planesMensuales.length === 0 ? '—' : planesFiltrados.length}
             hint="Planes activos del ciclo"
             icon={<Layers className="w-4 h-4" />}
             tone="info"
           />
           <KpiCard
-            label="Cobros Puntuales"
+            label="Cobros puntuales"
             value={cargando && conceptos.length === 0 ? '—' : conceptosPuntuales.length}
             hint="Conceptos y eventos"
             icon={<Tent className="w-4 h-4" />}
@@ -951,7 +951,7 @@ export const TesoreriaPage: React.FC = () => {
                         }}
                       >
                         <Pencil className="w-4 h-4" />
-                        <span>Editar Grupo / Descuento</span>
+                        <span>Editar grupo / descuento</span>
                       </Button>
                     ) : (
                       puedeEditarDescuentoFamilia &&
@@ -989,7 +989,7 @@ export const TesoreriaPage: React.FC = () => {
               <div>
                 <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
                   <Layers className="w-5 h-5 text-brand" />
-                  <span>Cobros Mensuales</span>
+                  <span>Cobros mensuales</span>
                 </h2>
                 <p className="text-[13px] text-ink-muted mt-0.5">
                   Tocá cualquier mes para habilitar o desactivar su cobro en el ciclo.
@@ -1006,7 +1006,7 @@ export const TesoreriaPage: React.FC = () => {
                   }}
                 >
                   <PlusCircle className="w-4 h-4" />
-                  <span>Nuevo Cobro Mensual</span>
+                  <span>Nuevo cobro mensual</span>
                 </Button>
               )}
             </div>
@@ -1039,7 +1039,7 @@ export const TesoreriaPage: React.FC = () => {
                             {plan.nombre}
                           </h3>
                           <p className="text-[13px] text-ink-muted mt-0.5">
-                            {plan.unidad ? plan.unidad.nombre : 'Todo el Grupo Scout'} •{' '}
+                            {plan.unidad ? plan.unidad.nombre : 'Todo el grupo scout'} •{' '}
                             {plan.destinatarioTipo === 'EDUCADORES'
                               ? 'Educadores'
                               : plan.destinatarioTipo === 'PROTAGONISTAS'
@@ -1176,7 +1176,7 @@ export const TesoreriaPage: React.FC = () => {
               <div>
                 <h2 className="text-lg font-extrabold text-ink flex items-center gap-2">
                   <Tent className="w-5 h-5 text-brand" />
-                  <span>Cobros Puntuales</span>
+                  <span>Cobros puntuales</span>
                 </h2>
                 <p className="text-[13px] text-ink-muted mt-0.5">
                   Cobros especiales con destinatarios configurables y exenciones individuales.
@@ -1193,7 +1193,7 @@ export const TesoreriaPage: React.FC = () => {
                   }}
                 >
                   <Tent className="w-4 h-4" />
-                  <span>Nuevo Cobro Puntual</span>
+                  <span>Nuevo cobro puntual</span>
                 </Button>
               )}
             </div>
@@ -1222,7 +1222,7 @@ export const TesoreriaPage: React.FC = () => {
                           <h3 className="font-bold text-ink text-base truncate">{con.nombre}</h3>
                           <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-muted mt-1">
                             <span className="font-semibold text-ink-2">
-                              {con.unidad ? con.unidad.nombre : 'Todo el Grupo'}
+                              {con.unidad ? con.unidad.nombre : 'Todo el grupo'}
                             </span>
                             <span>•</span>
                             <span>
@@ -1299,7 +1299,7 @@ export const TesoreriaPage: React.FC = () => {
                           }}
                         >
                           <Pencil className="w-4 h-4" />
-                          <span>Editar / Exentos</span>
+                          <span>Editar / exentos</span>
                         </Button>
 
                         <Button
@@ -1341,12 +1341,12 @@ export const TesoreriaPage: React.FC = () => {
                 items={[
                   {
                     id: 'caja',
-                    label: 'Libro Diario (Caja y Bancos)',
+                    label: 'Libro diario (caja y bancos)',
                     icon: <Landmark className="w-4 h-4" />,
                   },
                   {
                     id: 'gastos',
-                    label: 'Gastos y Egresos',
+                    label: 'Gastos y egresos',
                     icon: <Receipt className="w-4 h-4" />,
                   },
                 ]}
@@ -1382,7 +1382,7 @@ export const TesoreriaPage: React.FC = () => {
           setCobroDrawerAbierto(false);
           setEstadoCuentaCobro(null);
         }}
-        titulo="Registrar Pago / Cobrar Cuotas"
+        titulo="Registrar pago / cobrar cuotas"
         subtitulo={
           estadoCuentaCobro?.miembro
             ? `${estadoCuentaCobro.miembro.nombre} ${estadoCuentaCobro.miembro.apellido} • DNI ${estadoCuentaCobro.miembro.dni}`
@@ -1424,7 +1424,7 @@ export const TesoreriaPage: React.FC = () => {
           setFamiliaDrawerAbierta(false);
           setFamiliaAEditar(null);
         }}
-        titulo="Grupo Familiar y Descuento"
+        titulo="Grupo familiar y descuento"
         subtitulo={familiaAEditar?.nombreFamilia}
         mode="drawer"
         maxWidthClass="sm:max-w-lg"

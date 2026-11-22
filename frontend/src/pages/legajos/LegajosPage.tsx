@@ -629,21 +629,21 @@ export const LegajosPage: React.FC = () => {
   const handleExportarSalud = (formato: 'xlsx' | 'csv') => {
     const columnas: ColumnaExportacion<(typeof registrosSalud)[number]>[] = [
       {
-        header: 'Apellido y Nombre',
+        header: 'Apellido y nombre',
         formatear: (r) => `${r.miembro.apellido || ''}, ${r.miembro.nombre || ''}`.trim(),
       },
       { header: 'DNI', formatear: (r) => String(r.miembro.dni || '') },
-      { header: 'Unidad / Rama', formatear: (r) => r.unidadNombre },
-      { header: 'Grupo Sanguíneo', formatear: (r) => r.info.grupoSanguineo || '' },
+      { header: 'Unidad / rama', formatear: (r) => r.unidadNombre },
+      { header: 'Grupo sanguíneo', formatear: (r) => r.info.grupoSanguineo || '' },
       {
-        header: 'Obra Social',
+        header: 'Obra social',
         formatear: (r) =>
           [r.info.obraSocial, r.info.afiliadoObraSocial ? `N° ${r.info.afiliadoObraSocial}` : '']
             .filter(Boolean)
             .join(' · '),
       },
       {
-        header: 'Régimen Alimentario',
+        header: 'Régimen alimentario',
         formatear: (r) =>
           [...r.info.dietasLabels, r.info.dietaDetalle].filter(Boolean).join(' — '),
       },
@@ -658,19 +658,19 @@ export const LegajosPage: React.FC = () => {
           [...r.info.medicacionLabels, r.info.medicacionDetalle].filter(Boolean).join(' — '),
       },
       {
-        header: 'Condiciones Crónicas',
+        header: 'Condiciones crónicas',
         formatear: (r) =>
           [...r.info.condicionesLabels, r.info.condicionesDetalle].filter(Boolean).join(' — '),
       },
       {
-        header: 'Restricción Física / CUD',
+        header: 'Restricción física / CUD',
         formatear: (r) =>
           [r.info.tieneCud ? 'Posee CUD' : '', r.info.restriccionFisica]
             .filter(Boolean)
             .join(' — '),
       },
       {
-        header: 'Teléfonos Emergencia',
+        header: 'Teléfonos emergencia',
         formatear: (r) =>
           [r.info.telEmergencia1, r.info.telEmergencia2].filter(Boolean).join(' / '),
       },
@@ -787,8 +787,8 @@ export const LegajosPage: React.FC = () => {
 
   const handleExportarColaboradores = (formato: 'xlsx' | 'csv') => {
     const columnas: ColumnaExportacion<(typeof colaboradoresFiltrados)[number]>[] = [
-      { header: 'Adulto Colaborador', formatear: (r) => r.adulto?.nombre || '' },
-      { header: 'Profesión / Oficio', formatear: (r) => r.adulto?.profesion || '' },
+      { header: 'Adulto colaborador', formatear: (r) => r.adulto?.nombre || '' },
+      { header: 'Profesión / oficio', formatear: (r) => r.adulto?.profesion || '' },
       { header: 'Teléfono', formatear: (r) => r.adulto?.telefono || '' },
       { header: 'Preferencia', formatear: (r) => r.adulto?.preferenciaTrabajo || '' },
       {
@@ -797,7 +797,7 @@ export const LegajosPage: React.FC = () => {
       },
       { header: 'Unidad', formatear: (r) => r.protagonista?.unidad || '' },
       {
-        header: 'Áreas de Colaboración',
+        header: 'Áreas de colaboración',
         formatear: (r) => {
           const a = r.areas || {};
           const lista: string[] = [];
@@ -813,14 +813,14 @@ export const LegajosPage: React.FC = () => {
         },
       },
       {
-        header: 'Materiales Campamento',
+        header: 'Materiales campamento',
         formatear: (r) =>
           [r.materiales?.campamentoPrestamo, r.materiales?.campamentoDonacion]
             .filter(Boolean)
             .join(' / '),
       },
       {
-        header: 'Materiales Construcción',
+        header: 'Materiales construcción',
         formatear: (r) =>
           [r.materiales?.construccionPrestamo, r.materiales?.construccionDonacion]
             .filter(Boolean)
@@ -917,14 +917,14 @@ export const LegajosPage: React.FC = () => {
       },
       {
         id: 'salud',
-        label: 'Salud y Alimentación',
+        label: 'Salud y alimentación',
         icon: <HeartPulse className="w-3.5 h-3.5" />,
         // Personas con dieta o alergia (antes sumaba ambas y contaba doble a quien tenía las dos).
         badge: kpisSalud.conDietaOAlergia,
       },
       {
         id: 'colaboradores',
-        label: 'Adultos Colaboradores',
+        label: 'Adultos colaboradores',
         icon: <HeartHandshake className="w-3.5 h-3.5" />,
       },
     ];
@@ -932,7 +932,7 @@ export const LegajosPage: React.FC = () => {
     if (puedeVerPlantillasTab) {
       items.push({
         id: 'plantillas',
-        label: 'Plantillas y Editor PDF',
+        label: 'Plantillas y editor PDF',
         icon: <PenTool className="w-3.5 h-3.5" />,
       });
     }
@@ -974,7 +974,7 @@ export const LegajosPage: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <FileCheck2 className="w-6 h-6 text-brand shrink-0" />
             <h1 className="text-xl sm:text-2xl font-black text-ink tracking-tight">
-              Legajos, Salud y Colaboración Familiar
+              Legajos, salud y colaboración familiar
             </h1>
           </div>
           <p className="text-sm text-ink-muted">
@@ -1001,7 +1001,7 @@ export const LegajosPage: React.FC = () => {
             onClick={() => navigate('/legajos/completar')}
             leftIcon={<FileText className="w-4 h-4" />}
           >
-            Completar Mi Legajo
+            Completar mi legajo
           </Button>
         </div>
       </div>
@@ -1045,7 +1045,7 @@ export const LegajosPage: React.FC = () => {
               active={filtroEstado === 'LISTO_PARA_FIRMA'}
             />
             <KpiCard
-              label="Sin ficha / Borrador"
+              label="Sin ficha / borrador"
               value={kpisCumplimiento.pendientes}
               hint="Requiere completar"
               tone="warn"
@@ -1062,10 +1062,10 @@ export const LegajosPage: React.FC = () => {
                   {(
                     [
                       { id: 'TODOS', label: 'Todos' },
-                      { id: 'LISTO_PARA_FIRMA', label: 'Listos p/ Validar' },
+                      { id: 'LISTO_PARA_FIRMA', label: 'Listos p/ validar' },
                       { id: 'VALIDADO_FISICO', label: 'Validados' },
                       { id: 'BORRADOR', label: 'Borrador' },
-                      { id: 'SIN_FICHA', label: 'Sin Ficha' },
+                      { id: 'SIN_FICHA', label: 'Sin ficha' },
                     ] as const
                   ).map((f) => (
                     <button
@@ -1161,7 +1161,7 @@ export const LegajosPage: React.FC = () => {
                   }) => {
                     const badge =
                       estadoRaw === 'DESACTUALIZADO_REQUIERE_REIMPRESION'
-                        ? { cls: 's-badge-warn', label: 'Desactualizado (Reimprimir)' }
+                        ? { cls: 's-badge-warn', label: 'Desactualizado (reimprimir)' }
                         : estado === 'VALIDADO_FISICO'
                           ? { cls: 's-badge-ok', label: 'Validado físico' }
                           : estado === 'LISTO_PARA_FIRMA'
@@ -1239,7 +1239,7 @@ export const LegajosPage: React.FC = () => {
                                 }
                                 leftIcon={<CheckCircle2 className="w-4 h-4" />}
                               >
-                                Validar Físico
+                                Validar físico
                               </Button>
                             )}
 
@@ -1305,7 +1305,7 @@ export const LegajosPage: React.FC = () => {
               active={filtroSaludCat === 'ALERGIA'}
             />
             <KpiCard
-              label="Medicación / Crónicas"
+              label="Medicación / crónicas"
               value={kpisSalud.conMedicacionOCond}
               hint="Seguimiento botiquín y enfermería"
               tone="neutral"
@@ -1338,7 +1338,7 @@ export const LegajosPage: React.FC = () => {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-black uppercase tracking-wider text-ink-muted mr-1 flex items-center gap-1.5">
                   <Utensils className="w-3.5 h-3.5 text-brand" />
-                  Cocina / Dieta:
+                  Cocina / dieta:
                 </span>
                 <button
                   aria-pressed={filtroDietaSalud === 'TODAS'}
@@ -1476,7 +1476,7 @@ export const LegajosPage: React.FC = () => {
                     onExportarExcel={() => handleExportarSalud('xlsx')}
                     onExportarCSV={() => handleExportarSalud('csv')}
                     disabled={registrosSalud.length === 0}
-                    texto="Exportar Salud/Cocina"
+                    texto="Exportar salud/cocina"
                   />
                 </div>
               </div>
@@ -1618,7 +1618,7 @@ export const LegajosPage: React.FC = () => {
                         onClick={() => navigate(`/miembros/${miembro.id}?tab=ficha`)}
                         leftIcon={<Edit2 className="w-4 h-4" />}
                       >
-                        Ver Ficha
+                        Ver ficha
                       </Button>
                     </div>
                   </div>
@@ -1654,9 +1654,9 @@ export const LegajosPage: React.FC = () => {
                   <option value="TODAS">Todas las disciplinas</option>
                   <option value="COCINA">Cocina de campamento</option>
                   <option value="CAMPAMENTO">Apoyo en campamento</option>
-                  <option value="TRANSPORTE">Transporte / Vehículos</option>
-                  <option value="MANTENIMIENTO">Mano de obra / Mantenimiento</option>
-                  <option value="ENSENANZA">Talleres / Enseñanza</option>
+                  <option value="TRANSPORTE">Transporte / vehículos</option>
+                  <option value="MANTENIMIENTO">Mano de obra / mantenimiento</option>
+                  <option value="ENSENANZA">Talleres / enseñanza</option>
                   <option value="ADMIN">Tareas administrativas</option>
                   <option value="SERVICIO">Servicio comunitario</option>
                 </Select>
@@ -1816,7 +1816,7 @@ export const LegajosPage: React.FC = () => {
             <div>
               <h2 className="text-lg font-black text-ink flex items-center gap-2">
                 <Layers className="w-5 h-5 text-brand shrink-0" />
-                <span>Documentos y Fichas del Grupo</span>
+                <span>Documentos y fichas del grupo</span>
               </h2>
               <p className="text-[13px] text-ink-muted mt-0.5">
                 Creá autorizaciones, fichas médicas o relevamientos editables con membrete, texto legal automático y vista previa PDF en vivo.
@@ -1832,7 +1832,7 @@ export const LegajosPage: React.FC = () => {
                   onClick={abrirNuevaPlantilla}
                   leftIcon={<PlusCircle className="w-4 h-4" />}
                 >
-                  Nuevo Documento
+                  Nuevo documento
                 </Button>
               </div>
             )}
@@ -1924,7 +1924,7 @@ export const LegajosPage: React.FC = () => {
                             onClick={() => abrirEditarDocumento(p)}
                             leftIcon={<PenTool className="w-3.5 h-3.5" />}
                           >
-                            Editar Documento
+                            Editar documento
                           </Button>
 
                           <div className="flex flex-wrap items-center gap-1.5">
@@ -1992,7 +1992,7 @@ export const LegajosPage: React.FC = () => {
                           <ChevronDown className="w-4 h-4 text-ink-muted" />
                         )}
                         <span>
-                          Pausados / Anteriores ({plantillasPausadas.length})
+                          Pausados / anteriores ({plantillasPausadas.length})
                         </span>
                       </button>
 

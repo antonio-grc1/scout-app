@@ -415,7 +415,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface rounded-2xl border border-rule p-4 sm:p-5 shadow-xs">
         <div>
           <h2 className="text-lg font-extrabold text-ink">
-            Configuración de Ramas, Edades de Pase y Secciones
+            Configuración de ramas, edades de pase y secciones
           </h2>
           <p className="text-sm text-ink-muted mt-0.5">
             Modificá nombres, edades límite para sugerencias de pases o agregá y quitá ramas.
@@ -454,7 +454,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <Layers className="w-[18px] h-[18px] text-brand" />
               <h3 className="text-base font-bold text-ink">
-                Ramas y Edades de Pase
+                Ramas y edades de pase
               </h3>
             </div>
             {puedeGestionar && (
@@ -464,7 +464,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 size="sm"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>Agregar Rama</span>
+                <span>Agregar rama</span>
               </Button>
             )}
           </div>
@@ -568,7 +568,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <GitBranch className="w-[18px] h-[18px] text-brand" />
               <h3 className="text-base font-bold text-ink">
-                Secciones Operativas del Grupo
+                Secciones operativas del grupo
               </h3>
             </div>
             {puedeGestionar && (
@@ -578,7 +578,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 size="sm"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>Agregar Sección</span>
+                <span>Agregar sección</span>
               </Button>
             )}
           </div>
@@ -706,7 +706,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 </div>
                 <div>
                   <h3 className="text-lg font-extrabold text-ink">
-                    {editandoRama ? `Editar Rama: ${editandoRama.nombre}` : 'Nueva Rama Pedagógica'}
+                    {editandoRama ? `Editar Rama: ${editandoRama.nombre}` : 'Nueva rama pedagógica'}
                   </h3>
                   <p className="text-[13px] text-ink-muted">
                     {editandoRama
@@ -735,7 +735,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
             >
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-sm">
                 <Input
-                  label="Nombre de la Rama"
+                  label="Nombre de la rama"
                   type="text"
                   required
                   value={formRama.nombre}
@@ -745,7 +745,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                   <Input
-                    label="Edad Mínima (años)"
+                    label="Edad mínima (años)"
                     type="number"
                     min={0}
                     max={99}
@@ -756,7 +756,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
                   <div>
                     <label className="block text-sm font-bold text-ink-2 mb-1.5">
-                      Edad Máxima *
+                      Edad máxima *
                     </label>
                     <input
                       type="number"
@@ -777,7 +777,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
                 <Input
 
-                  label="Orden de Progresión (1°, 2°, 3°...)"
+                  label="Orden de progresión (1°, 2°, 3°...)"
 
                   type="number"
 
@@ -836,7 +836,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  <span>{editandoRama ? 'Guardar Cambios' : 'Crear Rama'}</span>
+                  <span>{editandoRama ? 'Guardar cambios' : 'Crear rama'}</span>
                 </Button>
               </div>
             </form>
@@ -862,7 +862,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                 </div>
                 <div>
                   <h3 className="text-lg font-extrabold text-ink">
-                    {editandoUnidad ? `Editar Sección: ${editandoUnidad.nombre}` : 'Nueva Sección del Grupo'}
+                    {editandoUnidad ? `Editar Sección: ${editandoUnidad.nombre}` : 'Nueva sección del grupo'}
                   </h3>
                   <p className="text-[13px] text-ink-muted">
                     {editandoUnidad
@@ -891,7 +891,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
             >
               <div className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1 text-sm">
                 <Input
-                  label="Nombre de la Sección"
+                  label="Nombre de la sección"
                   type="text"
                   required
                   value={formUnidad.nombre}
@@ -901,7 +901,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
 
                 <Select
 
-                  label="Tipo de Sección"
+                  label="Tipo de sección"
                   required
 
                   value={formUnidad.tipo}
@@ -919,15 +919,15 @@ export const PanelAdminRamas: React.FC<Props> = ({
                   }
 
                 >
-                  <option value="SECCION_RAMA">Sección de Rama (Protagonistas)</option>
-                  <option value="SIN_RAMA_APOYO">Equipo de Apoyo / Sin Rama</option>
-                  <option value="JEFATURA">Jefatura de Grupo</option>
+                  <option value="SECCION_RAMA">Sección de rama (protagonistas)</option>
+                  <option value="SIN_RAMA_APOYO">Equipo de apoyo / sin rama</option>
+                  <option value="JEFATURA">Jefatura de grupo</option>
 
                 </Select>
 
                 {formUnidad.tipo === 'SECCION_RAMA' && (
                   <Select
-                    label="Rama Pedagógica Asociada"
+                    label="Rama pedagógica asociada"
                     required
                     value={formUnidad.ramaId}
                     onChange={(e) =>
@@ -971,7 +971,7 @@ export const PanelAdminRamas: React.FC<Props> = ({
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  <span>{editandoUnidad ? 'Guardar Cambios' : 'Crear Sección'}</span>
+                  <span>{editandoUnidad ? 'Guardar cambios' : 'Crear sección'}</span>
                 </Button>
               </div>
             </form>

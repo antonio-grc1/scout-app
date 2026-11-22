@@ -154,7 +154,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
               </div>
               <div>
                 <h3 id="modal-traspaso-title" className="text-lg font-bold text-ink leading-snug">
-                  Traspaso entre Cuentas
+                  Traspaso entre cuentas
                 </h3>
                 <p className="text-[13px] text-ink-muted">
                   Extracción, depósito o movimiento interno entre fondos del grupo.
@@ -178,7 +178,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
             {/* Cuenta Origen y Destino */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Select
-                label="Cuenta Origen (Sale dinero)"
+                label="Cuenta origen (sale dinero)"
                 required
                 value={origenId}
                 onChange={(e) => {
@@ -232,7 +232,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Input
-                  label="Monto a Transferir"
+                  label="Monto a transferir"
                   type="number"
                   step="0.01"
                   min="0.01"
@@ -252,7 +252,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
 
               <div>
                 <Input
-                  label="Fecha y Hora de la Operación"
+                  label="Fecha y hora de la operación"
                   type="datetime-local"
                   value={fecha}
                   onChange={(e) => setFecha(e.target.value)}
@@ -284,7 +284,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
 
             {/* Concepto / Motivo */}
             <Textarea
-              label="Concepto / Motivo"
+              label="Concepto / motivo"
               required
               rows={2}
               value={concepto}
@@ -330,7 +330,7 @@ export const ModalTraspasoCuentas: React.FC<ModalTraspasoCuentasProps> = ({
                 loadingText="Transfiriendo..."
                 leftIcon={<ArrowLeftRight className="w-4 h-4" />}
               >
-                Confirmar Traspaso
+                Confirmar traspaso
               </Button>
             </div>
           </form>

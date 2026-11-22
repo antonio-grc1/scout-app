@@ -201,7 +201,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h3 className="text-lg font-extrabold text-ink leading-tight">
-            Gestión de Gastos y Egresos
+            Gestión de gastos y egresos
           </h3>
           <p className="text-sm text-ink-muted">
             Control de compras, facturas y salidas de fondos en tiempo real.
@@ -237,7 +237,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               className="col-span-2 sm:col-span-1 gap-1.5 text-[13px] sm:text-sm min-h-[42px] py-2 justify-center"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
-              <span>Registrar Gasto</span>
+              <span>Registrar gasto</span>
             </Button>
           </div>
         )}
@@ -270,7 +270,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
         <div className="p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
           <span className="text-[13px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
             <Wallet className="w-4 h-4" />
-            Pagado en Efectivo (Cajas)
+            Pagado en efectivo (Cajas)
           </span>
           <div className="mt-2.5">
             {cargando ? (
@@ -286,7 +286,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
         <div className="p-5 rounded-2xl bg-paper-2 border border-rule flex flex-col justify-between">
           <span className="text-[13px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
             <Building2 className="w-4 h-4" />
-            Pagado por Transferencia (Bancos)
+            Pagado por transferencia (Bancos)
           </span>
           <div className="mt-2.5">
             {cargando ? (
@@ -332,7 +332,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               onChange={(e) => setFiltroCuentaId(e.target.value)}
               className="min-h-[42px] px-3 rounded-xl bg-paper border border-rule text-[13px] font-semibold text-ink focus:outline-none w-full sm:w-auto"
             >
-              <option value="TODAS">Todas las Cuentas</option>
+              <option value="TODAS">Todas las cuentas</option>
               {cuentas.map((c) => (
                 <option key={c.id} value={String(c.id)}>
                   {c.nombre}
@@ -345,7 +345,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
               onChange={(e) => setFiltroRubroId(e.target.value)}
               className="min-h-[42px] px-3 rounded-xl bg-paper border border-rule text-[13px] font-semibold text-ink focus:outline-none w-full sm:w-auto"
             >
-              <option value="TODOS">Todos los Rubros</option>
+              <option value="TODOS">Todos los rubros</option>
               {rubros.map((r) => (
                 <option key={r.id} value={String(r.id)}>
                   {r.nombre}
@@ -393,7 +393,7 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
                 <th className="py-3.5 px-4">Fecha</th>
                 <th className="py-3.5 px-4">Descripción</th>
                 <th className="py-3.5 px-4">Rubro</th>
-                <th className="py-3.5 px-4">Cuenta de Pago</th>
+                <th className="py-3.5 px-4">Cuenta de pago</th>
                 <th className="py-3.5 px-4">Comprobante</th>
                 <th className="py-3.5 px-4 text-right">Monto</th>
                 <th className="py-3.5 px-4">Registrado por</th>
@@ -684,9 +684,9 @@ export const PanelGastosTesoreria: React.FC<PanelGastosTesoreriaProps> = ({ onTo
           abierto={modalConfirmarAnular}
           onCerrar={() => !anulandoId && setModalConfirmarAnular(false)}
           onConfirmar={ejecutarAnulacion}
-          titulo="Anular Gasto"
+          titulo="Anular gasto"
           tipo="peligro"
-          textoConfirmar={anulandoId ? 'Anulando...' : 'Sí, Anular Gasto'}
+          textoConfirmar={anulandoId ? 'Anulando...' : 'Sí, anular gasto'}
           textoCancelar="Cancelar"
           cargando={Boolean(anulandoId)}
           mensaje={

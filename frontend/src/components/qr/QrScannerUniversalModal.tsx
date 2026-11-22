@@ -549,7 +549,7 @@ export const QrScannerUniversalModal: React.FC = () => {
         }
         cerrarQr();
       }}
-      titulo="Escáner QR Universal"
+      titulo="Escáner QR universal"
       subtitulo={
         subVistaCobro
           ? 'Definir cobro pendiente en puerta'
@@ -587,7 +587,7 @@ export const QrScannerUniversalModal: React.FC = () => {
             >
               {estaAbonado
                 ? `Confirmar Cobro (${formatearMoneda(subVistaCobro.monto)})`
-                : 'Mantener Pendiente'}
+                : 'Mantener pendiente'}
             </Button>
           </>
         ) : (
@@ -605,7 +605,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                 className="w-4 h-4 rounded accent-[var(--color-brand)] cursor-pointer"
               />
               <Repeat className="w-4 h-4 text-brand shrink-0" />
-              <span>Modo Puerta Continuo</span>
+              <span>Modo puerta continuo</span>
             </label>
 
             <Button type="button" variant="secondary" size="md" onClick={cerrarQr}>
@@ -660,7 +660,7 @@ export const QrScannerUniversalModal: React.FC = () => {
             <div className="flex items-start justify-between gap-2">
               <div>
                 <div className="text-xs font-bold uppercase tracking-wider">
-                  Total Pendiente de Cobro
+                  Total pendiente de cobro
                 </div>
                 <div className="text-2xl sm:text-[1.75rem] font-extrabold s-tabular">
                   {formatearMoneda(subVistaCobro.monto)}
@@ -941,7 +941,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                 disabled={cargando || !codigoManual.trim()}
                 className="w-full"
               >
-                {cargando ? 'Verificando…' : 'Verificar Código'}
+                {cargando ? 'Verificando…' : 'Verificar código'}
               </Button>
             </form>
           )}
@@ -1019,7 +1019,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                       leftIcon={<CheckCircle2 className="w-4 h-4" />}
                       className="flex-1"
                     >
-                      Confirmar Recibido
+                      Confirmar recibido
                     </Button>
                   )}
               </div>
@@ -1086,7 +1086,7 @@ export const QrScannerUniversalModal: React.FC = () => {
                               });
                             }}
                           >
-                            Cobrar en Puerta
+                            Cobrar en puerta
                           </Button>
                         )}
                       </div>

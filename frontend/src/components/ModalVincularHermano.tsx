@@ -132,10 +132,10 @@ export const ModalVincularHermano: React.FC<Props> = ({
           </div>
           <div>
             <h3 className="font-extrabold text-ink text-lg">
-              Vincular al Grupo Familiar
+              Vincular al grupo familiar
             </h3>
             <p className="text-[13px] text-ink-muted">
-              Buscá por DNI, Nombre o Apellido para asociar a {usuarioNombre}
+              Buscá por DNI, nombre o apellido para asociar a {usuarioNombre}
             </p>
           </div>
         </div>
@@ -161,7 +161,7 @@ export const ModalVincularHermano: React.FC<Props> = ({
 
         <div>
           <label className="block text-[13px] font-semibold text-ink-2 mb-1.5">
-            DNI, Nombre o Apellido del Hermano/a
+            DNI, nombre o apellido del hermano/a
           </label>
           <div className="relative">
             <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />

@@ -215,7 +215,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
       {asignacionesActivas.length > 0 && (
         <div className="bg-paper-2 border border-rule p-4 rounded-2xl space-y-2.5">
           <span className="text-[13px] font-bold text-ink-2 block">
-            Roles y Funciones Activas ({asignacionesActivas.length}):
+            Roles y funciones activas ({asignacionesActivas.length}):
           </span>
           <div className="space-y-2">
             {asignacionesActivas.map((asig: any) => {
@@ -237,7 +237,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                       </p>
                       {esPrincipal && (
                         <span className="text-xs font-semibold text-brand">
-                          Rol Principal
+                          Rol principal
                         </span>
                       )}
                     </div>
@@ -276,7 +276,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                         className="min-h-[34px] px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800 transition cursor-pointer shrink-0 disabled:opacity-40"
                       >
                         <Trash2 className="w-3.5 h-3.5 inline mr-1" />
-                        Cerrar Rol
+                        Cerrar rol
                       </button>
                     ))}
                 </div>
@@ -319,7 +319,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
             }`}
           >
             <ArrowRightLeft className="w-4 h-4" />
-            Pase de Rama / Mudar Rol
+            Pase de rama / mudar rol
           </button>
           <button
             aria-pressed={modoAccion === 'AGREGAR'}
@@ -332,7 +332,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
             }`}
           >
             <PlusCircle className="w-4 h-4" />
-            Asignar Rol Adicional
+            Asignar rol adicional
           </button>
         </div>
       )}
@@ -369,7 +369,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                   : 'border-rule text-ink-2'
               }`}
             >
-              Sin Rama / Apoyo
+              Sin rama / apoyo
             </button>
           )}
           {esGlobal && (
@@ -383,7 +383,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
                   : 'border-rule text-ink-2'
               }`}
             >
-              Jefatura / Global
+              Jefatura / global
             </button>
           )}
         </div>
@@ -459,7 +459,7 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
       {/* Selector de Rol Dinámico para la categoría seleccionada */}
       <div className="space-y-1.5">
         <span className="text-[13px] font-bold text-ink-2 block">
-          Función / Rol:
+          Función / rol:
         </span>
         {rolesMostrados.length === 0 ? (
           <p className="text-[13px] text-ink-muted p-3.5 rounded-xl border border-rule bg-paper-2">
@@ -514,8 +514,8 @@ export const PestanaPaseRol: React.FC<PestanaPaseRolProps> = ({
             : modoAccion === 'MUDAR'
               ? esMismoDestino
                 ? 'Ya pertenece a esta sección y rol'
-                : 'Confirmar Pase / Cambio de Rol'
-              : 'Asignar Rol Adicional al Miembro'}
+                : 'Confirmar pase / cambio de rol'
+              : 'Asignar rol adicional al miembro'}
         </span>
       </button>
     </div>

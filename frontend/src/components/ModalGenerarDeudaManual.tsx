@@ -124,7 +124,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
           </div>
           <div>
             <h3 className="font-bold text-ink text-lg">
-              Generar Nueva Deuda Individual
+              Generar nueva deuda individual
             </h3>
             <p className="text-[13px] text-ink-muted">
               Para: <strong>{miembro.nombre} {miembro.apellido}</strong> (DNI {miembro.dni})
@@ -153,7 +153,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
         {/* Motivo y Tipo */}
         <div className="space-y-3.5">
           <Input
-            label="Motivo / Nombre del Concepto"
+            label="Motivo / nombre del concepto"
             type="text"
             required
             value={nombreConcepto}
@@ -171,11 +171,11 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
 
           >
             <option value="CAMPAMENTO">Campamento</option>
-            <option value="CUOTA_MENSUAL">Cuota Mensual</option>
-            <option value="INSCRIPCION">Inscripción / Matrícula</option>
-            <option value="MATERIALES">Materiales / Indumentaria</option>
+            <option value="CUOTA_MENSUAL">Cuota mensual</option>
+            <option value="INSCRIPCION">Inscripción / matrícula</option>
+            <option value="MATERIALES">Materiales / indumentaria</option>
             <option value="EVENTO">Evento</option>
-            <option value="OTRO">Otro / Extraordinario</option>
+            <option value="OTRO">Otro / extraordinario</option>
 
           </Select>
         </div>
@@ -184,7 +184,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <div>
             <label className="block text-[13px] font-bold text-ink-2 mb-1.5">
-              Monto Original ($) *
+              Monto original ($) *
             </label>
             <div className="relative">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] font-bold text-ink-muted pointer-events-none">
@@ -235,7 +235,7 @@ export const ModalGenerarDeudaManual: React.FC<Props> = ({
         {/* Vencimiento y Observaciones */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <Input
-            label="Fecha de Vencimiento (opcional)"
+            label="Fecha de vencimiento (opcional)"
             type="date"
             value={fechaVencimiento}
             onChange={(e) => setFechaVencimiento(e.target.value)}

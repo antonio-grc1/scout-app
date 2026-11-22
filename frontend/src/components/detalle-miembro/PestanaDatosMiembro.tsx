@@ -113,18 +113,18 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
     { key: 'nombre', label: 'Nombre', editable: puedeEditarIdentidad, required: true },
     { key: 'apellido', label: 'Apellido', editable: puedeEditarIdentidad, required: true },
     { key: 'dni', label: 'DNI', editable: puedeEditarIdentidad, required: true },
-    { key: 'fechaNacimiento', label: 'Fecha de Nacimiento', editable: puedeEditarIdentidad, type: 'date', required: true },
-    { key: 'telefonoContacto', label: 'Teléfono del Miembro', editable: puedeEditarContacto, type: 'tel', placeholder: 'Ej: 3511234567' },
+    { key: 'fechaNacimiento', label: 'Fecha de nacimiento', editable: puedeEditarIdentidad, type: 'date', required: true },
+    { key: 'telefonoContacto', label: 'Teléfono del miembro', editable: puedeEditarContacto, type: 'tel', placeholder: 'Ej: 3511234567' },
     { key: 'emailContacto', label: 'Email', editable: puedeEditarContacto, type: 'email', placeholder: 'correo@ejemplo.com' },
-    { key: 'madreNombres', label: 'Nombre y Apellido Madre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido de la madre' },
-    { key: 'madreTelefono', label: 'Teléfono Madre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular madre' },
-    { key: 'padreNombres', label: 'Nombre y Apellido Padre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del padre' },
-    { key: 'padreTelefono', label: 'Teléfono Padre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular padre' },
-    { key: 'tutorNombres', label: 'Nombre y Apellido Tutor/a', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del tutor/a' },
-    { key: 'tutorTelefono', label: 'Teléfono Tutor/a', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular tutor/a' },
-    { key: 'telefonoUrgencias', label: 'Teléfono de Urgencias', editable: puedeEditarContacto, type: 'tel', placeholder: 'Alternativo para emergencias' },
+    { key: 'madreNombres', label: 'Nombre y apellido madre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido de la madre' },
+    { key: 'madreTelefono', label: 'Teléfono madre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular madre' },
+    { key: 'padreNombres', label: 'Nombre y apellido padre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del padre' },
+    { key: 'padreTelefono', label: 'Teléfono padre', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular padre' },
+    { key: 'tutorNombres', label: 'Nombre y apellido tutor/a', editable: puedeEditarContacto, placeholder: 'Nombre y apellido del tutor/a' },
+    { key: 'tutorTelefono', label: 'Teléfono tutor/a', editable: puedeEditarContacto, type: 'tel', placeholder: 'Celular tutor/a' },
+    { key: 'telefonoUrgencias', label: 'Teléfono de urgencias', editable: puedeEditarContacto, type: 'tel', placeholder: 'Alternativo para emergencias' },
     { key: 'domicilio', label: 'Domicilio', editable: puedeEditarContacto, placeholder: 'Calle y número' },
-    { key: 'obraSocial', label: 'Obra Social / Prepaga', editable: puedeEditarContacto, placeholder: 'OSDE, Apross, etc.', full: true },
+    { key: 'obraSocial', label: 'Obra social / prepaga', editable: puedeEditarContacto, placeholder: 'OSDE, Apross, etc.', full: true },
   ];
 
   const claseInput =
@@ -147,7 +147,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
       {/* Categoría en el Grupo (independiente del rol de permisos) */}
       <div className="p-3.5 rounded-2xl bg-paper-2 border border-rule flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div>
-          <span className="text-sm font-bold text-ink block">Categoría en el Grupo</span>
+          <span className="text-sm font-bold text-ink block">Categoría en el grupo</span>
           <span className="text-xs text-ink-muted block">
             Define plantilla de legajo y cobros aplicables al miembro.
           </span>
@@ -157,7 +157,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             {(
               [
                 { id: 'PROTAGONISTA', label: 'Protagonista' },
-                { id: 'EDUCADOR', label: 'Educador / Adulto' },
+                { id: 'EDUCADOR', label: 'Educador / adulto' },
               ] as const
             ).map((op) => {
               const sel = formData.tipoMiembro === op.id;
@@ -178,7 +178,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
           </div>
         ) : (
           <span className="px-3 py-1 rounded-xl bg-surface border border-rule text-xs font-bold text-ink">
-            {formData.tipoMiembro === 'EDUCADOR' ? 'Educador / Adulto' : 'Protagonista / Beneficiario'}
+            {formData.tipoMiembro === 'EDUCADOR' ? 'Educador / adulto' : 'Protagonista / beneficiario'}
           </span>
         )}
       </div>
@@ -234,14 +234,14 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
           <div className="flex items-center gap-2">
             <HeartPulse className="w-4 h-4 text-brand shrink-0" />
             <span className="font-bold text-sm text-ink">
-              Salud y Régimen Alimentario Rápido
+              Salud y régimen alimentario rápido
             </span>
           </div>
 
           <div className="space-y-2">
             <span className="text-xs font-bold text-ink-2 flex items-center gap-1.5">
               <Utensils className="w-3.5 h-3.5 text-brand" />
-              <span>Régimen de comidas / Dieta</span>
+              <span>Régimen de comidas / dieta</span>
             </span>
             {puedeEditarSalud ? (
               <div className="flex flex-wrap gap-1.5">
@@ -407,7 +407,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                 className="w-5 h-5 text-brand rounded border-rule cursor-pointer focus:ring-brand/20"
               />
               <span className="font-bold text-sm text-ink-2">
-                {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
+                {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (inactivo)'}
               </span>
             </label>
           ) : (
@@ -417,7 +417,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
                   formData.activo ? 'bg-emerald-500' : 'bg-ink-muted'
                 }`}
               />
-              {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (Inactivo)'}
+              {formData.activo ? 'Miembro activo en el grupo' : 'Dado de baja (inactivo)'}
             </span>
           )}
 
@@ -426,7 +426,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
             disabled={guardando}
           >
             <Save className="w-4 h-4" />
-            <span>{guardando ? 'Guardando...' : 'Guardar Cambios'}</span>
+            <span>{guardando ? 'Guardando...' : 'Guardar cambios'}</span>
           </Button>
         </div>
       )}

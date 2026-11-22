@@ -38,21 +38,21 @@ export const OrganizacionPage: React.FC = () => {
     if (caps.canViewOrganizacion) {
       items.push({
         id: 'ramas',
-        label: 'Ramas y Unidades',
+        label: 'Ramas y unidades',
         icon: <Layers className="w-3.5 h-3.5" />,
       });
     }
     if (caps.canViewRoles) {
       items.push({
         id: 'roles',
-        label: 'Roles y Permisos',
+        label: 'Roles y permisos',
         icon: <ShieldCheck className="w-3.5 h-3.5" />,
       });
     }
     if (caps.canEditCorreo) {
       items.push({
         id: 'correo',
-        label: 'Correo Institucional',
+        label: 'Correo institucional',
         icon: <Mail className="w-3.5 h-3.5" />,
       });
     }
@@ -184,7 +184,7 @@ export const OrganizacionPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
           <div className="space-y-1.5 min-w-0">
             <h1 className="text-xl sm:text-2xl font-extrabold text-ink tracking-tight">
-              Organización y Gobierno
+              Organización y gobierno
             </h1>
             <p className="text-sm text-ink-muted">
               Administrá ramas pedagógicas, secciones e historial, roles y correo institucional.

@@ -122,7 +122,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canUseQrScanner && onAbrirQr) {
       items.push({
         id: 'qr',
-        label: 'Abrir Escáner QR Universal',
+        label: 'Abrir escáner QR universal',
         hint: 'Legajos físicos y Vales de evento',
         icon: <QrCode className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
@@ -135,7 +135,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canSeeTesoreriaGestion) {
       items.push({
         id: 'tesoreria',
-        label: 'Ir a Tesorería y Cobranzas',
+        label: 'Ir a tesorería y cobranzas',
         hint: 'Familias, cuotas, planes y caja',
         icon: <Wallet className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
@@ -148,7 +148,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canViewEventos) {
       items.push({
         id: 'eventos',
-        label: 'Ir a Eventos del Grupo',
+        label: 'Ir a eventos del grupo',
         hint: 'Catálogo en tarjetas, POS y vales',
         icon: <Ticket className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
@@ -161,7 +161,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canViewMiembros) {
       items.push({
         id: 'miembros',
-        label: 'Ir al Padrón de Miembros',
+        label: 'Ir al padrón de miembros',
         hint: 'Filtros por sección, bajas y ficha',
         icon: <Users className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
@@ -174,7 +174,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canViewLegajosModule) {
       items.push({
         id: 'legajos',
-        label: 'Ir a Legajos y Plantillas',
+        label: 'Ir a legajos y plantillas',
         hint: 'Cumplimiento anual y editor PDF',
         icon: <FileText className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
@@ -187,7 +187,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canViewPases) {
       items.push({
         id: 'pases',
-        label: 'Ir a Pases y Camadas',
+        label: 'Ir a pases y camadas',
         hint: 'Progresión anual y solicitudes',
         icon: <Repeat className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
@@ -200,7 +200,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
     if (caps.canViewOrganizacion) {
       items.push({
         id: 'organizacion',
-        label: 'Ir a Organización y Roles',
+        label: 'Ir a organización y roles',
         hint: 'Ramas, unidades, roles y correo',
         icon: <Shield className="w-4 h-4 text-brand shrink-0" />,
         onSelect: () => {
@@ -212,7 +212,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
     items.push({
       id: 'mi-espacio',
-      label: 'Ir a Mi Espacio Personal',
+      label: 'Ir a mi espacio personal',
       hint: 'Mi legajo, cuotas, vales y perfil',
       icon: <User className="w-4 h-4 text-brand shrink-0" />,
       onSelect: () => {
@@ -223,7 +223,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
     items.push({
       id: 'tema',
-      label: 'Apariencia (Claro / Oscuro)',
+      label: 'Apariencia (claro / oscuro)',
       hint: 'Cambiar tema visual y escala tipográfica',
       icon: <Palette className="w-4 h-4 text-brand shrink-0" />,
       onSelect: () => {
@@ -370,7 +370,7 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
 
           <div className="space-y-1">
             <div className="px-3 pt-1 text-xs uppercase font-bold tracking-wider text-ink-muted">
-              Acciones Rápidas
+              Acciones rápidas
             </div>
             {acciones.length > 0 ? (
               acciones.map((acc, idxA) => (

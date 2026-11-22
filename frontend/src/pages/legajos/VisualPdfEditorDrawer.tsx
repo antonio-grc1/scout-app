@@ -61,24 +61,24 @@ const MEMBRETES_OPCIONES: Array<{ value: MembreteDocumento; label: string }> = [
   { value: 'GRUPO_JUAN_XXIII', label: 'Grupo Scout Juan XXIII + Scouts de Argentina' },
   { value: 'SALUD_NACIONAL', label: 'Ficha Nacional de Salud (Scouts de Argentina)' },
   { value: 'AUTORIZACION_OFICIAL', label: 'Autorización Oficial Scouts de Argentina' },
-  { value: 'SIMPLE', label: 'Encabezado Simple (Solo título institucional)' },
+  { value: 'SIMPLE', label: 'Encabezado simple (solo título institucional)' },
 ];
 
 const FIRMAS_OPCIONES = [
-  { id: 'ADULTO_RESPONSABLE', label: 'Adulto Responsable / Tutor' },
-  { id: 'PROTAGONISTA', label: 'Protagonista / Rover' },
-  { id: 'EDUCADOR', label: 'Educador / Jefatura' },
+  { id: 'ADULTO_RESPONSABLE', label: 'Adulto responsable / tutor' },
+  { id: 'PROTAGONISTA', label: 'Protagonista / rover' },
+  { id: 'EDUCADOR', label: 'Educador / jefatura' },
 ] as const;
 
 const VARIABLES_SISTEMA: Array<{ key: string; label: string }> = [
   { key: 'nombre_completo', label: 'Nombre completo' },
   { key: 'dni', label: 'DNI' },
-  { key: 'fecha_nac', label: 'Fecha Nac.' },
-  { key: 'rama', label: 'Rama / Sección' },
+  { key: 'fecha_nac', label: 'Fecha nac.' },
+  { key: 'rama', label: 'Rama / sección' },
   { key: 'domicilio', label: 'Domicilio' },
-  { key: 'autorizante_nombre', label: 'Adulto Autorizante' },
-  { key: 'autorizante_dni', label: 'DNI Autorizante' },
-  { key: 'autorizante_caracter', label: 'Vínculo (Madre/Padre/Tutor)' },
+  { key: 'autorizante_nombre', label: 'Adulto autorizante' },
+  { key: 'autorizante_dni', label: 'DNI autorizante' },
+  { key: 'autorizante_caracter', label: 'Vínculo (madre/padre/tutor)' },
   { key: 'fecha_actual', label: 'Fecha hoy' },
   { key: 'ciclo_anio', label: 'Ciclo anual' },
 ];
@@ -89,18 +89,18 @@ const TIPOS_CAMPO_OPCIONES = [
   { value: 'date', label: 'Fecha' },
   { value: 'tel', label: 'Teléfono' },
   { value: 'email', label: 'Correo electrónico' },
-  { value: 'boolean', label: 'Sí / No' },
+  { value: 'boolean', label: 'Sí / no' },
   { value: 'select', label: 'Elegir una opción' },
-  { value: 'multiselect', label: 'Elegir varias (Chips)' },
+  { value: 'multiselect', label: 'Elegir varias (chips)' },
 ] as const;
 
 const CATEGORIAS_MEDICAS_OPCIONES = [
   { value: '', label: 'Sin vínculo especial' },
-  { value: 'DIETA', label: 'Cocina: Régimen de comidas' },
-  { value: 'ALERGIA', label: 'Salud: Alergias' },
-  { value: 'MEDICACION', label: 'Botiquín: Medicación' },
-  { value: 'ENFERMEDAD_CRONICA', label: 'Salud: Condición crónica' },
-  { value: 'RESTRICCION_FISICA', label: 'Salud: Restricción física' },
+  { value: 'DIETA', label: 'Cocina: régimen de comidas' },
+  { value: 'ALERGIA', label: 'Salud: alergias' },
+  { value: 'MEDICACION', label: 'Botiquín: medicación' },
+  { value: 'ENFERMEDAD_CRONICA', label: 'Salud: condición crónica' },
+  { value: 'RESTRICCION_FISICA', label: 'Salud: restricción física' },
 ] as const;
 
 export interface VisualPdfEditorDrawerProps {
@@ -231,11 +231,11 @@ function construirPlantillaInicial(tipo: PlantillaInicialTipo, cicloAnio: number
 } {
   if (tipo === 'AUTORIZACION') {
     return {
-      titulo: 'Autorización de Salida / Actividad',
+      titulo: 'Autorización de salida / actividad',
       esquema: {
         destinatario: 'MENORES',
         esPrincipal: false,
-        tituloDocumento: 'Autorización de Salida / Actividad',
+        tituloDocumento: 'Autorización de salida / actividad',
         subtituloDocumento: `Ciclo Scout ${cicloAnio} · Grupo Scout Juan XXIII N° 196`,
         membrete: 'AUTORIZACION_OFICIAL',
         mostrarResumenMiembro: true,
@@ -243,7 +243,7 @@ function construirPlantillaInicial(tipo: PlantillaInicialTipo, cicloAnio: number
         secciones: [
           {
             id: `sec_auth_${Date.now()}`,
-            titulo: 'Autorización y Conformidad',
+            titulo: 'Autorización y conformidad',
             textoLegal:
               'En la ciudad de Córdoba, el {{fecha_actual}}, YO {{autorizante_nombre}} (DNI {{autorizante_dni}}), en mi carácter de {{autorizante_caracter}}, autorizo a {{nombre_completo}} (DNI {{dni}}, Rama {{rama}}) a participar de la actividad programada del Grupo Scout N° 196 "Juan XXIII".',
             ocultarTablaCamposEnPdf: false,
@@ -270,11 +270,11 @@ function construirPlantillaInicial(tipo: PlantillaInicialTipo, cicloAnio: number
 
   if (tipo === 'FICHA') {
     return {
-      titulo: 'Ficha o Relevamiento del Grupo',
+      titulo: 'Ficha o relevamiento del grupo',
       esquema: {
         destinatario: 'TODOS',
         esPrincipal: false,
-        tituloDocumento: 'Ficha o Relevamiento del Grupo',
+        tituloDocumento: 'Ficha o relevamiento del grupo',
         subtituloDocumento: `Ciclo Scout ${cicloAnio} · Grupo Scout Juan XXIII N° 196`,
         membrete: 'GRUPO_JUAN_XXIII',
         mostrarResumenMiembro: true,
@@ -282,7 +282,7 @@ function construirPlantillaInicial(tipo: PlantillaInicialTipo, cicloAnio: number
         secciones: [
           {
             id: `sec_ficha_${Date.now()}`,
-            titulo: 'Datos del Relevamiento',
+            titulo: 'Datos del relevamiento',
             permiteCopiarHermano: false,
             campos: [
               {
@@ -305,11 +305,11 @@ function construirPlantillaInicial(tipo: PlantillaInicialTipo, cicloAnio: number
   }
 
   return {
-    titulo: 'Nuevo Documento del Grupo',
+    titulo: 'Nuevo documento del grupo',
     esquema: {
       destinatario: 'TODOS',
       esPrincipal: false,
-      tituloDocumento: 'Nuevo Documento del Grupo',
+      tituloDocumento: 'Nuevo documento del grupo',
       subtituloDocumento: `Ciclo Scout ${cicloAnio} · Grupo Scout Juan XXIII N° 196`,
       membrete: 'GRUPO_JUAN_XXIII',
       mostrarResumenMiembro: true,
@@ -317,7 +317,7 @@ function construirPlantillaInicial(tipo: PlantillaInicialTipo, cicloAnio: number
       secciones: [
         {
           id: `sec_general_${Date.now()}`,
-          titulo: 'Contenido Principal',
+          titulo: 'Contenido principal',
           permiteCopiarHermano: false,
           campos: [],
         },
@@ -729,7 +729,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
             apellido: 'Scout',
             dni: '42123456',
             fechaNacimiento: '2012-06-15',
-            ramaNombre: 'Unidad Scout',
+            ramaNombre: 'Unidad scout',
             telefonoContacto: '3515551234',
           },
           1,
@@ -1215,7 +1215,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
       onCerrar={cerrarEditor}
       titulo={
         mostrarPickerInicial
-          ? 'Crear Nuevo Documento'
+          ? 'Crear nuevo documento'
           : modoCrear
             ? `Nuevo Documento — ${tituloDoc || 'Sin título'}`
             : `Editar Documento — ${tituloDoc || plantilla?.titulo || ''}`
@@ -1258,7 +1258,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
               onClick={() => void handleGuardarCambios()}
               leftIcon={<Save className="w-4 h-4" />}
             >
-              {plantilla?.id && !modoCrear ? 'Guardar Cambios' : 'Crear Documento'}
+              {plantilla?.id && !modoCrear ? 'Guardar cambios' : 'Crear documento'}
             </Button>
           </>
         )
@@ -1284,7 +1284,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                 <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-black text-ink">Autorización o Declaración</h3>
+                <h3 className="text-base font-black text-ink">Autorización o declaración</h3>
                 <p className="text-xs text-ink-muted leading-relaxed">
                   Trae membrete oficial, texto legal listo para editar con variables (nombre, DNI,
                   autorizante) y espacio de firma.
@@ -1302,7 +1302,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                 <div className="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center">
                   <ClipboardList className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-black text-ink">Ficha o Encuesta</h3>
+                <h3 className="text-base font-black text-ink">Ficha o encuesta</h3>
                 <p className="text-xs text-ink-muted leading-relaxed">
                   Ideal para relevamientos de campamento, comida, talles o encuestas familiares con
                   preguntas personalizadas.
@@ -1320,7 +1320,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                 <div className="w-10 h-10 rounded-xl bg-paper-2 border border-rule text-ink flex items-center justify-center">
                   <FilePlus2 className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-black text-ink">Documento en Blanco</h3>
+                <h3 className="text-base font-black text-ink">Documento en blanco</h3>
                 <p className="text-xs text-ink-muted leading-relaxed">
                   Arrancá de cero eligiendo membrete, redactando tus secciones y agregando las
                   preguntas que necesites.
@@ -1427,9 +1427,9 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                     onChange={(e) => setDestinatarioDoc(e.target.value as DestinatarioDoc)}
                   >
                     <option value="TODOS">Todos los miembros activos</option>
-                    <option value="MENORES">Solo Protagonistas Menores (&lt; 18 años)</option>
-                    <option value="MAYORES">Solo Protagonistas Mayores (Rovers / +18)</option>
-                    <option value="EDUCADORES">Solo Educadores Scouts</option>
+                    <option value="MENORES">Solo protagonistas menores (&lt; 18 años)</option>
+                    <option value="MAYORES">Solo protagonistas mayores (Rovers / +18)</option>
+                    <option value="EDUCADORES">Solo educadores scouts</option>
                   </Select>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1971,7 +1971,7 @@ export const VisualPdfEditorDrawer: React.FC<VisualPdfEditorDrawerProps> = ({
                           </option>
                         ))}
                         {campoActivoObj.type === 'materiales_tabla' && (
-                          <option value="materiales_tabla">Tabla de Materiales (Especial)</option>
+                          <option value="materiales_tabla">Tabla de materiales (especial)</option>
                         )}
                       </Select>
                       <Select

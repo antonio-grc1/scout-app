@@ -291,7 +291,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                   </span>
                 ) : (
                   <span className="px-2.5 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-bold text-xs border border-rose-200 dark:border-rose-800/60">
-                    Sección Inactiva
+                    Sección inactiva
                   </span>
                 )}
               </div>
@@ -480,7 +480,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                         }`}
                       >
                         <Calendar className="w-4 h-4" />
-                        <span className="hidden sm:inline">Por Ciclo</span>
+                        <span className="hidden sm:inline">Por ciclo</span>
                         <span className="sm:hidden">Ciclos</span>
                       </button>
                       <button
@@ -494,7 +494,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                         }`}
                       >
                         <Users className="w-4 h-4" />
-                        <span className="hidden sm:inline">Por Categoría</span>
+                        <span className="hidden sm:inline">Por categoría</span>
                         <span className="sm:hidden">Categorías</span>
                       </button>
                     </div>
@@ -587,7 +587,7 @@ export const ModalHistorialSeccion: React.FC<ModalHistorialSeccionProps> = ({
                               {ciclo}
                             </span>
                             <span className="font-black text-[15px] text-ink">
-                              Ciclo Lectivo {ciclo}
+                              Ciclo lectivo {ciclo}
                             </span>
                             <span className="px-2.5 py-0.5 rounded-full bg-paper-3 text-ink-2 font-bold text-xs border border-rule">
                               {total} {total === 1 ? 'miembro' : 'miembros'}

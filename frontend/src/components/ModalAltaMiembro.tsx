@@ -485,7 +485,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               onChange={(e) => setDni(e.target.value.replace(/\D/g, ''))}
             />
             <Input
-              label="Fecha de Nacimiento"
+              label="Fecha de nacimiento"
               type="date"
               max={new Date().toISOString().slice(0, 10)}
               required
@@ -510,18 +510,18 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
           {/* Categoría Scout en el grupo (independiente del rol de permisos) */}
           <div className="space-y-1.5">
-            <label className="block font-semibold text-ink-2">Categoría en el Grupo *</label>
+            <label className="block font-semibold text-ink-2">Categoría en el grupo *</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {(
                 [
                   {
                     id: 'PROTAGONISTA' as const,
-                    titulo: 'Protagonista / Beneficiario',
+                    titulo: 'Protagonista / beneficiario',
                     desc: 'Utiliza ficha y cobros de beneficiario.',
                   },
                   {
                     id: 'EDUCADOR' as const,
-                    titulo: 'Educador / Adulto',
+                    titulo: 'Educador / adulto',
                     desc: 'Adulto, dirigente o colaborador con ficha y cuotas de educador.',
                   },
                 ] as const
@@ -553,13 +553,13 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Select
-              label="Rama / Sección"
+              label="Rama / sección"
               required
               value={unidadId}
               onChange={(e) => handleCambioUnidad(Number(e.target.value))}
             >
               {unidadesFiltradas.some(esUnidadRama) && (
-                <optgroup label="Ramas del Grupo">
+                <optgroup label="Ramas del grupo">
                   {unidadesFiltradas.filter(esUnidadRama).map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.nombre}
@@ -568,7 +568,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 </optgroup>
               )}
               {unidadesFiltradas.some((u) => !esUnidadRama(u)) && (
-                <optgroup label="Adultos y Equipo">
+                <optgroup label="Adultos y equipo">
                   {unidadesFiltradas.filter((u) => !esUnidadRama(u)).map((u) => (
                     <option key={u.id} value={u.id}>
                       {u.nombre}
@@ -578,7 +578,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               )}
             </Select>
             <Select
-              label="Rol y Permisos"
+              label="Rol y permisos"
               required
               value={rolId}
               onChange={(e) => handleCambioRol(Number(e.target.value))}
@@ -593,7 +593,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Input
-              label="Teléfono del Miembro"
+              label="Teléfono del miembro"
               type="tel"
               inputMode="tel"
               value={telefonoContacto}
@@ -630,7 +630,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
             <Input
 
-              label="Nombre y Apellido Madre"
+              label="Nombre y apellido madre"
 
               type="text"
 
@@ -642,7 +642,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
             />
             <Input
-              label="Teléfono Madre"
+              label="Teléfono madre"
               type="tel"
               inputMode="tel"
               value={madreTelefono}
@@ -652,7 +652,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
             <Input
 
-              label="Nombre y Apellido Padre"
+              label="Nombre y apellido padre"
 
               type="text"
 
@@ -664,7 +664,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
             />
             <Input
-              label="Teléfono Padre"
+              label="Teléfono padre"
               type="tel"
               inputMode="tel"
               value={padreTelefono}
@@ -674,7 +674,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
             <Input
 
-              label="Nombre y Apellido Tutor/a"
+              label="Nombre y apellido tutor/a"
 
               type="text"
 
@@ -686,7 +686,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
 
             />
             <Input
-              label="Teléfono Tutor/a"
+              label="Teléfono tutor/a"
               type="tel"
               inputMode="tel"
               value={tutorTelefono}
@@ -704,7 +704,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               placeholder="Calle y número"
             />
             <Input
-              label="Obra Social / Prepaga"
+              label="Obra social / prepaga"
               type="text"
               value={obraSocial}
               onChange={(e) => setObraSocial(e.target.value)}
@@ -741,7 +741,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-ink text-lg">Nuevo Miembro</h3>
+              <h3 className="font-extrabold text-ink text-lg">Nuevo miembro</h3>
               <span className="text-[13px] text-ink-muted">
                 Alta en padrón con credencial temporal
               </span>

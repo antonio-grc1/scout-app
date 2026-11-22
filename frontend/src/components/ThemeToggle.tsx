@@ -64,7 +64,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
               ? 'bg-surface text-brand font-bold border border-rule'
               : 'text-ink-muted hover:text-ink border border-transparent'
           }`}
-          title="Modo Claro"
+          title="Modo claro"
         >
           <Sun className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Claro</span>
@@ -79,7 +79,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
               ? 'bg-surface text-brand font-bold border border-rule'
               : 'text-ink-muted hover:text-ink border border-transparent'
           }`}
-          title="Modo Oscuro"
+          title="Modo oscuro"
         >
           <Moon className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Oscuro</span>
@@ -135,7 +135,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className="s-btn-sec flex items-center justify-center min-w-[42px] min-h-[42px] px-3 rounded-xl gap-2 text-sm font-semibold cursor-pointer"
-        title="Apariencia (Claro / Oscuro)"
+        title="Apariencia (claro / oscuro)"
         aria-label="Cambiar apariencia"
         aria-expanded={isOpen}
         aria-haspopup="menu"

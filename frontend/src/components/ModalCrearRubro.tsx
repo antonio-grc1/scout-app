@@ -261,7 +261,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                 {esModoEdicion ? <Pencil className="w-4 h-4" /> : <Tag className="w-4 h-4" />}
               </div>
               <h3 className="text-base sm:text-lg font-black text-ink">
-                {esModoEdicion ? 'Editar Categoría / Rubro' : 'Nueva Categoría / Rubro Contable'}
+                {esModoEdicion ? 'Editar categoría / rubro' : 'Nueva categoría / rubro contable'}
               </h3>
             </div>
             {!guardando && !eliminando && (
@@ -285,7 +285,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
             {!esModoEdicion && (
               <div>
                 <label className="text-[13px] font-bold text-ink block mb-1.5">
-                  Tipo de Rubro
+                  Tipo de rubro
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
@@ -324,7 +324,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
 
             <div>
               <label className="text-[13px] font-bold text-ink block mb-1.5">
-                Nombre de la Categoría
+                Nombre de la categoría
               </label>
               <Input
                 type="text"
@@ -344,7 +344,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
             {esGlobalRubros ? (
               <div>
                 <label className="text-xs font-bold text-ink block mb-1">
-                  Alcance / Rama
+                  Alcance / rama
                 </label>
                 <select
                   value={unidadId}
@@ -352,7 +352,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                   disabled={guardando || eliminando}
                   className="w-full h-10 px-3 rounded-xl bg-paper-2 border border-rule text-base sm:text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand/30"
                 >
-                  <option value="">General del Grupo</option>
+                  <option value="">General del grupo</option>
                   {unidadesDisponibles.map((u) => (
                     <option key={u.id} value={String(u.id)}>
                       {u.nombre}
@@ -363,7 +363,7 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
             ) : unidadesDisponibles.length > 1 ? (
               <div>
                 <label className="text-xs font-bold text-ink block mb-1">
-                  Rama del Rubro *
+                  Rama del rubro *
                 </label>
                 <select
                   value={unidadId}
@@ -446,8 +446,8 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
                     {guardando
                       ? 'Guardando...'
                       : esModoEdicion
-                      ? 'Guardar Modificaciones'
-                      : 'Crear Categoría'}
+                      ? 'Guardar modificaciones'
+                      : 'Crear categoría'}
                   </span>
                 </Button>
               </div>
@@ -461,9 +461,9 @@ export const ModalCrearRubro: React.FC<ModalCrearRubroProps> = ({
           abierto={modalConfirmarEliminar}
           onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
           onConfirmar={handleEliminarRubro}
-          titulo="Eliminar Rubro Contable"
+          titulo="Eliminar rubro contable"
           tipo="peligro"
-          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Rubro'}
+          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, eliminar rubro'}
           textoCancelar="Cancelar"
           cargando={eliminando}
           mensaje={

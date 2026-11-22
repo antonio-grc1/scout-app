@@ -288,7 +288,7 @@ describe('C3: permisos por pestaña (Solo lectura vs Edición) en PestanaCuotasT
     });
 
     const htmlLectura = renderToStaticMarkup(React.createElement(VistaTest));
-    assert.doesNotMatch(htmlLectura, /Cobrar \/ Pagar/);
+    assert.doesNotMatch(htmlLectura, /Cobrar \/ pagar/i);
     assert.doesNotMatch(htmlLectura, /\+ Cargo/);
     assert.doesNotMatch(htmlLectura, /Editar monto o descuento/);
     assert.doesNotMatch(htmlLectura, /Anular cuota/);
@@ -313,7 +313,7 @@ describe('C3: permisos por pestaña (Solo lectura vs Edición) en PestanaCuotasT
     });
 
     const htmlEdicion = renderToStaticMarkup(React.createElement(VistaTest));
-    assert.match(htmlEdicion, /Cobrar \/ Pagar/);
+    assert.match(htmlEdicion, /Cobrar \/ pagar/i);
     assert.match(htmlEdicion, /\+ Cargo/);
     assert.match(htmlEdicion, /Editar monto o descuento/);
     assert.match(htmlEdicion, /Anular cuota/);

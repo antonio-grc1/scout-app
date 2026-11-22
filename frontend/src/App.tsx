@@ -221,7 +221,7 @@ const RaizApp: React.FC = () => {
             path="/mi-espacio"
             element={
               <RutaProtegida>
-                <AppShell title="Mi Espacio">
+                <AppShell title="Mi espacio">
                   <MiEspacioPage />
                 </AppShell>
               </RutaProtegida>
@@ -261,7 +261,7 @@ const RaizApp: React.FC = () => {
             path="/legajos/completar"
             element={
               <RutaProtegida allow={(c) => c.canCompleteLegajos || c.canViewLegajosModule}>
-                <AppShell title="Completar Legajo">
+                <AppShell title="Completar legajo">
                   <CompletarLegajoPage />
                 </AppShell>
               </RutaProtegida>

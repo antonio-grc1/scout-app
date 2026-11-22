@@ -408,7 +408,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             )}
             <div>
               <h3 className="text-lg font-black text-ink">
-                {esModoEdicion ? `Editar Evento: ${eventoAEditar?.titulo}` : 'Crear Evento Económico / Entradas QR'}
+                {esModoEdicion ? `Editar Evento: ${eventoAEditar?.titulo}` : 'Crear evento económico / entradas QR'}
               </h3>
               <span className="text-[13px] text-ink-muted">Gestión de recaudación y vales digitales</span>
             </div>
@@ -433,29 +433,29 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
           {/* Tipo y Estado de Evento */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <Select
-              label="Tipo de Evento:"
+              label="Tipo de evento:"
               value={tipo}
               onChange={(e) => setTipo(e.target.value as any)}
             >
-              <option value="RECAUDACION_PEDIDOS">Venta / Pedidos (Pizzas, Empanadas, Rosas, etc.)</option>
-              <option value="FESTIVAL_ENTRADAS">Festival / Cumpleaños / Entradas para evento</option>
+              <option value="RECAUDACION_PEDIDOS">Venta / pedidos (pizzas, empanadas, rosas, etc.)</option>
+              <option value="FESTIVAL_ENTRADAS">Festival / cumpleaños / entradas para evento</option>
             </Select>
 
             <Select
-              label="Estado de Publicación:"
+              label="Estado de publicación:"
               value={estado}
               onChange={(e) => setEstado(e.target.value as any)}
             >
-              <option value="PUBLICADO">Publicado (Habilitado para vender)</option>
-              <option value="BORRADOR">Borrador (Oculto para familias)</option>
-              <option value="FINALIZADO">Finalizado (Cerrado)</option>
+              <option value="PUBLICADO">Publicado (habilitado para vender)</option>
+              <option value="BORRADOR">Borrador (oculto para familias)</option>
+              <option value="FINALIZADO">Finalizado (cerrado)</option>
               <option value="CANCELADO">Cancelado</option>
             </Select>
           </div>
 
           {/* Título y Descripción */}
           <div>
-            <label className="block text-[13px] font-bold text-ink mb-1.5">Título del Evento *</label>
+            <label className="block text-[13px] font-bold text-ink mb-1.5">Título del evento *</label>
             <input
               type="text"
               value={titulo}
@@ -467,7 +467,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
           </div>
 
           <div>
-            <label className="block text-[13px] font-bold text-ink mb-1.5">Descripción / Instrucciones</label>
+            <label className="block text-[13px] font-bold text-ink mb-1.5">Descripción / instrucciones</label>
             <textarea
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
@@ -482,7 +482,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             <div>
               <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
                 <Calendar className="w-4 h-4 text-brand" />
-                Fecha del Evento o Retiro *
+                Fecha del evento o retiro *
               </label>
               <input
                 type="date"
@@ -496,7 +496,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             <div>
               <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
                 <MapPin className="w-4 h-4 text-brand" />
-                Lugar de Entrega / Retiro
+                Lugar de entrega / retiro
               </label>
               <input
                 type="text"
@@ -513,7 +513,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             <div>
               <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
                 <Tag className="w-4 h-4 text-brand" />
-                Rubro Contable Asociado
+                Rubro contable asociado
               </label>
               <select
                 value={rubroId}
@@ -532,7 +532,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
             <div>
               <label className="block text-[13px] font-bold text-ink mb-1.5 flex items-center gap-1.5">
                 <Landmark className="w-4 h-4 text-brand" />
-                Cuenta de Cobro por Defecto
+                Cuenta de cobro por defecto
               </label>
               <select
                 value={cuentaId}
@@ -553,7 +553,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
           <div className="pt-2.5 border-t border-rule space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <h4 className="text-sm font-black text-ink">Productos o Entradas a la Venta</h4>
+                <h4 className="text-sm font-black text-ink">Productos o entradas a la venta</h4>
                 <span className="text-xs text-ink-muted">
                   Por cada unidad vendida se calcula la ganancia automática para el scout
                 </span>
@@ -561,7 +561,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
               {!productosBloqueados && (
                 <Button type="button" variant="secondary" size="sm" onClick={agregarItem} className="gap-1.5">
                   <PlusCircle className="w-4 h-4" />
-                  <span>Agregar Producto</span>
+                  <span>Agregar producto</span>
                 </Button>
               )}
             </div>
@@ -613,7 +613,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                     <div className="grid grid-cols-3 gap-2.5">
                       <div>
                         <label className="block text-xs font-bold text-ink-muted mb-1">
-                          Precio Venta ($) *
+                          Precio venta ($) *
                         </label>
                         <input
                           type="number"
@@ -668,7 +668,7 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                 className="gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
-                <span>Eliminar Evento</span>
+                <span>Eliminar evento</span>
               </Button>
             ) : <div />}
 
@@ -681,8 +681,8 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
                   {guardando
                     ? 'Guardando...'
                     : esModoEdicion
-                    ? 'Guardar Modificaciones'
-                    : 'Crear Evento y Habilitar Ventas'}
+                    ? 'Guardar modificaciones'
+                    : 'Crear evento y habilitar ventas'}
                 </span>
               </Button>
             </div>
@@ -695,9 +695,9 @@ export const ModalCrearEventoEconomico: React.FC<ModalCrearEventoEconomicoProps>
           abierto={modalConfirmarEliminar}
           onCerrar={() => !eliminando && setModalConfirmarEliminar(false)}
           onConfirmar={handleEliminarEvento}
-          titulo="Eliminar Evento Económico"
+          titulo="Eliminar evento económico"
           tipo="peligro"
-          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, Eliminar Evento'}
+          textoConfirmar={eliminando ? 'Eliminando...' : 'Sí, eliminar evento'}
           textoCancelar="Cancelar"
           cargando={eliminando}
           mensaje={
