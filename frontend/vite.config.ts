@@ -66,6 +66,13 @@ export default defineConfig({
   build: {
     cssTarget: ['chrome99', 'safari15.4'],
   },
+  // En desarrollo, Vite descubría dependencias recién al navegar a una página lazy (xlsx, pdf-lib,
+  // html5-qrcode…), re-optimizaba y la pestaña abierta pedía chunks viejos: "504 Outdated Optimize
+  // Dep". Escanear todo src al iniciar y pre-incluir las pesadas evita esa re-optimización.
+  optimizeDeps: {
+    entries: ['index.html', 'src/**/*.{ts,tsx}'],
+    include: ['pdfjs-dist', 'pdf-lib', 'xlsx', 'qrcode', 'html5-qrcode', 'react-hook-form'],
+  },
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
