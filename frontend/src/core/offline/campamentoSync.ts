@@ -1,6 +1,13 @@
 import { api } from '../../api/client';
 import { obtenerCicloAnioActual } from '../../lib/formatters';
-import { guardarEnCache } from '../../lib/offlineCache';
+import { DURACION_SIN_CONEXION_MS, guardarEnCache } from '../../lib/offlineCache';
+
+const SIN_CONEXION = { duracionMs: DURACION_SIN_CONEXION_MS };
+
+/** Hasta cuándo valen los datos de una descarga para usar sin conexión. */
+export function venceSyncCampamento(resumen: { sincronizadoEn: number }): number {
+  return resumen.sincronizadoEn + DURACION_SIN_CONEXION_MS;
+}
 import { useAuthStore } from '../../store/authStore';
 
 export interface CampamentoSyncResumen {
@@ -375,7 +382,7 @@ export async function sincronizarParaCampamento(
   guardarEnCache('/miembros', undefined, {
     items: todosLosMiembros,
     total: todosLosMiembros.length,
-  });
+  }, SIN_CONEXION);
 
   onProgreso?.('Descargando fichas médicas y legajos…', 55);
   const resEntregas = await api
@@ -383,7 +390,7 @@ export async function sincronizarParaCampamento(
     .catch(() => ({ data: [] }));
   const entregas: any[] = Array.isArray(resEntregas.data) ? resEntregas.data : [];
   if (entregas.length > 0) {
-    guardarEnCache('/legajos/entregas', undefined, entregas);
+    guardarEnCache('/legajos/entregas', undefined, entregas, SIN_CONEXION);
   }
 
   onProgreso?.('Descargando plantillas y organización…', 80);
@@ -402,17 +409,17 @@ export async function sincronizarParaCampamento(
     : [];
   const plantillas = plantillasTodas.length > 0 ? plantillasTodas : plantillasCiclo;
   if (plantillas.length > 0) {
-    guardarEnCache('/legajos/plantillas', undefined, plantillas);
-    guardarEnCache(`/legajos/plantillas?cicloAnio=${ciclo}`, undefined, plantillasCiclo.length > 0 ? plantillasCiclo : plantillas);
+    guardarEnCache('/legajos/plantillas', undefined, plantillas, SIN_CONEXION);
+    guardarEnCache(`/legajos/plantillas?cicloAnio=${ciclo}`, undefined, plantillasCiclo.length > 0 ? plantillasCiclo : plantillas, SIN_CONEXION);
   }
   if (Array.isArray(resUnidades.data) && resUnidades.data.length > 0) {
-    guardarEnCache('/organizacion/unidades', undefined, resUnidades.data);
+    guardarEnCache('/organizacion/unidades', undefined, resUnidades.data, SIN_CONEXION);
   }
   if (Array.isArray(resRamas.data) && resRamas.data.length > 0) {
-    guardarEnCache('/organizacion/ramas', undefined, resRamas.data);
+    guardarEnCache('/organizacion/ramas', undefined, resRamas.data, SIN_CONEXION);
   }
   if (Array.isArray(resCandidatos.data)) {
-    guardarEnCache('/pases/candidatos', undefined, resCandidatos.data);
+    guardarEnCache('/pases/candidatos', undefined, resCandidatos.data, SIN_CONEXION);
   }
 
   const resumen: CampamentoSyncResumen = {

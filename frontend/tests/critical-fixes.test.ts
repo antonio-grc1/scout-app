@@ -417,3 +417,49 @@ describe('C6: sanitización WinAnsi y generación PDF con Unicode', () => {
     assert.equal(Buffer.from(pdfBytes.slice(0, 5)).toString('ascii'), '%PDF-');
   });
 });
+
+describe('Vencimiento del caché sin conexión', () => {
+  it('lo guardado para usar sin conexión dura 15 días; la navegación normal, 24 h', async () => {
+    localStorage.clear();
+    const offlineCache = await vite.ssrLoadModule('/src/lib/offlineCache.ts');
+    offlineCache.limpiarCacheApi();
+    const DIA = 24 * 60 * 60 * 1000;
+    const ahoraReal = Date.now;
+    try {
+      offlineCache.guardarEnCache('/miembros', null, { items: [{ id: 1 }] }, {
+        duracionMs: offlineCache.DURACION_SIN_CONEXION_MS,
+      });
+      offlineCache.guardarEnCache('/tesoreria/cuentas', null, [{ id: 1 }]);
+      const base = ahoraReal();
+      Date.now = () => base + 2 * DIA;
+      assert.ok(offlineCache.obtenerDeCache('/miembros'), 'a los 2 días sigue disponible');
+      assert.equal(offlineCache.obtenerDeCache('/tesoreria/cuentas'), null, 'la navegación normal vence a las 24 h');
+      Date.now = () => base + 16 * DIA;
+      assert.equal(offlineCache.obtenerDeCache('/miembros'), null, 'a los 16 días ya venció');
+    } finally {
+      Date.now = ahoraReal;
+    }
+  });
+
+  it('volver a navegar con conexión no acorta lo guardado para 15 días', async () => {
+    localStorage.clear();
+    const offlineCache = await vite.ssrLoadModule('/src/lib/offlineCache.ts');
+    offlineCache.limpiarCacheApi();
+    const DIA = 24 * 60 * 60 * 1000;
+    const ahoraReal = Date.now;
+    try {
+      offlineCache.guardarEnCache('/legajos/plantillas', null, [{ id: 1 }], {
+        duracionMs: offlineCache.DURACION_SIN_CONEXION_MS,
+      });
+      // Una consulta normal posterior pisa los datos con vencimiento de 24 h
+      offlineCache.guardarEnCache('/legajos/plantillas', null, [{ id: 1 }, { id: 2 }]);
+      const base = ahoraReal();
+      Date.now = () => base + 5 * DIA;
+      const item = offlineCache.obtenerDeCache('/legajos/plantillas');
+      assert.ok(item, 'conserva el vencimiento de 15 días');
+      assert.equal(item.data.length, 2, 'con los datos más nuevos');
+    } finally {
+      Date.now = ahoraReal;
+    }
+  });
+});

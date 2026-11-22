@@ -40,6 +40,7 @@ import { limpiarCacheApi } from '../../lib/offlineCache';
 import {
   limpiarSyncCampamento,
   listarBorradoresLegajoLocales,
+  venceSyncCampamento,
   obtenerUltimoSyncCampamento,
   sincronizarBorradoresLegajoLocales,
   sincronizarParaCampamento,
@@ -635,16 +636,26 @@ export const InicioPage: React.FC = () => {
               </span>
             ) : ultimoSync ? (
               <span className="text-ink-muted min-w-0">
-                <span className="block truncate">
-                  <strong className="text-ink">Datos sin conexión listos:</strong>{' '}
-                  {ultimoSync.totalMiembros} miembros y {ultimoSync.totalEntregas} fichas guardadas (
-                  {formatearSyncFecha(ultimoSync.sincronizadoEn)}).
-                </span>
+                {Date.now() > venceSyncCampamento(ultimoSync) ? (
+                  // Vencieron (15 días): ya no se usan sin conexión aunque el resumen siga guardado.
+                  <span className="block font-semibold text-[var(--s-warn-ink)]">
+                    Los datos sin conexión vencieron el{' '}
+                    {new Date(venceSyncCampamento(ultimoSync)).toLocaleDateString('es-AR')}. Volvé a
+                    guardarlos con conexión.
+                  </span>
+                ) : (
+                  <span className="block">
+                    <strong className="text-ink">Datos sin conexión listos:</strong>{' '}
+                    {ultimoSync.totalMiembros} miembros y {ultimoSync.totalEntregas} fichas guardadas (
+                    {formatearSyncFecha(ultimoSync.sincronizadoEn)}), válidos hasta el{' '}
+                    {new Date(venceSyncCampamento(ultimoSync)).toLocaleDateString('es-AR')}.
+                  </span>
+                )}
                 {/* B7-15: incluye datos personales y de salud guardados en este dispositivo. */}
                 <span className="block text-xs mt-0.5">
                   Incluye padrón, fichas de salud y documentos (datos personales y de salud);
-                  Tesorería y Eventos necesitan conexión. Quedan en este dispositivo hasta 24 h y se
-                  borran al cerrar sesión: cerrala si el equipo es compartido.
+                  Tesorería y Eventos necesitan conexión. Quedan en este dispositivo hasta 15 días y
+                  se borran al cerrar sesión: cerrala si el equipo es compartido.
                 </span>
               </span>
             ) : null}

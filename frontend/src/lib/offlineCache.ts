@@ -1,13 +1,17 @@
 interface ItemCache<T = unknown> {
   data: T;
   timestamp: number;
+  /** Vencimiento propio (ms epoch). Sin este campo vale la regla general de CACHE_TTL_MS. */
+  expiraEn?: number;
 }
 
 const PREFIJO_CACHE = 'scout_cache_v1:';
 const IDB_NAME = 'scout_offline_db';
 const IDB_VERSION = 1;
 const IDB_STORE = 'api_cache';
-export const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+export const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas: memoria normal de navegación
+/** Lo descargado con "Guardar datos sin conexión": alcanza para un campamento largo sin señal. */
+export const DURACION_SIN_CONEXION_MS = 15 * 24 * 60 * 60 * 1000;
 
 // Espejo rápido en memoria respaldado por IndexedDB (soporta payloads mayores a 5 MB sin bloquear el hilo)
 const memoriaCache = new Map<string, ItemCache<unknown>>();
@@ -16,6 +20,9 @@ let idbPromise: Promise<IDBDatabase | null> | null = null;
 function estaExpirado(item: Partial<ItemCache<unknown>> | null | undefined, ahora = Date.now()): boolean {
   if (!item || typeof item.timestamp !== 'number' || !Number.isFinite(item.timestamp)) {
     return true;
+  }
+  if (typeof item.expiraEn === 'number' && Number.isFinite(item.expiraEn)) {
+    return ahora > item.expiraEn;
   }
   return ahora - item.timestamp > CACHE_TTL_MS;
 }
@@ -211,8 +218,17 @@ export function generarClaveCache(url?: string, params?: Record<string, unknown>
 /**
  * Guarda un elemento en memoria + IndexedDB (sin copia en localStorage, ver B7-15).
  */
-function guardarItemCrudo<T = unknown>(clave: string, data: T, timestamp: number): void {
-  const item: ItemCache<T> = { data, timestamp };
+function guardarItemCrudo<T = unknown>(
+  clave: string,
+  data: T,
+  timestamp: number,
+  duracionMs: number = CACHE_TTL_MS,
+): void {
+  // Se conserva el vencimiento más lejano: si un dato se guardó para 15 días y después se vuelve a
+  // pedir navegando con conexión (24 h), no se acorta su validez.
+  const previo = memoriaCache.get(clave);
+  const expiraPrevio = previo ? (previo.expiraEn ?? previo.timestamp + CACHE_TTL_MS) : 0;
+  const item: ItemCache<T> = { data, timestamp, expiraEn: Math.max(timestamp + duracionMs, expiraPrevio) };
   memoriaCache.set(clave, item);
   void putItemIndexedDB(clave, item);
 }
@@ -226,7 +242,9 @@ export function guardarEnCache<T = unknown>(
   url?: string,
   params?: Record<string, unknown> | null,
   data?: T,
+  opciones: { duracionMs?: number } = {},
 ): void {
+  const duracionMs = opciones.duracionMs ?? CACHE_TTL_MS;
   // No persistir endpoints de autenticación para evitar duplicar tokens en la caché
   if (!url || data === undefined || data === null || url.includes('/auth/')) return;
   const clave = generarClaveCache(url, params);
@@ -234,7 +252,7 @@ export function guardarEnCache<T = unknown>(
 
   // Guardar la consulta principal (/miembros/:id se resuelve vía fallback desde la lista cacheada
   // sin duplicar hasta 2000 claves individuales)
-  guardarItemCrudo(clave, data, now);
+  guardarItemCrudo(clave, data, now, duracionMs);
 
   // 2. Si guardamos la lista de entregas (/legajos/entregas), pre-indexar por cada usuarioId
   if (url.includes('/legajos/entregas') && Array.isArray(data)) {
@@ -249,7 +267,7 @@ export function guardarEnCache<T = unknown>(
     }
     for (const usuarioId of Object.keys(entregasPorUsuario)) {
       const claveEntregas = `${PREFIJO_CACHE}/legajos/entregas?usuarioId=${usuarioId}`;
-      guardarItemCrudo(claveEntregas, entregasPorUsuario[Number(usuarioId)], now);
+      guardarItemCrudo(claveEntregas, entregasPorUsuario[Number(usuarioId)], now, duracionMs);
     }
   }
 
@@ -258,7 +276,7 @@ export function guardarEnCache<T = unknown>(
     for (const p of data) {
       if (p?.id) {
         const clavePlantilla = `${PREFIJO_CACHE}/legajos/plantillas/${p.id}`;
-        guardarItemCrudo(clavePlantilla, p, now);
+        guardarItemCrudo(clavePlantilla, p, now, duracionMs);
       }
     }
   }
