@@ -65,6 +65,43 @@ import { agruparValesPorQr, tieneRetiro } from '../../lib/valesQr';
 type TabWorkspace = 'pos' | 'pedidos' | 'liquidacion';
 type FiltroPedidos = 'TODOS' | 'PENDIENTES' | 'PENDIENTE_RETIRADO' | 'PAGADOS';
 
+const SIN_VENDEDOR = 'Venta general';
+
+/** Rama del vendedor del pedido: la rama de su sección activa, o el nombre de la unidad si no tiene rama. */
+function ramaDelPedido(p: any): { nombre: string; orden: number } {
+  if (!p.vendedorUsuario) return { nombre: SIN_VENDEDOR, orden: Infinity };
+  const unidades = (p.vendedorUsuario.asignaciones ?? []).map((a: any) => a.unidad).filter(Boolean);
+  const conRama = unidades.find((u: any) => u.rama);
+  if (conRama) return { nombre: conRama.rama.nombre, orden: Number(conRama.rama.ordenProgresion ?? 0) };
+  return { nombre: unidades[0]?.nombre || 'Sin rama', orden: 1000 };
+}
+
+function contarPedidos(pedidos: any[]) {
+  let pendientes = 0;
+  let pendienteRetirado = 0;
+  let pagados = 0;
+  let montoPendiente = 0;
+
+  for (const p of pedidos) {
+    const retirado = Boolean(p.tickets?.some(tieneRetiro));
+    if (p.estado === 'PAGADO') {
+      pagados++;
+    } else {
+      pendientes++;
+      montoPendiente += Number(p.total || 0);
+      if (retirado) pendienteRetirado++;
+    }
+  }
+
+  return {
+    todos: pedidos.length,
+    pendientes,
+    pendienteRetirado,
+    pagados,
+    montoPendiente,
+  };
+}
+
 interface CuentaOption {
   id: number;
   nombre: string;
@@ -143,6 +180,7 @@ export const EventoWorkspacePage: React.FC = () => {
   // Pedidos filter state
   const [busquedaPedidos, setBusquedaPedidos] = useState('');
   const [filtroPedidos, setFiltroPedidos] = useState<FiltroPedidos>('TODOS');
+  const [filtroRama, setFiltroRama] = useState('');
 
   // POS Venta Rápida state
   const [posCompradorNombre, setPosCompradorNombre] = useState('');
@@ -336,35 +374,30 @@ export const EventoWorkspacePage: React.FC = () => {
     return misPedidosPropios;
   }, [caps.canSellEventos, evento?.pedidos, misPedidosPropios]);
 
-  const contadoresPedidos = useMemo(() => {
-    let pendientes = 0;
-    let pendienteRetirado = 0;
-    let pagados = 0;
-    let montoPendiente = 0;
+  const contadoresPedidos = useMemo(() => contarPedidos(pedidosSource), [pedidosSource]);
 
+  // Ramas presentes en los pedidos, en orden de progresión (Venta general al final)
+  const opcionesRama = useMemo(() => {
+    const map = new Map<string, number>();
     for (const p of pedidosSource) {
-      const retirado = Boolean(p.tickets?.some(tieneRetiro));
-      if (p.estado === 'PAGADO') {
-        pagados++;
-      } else {
-        pendientes++;
-        montoPendiente += Number(p.total || 0);
-        if (retirado) pendienteRetirado++;
-      }
+      const r = ramaDelPedido(p);
+      map.set(r.nombre, r.orden);
     }
-
-    return {
-      todos: pedidosSource.length,
-      pendientes,
-      pendienteRetirado,
-      pagados,
-      montoPendiente,
-    };
+    return Array.from(map.entries())
+      .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))
+      .map(([nombre]) => nombre);
   }, [pedidosSource]);
+
+  const pedidosDeRama = useMemo(
+    () => (filtroRama ? pedidosSource.filter((p) => ramaDelPedido(p).nombre === filtroRama) : pedidosSource),
+    [pedidosSource, filtroRama],
+  );
+  // Las cantidades de las pestañas de estado respetan la rama elegida
+  const contadoresTabs = useMemo(() => contarPedidos(pedidosDeRama), [pedidosDeRama]);
 
   const pedidosFiltrados = useMemo(() => {
     const q = normalizarTextoBusqueda(busquedaPedidos);
-    return pedidosSource.filter((p) => {
+    return pedidosDeRama.filter((p) => {
       const retirado = Boolean(p.tickets?.some(tieneRetiro));
       if (filtroPedidos === 'PENDIENTES' && p.estado !== 'PENDIENTE') return false;
       if (filtroPedidos === 'PENDIENTE_RETIRADO' && !(p.estado === 'PENDIENTE' && retirado)) {
@@ -386,7 +419,7 @@ export const EventoWorkspacePage: React.FC = () => {
       );
       return matchComprador || matchContacto || matchVendedor || matchTotal || matchItems;
     });
-  }, [pedidosSource, filtroPedidos, busquedaPedidos]);
+  }, [pedidosDeRama, filtroPedidos, busquedaPedidos]);
 
   // Unidades vendidas y entregadas por producto, según el filtro aplicado (sin pedidos cancelados).
   const totalesPorProducto = useMemo(() => {
@@ -435,9 +468,10 @@ export const EventoWorkspacePage: React.FC = () => {
       formatear: (p) =>
         p.vendedorUsuario
           ? `${p.vendedorUsuario.nombre} ${p.vendedorUsuario.apellido}`
-          : 'Venta general',
+          : SIN_VENDEDOR,
       ancho: 26,
     },
+    { header: 'Rama', formatear: (p) => ramaDelPedido(p).nombre, ancho: 16 },
     {
       header: 'Productos',
       formatear: (p) =>
@@ -486,7 +520,13 @@ export const EventoWorkspacePage: React.FC = () => {
         { etiqueta: 'Evento', valor: evento?.titulo || '' },
         {
           etiqueta: 'Filtro',
-          valor: busquedaPedidos.trim() ? `${filtroTexto} · búsqueda "${busquedaPedidos.trim()}"` : filtroTexto,
+          valor: [
+            filtroTexto,
+            filtroRama && `rama ${filtroRama}`,
+            busquedaPedidos.trim() && `búsqueda "${busquedaPedidos.trim()}"`,
+          ]
+            .filter(Boolean)
+            .join(' · '),
         },
         { etiqueta: 'Generado', valor: formatearFechaHora(new Date().toISOString()) },
       ],
@@ -1437,18 +1477,18 @@ export const EventoWorkspacePage: React.FC = () => {
             <div className="flex items-center gap-2 flex-wrap">
               {(
                 [
-                  { id: 'TODOS', label: `Todos (${contadoresPedidos.todos})` },
-                  { id: 'PENDIENTES', label: `Pendientes (${contadoresPedidos.pendientes})` },
-                  ...(contadoresPedidos.pendienteRetirado > 0
+                  { id: 'TODOS', label: `Todos (${contadoresTabs.todos})` },
+                  { id: 'PENDIENTES', label: `Pendientes (${contadoresTabs.pendientes})` },
+                  ...(contadoresTabs.pendienteRetirado > 0
                     ? [
                         {
                           id: 'PENDIENTE_RETIRADO' as const,
-                          label: `PENDIENTE (RETIRADO) (${contadoresPedidos.pendienteRetirado})`,
+                          label: `PENDIENTE (RETIRADO) (${contadoresTabs.pendienteRetirado})`,
                           danger: true,
                         },
                       ]
                     : []),
-                  { id: 'PAGADOS', label: `Pagados (${contadoresPedidos.pagados})` },
+                  { id: 'PAGADOS', label: `Pagados (${contadoresTabs.pagados})` },
                 ] as Array<{ id: FiltroPedidos; label: string; danger?: boolean }>
               ).map((f) => {
                 const active = filtroPedidos === f.id;
@@ -1474,6 +1514,21 @@ export const EventoWorkspacePage: React.FC = () => {
             </div>
 
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto">
+              {(opcionesRama.length > 1 || filtroRama) && (
+                <select
+                  value={filtroRama}
+                  onChange={(e) => setFiltroRama(e.target.value)}
+                  aria-label="Filtrar pedidos por rama"
+                  className="s-input min-h-[44px] px-3 rounded-xl text-base sm:text-[15px] font-semibold w-full sm:w-auto cursor-pointer"
+                >
+                  <option value="">Todas las ramas</option>
+                  {opcionesRama.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              )}
               <div className="relative w-full sm:w-auto sm:flex-1 lg:w-72 lg:flex-none">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                 <input
@@ -1508,7 +1563,8 @@ export const EventoWorkspacePage: React.FC = () => {
             <div className="p-4 border-b border-rule space-y-2.5">
               <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider">
                 Totales por producto
-                {(filtroPedidos !== 'TODOS' || busquedaPedidos.trim()) && ' (según filtro)'}
+                {(filtroPedidos !== 'TODOS' || filtroRama || busquedaPedidos.trim()) &&
+                  ' (según filtro)'}
               </h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">

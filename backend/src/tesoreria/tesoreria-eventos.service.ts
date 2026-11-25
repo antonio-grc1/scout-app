@@ -371,7 +371,26 @@ export class TesoreriaEventosService {
                 ? { vendedorUsuario: filtroUsuariosPorAlcance(alcance) }
                 : {},
           include: {
-            vendedorUsuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
+            vendedorUsuario: {
+              select: {
+                id: true,
+                nombre: true,
+                apellido: true,
+                dni: true,
+                // Rama del vendedor, para filtrar y exportar las ventas por rama
+                asignaciones: {
+                  where: { activo: true },
+                  select: {
+                    unidad: {
+                      select: {
+                        nombre: true,
+                        rama: { select: { nombre: true, ordenProgresion: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
             registradoPor: { select: { id: true, nombre: true, apellido: true } },
             detalles: { include: { item: true } },
             tickets: {
