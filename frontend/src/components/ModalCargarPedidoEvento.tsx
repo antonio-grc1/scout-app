@@ -106,7 +106,31 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
 
   // Listas
   const [miembros, setMiembros] = useState<Array<{ id: number; nombre: string; apellido: string; dni?: string }>>([]);
-  const [cuentas, setCuentas] = useState<Array<{ id: number; nombre: string }>>([]);
+  const [cuentas, setCuentas] = useState<Array<{ id: number; nombre: string; tipo?: string }>>([]);
+  // El backend rechaza efectivo en banco y transferencia en caja: ofrecer solo cuentas compatibles.
+  const cuentasParaMetodo = useMemo(
+    () =>
+      cuentas.filter((c) =>
+        metodoPago === 'EFECTIVO'
+          ? c.tipo === 'CAJA_EFECTIVO'
+          : metodoPago === 'TRANSFERENCIA'
+            ? c.tipo === 'BANCO' || c.tipo === 'MERCADOPAGO'
+            : true,
+      ),
+    [cuentas, metodoPago],
+  );
+  // Al elegir el método, preseleccionar una cuenta compatible (banco primero para transferencias).
+  useEffect(() => {
+    if (metodoPago === 'PENDIENTE') return;
+    if (cuentasParaMetodo.length === 0) {
+      setCuentaId('');
+      return;
+    }
+    if (!cuentasParaMetodo.some((c) => String(c.id) === cuentaId)) {
+      const preferida = cuentasParaMetodo.find((c) => c.tipo === 'BANCO') ?? cuentasParaMetodo[0];
+      setCuentaId(String(preferida.id));
+    }
+  }, [metodoPago, cuentasParaMetodo, cuentaId]);
 
   const safeItems = Array.isArray(itemsEvento) ? itemsEvento : [];
   const esModoEdicion = Boolean(pedidoAEditar);
@@ -211,7 +235,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
           if (pedidoAEditar?.cuentaId && cList.some((c) => c.id === pedidoAEditar.cuentaId)) {
             return String(pedidoAEditar.cuentaId);
           }
-          return String(cList[0].id);
+          return '';
         });
       }
     } catch {
@@ -803,13 +827,18 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
                     className="w-full min-h-[44px] py-2 px-3.5 rounded-xl bg-surface border border-rule text-base sm:text-[15px] text-ink focus:outline-brand"
                     required
                   >
-                    {Array.isArray(cuentas) &&
-                      cuentas.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nombre}
-                        </option>
-                      ))}
+                    {cuentasParaMetodo.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
                   </select>
+                  {cuentasParaMetodo.length === 0 && (
+                    <p role="note" className="s-badge-warn rounded-xl p-3 mt-2 text-[13px] font-semibold">
+                      No hay {metodoPago === 'EFECTIVO' ? 'caja de efectivo' : 'cuenta bancaria'} activa
+                      para este método de pago.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
