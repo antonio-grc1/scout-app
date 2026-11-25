@@ -51,6 +51,7 @@ import {
 import { ModalCrearEventoEconomico } from '../../components/ModalCrearEventoEconomico';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR, type TicketData } from '../../components/ModalTicketQR';
+import { agruparValesPorQr } from '../../lib/valesQr';
 
 type TabWorkspace = 'pos' | 'pedidos' | 'liquidacion';
 type FiltroPedidos = 'TODOS' | 'PENDIENTES' | 'PENDIENTE_RETIRADO' | 'PAGADOS';
@@ -530,13 +531,9 @@ export const EventoWorkspacePage: React.FC = () => {
   const armarTicketData = (ticket: any, pedido: any): TicketData => ({
     id: ticket.id,
     tokenQr: ticket.tokenQr,
-    cantidad: ticket.cantidad,
     estado: ticket.estado,
     fechaUso: ticket.fechaUso,
-    item: {
-      nombre: ticket.item?.nombre || 'Producto',
-      precioVenta: ticket.item?.precioVenta || 0,
-    },
+    items: ticket.items,
     pedido: {
       id: pedido.id,
       compradorNombre: pedido.compradorNombre,
@@ -552,7 +549,7 @@ export const EventoWorkspacePage: React.FC = () => {
   });
 
   const handleVerTicket = (ticket: any, pedido: any) => {
-    const tickets: any[] = Array.isArray(pedido?.tickets) ? pedido.tickets : [ticket];
+    const tickets = agruparValesPorQr(Array.isArray(pedido?.tickets) ? pedido.tickets : [ticket]);
     const indice = Math.max(0, tickets.findIndex((t) => t.id === ticket.id));
     setModalTicketQR({ abierto: true, pedido: { ...pedido, tickets }, indice });
   };
@@ -1445,7 +1442,7 @@ export const EventoWorkspacePage: React.FC = () => {
                           </td>
                           <td className="py-3.5 px-4 text-center">
                             <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                              {p.tickets?.map((t: any, idx: number) => (
+                              {agruparValesPorQr(p.tickets).map((t: any, idx: number) => (
                                 <button
                                   key={t.id}
                                   type="button"
@@ -1578,7 +1575,7 @@ export const EventoWorkspacePage: React.FC = () => {
 
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap gap-1.5">
-                          {p.tickets?.map((t: any, idx: number) => (
+                          {agruparValesPorQr(p.tickets).map((t: any, idx: number) => (
                             <button
                               key={t.id}
                               type="button"

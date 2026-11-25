@@ -800,7 +800,7 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
           findUnique: vi.fn(),
         },
         ticketEvento: {
-          findUnique: vi.fn(),
+          findFirst: vi.fn(),
         },
         evento: {
           findMany: vi.fn().mockResolvedValue([
@@ -891,7 +891,7 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
 
       // validarTicketQr: rechaza Venta General y ticket cuyo vendedor es de otra unidad (aun si registradoPorUsuarioId === actor.sub)
       const token = generateTokenQR({ eventoId: 1, pedidoId: 13 });
-      mockPrisma.ticketEvento.findUnique.mockResolvedValueOnce({
+      mockPrisma.ticketEvento.findFirst.mockResolvedValueOnce({
         id: 1,
         pedidoId: 13,
         tokenQr: token,
@@ -912,7 +912,7 @@ describe('BLOQUE 1 - Blindaje de Seguridad, Alcances y RBAC', () => {
       );
 
       const token14 = generateTokenQR({ eventoId: 1, pedidoId: 14 });
-      mockPrisma.ticketEvento.findUnique.mockResolvedValueOnce({
+      mockPrisma.ticketEvento.findFirst.mockResolvedValueOnce({
         id: 2,
         pedidoId: 14,
         tokenQr: token14,

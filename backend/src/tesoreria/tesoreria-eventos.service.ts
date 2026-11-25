@@ -656,13 +656,14 @@ export class TesoreriaEventosService {
         },
       });
 
-      // 2. Generar Tickets QR y descontar stock de forma atómica
+      // 2. Generar Tickets QR (un único QR compartido por toda la compra) y descontar stock de forma atómica
+      const tokenQr = generateTokenQR({ eventoId: evento.id, pedidoId: pedido.id });
       for (const it of itemsCalculados) {
         await tx.ticketEvento.create({
           data: {
             pedidoId: pedido.id,
             itemId: it.item.id,
-            tokenQr: generateTokenQR({ eventoId: evento.id, pedidoId: pedido.id }),
+            tokenQr,
             cantidad: it.cantidad,
             estado: EstadoTicketEvento.ACTIVO,
           },
@@ -858,7 +859,8 @@ export class TesoreriaEventosService {
         totalVentaCts = calc.totalVentaCts;
         totalGananciaCts = calc.totalGananciaCts;
 
-        // 4. Crear nuevos detalles y tickets
+        // 4. Crear nuevos detalles y tickets (un único QR compartido por toda la compra)
+        const tokenQr = generateTokenQR({ eventoId: pedido.eventoId, pedidoId: pedido.id });
         for (const it of calc.itemsCalculados) {
           await tx.detallePedidoEvento.create({
             data: {
@@ -876,7 +878,7 @@ export class TesoreriaEventosService {
             data: {
               pedidoId: pedido.id,
               itemId: it.item.id,
-              tokenQr: generateTokenQR({ eventoId: pedido.eventoId, pedidoId: pedido.id }),
+              tokenQr,
               cantidad: it.cantidad,
               estado: EstadoTicketEvento.ACTIVO,
             },
@@ -1164,13 +1166,16 @@ export class TesoreriaEventosService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const ticket = await tx.ticketEvento.findUnique({
+      const ticket = await tx.ticketEvento.findFirst({
         where: { tokenQr: dto.tokenQr },
+        orderBy: { id: 'asc' },
         include: {
           item: true,
           pedido: {
             include: {
               evento: true,
+              // Todos los vales de la compra que comparten este QR
+              tickets: { where: { tokenQr: dto.tokenQr }, include: { item: true }, orderBy: { id: 'asc' } },
               vendedorUsuario: {
                 select: {
                   id: true,
@@ -1232,7 +1237,12 @@ export class TesoreriaEventosService {
         };
       }
 
-      if (ticket.estado === EstadoTicketEvento.UTILIZADO) {
+      const valesDelQr = ticket.pedido.tickets?.length ? ticket.pedido.tickets : [ticket];
+      const detalleDe = (vales: typeof valesDelQr) =>
+        vales.map((t) => `${t.cantidad}x ${t.item.nombre}`).join(' + ');
+      const valesActivos = valesDelQr.filter((t) => t.estado === EstadoTicketEvento.ACTIVO);
+
+      if (valesActivos.length === 0 && valesDelQr.some((t) => t.estado === EstadoTicketEvento.UTILIZADO)) {
         const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
         const montoTotalPedido = Number(ticket.pedido.total);
         const resolvedPedidoId = ticket.pedido?.id ?? ticket.pedidoId;
@@ -1242,12 +1252,13 @@ export class TesoreriaEventosService {
           alertaPagoPendiente: esPagoPendiente,
           montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
           pedidoId: resolvedPedidoId,
-          mensaje: `Este vale ya fue retirado/utilizado el ${ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString('es-AR') : 'previamente'}.`,
+          mensaje: `Este vale ya fue retirado/utilizado el ${ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString('es-AR') : 'previamente'}. (${detalleDe(valesDelQr)})`,
           ticket: {
             id: ticket.id,
             pedidoId: resolvedPedidoId,
             producto: ticket.item.nombre,
             cantidad: ticket.cantidad,
+            detalle: detalleDe(valesDelQr),
             comprador: ticket.pedido.compradorNombre,
             vendedor: ticket.pedido.vendedorUsuario
               ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
@@ -1261,7 +1272,7 @@ export class TesoreriaEventosService {
         };
       }
 
-      if (ticket.estado !== EstadoTicketEvento.ACTIVO) {
+      if (valesActivos.length === 0) {
         return {
           ok: false,
           estado: ticket.estado,
@@ -1271,7 +1282,7 @@ export class TesoreriaEventosService {
 
       // Actualización atómica con control de concurrencia
       const updateRes = await tx.ticketEvento.updateMany({
-        where: { id: ticket.id, estado: EstadoTicketEvento.ACTIVO },
+        where: { tokenQr: dto.tokenQr, estado: EstadoTicketEvento.ACTIVO },
         data: {
           estado: EstadoTicketEvento.UTILIZADO,
           fechaUso: new Date(),
@@ -1279,7 +1290,7 @@ export class TesoreriaEventosService {
         },
       });
 
-      if (updateRes.count !== 1) {
+      if (updateRes.count === 0) {
         return {
           ok: false,
           estado: 'CONCURRENCIA',
@@ -1290,6 +1301,7 @@ export class TesoreriaEventosService {
       const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
       const montoTotalPedido = Number(ticket.pedido.total);
       const resolvedPedidoId = ticket.pedido?.id ?? ticket.pedidoId;
+      const detalleEntrega = detalleDe(valesActivos);
 
       return {
         ok: true,
@@ -1298,13 +1310,14 @@ export class TesoreriaEventosService {
         montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
         pedidoId: resolvedPedidoId,
         mensaje: esPagoPendiente
-          ? `¡Entrega confirmada! (ATENCIÓN: Pago PENDIENTE de $${montoTotalPedido.toLocaleString('es-AR')} en puerta). Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`
-          : `¡Entrega confirmada! Entregar: ${ticket.cantidad}x ${ticket.item.nombre}`,
+          ? `¡Entrega confirmada! (ATENCIÓN: Pago PENDIENTE de $${montoTotalPedido.toLocaleString('es-AR')} en puerta). Entregar: ${detalleEntrega}`
+          : `¡Entrega confirmada! Entregar: ${detalleEntrega}`,
         ticket: {
           id: ticket.id,
           pedidoId: resolvedPedidoId,
           producto: ticket.item.nombre,
           cantidad: ticket.cantidad,
+          detalle: detalleEntrega,
           comprador: ticket.pedido.compradorNombre,
           vendedor: ticket.pedido.vendedorUsuario
             ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`

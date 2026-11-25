@@ -49,6 +49,7 @@ import { useToastStore } from '../../store/toastStore';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR } from '../../components/ModalTicketQR';
+import { agruparValesPorQr } from '../../lib/valesQr';
 import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
 import { Drawer, KpiCard, SegmentedTabs, type SegmentedTabItem, Input } from '../../components/ui';
 import { obtenerConfigRama } from '../../lib/ramaColors';
@@ -1609,7 +1610,7 @@ export const MiEspacioPage: React.FC = () => {
 
                         <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            {p.tickets?.map((t: any, idx: number) => (
+                            {agruparValesPorQr(p.tickets).map((t: any, idx: number) => (
                               <button
                                 key={t.id}
                                 type="button"
@@ -1620,10 +1621,9 @@ export const MiEspacioPage: React.FC = () => {
                                     ticket: {
                                       id: t.id,
                                       tokenQr: t.tokenQr,
-                                      cantidad: t.cantidad,
                                       estado: t.estado,
                                       fechaUso: t.fechaUso,
-                                      item: t.item,
+                                      items: t.items,
                                       pedido: {
                                         id: p.id,
                                         compradorNombre: p.compradorNombre,

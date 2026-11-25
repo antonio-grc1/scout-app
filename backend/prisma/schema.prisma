@@ -614,7 +614,8 @@ model TicketEvento {
   id                 Int                @id @default(autoincrement())
   pedidoId           Int                @map("pedido_id")
   itemId             Int                @map("item_id")
-  tokenQr            String             @unique @map("token_qr") @db.VarChar(120)
+  /// Compartido por todos los vales de un mismo pedido: un único QR por compra.
+  tokenQr            String             @map("token_qr") @db.VarChar(120)
   cantidad           Int                @default(1)
   estado             EstadoTicketEvento @default(ACTIVO)
   fechaUso           DateTime?          @map("fecha_uso")
@@ -627,6 +628,7 @@ model TicketEvento {
 
   @@index([pedidoId, estado])
   @@index([itemId])
+  @@index([tokenQr])
   @@map("tickets_evento")
 }
 

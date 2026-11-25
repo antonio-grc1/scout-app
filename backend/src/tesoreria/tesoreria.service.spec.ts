@@ -1900,7 +1900,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
 
       const tx = {
         ticketEvento: {
-          findUnique: vi.fn().mockResolvedValue({
+          findFirst: vi.fn().mockResolvedValue({
             id: 15,
             tokenQr: validToken,
             cantidad: 2,
@@ -1932,13 +1932,13 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       expect(res.ticket?.pedidoId).toBe(99);
       expect(tx.ticketEvento.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { id: 15, estado: 'ACTIVO' },
+          where: { tokenQr: validToken, estado: 'ACTIVO' },
           data: expect.objectContaining({ estado: 'UTILIZADO' }),
         }),
       );
 
       // Si ya fue utilizado previamente
-      tx.ticketEvento.findUnique = vi.fn().mockResolvedValue({
+      tx.ticketEvento.findFirst = vi.fn().mockResolvedValue({
         id: 15,
         tokenQr: validToken,
         cantidad: 2,
@@ -1958,7 +1958,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
 
       // Token v2 vinculado a otro eventoId debe ser rechazado
       const tokenOtroEvento = generateTokenQR({ eventoId: 777, pedidoId: 99 });
-      tx.ticketEvento.findUnique = vi.fn().mockResolvedValue({
+      tx.ticketEvento.findFirst = vi.fn().mockResolvedValue({
         id: 15,
         pedidoId: 99,
         tokenQr: tokenOtroEvento,
@@ -1977,6 +1977,46 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       await expect(
         service.validarTicketQr(actor, alcanceGlobal, { tokenQr: tokenOtroEvento }),
       ).rejects.toThrow(/evento o pedido/i);
+    });
+
+    it('validarTicketQr: un único QR por compra entrega todos los productos del pedido', async () => {
+      const { generateTokenQR } = await import('../common/utils/qr-token.util.js');
+      const token = generateTokenQR({ eventoId: 3, pedidoId: 50 });
+      const vales = [
+        { id: 30, tokenQr: token, cantidad: 2, estado: 'ACTIVO', item: { nombre: 'Docena' } },
+        { id: 31, tokenQr: token, cantidad: 1, estado: 'ACTIVO', item: { nombre: 'Media docena' } },
+      ];
+      const tx = {
+        $queryRaw: vi.fn().mockResolvedValue([]),
+        ticketEvento: {
+          findFirst: vi.fn().mockResolvedValue({
+            ...vales[0],
+            pedidoId: 50,
+            pedido: {
+              id: 50,
+              eventoId: 3,
+              total: 14000,
+              estado: 'PAGADO',
+              compradorNombre: 'Ana',
+              evento: { id: 3, titulo: 'Medialunas', estado: 'PUBLICADO' },
+              vendedorUsuario: null,
+              tickets: vales,
+            },
+          }),
+          updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+        },
+      };
+      const service = new TesoreriaService({
+        $transaction: vi.fn().mockImplementation((cb) => cb(tx)),
+      } as any);
+
+      const res = await service.validarTicketQr(actor, alcanceGlobal, { tokenQr: token });
+      expect(res.ok).toBe(true);
+      expect(res.ticket?.detalle).toBe('2x Docena + 1x Media docena');
+      expect(res.mensaje).toContain('2x Docena + 1x Media docena');
+      expect(tx.ticketEvento.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { tokenQr: token, estado: 'ACTIVO' } }),
+      );
     });
 
     it('acreditarGananciasEvento: incrementa saldoAFavor del scout vendedor para pedidos retirados', async () => {
@@ -2422,7 +2462,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       const txFinalizado = {
         $queryRaw: vi.fn().mockResolvedValue([]),
         ticketEvento: {
-          findUnique: vi.fn().mockResolvedValue({
+          findFirst: vi.fn().mockResolvedValue({
             id: 20,
             pedidoId: 10,
             tokenQr: token,

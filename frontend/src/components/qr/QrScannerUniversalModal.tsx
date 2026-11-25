@@ -49,6 +49,8 @@ interface ValidacionEventoResultado {
     pedidoId?: number;
     producto: string;
     cantidad: number;
+    /** Todo lo que se entrega con el QR, p. ej. "2x Docena + 1x Media docena" */
+    detalle?: string;
     comprador: string;
     vendedor?: string | null;
     evento: string;
@@ -294,8 +296,8 @@ export const QrScannerUniversalModal: React.FC = () => {
               pedidoId: resolvedPedidoId,
               monto: data.montoPendiente || data.ticket?.pedidoTotal || 0,
               comprador: data.ticket?.comprador || 'Comprador',
-              producto: data.ticket?.producto,
-              cantidad: data.ticket?.cantidad,
+              producto: data.ticket?.detalle ?? data.ticket?.producto,
+              cantidad: data.ticket?.detalle ? undefined : data.ticket?.cantidad,
               evento: data.ticket?.evento,
               vendedor: data.ticket?.vendedor,
             });
@@ -1079,8 +1081,10 @@ export const QrScannerUniversalModal: React.FC = () => {
                                   resultadoEvento.ticket?.pedidoTotal ||
                                   0,
                                 comprador: resultadoEvento.ticket?.comprador || 'Comprador',
-                                producto: resultadoEvento.ticket?.producto,
-                                cantidad: resultadoEvento.ticket?.cantidad,
+                                producto: resultadoEvento.ticket?.detalle ?? resultadoEvento.ticket?.producto,
+                                cantidad: resultadoEvento.ticket?.detalle
+                                  ? undefined
+                                  : resultadoEvento.ticket?.cantidad,
                                 evento: resultadoEvento.ticket?.evento,
                                 vendedor: resultadoEvento.ticket?.vendedor,
                               });
@@ -1097,7 +1101,8 @@ export const QrScannerUniversalModal: React.FC = () => {
                       <div className="flex items-center gap-1.5 font-extrabold">
                         <ShoppingBag className="w-4 h-4 text-brand shrink-0" />
                         <span>
-                          {resultadoEvento.ticket.cantidad}x {resultadoEvento.ticket.producto}
+                          {resultadoEvento.ticket.detalle ??
+                            `${resultadoEvento.ticket.cantidad}x ${resultadoEvento.ticket.producto}`}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-ink-2">

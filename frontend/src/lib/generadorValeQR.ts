@@ -72,7 +72,16 @@ export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> 
   // celular; el QR se genera acorde para no estirarse.
   const ESCALA = 2;
   const ANCHO = 600;
-  const ALTO = 820;
+  // Un renglón por producto (la compra entera comparte el QR); la tarjeta crece en alto para listarlos.
+  const MAX_RENGLONES = 4;
+  const lineasProductos = ticket.items.map((i) => `${i.cantidad}x ${i.nombre}`);
+  if (lineasProductos.length > MAX_RENGLONES) {
+    const resto = lineasProductos.length - (MAX_RENGLONES - 1);
+    lineasProductos.splice(MAX_RENGLONES - 1, resto, `y ${resto} productos más`);
+  }
+  const ALTO_RENGLON = 28;
+  const dy = (lineasProductos.length - 1) * ALTO_RENGLON;
+  const ALTO = 820 + dy;
   const qrDataUrl = await QRCode.toDataURL(ticket.tokenQr, {
     width: 256 * ESCALA,
     margin: 1,
@@ -122,22 +131,24 @@ export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> 
   ctx.fillStyle = '#f8fafc';
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 1.5;
-  roundRect(ctx, 24, 140, 552, 130, 16);
+  roundRect(ctx, 24, 140, 552, 130 + dy, 16);
   ctx.fill();
   ctx.stroke();
 
-  // Producto y Cantidad (Grande y destacado)
-  ctx.font = '900 23px sans-serif';
+  // Productos y cantidades (grande y destacado)
+  ctx.font = lineasProductos.length > 1 ? '900 20px sans-serif' : '900 23px sans-serif';
   ctx.fillStyle = '#0f172a';
-  wrapText(ctx, `${ticket.cantidad}x ${ticket.item.nombre}`, 44, 175, 512, 26, 1);
+  lineasProductos.forEach((linea, i) => {
+    wrapText(ctx, linea, 44, 175 + i * ALTO_RENGLON, 512, 26, 1);
+  });
 
   // Titular / Comprador
   ctx.font = 'bold 14px sans-serif';
   ctx.fillStyle = '#64748b';
-  ctx.fillText('Titular:', 44, 212);
+  ctx.fillText('Titular:', 44, 212 + dy);
   ctx.font = 'bold 15px sans-serif';
   ctx.fillStyle = '#0f172a';
-  ctx.fillText(ticket.pedido.compradorNombre, 102, 212);
+  ctx.fillText(ticket.pedido.compradorNombre, 102, 212 + dy);
 
   // Vendedor Scout y Pedido
   ctx.font = '13px sans-serif';
@@ -145,66 +156,66 @@ export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> 
   const vendedorTxt = ticket.pedido.vendedorUsuario
     ? `Vendido por: ${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
     : 'Venta General del Grupo';
-  ctx.fillText(vendedorTxt, 44, 242);
+  ctx.fillText(vendedorTxt, 44, 242 + dy);
 
   ctx.font = 'bold 13px monospace';
   ctx.fillStyle = '#059669';
   ctx.textAlign = 'right';
-  ctx.fillText(`Pedido #${ticket.pedido.id} • Vale #${ticket.id}`, 556, 242);
+  ctx.fillText(`Pedido #${ticket.pedido.id} • Vale #${ticket.id}`, 556, 242 + dy);
   ctx.textAlign = 'left';
 
   // 5. Marco del Código QR
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#cbd5e1';
   ctx.lineWidth = 1.5;
-  roundRect(ctx, 160, 285, 280, 280, 20);
+  roundRect(ctx, 160, 285 + dy, 280, 280, 20);
   ctx.fill();
   ctx.stroke();
 
   // Dibujar QR centrado
-  ctx.drawImage(qrImg, 172, 297, 256, 256);
+  ctx.drawImage(qrImg, 172, 297 + dy, 256, 256);
 
   // Código alfanumérico debajo del QR
   ctx.font = 'bold 13px monospace';
   ctx.fillStyle = '#64748b';
   ctx.textAlign = 'center';
-  ctx.fillText(`CÓDIGO: ${ticket.tokenQr.slice(0, 8)}...`, 300, 590);
+  ctx.fillText(`CÓDIGO: ${ticket.tokenQr.slice(0, 8)}...`, 300, 590 + dy);
   ctx.textAlign = 'left';
 
   // 6. Bloque de Retiro / Fecha / Instrucciones
   ctx.fillStyle = '#f1f5f9';
   ctx.strokeStyle = '#e2e8f0';
-  roundRect(ctx, 24, 615, 552, 110, 16);
+  roundRect(ctx, 24, 615 + dy, 552, 110, 16);
   ctx.fill();
   ctx.stroke();
 
   ctx.font = 'bold 15px sans-serif';
   ctx.fillStyle = '#0f172a';
   const lugar = ticket.pedido.evento.lugarEntrega || 'Sede del Grupo Scout';
-  ctx.fillText(`Retiro: ${lugar}`, 44, 648);
+  ctx.fillText(`Retiro: ${lugar}`, 44, 648 + dy);
 
   const fechaStr = formatearFecha(ticket.pedido.evento.fechaEvento);
   if (fechaStr) {
     ctx.font = '14px sans-serif';
     ctx.fillStyle = '#334155';
-    ctx.fillText(`Fecha: ${fechaStr}`, 44, 674);
+    ctx.fillText(`Fecha: ${fechaStr}`, 44, 674 + dy);
   }
 
   ctx.font = 'italic 12px sans-serif';
   ctx.fillStyle = '#64748b';
-  ctx.fillText('Presentá este vale digital con su QR al momento del retiro para canjear tu pedido.', 44, 704);
+  ctx.fillText('Presentá este vale digital con su QR al momento del retiro para canjear tu pedido.', 44, 704 + dy);
 
   // Pie de página
   ctx.font = '11px sans-serif';
   ctx.fillStyle = '#94a3b8';
   ctx.textAlign = 'center';
-  ctx.fillText('Grupo Scout Juan XXIII • Sistema de Gestión de Cobranzas y Eventos', 300, 770);
+  ctx.fillText('Grupo Scout Juan XXIII • Sistema de Gestión de Cobranzas y Eventos', 300, 770 + dy);
   ctx.textAlign = 'left';
 
   // 7. Si el vale ya fue utilizado, estampar franja roja de canjeado
   if (ticket.estado === 'UTILIZADO') {
     ctx.save();
-    ctx.translate(300, 425);
+    ctx.translate(300, 425 + dy);
     ctx.rotate(-0.35);
 
     ctx.fillStyle = 'rgba(220, 38, 38, 0.9)'; // rose-600
