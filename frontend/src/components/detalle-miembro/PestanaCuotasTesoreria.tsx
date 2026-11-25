@@ -11,7 +11,9 @@ import {
   X,
   ChevronUp,
   ChevronDown,
+  FileDown,
 } from 'lucide-react';
+import { descargarReciboPago } from '../../lib/reciboPago';
 import {
   formatearFecha,
   formatearMoneda,
@@ -634,8 +636,18 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                       </span>
                     </div>
 
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => void descargarReciboPago(p.id)}
+                        title="Descargar el recibo en PDF"
+                        className="min-h-[34px] px-2.5 py-1 rounded-lg text-ink-2 hover:bg-paper-3 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                      >
+                        <FileDown className="w-3.5 h-3.5" />
+                        <span>Recibo</span>
+                      </button>
                     {habilitarAjustes && (
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <>
                         <button
                           type="button"
                           onClick={() =>
@@ -662,8 +674,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                           <RotateCcw className="w-3.5 h-3.5" />
                           <span>Revertir</span>
                         </button>
-                      </div>
+                      </>
                     )}
+                    </div>
                   </div>
 
                   {editandoEstePago && pagoEditando && (

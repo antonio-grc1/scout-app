@@ -21,6 +21,7 @@ import {
   PlusCircle,
   QrCode,
   Receipt,
+  FileDown,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -50,6 +51,7 @@ import { DynamicFormRenderer, type EsquemaCampos } from '../../components/Dynami
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR } from '../../components/ModalTicketQR';
 import { agruparValesPorQr, tieneRetiro } from '../../lib/valesQr';
+import { descargarReciboPago } from '../../lib/reciboPago';
 import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
 import { Drawer, KpiCard, SegmentedTabs, type SegmentedTabItem, Input } from '../../components/ui';
 import { obtenerConfigRama } from '../../lib/ramaColors';
@@ -1312,9 +1314,20 @@ export const MiEspacioPage: React.FC = () => {
                           {METODO_PAGO_LABELS[pago.metodoPago] || pago.metodoPago || 'Sin especificar'}
                         </span>
                       </div>
-                      <span className="font-extrabold text-ink s-tabular shrink-0">
-                        {formatearMoneda(pago.montoTotal)}
-                      </span>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="font-extrabold text-ink s-tabular">
+                          {formatearMoneda(pago.montoTotal)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void descargarReciboPago(pago.id)}
+                          aria-label={`Descargar el recibo del pago del ${formatearFecha(pago.fechaPago)}`}
+                          className="min-h-[32px] px-2 rounded-lg text-brand hover:bg-paper-2 font-bold text-xs inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <FileDown className="w-3.5 h-3.5" />
+                          Recibo PDF
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

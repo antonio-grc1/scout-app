@@ -286,6 +286,13 @@ export class TesoreriaController {
     return this.tesoreria.revertirPago(a, id);
   }
 
+  @RequireAnyPermission(CUOTAS_VER, CUOTAS_COBRAR, TESORERIA_GESTIONAR, TESORERIA_CAJA)
+  @PermitirAutogestionPropia()
+  @Get('pagos/:id/recibo')
+  obtenerReciboPago(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
+    return this.tesoreria.obtenerReciboPago(a, id);
+  }
+
   @RequireAnyPermission(CUOTAS_VER, TESORERIA_CAJA)
   @Get('pagos')
   listarPagos(

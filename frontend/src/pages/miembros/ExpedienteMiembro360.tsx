@@ -18,6 +18,7 @@ import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
 import { useOfflineStore } from '../../store/offlineStore';
 import { useToastStore } from '../../store/toastStore';
+import { avisarCobroConRecibo } from '../../lib/reciboPago';
 import { computeCapabilities } from '../../core/capabilities';
 import { ModalCobrarDeuda } from '../../components/ModalCobrarDeuda';
 import { ModalGenerarDeudaManual } from '../../components/ModalGenerarDeudaManual';
@@ -1774,9 +1775,10 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
               cargosPendientes={estadoCuenta?.cargos || CARGOS_VACIOS}
               cargoInicialId={cargoIdACobrar}
               onCerrar={() => setSubVista(null)}
-              onPagoExitoso={(mensaje) => {
+              onPagoExitoso={(mensaje, pagoId) => {
                 setSubVista(null);
                 setAlerta({ tipo: 'exito', texto: mensaje });
+                if (pagoId) avisarCobroConRecibo('Recibo listo.', pagoId);
                 void cargarDatos(miembro.id);
                 onActualizado?.();
               }}

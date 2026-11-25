@@ -26,6 +26,7 @@ import { api } from '../../api/client';
 import { useActiveUnitStore, useCapabilities } from '../../core/capabilities';
 import { useAuthStore } from '../../store/authStore';
 import { mostrarToastConDeshacer, useToastStore } from '../../store/toastStore';
+import { avisarCobroConRecibo } from '../../lib/reciboPago';
 import {
   filtrarUnidadesPorAlcance,
   puedeEditarFamiliaPorAlcance,
@@ -1412,8 +1413,8 @@ export const TesoreriaPage: React.FC = () => {
                 setCobroDrawerAbierto(false);
                 setEstadoCuentaCobro(null);
               }}
-              onPagoExitoso={(mensaje) => {
-                mostrarToast(mensaje);
+              onPagoExitoso={(mensaje, pagoId) => {
+                avisarCobroConRecibo(mensaje, pagoId);
                 void cargarDatos();
               }}
             />

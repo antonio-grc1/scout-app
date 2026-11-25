@@ -201,6 +201,10 @@ export class TesoreriaService {
     return this.cuotas.ajustarSaldoAFavor(actor, alcance, dto);
   }
 
+  obtenerReciboPago(alcance: AlcanceAcceso, id: number) {
+    return this.cuotas.obtenerReciboPago(alcance, id);
+  }
+
   listarPagos(alcance: AlcanceAcceso, usuarioId?: number) {
     return this.cuotas.listarPagos(alcance, usuarioId);
   }

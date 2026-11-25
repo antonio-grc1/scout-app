@@ -3163,7 +3163,65 @@ export class TesoreriaCuotasService {
         OR: [{ usuarioId }, { imputaciones: { some: { cargo: { usuarioId } } } }],
       });
     }
+    conditions.push(...this.condicionesAlcancePagos(alcance));
 
+    const where: Prisma.PagoWhereInput = conditions.length > 0 ? { AND: conditions } : {};
+
+    return this.prisma.pago.findMany({
+      where,
+      orderBy: { fechaPago: 'desc' },
+      take: 500,
+      include: {
+        registradoPor: { select: { id: true, nombre: true, apellido: true } },
+        usuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
+        imputaciones: {
+          include: {
+            cargo: {
+              select: {
+                id: true,
+                concepto: { select: { nombre: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  /** Datos para emitir el recibo de un pago (lo ve quien cobra y también la familia del miembro). */
+  async obtenerReciboPago(alcance: AlcanceAcceso, id: number) {
+    const pago = await this.prisma.pago.findFirst({
+      where: { AND: [{ id }, ...this.condicionesAlcancePagos(alcance)] },
+      select: {
+        id: true,
+        fechaPago: true,
+        montoTotal: true,
+        metodoPago: true,
+        referenciaComprobante: true,
+        observaciones: true,
+        usuario: { select: { nombre: true, apellido: true, dni: true } },
+        registradoPor: { select: { nombre: true, apellido: true } },
+        imputaciones: {
+          orderBy: { id: 'asc' },
+          select: {
+            montoImputado: true,
+            cargo: {
+              select: {
+                concepto: { select: { nombre: true } },
+                usuario: { select: { nombre: true, apellido: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!pago) throw new NotFoundException('Pago no encontrado');
+    return pago;
+  }
+
+  /** Filtro de pagos visibles según el alcance (unidad: de sus miembros; propio: los suyos). */
+  private condicionesAlcancePagos(alcance: AlcanceAcceso): Prisma.PagoWhereInput[] {
+    const conditions: Prisma.PagoWhereInput[] = [];
     if (alcance.tipo === 'UNIDAD') {
       conditions.push({
         OR: [
@@ -3199,27 +3257,6 @@ export class TesoreriaCuotasService {
         ],
       });
     }
-
-    const where: Prisma.PagoWhereInput = conditions.length > 0 ? { AND: conditions } : {};
-
-    return this.prisma.pago.findMany({
-      where,
-      orderBy: { fechaPago: 'desc' },
-      take: 500,
-      include: {
-        registradoPor: { select: { id: true, nombre: true, apellido: true } },
-        usuario: { select: { id: true, nombre: true, apellido: true, dni: true } },
-        imputaciones: {
-          include: {
-            cargo: {
-              select: {
-                id: true,
-                concepto: { select: { nombre: true } },
-              },
-            },
-          },
-        },
-      },
-    });
+    return conditions;
   }
 }

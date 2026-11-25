@@ -40,7 +40,8 @@ interface Props {
   }>;
   cargoInicialId?: number | null;
   onCerrar: () => void;
-  onPagoExitoso: (mensaje: string) => void;
+  /** `pagoId`: el pago registrado, para ofrecer su recibo. */
+  onPagoExitoso: (mensaje: string, pagoId?: number) => void;
   embedded?: boolean;
 }
 
@@ -369,7 +370,10 @@ export const ModalCobrarDeuda: React.FC<Props> = ({
         partes.push(`quedaron ${formatearMoneda(excedente)} a favor`);
       }
 
-      onPagoExitoso(partes.length > 0 ? partes.join(' • ') + '.' : 'Operación registrada.');
+      onPagoExitoso(
+        partes.length > 0 ? partes.join(' • ') + '.' : 'Operación registrada.',
+        typeof res.data?.id === 'number' ? res.data.id : undefined,
+      );
       onCerrar();
     } catch (err: any) {
       setError(traducirErrorAmigable(err, 'No se pudo registrar el pago.'));
