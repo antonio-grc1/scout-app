@@ -36,11 +36,20 @@ import { mostrarToastConDeshacer, useToastStore } from '../../store/toastStore';
 import {
   esErrorOffline,
   formatearFecha,
+  formatearFechaHora,
   formatearMoneda,
+  METODO_PAGO_LABELS,
   normalizarTextoBusqueda,
+  obtenerHoyLocalISO,
   traducirErrorAmigable,
 } from '../../lib/formatters';
 import {
+  exportarACSV,
+  exportarAExcel,
+  type ColumnaExportacion,
+} from '../../utils/exportadorPlanillas';
+import {
+  BotonExportar,
   Button,
   ConfirmImpactDialog,
   Input,
@@ -378,6 +387,133 @@ export const EventoWorkspacePage: React.FC = () => {
       return matchComprador || matchContacto || matchVendedor || matchTotal || matchItems;
     });
   }, [pedidosSource, filtroPedidos, busquedaPedidos]);
+
+  // Unidades vendidas y entregadas por producto, según el filtro aplicado (sin pedidos cancelados).
+  const totalesPorProducto = useMemo(() => {
+    const map = new Map<
+      number,
+      { itemId: number; nombre: string; unidades: number; entregadas: number; monto: number }
+    >();
+    const fila = (itemId: number, nombre?: string) => {
+      if (!map.has(itemId)) {
+        map.set(itemId, { itemId, nombre: nombre || 'Producto', unidades: 0, entregadas: 0, monto: 0 });
+      }
+      return map.get(itemId)!;
+    };
+    for (const p of pedidosFiltrados) {
+      if (p.estado === 'CANCELADO') continue;
+      for (const d of p.detalles ?? []) {
+        const f = fila(Number(d.itemId ?? d.item?.id), d.item?.nombre);
+        f.unidades += Number(d.cantidad || 0);
+        f.monto += Number(d.subtotal || 0);
+      }
+      for (const t of p.tickets ?? []) {
+        if (t.estado === 'CANCELADO') continue;
+        const f = fila(Number(t.itemId ?? t.item?.id), t.item?.nombre);
+        f.entregadas +=
+          t.estado === 'UTILIZADO' ? Number(t.cantidad || 0) : Number(t.cantidadRetirada || 0);
+      }
+    }
+    const orden = new Map(itemsCatalogo.map((it, i) => [Number(it.id), i]));
+    return Array.from(map.values()).sort(
+      (a, b) =>
+        (orden.get(a.itemId) ?? Infinity) - (orden.get(b.itemId) ?? Infinity) ||
+        a.nombre.localeCompare(b.nombre),
+    );
+  }, [pedidosFiltrados, itemsCatalogo]);
+
+  const etiquetaEstadoPedido = (p: any) =>
+    p.estado === 'PENDIENTE' && p.tickets?.some(tieneRetiro) ? 'PENDIENTE (RETIRADO)' : p.estado;
+
+  const columnasExportVentas: ColumnaExportacion<any>[] = [
+    { header: 'N° pedido', clave: 'id', ancho: 10 },
+    { header: 'Fecha', formatear: (p) => formatearFechaHora(p.createdAt), ancho: 18 },
+    { header: 'Comprador', clave: 'compradorNombre', ancho: 26 },
+    { header: 'Contacto', formatear: (p) => p.compradorContacto || '', ancho: 18 },
+    {
+      header: 'Vendedor scout',
+      formatear: (p) =>
+        p.vendedorUsuario
+          ? `${p.vendedorUsuario.nombre} ${p.vendedorUsuario.apellido}`
+          : 'Venta general',
+      ancho: 26,
+    },
+    {
+      header: 'Productos',
+      formatear: (p) =>
+        (p.detalles ?? []).map((d: any) => `${d.cantidad}x ${d.item?.nombre || 'Producto'}`).join(', '),
+      ancho: 40,
+    },
+    { header: 'Total', formatear: (p) => Number(p.total || 0), ancho: 12 },
+    { header: 'Ganancia familia', formatear: (p) => Number(p.totalGanancia || 0), ancho: 16 },
+    { header: 'Estado pago', formatear: etiquetaEstadoPedido, ancho: 22 },
+    {
+      header: 'Método de pago',
+      formatear: (p) => (p.metodoPago ? METODO_PAGO_LABELS[p.metodoPago] || p.metodoPago : ''),
+      ancho: 16,
+    },
+    {
+      header: 'Retiro',
+      formatear: (p) => {
+        const tickets = (p.tickets ?? []).filter((t: any) => t.estado !== 'CANCELADO');
+        if (tickets.length === 0) return '';
+        if (tickets.every((t: any) => t.estado === 'UTILIZADO')) return 'Completo';
+        return tickets.some(tieneRetiro) ? 'Parcial' : 'Sin retirar';
+      },
+      ancho: 12,
+    },
+    { header: 'Observaciones', formatear: (p) => p.observaciones || '', ancho: 30 },
+  ];
+
+  const opcionesExportVentas = () => {
+    const vigentes = pedidosFiltrados.filter((p) => p.estado !== 'CANCELADO');
+    const sumar = (lista: any[]) => lista.reduce((acc, p) => acc + Number(p.total || 0), 0);
+    const filtroTexto =
+      filtroPedidos === 'TODOS'
+        ? 'Todos'
+        : filtroPedidos === 'PENDIENTES'
+          ? 'Pendientes'
+          : filtroPedidos === 'PENDIENTE_RETIRADO'
+            ? 'Pendiente (retirado)'
+            : 'Pagados';
+    const nombreSanitizado = String(evento?.titulo || 'Evento').replace(/[^a-zA-Z0-9_-]/g, '_');
+    return {
+      nombreArchivo: `Ventas_${nombreSanitizado}_${obtenerHoyLocalISO()}`,
+      nombreHoja: 'Ventas',
+      columnas: columnasExportVentas,
+      filas: pedidosFiltrados,
+      resumenSuperior: [
+        { etiqueta: 'Evento', valor: evento?.titulo || '' },
+        {
+          etiqueta: 'Filtro',
+          valor: busquedaPedidos.trim() ? `${filtroTexto} · búsqueda "${busquedaPedidos.trim()}"` : filtroTexto,
+        },
+        { etiqueta: 'Generado', valor: formatearFechaHora(new Date().toISOString()) },
+      ],
+      resumenInferior: [
+        { etiqueta: 'Pedidos', valor: vigentes.length },
+        { etiqueta: 'Total vendido', valor: sumar(vigentes) },
+        { etiqueta: 'Cobrado', valor: sumar(vigentes.filter((p) => p.estado === 'PAGADO')) },
+        { etiqueta: 'Pendiente de cobro', valor: sumar(vigentes.filter((p) => p.estado === 'PENDIENTE')) },
+        { etiqueta: '', valor: '' },
+        { etiqueta: 'Unidades por producto', valor: '' },
+        ...totalesPorProducto.map((t) => ({
+          etiqueta: t.nombre,
+          valor: `${t.unidades} vendidas · ${t.entregadas} entregadas`,
+        })),
+      ],
+    };
+  };
+
+  const handleExportarVentasExcel = async () => {
+    await exportarAExcel(opcionesExportVentas());
+    mostrarToast('Ventas exportadas a Excel.');
+  };
+
+  const handleExportarVentasCSV = () => {
+    exportarACSV(opcionesExportVentas());
+    mostrarToast('Ventas exportadas a CSV.');
+  };
 
   // Pre-flight de Liquidación a Familias agrupada por Scout Vendedor
   const liquidacionPorScout = useMemo(() => {
@@ -1337,27 +1473,67 @@ export const EventoWorkspacePage: React.FC = () => {
               })}
             </div>
 
-            <div className="relative w-full lg:w-72">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
-              <input
-                type="text"
-                value={busquedaPedidos}
-                onChange={(e) => setBusquedaPedidos(e.target.value)}
-                placeholder="Buscar comprador, scout, producto..."
-                className="s-input w-full min-h-[44px] pl-10 pr-9 rounded-xl text-base sm:text-[15px]"
+            <div className="flex items-center gap-2 w-full lg:w-auto">
+              <div className="relative flex-1 lg:w-72 lg:flex-none">
+                <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+                <input
+                  type="text"
+                  value={busquedaPedidos}
+                  onChange={(e) => setBusquedaPedidos(e.target.value)}
+                  placeholder="Buscar comprador, scout, producto..."
+                  className="s-input w-full min-h-[44px] pl-10 pr-9 rounded-xl text-base sm:text-[15px]"
+                />
+                {busquedaPedidos && (
+                  <button
+                    type="button"
+                    onClick={() => setBusquedaPedidos('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                    aria-label="Limpiar búsqueda"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <BotonExportar
+                size="md"
+                disabled={pedidosFiltrados.length === 0}
+                onExportarExcel={handleExportarVentasExcel}
+                onExportarCSV={handleExportarVentasCSV}
+                tituloTooltip="Descargar las ventas que se ven con el filtro actual"
               />
-              {busquedaPedidos && (
-                <button
-                  type="button"
-                  onClick={() => setBusquedaPedidos('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
-                  aria-label="Limpiar búsqueda"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
             </div>
           </div>
+
+          {totalesPorProducto.length > 0 && (
+            <div className="p-4 border-b border-rule space-y-2.5">
+              <h3 className="text-xs font-bold text-ink-muted uppercase tracking-wider">
+                Totales por producto
+                {(filtroPedidos !== 'TODOS' || busquedaPedidos.trim()) && ' (según filtro)'}
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead>
+                    <tr className="text-xs uppercase tracking-wider text-ink-muted border-b border-rule">
+                      <th className="py-2 pr-4 font-bold">Producto</th>
+                      <th className="py-2 px-4 font-bold text-right">Vendidas</th>
+                      <th className="py-2 px-4 font-bold text-right">Entregadas</th>
+                      <th className="py-2 pl-4 font-bold text-right">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-rule s-tabular">
+                    {totalesPorProducto.map((t) => (
+                      <tr key={t.itemId}>
+                        <td className="py-2 pr-4 font-semibold text-ink">{t.nombre}</td>
+                        <td className="py-2 px-4 text-right font-black text-ink">{t.unidades}</td>
+                        <td className="py-2 px-4 text-right text-ink-2">{t.entregadas}</td>
+                        <td className="py-2 pl-4 text-right text-ink-2">{formatearMoneda(t.monto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {pedidosFiltrados.length === 0 ? (
             <div className="p-10 text-center text-sm text-ink-muted space-y-2">
