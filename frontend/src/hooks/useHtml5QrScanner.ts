@@ -4,7 +4,8 @@ import { Html5Qrcode } from 'html5-qrcode';
 export interface UseHtml5QrScannerOptions {
   containerId: string;
   activo: boolean;
-  qrboxSize?: number;
+  /** Fracción del lado menor del visor que ocupa la zona de escaneo (0–1). */
+  qrboxRatio?: number;
   onDecode: (decodedText: string) => void | Promise<void>;
   mensajeErrorCamara?: string;
   onErrorCamara?: () => void;
@@ -15,7 +16,7 @@ export interface UseHtml5QrScannerOptions {
 export function useHtml5QrScanner({
   containerId,
   activo,
-  qrboxSize = 240,
+  qrboxRatio = 0.8,
   onDecode,
   mensajeErrorCamara = 'No se pudo acceder a la cámara.',
   onErrorCamara,
@@ -89,7 +90,11 @@ export function useHtml5QrScanner({
             { facingMode: 'environment' },
             {
               fps: 10,
-              qrbox: { width: qrboxSize, height: qrboxSize },
+              // Zona proporcional al visor: aprovecha el ancho disponible sin exceder el video
+              qrbox: (anchoVisor, altoVisor) => {
+                const lado = Math.floor(Math.min(anchoVisor, altoVisor) * qrboxRatio);
+                return { width: lado, height: lado };
+              },
             },
             (decodedText) => {
               void onDecodeRef.current(decodedText);
@@ -144,7 +149,7 @@ export function useHtml5QrScanner({
       cancelado = true;
       void detenerCamara();
     };
-  }, [containerId, activo, qrboxSize, mensajeErrorCamara, detenerCamara, reinicioKey]);
+  }, [containerId, activo, qrboxRatio, mensajeErrorCamara, detenerCamara, reinicioKey]);
 
   return {
     iniciandoCamara,

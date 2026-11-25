@@ -368,7 +368,7 @@ export const QrScannerUniversalModal: React.FC = () => {
   const { iniciandoCamara, errorCamara, setErrorCamara, detenerCamara } = useHtml5QrScanner({
     containerId: 'qr-universal-reader',
     activo: camaraActiva,
-    qrboxSize: 230,
+    qrboxRatio: 0.8,
     mensajeErrorCamara:
       'No se pudo encender la cámara. Podés ingresar el código, DNI o token manualmente.',
     onErrorCamara: () => {
@@ -617,7 +617,7 @@ export const QrScannerUniversalModal: React.FC = () => {
     >
       {/* Mantenemos el lector montado mientras el Drawer esté abierto para evitar crashes de html5-qrcode */}
       <div className={camaraVisible ? 'space-y-3' : 'hidden'}>
-        <div className="relative rounded-2xl overflow-hidden bg-black aspect-square max-h-[280px] w-full max-w-[280px] mx-auto flex items-center justify-center border border-rule">
+        <div className="relative rounded-2xl overflow-hidden bg-black aspect-square w-full max-w-[380px] mx-auto flex items-center justify-center border border-rule">
           <div id="qr-universal-reader" className="w-full h-full" />
 
           {iniciandoCamara && (
@@ -629,7 +629,7 @@ export const QrScannerUniversalModal: React.FC = () => {
 
           {!iniciandoCamara && (
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-              <div className="relative w-44 h-44 border-2 border-dashed border-white/60 rounded-2xl">
+              <div className="relative w-[80%] h-[80%] border-2 border-dashed border-white/60 rounded-2xl">
                 <div className="s-qr-laser" />
               </div>
             </div>
