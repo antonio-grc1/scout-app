@@ -617,6 +617,8 @@ model TicketEvento {
   /// Compartido por todos los vales de un mismo pedido: un único QR por compra.
   tokenQr            String             @map("token_qr") @db.VarChar(120)
   cantidad           Int                @default(1)
+  /// Unidades ya entregadas (retiro parcial). El vale pasa a UTILIZADO al llegar a `cantidad`.
+  cantidadRetirada   Int                @default(0) @map("cantidad_retirada")
   estado             EstadoTicketEvento @default(ACTIVO)
   fechaUso           DateTime?          @map("fecha_uso")
   validadorUsuarioId Int?               @map("validador_usuario_id")

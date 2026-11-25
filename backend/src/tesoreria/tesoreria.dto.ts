@@ -456,6 +456,16 @@ export type ActualizarPedidoEventoDto = z.infer<typeof ActualizarPedidoEventoSch
 
 export const ValidarTicketQrSchema = z.object({
   tokenQr: z.string().trim().min(10, 'Código QR no válido'),
+  /** Unidades a entregar por vale. Si se omite y queda más de una unidad pendiente, se devuelve la lista para elegir. */
+  entregas: z
+    .array(
+      z.object({
+        ticketId: z.number().int().positive(),
+        cantidad: z.number().int().positive(),
+      }),
+    )
+    .min(1, 'Elegí al menos un producto para entregar')
+    .optional(),
 });
 export type ValidarTicketQrDto = z.infer<typeof ValidarTicketQrSchema>;
 

@@ -21,7 +21,7 @@ export interface TicketData {
   estado: 'ACTIVO' | 'UTILIZADO' | 'CANCELADO';
   fechaUso?: string | null;
   /** Productos que se entregan con este QR (toda la compra en los pedidos nuevos) */
-  items: Array<{ nombre: string; cantidad: number }>;
+  items: Array<{ nombre: string; cantidad: number; retirada?: number }>;
   pedido: {
     id: number;
     compradorNombre: string;

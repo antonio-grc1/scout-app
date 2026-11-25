@@ -49,7 +49,7 @@ import { useToastStore } from '../../store/toastStore';
 import { DynamicFormRenderer, type EsquemaCampos } from '../../components/DynamicFormRenderer';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR } from '../../components/ModalTicketQR';
-import { agruparValesPorQr } from '../../lib/valesQr';
+import { agruparValesPorQr, tieneRetiro } from '../../lib/valesQr';
 import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
 import { Drawer, KpiCard, SegmentedTabs, type SegmentedTabItem, Input } from '../../components/ui';
 import { obtenerConfigRama } from '../../lib/ramaColors';
@@ -1562,7 +1562,7 @@ export const MiEspacioPage: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                   {pedidosEventoSeleccionado.map((p: any) => {
-                    const algunoRetirado = p.tickets?.some((t: any) => t.estado === 'UTILIZADO');
+                    const algunoRetirado = p.tickets?.some(tieneRetiro);
                     return (
                       <div
                         key={p.id}

@@ -74,7 +74,12 @@ export async function generarTarjetaValeQR(ticket: TicketData): Promise<string> 
   const ANCHO = 600;
   // Un renglón por producto (la compra entera comparte el QR); la tarjeta crece en alto para listarlos.
   const MAX_RENGLONES = 4;
-  const lineasProductos = ticket.items.map((i) => `${i.cantidad}x ${i.nombre}`);
+  const lineasProductos = ticket.items.map((i) => {
+    const retirada = i.retirada ?? 0;
+    if (retirada >= i.cantidad && ticket.estado === 'ACTIVO') return `${i.cantidad}x ${i.nombre} (retirado)`;
+    if (retirada > 0 && retirada < i.cantidad) return `${i.cantidad}x ${i.nombre} (retiró ${retirada})`;
+    return `${i.cantidad}x ${i.nombre}`;
+  });
   if (lineasProductos.length > MAX_RENGLONES) {
     const resto = lineasProductos.length - (MAX_RENGLONES - 1);
     lineasProductos.splice(MAX_RENGLONES - 1, resto, `y ${resto} productos más`);

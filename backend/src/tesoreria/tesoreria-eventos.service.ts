@@ -38,6 +38,38 @@ import {
   runInTransaction,
 } from './tesoreria-shared.js';
 
+/** Respuesta del canje de un QR de evento (validación, selección de unidades o rechazo). */
+export interface ResultadoValidacionQr {
+  ok: boolean;
+  estado: string;
+  mensaje: string;
+  alertaPagoPendiente?: boolean;
+  montoPendiente?: number;
+  pedidoId?: number;
+  /** Lo que queda por retirar tras una entrega parcial */
+  pendiente?: string | null;
+  /** Con estado SELECCION: productos del QR para elegir qué se entrega */
+  vales?: Array<{ ticketId: number; producto: string; cantidad: number; retirada: number; pendiente: number }>;
+  ticket?: {
+    id: number;
+    pedidoId: number;
+    producto: string;
+    cantidad: number;
+    detalle: string;
+    comprador: string;
+    vendedor: string | null;
+    evento: string;
+    pedidoEstado: EstadoPedidoEvento;
+    pedidoTotal: number;
+    pedidoMetodoPago: MetodoPago | null;
+    fechaUso: Date | null;
+  };
+}
+
+/** Un vale cuenta como retirado si se entregó alguna de sus unidades (retiro parcial incluido). */
+const tieneRetiro = (t: { estado: EstadoTicketEvento; cantidadRetirada?: number | null }) =>
+  t.estado === EstadoTicketEvento.UTILIZADO || (t.cantidadRetirada ?? 0) > 0;
+
 @Injectable()
 export class TesoreriaEventosService {
   constructor(private readonly prisma: PrismaService) {}
@@ -177,7 +209,7 @@ export class TesoreriaEventosService {
                   gananciaAcreditada: true,
                   estado: true,
                   tickets: {
-                    select: { id: true, estado: true, cantidad: true },
+                    select: { id: true, estado: true, cantidad: true, cantidadRetirada: true },
                   },
                 },
               },
@@ -212,12 +244,14 @@ export class TesoreriaEventosService {
             eventoId: number;
             estado: string;
             cantidad: number;
+            retirada: number;
           }>
         >`
           SELECT
             pe."evento_id" AS "eventoId",
             te."estado"::text AS estado,
-            COALESCE(SUM(te."cantidad"), 0)::int AS cantidad
+            COALESCE(SUM(te."cantidad"), 0)::int AS cantidad,
+            COALESCE(SUM(te."cantidad_retirada"), 0)::int AS retirada
           FROM "tickets_evento" te
           INNER JOIN "pedidos_evento" pe ON pe."id" = te."pedido_id"
           WHERE pe."evento_id" IN (${Prisma.join(eventoIds)})
@@ -250,11 +284,9 @@ export class TesoreriaEventosService {
 
       for (const tRow of ticketsAgg) {
         const m = ensureMetric(Number(tRow.eventoId));
-        const cant = Number(tRow.cantidad);
-        m.totalTickets += cant;
-        if (tRow.estado === EstadoTicketEvento.UTILIZADO) {
-          m.ticketsRetirados += cant;
-        }
+        m.totalTickets += Number(tRow.cantidad);
+        // Cuenta unidades entregadas, incluidos los retiros parciales
+        m.ticketsRetirados += Number(tRow.retirada);
       }
     }
 
@@ -284,9 +316,7 @@ export class TesoreriaEventosService {
               totalGananciaCts += aCentavos(p.totalGanancia);
               for (const t of p.tickets ?? []) {
                 totalTickets += t.cantidad;
-                if (t.estado === EstadoTicketEvento.UTILIZADO) {
-                  ticketsRetirados += t.cantidad;
-                }
+                ticketsRetirados += t.cantidadRetirada ?? 0;
               }
             }
           }
@@ -532,7 +562,7 @@ export class TesoreriaEventosService {
     }
 
     const tieneTicketsUtilizados = evento.pedidos.some((p) =>
-      p.tickets.some((t) => t.estado === EstadoTicketEvento.UTILIZADO),
+      p.tickets.some(tieneRetiro),
     );
     if (tieneTicketsUtilizados) {
       throw new BadRequestException(
@@ -810,7 +840,7 @@ export class TesoreriaEventosService {
         }
       }
 
-      const tieneTicketUtilizado = pedido.tickets.some((t: any) => t.estado === EstadoTicketEvento.UTILIZADO);
+      const tieneTicketUtilizado = pedido.tickets.some(tieneRetiro);
       if (dto.items && dto.items.length > 0) {
         const detallesMap = new Map(pedido.detalles.map((d: any) => [d.itemId, d.cantidad]));
         const cambiaronItems =
@@ -1082,7 +1112,7 @@ export class TesoreriaEventosService {
         }
       }
 
-      const tieneTicketUtilizado = pedido.tickets.some((t: any) => t.estado === EstadoTicketEvento.UTILIZADO);
+      const tieneTicketUtilizado = pedido.tickets.some(tieneRetiro);
       if (tieneTicketUtilizado) {
         throw new BadRequestException('No se puede eliminar un pedido cuyos vales QR ya fueron utilizados');
       }
@@ -1165,7 +1195,7 @@ export class TesoreriaEventosService {
       throw new BadRequestException('El código QR es inválido o no corresponde a una auténtica');
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx): Promise<ResultadoValidacionQr> => {
       const ticket = await tx.ticketEvento.findFirst({
         where: { tokenQr: dto.tokenQr },
         orderBy: { id: 'asc' },
@@ -1238,41 +1268,56 @@ export class TesoreriaEventosService {
       }
 
       const valesDelQr = ticket.pedido.tickets?.length ? ticket.pedido.tickets : [ticket];
-      const detalleDe = (vales: typeof valesDelQr) =>
-        vales.map((t) => `${t.cantidad}x ${t.item.nombre}`).join(' + ');
-      const valesActivos = valesDelQr.filter((t) => t.estado === EstadoTicketEvento.ACTIVO);
+      const retiradaDe = (t: (typeof valesDelQr)[number]) => t.cantidadRetirada ?? 0;
+      const pendienteDe = (t: (typeof valesDelQr)[number]) =>
+        t.estado === EstadoTicketEvento.ACTIVO ? Math.max(0, t.cantidad - retiradaDe(t)) : 0;
+      const detalleDe = (lineas: Array<{ cantidad: number; nombre: string }>) =>
+        lineas
+          .filter((l) => l.cantidad > 0)
+          .map((l) => `${l.cantidad}x ${l.nombre}`)
+          .join(' + ');
+      const detallePendiente = () =>
+        detalleDe(valesDelQr.map((t) => ({ cantidad: pendienteDe(t), nombre: t.item.nombre })));
 
-      if (valesActivos.length === 0 && valesDelQr.some((t) => t.estado === EstadoTicketEvento.UTILIZADO)) {
-        const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
-        const montoTotalPedido = Number(ticket.pedido.total);
-        const resolvedPedidoId = ticket.pedido?.id ?? ticket.pedidoId;
+      const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
+      const montoTotalPedido = Number(ticket.pedido.total);
+      const resolvedPedidoId = ticket.pedido?.id ?? ticket.pedidoId;
+      const datosPedido = (detalle: string, fechaUso: Date | null) => ({
+        id: ticket.id,
+        pedidoId: resolvedPedidoId,
+        producto: ticket.item.nombre,
+        cantidad: ticket.cantidad,
+        detalle,
+        comprador: ticket.pedido.compradorNombre,
+        vendedor: ticket.pedido.vendedorUsuario
+          ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
+          : null,
+        evento: ticket.pedido.evento.titulo,
+        pedidoEstado: ticket.pedido.estado,
+        pedidoTotal: montoTotalPedido,
+        pedidoMetodoPago: ticket.pedido.metodoPago,
+        fechaUso,
+      });
+      const alertaPago = {
+        alertaPagoPendiente: esPagoPendiente,
+        montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
+        pedidoId: resolvedPedidoId,
+      };
+
+      const valesPendientes = valesDelQr.filter((t) => pendienteDe(t) > 0);
+
+      if (valesPendientes.length === 0 && valesDelQr.some(tieneRetiro)) {
+        const detalleTotal = detalleDe(valesDelQr.map((t) => ({ cantidad: t.cantidad, nombre: t.item.nombre })));
         return {
           ok: false,
           estado: 'YA_UTILIZADO',
-          alertaPagoPendiente: esPagoPendiente,
-          montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
-          pedidoId: resolvedPedidoId,
-          mensaje: `Este vale ya fue retirado/utilizado el ${ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString('es-AR') : 'previamente'}. (${detalleDe(valesDelQr)})`,
-          ticket: {
-            id: ticket.id,
-            pedidoId: resolvedPedidoId,
-            producto: ticket.item.nombre,
-            cantidad: ticket.cantidad,
-            detalle: detalleDe(valesDelQr),
-            comprador: ticket.pedido.compradorNombre,
-            vendedor: ticket.pedido.vendedorUsuario
-              ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
-              : null,
-            evento: ticket.pedido.evento.titulo,
-            pedidoEstado: ticket.pedido.estado,
-            pedidoTotal: montoTotalPedido,
-            pedidoMetodoPago: ticket.pedido.metodoPago,
-            fechaUso: ticket.fechaUso,
-          },
+          ...alertaPago,
+          mensaje: `Este vale ya fue retirado/utilizado el ${ticket.fechaUso ? new Date(ticket.fechaUso).toLocaleString('es-AR') : 'previamente'}. (${detalleTotal})`,
+          ticket: datosPedido(detalleTotal, ticket.fechaUso),
         };
       }
 
-      if (valesActivos.length === 0) {
+      if (valesPendientes.length === 0) {
         return {
           ok: false,
           estado: ticket.estado,
@@ -1280,54 +1325,82 @@ export class TesoreriaEventosService {
         };
       }
 
-      // Actualización atómica con control de concurrencia
-      const updateRes = await tx.ticketEvento.updateMany({
-        where: { tokenQr: dto.tokenQr, estado: EstadoTicketEvento.ACTIVO },
-        data: {
-          estado: EstadoTicketEvento.UTILIZADO,
-          fechaUso: new Date(),
-          validadorUsuarioId: actor.sub,
-        },
-      });
-
-      if (updateRes.count === 0) {
-        return {
-          ok: false,
-          estado: 'CONCURRENCIA',
-          mensaje: 'El vale acaba de ser escaneado y procesado por otro dispositivo.',
-        };
+      // Sin elección explícita: con una sola unidad pendiente se entrega directo; si hay más,
+      // se devuelve la lista para elegir qué productos y cuántas unidades se llevan.
+      let entregas = dto.entregas;
+      if (!entregas) {
+        const unidadesPendientes = valesPendientes.reduce((acc, t) => acc + pendienteDe(t), 0);
+        if (unidadesPendientes > 1) {
+          return {
+            ok: false,
+            estado: 'SELECCION',
+            ...alertaPago,
+            mensaje: 'Elegí qué se entrega ahora',
+            vales: valesDelQr.map((t) => ({
+              ticketId: t.id,
+              producto: t.item.nombre,
+              cantidad: t.cantidad,
+              retirada: t.estado === EstadoTicketEvento.UTILIZADO ? t.cantidad : retiradaDe(t),
+              pendiente: pendienteDe(t),
+            })),
+            ticket: datosPedido(detallePendiente(), null),
+          };
+        }
+        entregas = [{ ticketId: valesPendientes[0].id, cantidad: 1 }];
       }
 
-      const esPagoPendiente = ticket.pedido.estado === EstadoPedidoEvento.PENDIENTE;
-      const montoTotalPedido = Number(ticket.pedido.total);
-      const resolvedPedidoId = ticket.pedido?.id ?? ticket.pedidoId;
-      const detalleEntrega = detalleDe(valesActivos);
+      const valesPorId = new Map(valesDelQr.map((t) => [t.id, t]));
+      const idsVistos = new Set<number>();
+      for (const e of entregas) {
+        const vale = valesPorId.get(e.ticketId);
+        if (!vale || idsVistos.has(e.ticketId)) {
+          throw new BadRequestException('La entrega incluye un producto que no corresponde a este vale');
+        }
+        idsVistos.add(e.ticketId);
+        if (e.cantidad > pendienteDe(vale)) {
+          throw new BadRequestException(
+            `Solo quedan ${pendienteDe(vale)} unidad(es) pendientes de "${vale.item.nombre}"`,
+          );
+        }
+      }
+
+      // Actualización atómica con control de concurrencia: cada vale se actualiza solo si nadie
+      // lo modificó desde la lectura; si alguno falla, se revierte toda la entrega.
+      const fechaUso = new Date();
+      for (const e of entregas) {
+        const vale = valesPorId.get(e.ticketId)!;
+        const nuevaRetirada = retiradaDe(vale) + e.cantidad;
+        const updateRes = await tx.ticketEvento.updateMany({
+          where: { id: vale.id, estado: EstadoTicketEvento.ACTIVO, cantidadRetirada: retiradaDe(vale) },
+          data: {
+            cantidadRetirada: nuevaRetirada,
+            estado: nuevaRetirada >= vale.cantidad ? EstadoTicketEvento.UTILIZADO : EstadoTicketEvento.ACTIVO,
+            fechaUso,
+            validadorUsuarioId: actor.sub,
+          },
+        });
+        if (updateRes.count !== 1) {
+          throw new ConflictException('El vale acaba de ser escaneado y procesado por otro dispositivo.');
+        }
+        vale.cantidadRetirada = nuevaRetirada;
+        if (nuevaRetirada >= vale.cantidad) vale.estado = EstadoTicketEvento.UTILIZADO;
+      }
+
+      const detalleEntrega = detalleDe(
+        entregas.map((e) => ({ cantidad: e.cantidad, nombre: valesPorId.get(e.ticketId)!.item.nombre })),
+      );
+      const quedaPendiente = detallePendiente();
+      const avisoPendiente = quedaPendiente ? ` Queda por retirar: ${quedaPendiente}.` : '';
 
       return {
         ok: true,
         estado: 'VALIDADO',
-        alertaPagoPendiente: esPagoPendiente,
-        montoPendiente: esPagoPendiente ? montoTotalPedido : 0,
-        pedidoId: resolvedPedidoId,
+        ...alertaPago,
+        pendiente: quedaPendiente || null,
         mensaje: esPagoPendiente
-          ? `¡Entrega confirmada! (ATENCIÓN: Pago PENDIENTE de $${montoTotalPedido.toLocaleString('es-AR')} en puerta). Entregar: ${detalleEntrega}`
-          : `¡Entrega confirmada! Entregar: ${detalleEntrega}`,
-        ticket: {
-          id: ticket.id,
-          pedidoId: resolvedPedidoId,
-          producto: ticket.item.nombre,
-          cantidad: ticket.cantidad,
-          detalle: detalleEntrega,
-          comprador: ticket.pedido.compradorNombre,
-          vendedor: ticket.pedido.vendedorUsuario
-            ? `${ticket.pedido.vendedorUsuario.nombre} ${ticket.pedido.vendedorUsuario.apellido}`
-            : null,
-          evento: ticket.pedido.evento.titulo,
-          pedidoEstado: ticket.pedido.estado,
-          pedidoTotal: montoTotalPedido,
-          pedidoMetodoPago: ticket.pedido.metodoPago,
-          fechaUso: new Date(),
-        },
+          ? `¡Entrega confirmada! (ATENCIÓN: Pago PENDIENTE de $${montoTotalPedido.toLocaleString('es-AR')} en puerta). Entregar: ${detalleEntrega}.${avisoPendiente}`
+          : `¡Entrega confirmada! Entregar: ${detalleEntrega}.${avisoPendiente}`,
+        ticket: datosPedido(detalleEntrega, fechaUso),
       };
     });
   }

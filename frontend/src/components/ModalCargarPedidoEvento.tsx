@@ -21,6 +21,7 @@ import { formatearMoneda, traducirErrorAmigable } from '../lib/formatters';
 import { Button } from './ui/Button';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { Input } from './ui';
+import { tieneRetiro } from '../lib/valesQr';
 
 export interface PedidoAEditar {
   id: number;
@@ -41,6 +42,7 @@ export interface PedidoAEditar {
   tickets?: Array<{
     id: number;
     estado: string;
+    cantidadRetirada?: number | null;
   }>;
 }
 
@@ -139,7 +141,7 @@ export const ModalCargarPedidoEvento: React.FC<ModalCargarPedidoEventoProps> = (
   const bloquearVolverAPendiente = pedidoYaPagado && Boolean(pedidoAEditar?.gananciaAcreditada);
   const valesRetirados = Boolean(
     pedidoAEditar?.algunoRetirado ||
-      pedidoAEditar?.tickets?.some((t) => t.estado === 'UTILIZADO'),
+      pedidoAEditar?.tickets?.some(tieneRetiro),
   );
 
   useEffect(() => {

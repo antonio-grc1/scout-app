@@ -11,6 +11,9 @@ import {
   Keyboard,
   Landmark,
   Loader2,
+  Minus,
+  PackageCheck,
+  Plus,
   QrCode,
   Repeat,
   RotateCcw,
@@ -37,6 +40,14 @@ import { useToastStore } from '../../store/toastStore';
 import { Button } from '../ui/Button';
 import { Drawer } from '../ui/Drawer';
 
+interface ValeSeleccion {
+  ticketId: number;
+  producto: string;
+  cantidad: number;
+  retirada: number;
+  pendiente: number;
+}
+
 interface ValidacionEventoResultado {
   ok: boolean;
   estado: string;
@@ -44,6 +55,10 @@ interface ValidacionEventoResultado {
   alertaPagoPendiente?: boolean;
   montoPendiente?: number;
   pedidoId?: number;
+  /** Lo que queda por retirar tras una entrega parcial */
+  pendiente?: string | null;
+  /** Con estado SELECCION: productos del QR para elegir qué se entrega */
+  vales?: ValeSeleccion[];
   ticket?: {
     id: number;
     pedidoId?: number;
@@ -135,6 +150,10 @@ export const QrScannerUniversalModal: React.FC = () => {
 
   const [resultadoLegajo, setResultadoLegajo] = useState<any | null>(null);
   const [resultadoEvento, setResultadoEvento] = useState<ValidacionEventoResultado | null>(null);
+  // Retiro parcial: QR en elección y unidades a entregar por vale (ticketId → cantidad)
+  const [tokenSeleccion, setTokenSeleccion] = useState<string | null>(null);
+  const [cantidadesEntrega, setCantidadesEntrega] = useState<Record<number, number>>({});
+  const enSeleccion = resultadoEvento?.estado === 'SELECCION';
 
   // Sub-vista inline de cobro en puerta (reemplaza ModalDefinirPagoPedido sin portal anidado)
   const [subVistaCobro, setSubVistaCobro] = useState<SubVistaCobroDatos | null>(null);
@@ -173,13 +192,13 @@ export const QrScannerUniversalModal: React.FC = () => {
     abierto &&
     modo === 'camara' &&
     !subVistaCobro &&
-    (continuo || (!resultadoLegajo && !resultadoEvento));
+    (continuo ? !enSeleccion : !resultadoLegajo && !resultadoEvento);
 
   const camaraActiva =
     abierto &&
     modo === 'camara' &&
     !subVistaCobro &&
-    (continuo ? true : !resultadoLegajo && !resultadoEvento);
+    (continuo ? !enSeleccion : !resultadoLegajo && !resultadoEvento);
 
   const seleccionarCuentaPorMetodo = useCallback(
     (listaCuentas: CuentaFinancieraItem[], metodo: 'EFECTIVO' | 'TRANSFERENCIA' | 'OTRO') => {
@@ -266,7 +285,10 @@ export const QrScannerUniversalModal: React.FC = () => {
   );
 
   const procesarEvento = useCallback(
-    async (raw: string): Promise<boolean> => {
+    async (
+      raw: string,
+      entregas?: Array<{ ticketId: number; cantidad: number }>,
+    ): Promise<boolean> => {
       if (!isOnline) {
         mostrarToast('Necesitás conexión a internet para canjear vales en puerta.', 'advertencia');
         scanInProgressRef.current = false;
@@ -278,9 +300,20 @@ export const QrScannerUniversalModal: React.FC = () => {
       setExito(null);
       setResultadoLegajo(null);
       try {
-        const res = await api.post('/tesoreria/eventos/validar-qr', { tokenQr: raw });
+        const res = await api.post('/tesoreria/eventos/validar-qr', { tokenQr: raw, entregas });
         const data: ValidacionEventoResultado = res.data;
         setResultadoEvento(data);
+
+        if (data.estado === 'SELECCION') {
+          // Más de una unidad pendiente: se elige qué se lleva (por defecto, todo lo pendiente)
+          playFeedbackTone(660);
+          setTokenSeleccion(raw);
+          setCantidadesEntrega(
+            Object.fromEntries((data.vales ?? []).map((v) => [v.ticketId, v.pendiente])),
+          );
+          return true;
+        }
+        setTokenSeleccion(null);
 
         if (data.ok) {
           playFeedbackTone(880);
@@ -311,6 +344,7 @@ export const QrScannerUniversalModal: React.FC = () => {
       } catch (err) {
         playFeedbackTone(220);
         const msg = traducirErrorAmigable(err, 'Código QR de evento no reconocido o inválido.');
+        setTokenSeleccion(null);
         setResultadoEvento({
           ok: false,
           estado: 'ERROR',
@@ -401,6 +435,7 @@ export const QrScannerUniversalModal: React.FC = () => {
       setExito(null);
       setResultadoLegajo(null);
       setResultadoEvento(null);
+      setTokenSeleccion(null);
       setSubVistaCobro(null);
       setErrorCamara(null);
       scanInProgressRef.current = false;
@@ -533,8 +568,28 @@ export const QrScannerUniversalModal: React.FC = () => {
     setExito(null);
     setResultadoLegajo(null);
     setResultadoEvento(null);
+    setTokenSeleccion(null);
     setCodigoManual('');
     setReinicioCamara((n) => n + 1);
+  };
+
+  const valesSeleccion = enSeleccion ? (resultadoEvento?.vales ?? []) : [];
+  const unidadesAEntregar = valesSeleccion.reduce(
+    (acc, v) => acc + (cantidadesEntrega[v.ticketId] ?? 0),
+    0,
+  );
+  const ajustarCantidadEntrega = (vale: ValeSeleccion, delta: number) => {
+    setCantidadesEntrega((prev) => ({
+      ...prev,
+      [vale.ticketId]: Math.min(vale.pendiente, Math.max(0, (prev[vale.ticketId] ?? 0) + delta)),
+    }));
+  };
+  const confirmarEntrega = () => {
+    if (!tokenSeleccion || unidadesAEntregar === 0) return;
+    const entregas = valesSeleccion
+      .map((v) => ({ ticketId: v.ticketId, cantidad: cantidadesEntrega[v.ticketId] ?? 0 }))
+      .filter((e) => e.cantidad > 0);
+    void procesarEvento(tokenSeleccion, entregas);
   };
 
   const cfgEstadoLegajo = resultadoLegajo
@@ -1028,8 +1083,105 @@ export const QrScannerUniversalModal: React.FC = () => {
             </div>
           )}
 
+          {/* Retiro parcial: elegir productos y unidades a entregar */}
+          {enSeleccion && resultadoEvento && (
+            <div role="group" aria-label="Elegir qué se entrega" className="rounded-2xl p-4 space-y-3 border border-rule bg-surface">
+              <div className="flex items-start gap-2.5">
+                <PackageCheck className="w-5 h-5 shrink-0 mt-0.5 text-brand" />
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-[15px] font-extrabold text-ink">{resultadoEvento.mensaje}</h4>
+                  {resultadoEvento.ticket && (
+                    <p className="text-[13px] text-ink-2">
+                      Comprador: <strong>{resultadoEvento.ticket.comprador}</strong>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {(resultadoEvento.alertaPagoPendiente ||
+                resultadoEvento.ticket?.pedidoEstado === 'PENDIENTE') && (
+                <p className="s-badge-warn rounded-xl p-2.5 text-[13px] font-bold">
+                  Pago PENDIENTE (
+                  {formatearMoneda(
+                    resultadoEvento.montoPendiente || resultadoEvento.ticket?.pedidoTotal || 0,
+                  )}
+                  )
+                </p>
+              )}
+
+              <ul className="space-y-2">
+                {valesSeleccion.map((v) => {
+                  const elegido = cantidadesEntrega[v.ticketId] ?? 0;
+                  return (
+                    <li
+                      key={v.ticketId}
+                      className={`flex items-center justify-between gap-3 rounded-xl border border-rule p-2.5 ${
+                        v.pendiente === 0 ? 'opacity-60' : ''
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className={`text-sm font-bold text-ink ${v.pendiente === 0 ? 'line-through' : ''}`}>
+                          {v.cantidad}x {v.producto}
+                        </div>
+                        <div className="text-xs text-ink-muted">
+                          {v.pendiente === 0
+                            ? 'Ya retirado'
+                            : v.retirada > 0
+                              ? `Ya retiró ${v.retirada} · quedan ${v.pendiente}`
+                              : `Quedan ${v.pendiente}`}
+                        </div>
+                      </div>
+                      {v.pendiente > 0 && (
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => ajustarCantidadEntrega(v, -1)}
+                            disabled={elegido === 0 || cargando}
+                            aria-label={`Entregar una unidad menos de ${v.producto}`}
+                            className="s-btn-sec min-w-[40px] min-h-[40px] rounded-xl inline-flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <span className="w-7 text-center text-base font-black text-ink" aria-live="polite">
+                            {elegido}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => ajustarCantidadEntrega(v, 1)}
+                            disabled={elegido >= v.pendiente || cargando}
+                            aria-label={`Entregar una unidad más de ${v.producto}`}
+                            className="s-btn-sec min-w-[40px] min-h-[40px] rounded-xl inline-flex items-center justify-center disabled:opacity-40 cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  onClick={confirmarEntrega}
+                  loading={cargando}
+                  disabled={cargando || unidadesAEntregar === 0}
+                  leftIcon={<CheckCircle2 className="w-4 h-4" />}
+                >
+                  {unidadesAEntregar === 1 ? 'Entregar 1 unidad' : `Entregar ${unidadesAEntregar} unidades`}
+                </Button>
+                <Button type="button" variant="secondary" size="md" onClick={handleReintentar} disabled={cargando}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Resultado Ticket Evento */}
-          {resultadoEvento && (
+          {resultadoEvento && !enSeleccion && (
             <div
               role="status"
               aria-live="polite"

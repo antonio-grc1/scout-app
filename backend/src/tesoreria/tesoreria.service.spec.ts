@@ -1924,16 +1924,29 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       } as any;
       const service = new TesoreriaService(mockPrisma);
 
-      const res = await service.validarTicketQr(actor, alcanceGlobal, { tokenQr: validToken });
+      // Con más de una unidad pendiente, primero se pide elegir qué se entrega (sin modificar nada)
+      const resSeleccion = await service.validarTicketQr(actor, alcanceGlobal, { tokenQr: validToken });
+      expect(resSeleccion.ok).toBe(false);
+      expect(resSeleccion.estado).toBe('SELECCION');
+      expect(resSeleccion.vales).toEqual([
+        { ticketId: 15, producto: 'Pizza Muzza', cantidad: 2, retirada: 0, pendiente: 2 },
+      ]);
+      expect(tx.ticketEvento.updateMany).not.toHaveBeenCalled();
+
+      const res = await service.validarTicketQr(actor, alcanceGlobal, {
+        tokenQr: validToken,
+        entregas: [{ ticketId: 15, cantidad: 2 }],
+      });
       expect(res.ok).toBe(true);
       expect(res.estado).toBe('VALIDADO');
       expect(res.pedidoId).toBe(99);
       expect(res.alertaPagoPendiente).toBe(true);
       expect(res.ticket?.pedidoId).toBe(99);
+      expect(res.pendiente).toBeNull();
       expect(tx.ticketEvento.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { tokenQr: validToken, estado: 'ACTIVO' },
-          data: expect.objectContaining({ estado: 'UTILIZADO' }),
+          where: { id: 15, estado: 'ACTIVO', cantidadRetirada: 0 },
+          data: expect.objectContaining({ estado: 'UTILIZADO', cantidadRetirada: 2 }),
         }),
       );
 
@@ -1979,7 +1992,7 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       ).rejects.toThrow(/evento o pedido/i);
     });
 
-    it('validarTicketQr: un único QR por compra entrega todos los productos del pedido', async () => {
+    it('validarTicketQr: un único QR por compra permite retirar productos y unidades por partes', async () => {
       const { generateTokenQR } = await import('../common/utils/qr-token.util.js');
       const token = generateTokenQR({ eventoId: 3, pedidoId: 50 });
       const vales = [
@@ -2003,7 +2016,74 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
               tickets: vales,
             },
           }),
-          updateMany: vi.fn().mockResolvedValue({ count: 2 }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        },
+      };
+      const service = new TesoreriaService({
+        $transaction: vi.fn().mockImplementation((cb) => cb(tx)),
+      } as any);
+
+      const seleccion = await service.validarTicketQr(actor, alcanceGlobal, { tokenQr: token });
+      expect(seleccion.estado).toBe('SELECCION');
+      expect(seleccion.ticket?.detalle).toBe('2x Docena + 1x Media docena');
+
+      // Entrega parcial: 1 de las 2 docenas; la media docena queda pendiente
+      const res = await service.validarTicketQr(actor, alcanceGlobal, {
+        tokenQr: token,
+        entregas: [{ ticketId: 30, cantidad: 1 }],
+      });
+      expect(res.ok).toBe(true);
+      expect(res.ticket?.detalle).toBe('1x Docena');
+      expect(res.pendiente).toBe('1x Docena + 1x Media docena');
+      expect(res.mensaje).toContain('Queda por retirar: 1x Docena + 1x Media docena');
+      expect(tx.ticketEvento.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.ticketEvento.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 30, estado: 'ACTIVO', cantidadRetirada: 0 },
+          data: expect.objectContaining({ cantidadRetirada: 1, estado: 'ACTIVO' }),
+        }),
+      );
+
+      // No se puede entregar más de lo pendiente ni productos ajenos al QR
+      await expect(
+        service.validarTicketQr(actor, alcanceGlobal, { tokenQr: token, entregas: [{ ticketId: 31, cantidad: 2 }] }),
+      ).rejects.toThrow(/Solo quedan 1/);
+      await expect(
+        service.validarTicketQr(actor, alcanceGlobal, { tokenQr: token, entregas: [{ ticketId: 999, cantidad: 1 }] }),
+      ).rejects.toThrow(/no corresponde/);
+
+      // Si otro dispositivo lo modificó en el medio, se rechaza y se revierte
+      tx.ticketEvento.updateMany = vi.fn().mockResolvedValue({ count: 0 });
+      await expect(
+        service.validarTicketQr(actor, alcanceGlobal, { tokenQr: token, entregas: [{ ticketId: 31, cantidad: 1 }] }),
+      ).rejects.toThrow(/otro dispositivo/);
+    });
+
+    it('validarTicketQr: con una sola unidad pendiente entrega directo sin pedir selección', async () => {
+      const { generateTokenQR } = await import('../common/utils/qr-token.util.js');
+      const token = generateTokenQR({ eventoId: 3, pedidoId: 51 });
+      const vales = [
+        { id: 40, tokenQr: token, cantidad: 2, cantidadRetirada: 2, estado: 'UTILIZADO', item: { nombre: 'Docena' } },
+        { id: 41, tokenQr: token, cantidad: 3, cantidadRetirada: 2, estado: 'ACTIVO', item: { nombre: 'Empanada' } },
+      ];
+      const tx = {
+        $queryRaw: vi.fn().mockResolvedValue([]),
+        ticketEvento: {
+          findFirst: vi.fn().mockResolvedValue({
+            ...vales[0],
+            pedidoId: 51,
+            pedido: {
+              id: 51,
+              eventoId: 3,
+              total: 9000,
+              estado: 'PAGADO',
+              compradorNombre: 'Ana',
+              evento: { id: 3, titulo: 'Medialunas', estado: 'PUBLICADO' },
+              vendedorUsuario: null,
+              tickets: vales,
+            },
+          }),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         },
       };
       const service = new TesoreriaService({
@@ -2011,11 +2091,14 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
       } as any);
 
       const res = await service.validarTicketQr(actor, alcanceGlobal, { tokenQr: token });
-      expect(res.ok).toBe(true);
-      expect(res.ticket?.detalle).toBe('2x Docena + 1x Media docena');
-      expect(res.mensaje).toContain('2x Docena + 1x Media docena');
+      expect(res.estado).toBe('VALIDADO');
+      expect(res.ticket?.detalle).toBe('1x Empanada');
+      expect(res.pendiente).toBeNull();
       expect(tx.ticketEvento.updateMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { tokenQr: token, estado: 'ACTIVO' } }),
+        expect.objectContaining({
+          where: { id: 41, estado: 'ACTIVO', cantidadRetirada: 2 },
+          data: expect.objectContaining({ cantidadRetirada: 3, estado: 'UTILIZADO' }),
+        }),
       );
     });
 
@@ -2916,8 +2999,8 @@ describe('TesoreriaService - Motor Financiero: Cuentas, Libro Diario y Transfere
 
       // listarEventos con groupBy + SQL GROUP BY para tickets
       const queryRawEventos = vi.fn().mockResolvedValue([
-        { eventoId: 10, estado: 'UTILIZADO', cantidad: 3 },
-        { eventoId: 10, estado: 'ACTIVO', cantidad: 1 },
+        { eventoId: 10, estado: 'UTILIZADO', cantidad: 3, retirada: 3 },
+        { eventoId: 10, estado: 'ACTIVO', cantidad: 1, retirada: 0 },
       ]);
       const mockPrismaEventos = {
         $queryRaw: queryRawEventos,

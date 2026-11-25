@@ -51,7 +51,7 @@ import {
 import { ModalCrearEventoEconomico } from '../../components/ModalCrearEventoEconomico';
 import { ModalCargarPedidoEvento } from '../../components/ModalCargarPedidoEvento';
 import { ModalTicketQR, type TicketData } from '../../components/ModalTicketQR';
-import { agruparValesPorQr } from '../../lib/valesQr';
+import { agruparValesPorQr, tieneRetiro } from '../../lib/valesQr';
 
 type TabWorkspace = 'pos' | 'pedidos' | 'liquidacion';
 type FiltroPedidos = 'TODOS' | 'PENDIENTES' | 'PENDIENTE_RETIRADO' | 'PAGADOS';
@@ -334,7 +334,7 @@ export const EventoWorkspacePage: React.FC = () => {
     let montoPendiente = 0;
 
     for (const p of pedidosSource) {
-      const retirado = Boolean(p.tickets?.some((t: any) => t.estado === 'UTILIZADO'));
+      const retirado = Boolean(p.tickets?.some(tieneRetiro));
       if (p.estado === 'PAGADO') {
         pagados++;
       } else {
@@ -356,7 +356,7 @@ export const EventoWorkspacePage: React.FC = () => {
   const pedidosFiltrados = useMemo(() => {
     const q = normalizarTextoBusqueda(busquedaPedidos);
     return pedidosSource.filter((p) => {
-      const retirado = Boolean(p.tickets?.some((t: any) => t.estado === 'UTILIZADO'));
+      const retirado = Boolean(p.tickets?.some(tieneRetiro));
       if (filtroPedidos === 'PENDIENTES' && p.estado !== 'PENDIENTE') return false;
       if (filtroPedidos === 'PENDIENTE_RETIRADO' && !(p.estado === 'PENDIENTE' && retirado)) {
         return false;
@@ -1387,7 +1387,7 @@ export const EventoWorkspacePage: React.FC = () => {
                   <tbody className="divide-y divide-rule">
                     {pedidosFiltrados.map((p: any) => {
                       const algunoRetirado = Boolean(
-                        p.tickets?.some((t: any) => t.estado === 'UTILIZADO'),
+                        p.tickets?.some(tieneRetiro),
                       );
                       const esPendienteRetirado = p.estado === 'PENDIENTE' && algunoRetirado;
 
@@ -1525,7 +1525,7 @@ export const EventoWorkspacePage: React.FC = () => {
               <div className="md:hidden divide-y divide-rule">
                 {pedidosFiltrados.map((p: any) => {
                   const algunoRetirado = Boolean(
-                    p.tickets?.some((t: any) => t.estado === 'UTILIZADO'),
+                    p.tickets?.some(tieneRetiro),
                   );
                   const esPendienteRetirado = p.estado === 'PENDIENTE' && algunoRetirado;
 
