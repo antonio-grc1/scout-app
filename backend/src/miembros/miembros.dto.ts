@@ -15,6 +15,8 @@ export const CrearMiembroSchema = z.object({
   nombre: z.string().trim().min(1).max(100),
   apellido: z.string().trim().min(1).max(100),
   fechaNacimiento: fecha,
+  /** Fecha de ingreso al grupo (por defecto, hoy): las cuotas mensuales se cobran desde ese mes. */
+  fechaIngreso: fecha.optional(),
   emailContacto: email.nullish(),
   telefonoContacto: z.string().trim().max(50).nullish(),
   tipoMiembro: TipoMiembroSchema.optional(),
@@ -39,6 +41,7 @@ export const EditarMiembroSchema = z
     nombre: z.string().trim().min(1).max(100),
     apellido: z.string().trim().min(1).max(100),
     fechaNacimiento: fecha,
+    fechaIngreso: fecha.nullable(),
     emailContacto: email.nullable(),
     telefonoContacto: z.string().trim().max(50).nullable(),
     tipoMiembro: TipoMiembroSchema,

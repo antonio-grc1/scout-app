@@ -16,6 +16,7 @@ import {
 import {
   anioActual,
   hoyUtc,
+  mesInicioCuotas,
   parsearFechaOperacion,
 } from '../common/utils/fechas.util.js';
 import {
@@ -65,6 +66,16 @@ import {
   serializarConceptoCompat,
   serializarPlanCompat,
 } from './tesoreria-shared.js';
+
+/** True si el concepto es una cuota mensual de un mes anterior al ingreso del miembro al grupo. */
+function esCuotaAnteriorAlIngreso(
+  concepto: { planCuotaMensualId?: number | null; mes?: number | null; cicloAnio: number },
+  fechaIngreso: Date | null | undefined,
+): boolean {
+  if (concepto.planCuotaMensualId == null || concepto.mes == null) return false;
+  const desde = mesInicioCuotas(fechaIngreso, concepto.cicloAnio);
+  return desde === null || concepto.mes < desde;
+}
 
 @Injectable()
 export class TesoreriaCuotasService {
@@ -329,6 +340,8 @@ export class TesoreriaCuotasService {
     // Crear cargos para candidatos que aún no tenían cargo en este concepto
     const nuevosCargos: Prisma.CargoMiembroCreateManyInput[] = [];
     for (const u of candidatosMap.values()) {
+      // Cuota mensual de un mes anterior a su ingreso al grupo: no se le cobra (los cargos ya existentes no se tocan)
+      if (esCuotaAnteriorAlIngreso(concepto, u.fechaIngreso)) continue;
       const { montoOriginal, montoDescuento, montoFinal } = calcularMontosCargo(
         montoBaseNum,
         concepto.permiteDescuentoHermanos ?? true,
@@ -520,6 +533,7 @@ export class TesoreriaCuotasService {
       if (concepto.planCuotaMensualId !== null && concepto.mes !== null && concepto.mes < mesEfectivo) {
         continue;
       }
+      if (esCuotaAnteriorAlIngreso(concepto, usuario.fechaIngreso)) continue;
       // Si es evento suelto con fecha de vencimiento ya pasada, no asignar retroactivamente
       if (
         concepto.planCuotaMensualId === null &&
@@ -1656,6 +1670,7 @@ export class TesoreriaCuotasService {
 
       for (const u of candidatos) {
         if (u.cargos.length > 0) continue;
+        if (esCuotaAnteriorAlIngreso(concepto, u.fechaIngreso)) continue;
 
         const permiteDesc = Boolean(dto.aplicarDescuentoFamiliar && (concepto.permiteDescuentoHermanos ?? true));
         const { montoOriginal, montoDescuento, montoFinal } = calcularMontosCargo(

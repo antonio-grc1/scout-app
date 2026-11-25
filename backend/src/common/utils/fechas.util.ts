@@ -38,6 +38,19 @@ export function hoyUtc(): Date {
   return new Date(Date.UTC(anio, mes - 1, dia));
 }
 
+/**
+ * Primer mes (1-12) del ciclo en que corresponde cobrarle cuotas mensuales a un miembro según su
+ * fecha de ingreso al grupo. Sin fecha o ingreso en un año anterior: desde enero.
+ * Devuelve null si ingresa después de terminado el ciclo.
+ */
+export function mesInicioCuotas(fechaIngreso: Date | null | undefined, cicloAnio: number): number | null {
+  if (!fechaIngreso) return 1;
+  const anio = fechaIngreso.getUTCFullYear();
+  if (anio < cicloAnio) return 1;
+  if (anio > cicloAnio) return null;
+  return fechaIngreso.getUTCMonth() + 1;
+}
+
 /** Edad cumplida a la fecha de referencia (ambas fechas interpretadas en UTC). */
 export function calcularEdad(fechaNacimiento: Date, referencia: Date = hoyUtc()): number {
   let edad = referencia.getUTCFullYear() - fechaNacimiento.getUTCFullYear();

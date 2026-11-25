@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { esDniValido } from '../lib/formValidation';
-import { traducirErrorAmigable } from '../lib/formatters';
+import { obtenerHoyLocalISO, traducirErrorAmigable } from '../lib/formatters';
 import { useModalOverlay } from '../hooks/useModalOverlay';
 import { api } from '../api/client';
 import { useAuthStore } from '../store/authStore';
@@ -55,6 +55,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
   const [fechaNacimiento, setFechaNacimiento] = useState('');
+  const [fechaIngreso, setFechaIngreso] = useState(() => obtenerHoyLocalISO());
   const [emailContacto, setEmailContacto] = useState('');
   const [telefonoContacto, setTelefonoContacto] = useState('');
   const [madreNombres, setMadreNombres] = useState('');
@@ -219,6 +220,7 @@ export const ModalAltaMiembro: React.FC<Props> = ({
         nombre: nombre.trim(),
         apellido: apellido.trim(),
         fechaNacimiento,
+        fechaIngreso: fechaIngreso || undefined,
         tipoMiembro,
         emailContacto: emailContacto.trim() || undefined,
         telefonoContacto: telefonoContacto.trim() || undefined,
@@ -589,6 +591,13 @@ export const ModalAltaMiembro: React.FC<Props> = ({
                 </option>
               ))}
             </Select>
+            <Input
+              label="Fecha de ingreso al grupo"
+              type="date"
+              value={fechaIngreso}
+              onChange={(e) => setFechaIngreso(e.target.value)}
+              helperText="Las cuotas mensuales se le cobran desde este mes."
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">

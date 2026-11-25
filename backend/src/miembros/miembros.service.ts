@@ -22,7 +22,7 @@ import {
 } from '../common/scope/alcance.util.js';
 import { PERMISOS_CRITICOS_ADMIN } from '../common/scope/permisos-catalogo.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
-import { anioActual, hoyUtc } from '../common/utils/fechas.util.js';
+import { anioActual, hoyUtc, mesInicioCuotas } from '../common/utils/fechas.util.js';
 import {
   CLAVES_FAMILIARES_ESTANDAR,
   clavesCopiablesEntreHermanos,
@@ -76,6 +76,7 @@ export const MIEMBRO_SELECT = {
   nombre: true,
   apellido: true,
   fechaNacimiento: true,
+  fechaIngreso: true,
   emailContacto: true,
   telefonoContacto: true,
   tipoMiembro: true,
@@ -638,6 +639,7 @@ export class MiembrosService {
       }
 
       const ciclo = dto.cicloAnio ?? anioActual();
+      const fechaIngreso = dto.fechaIngreso ? new Date(dto.fechaIngreso) : hoyUtc();
       const usuario = await tx.usuario.create({
         data: {
           dni: dto.dni,
@@ -645,6 +647,7 @@ export class MiembrosService {
           nombre: dto.nombre,
           apellido: dto.apellido,
           fechaNacimiento: new Date(dto.fechaNacimiento),
+          fechaIngreso,
           emailContacto: email,
           telefonoContacto: telefono,
           tipoMiembro: tipoMiembroFinal,
@@ -657,9 +660,10 @@ export class MiembrosService {
         },
       });
 
-      if (this.tesoreria) {
-        const mesActual = new Date().getMonth() + 1;
-        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, usuario.id, mesActual, ciclo);
+      // Cuotas del ciclo desde el mes de ingreso (por defecto, el mes actual)
+      const mesDesde = mesInicioCuotas(fechaIngreso, ciclo);
+      if (this.tesoreria && mesDesde !== null) {
+        await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, usuario.id, mesDesde, ciclo);
       }
 
       return usuario.id;
@@ -735,6 +739,7 @@ export class MiembrosService {
       'apellido',
       'dni',
       'fechaNacimiento',
+      'fechaIngreso',
       'tipoMiembro',
       'activo',
     ]);
@@ -743,6 +748,7 @@ export class MiembrosService {
       'apellido',
       'dni',
       'fechaNacimiento',
+      'fechaIngreso',
       'tipoMiembro',
       'activo',
       'emailContacto',
@@ -756,6 +762,9 @@ export class MiembrosService {
       const nuevo = (dto as Record<string, unknown>)[k];
       if (k === 'fechaNacimiento') {
         return !(actual instanceof Date && String(nuevo) === actual.toISOString().slice(0, 10));
+      }
+      if (k === 'fechaIngreso') {
+        return (nuevo ?? null) !== (actual instanceof Date ? actual.toISOString().slice(0, 10) : null);
       }
       return actual !== nuevo;
     });
@@ -872,6 +881,7 @@ export class MiembrosService {
         data: {
           ...dto,
           fechaNacimiento: dto.fechaNacimiento ? new Date(dto.fechaNacimiento) : undefined,
+          fechaIngreso: dto.fechaIngreso ? new Date(dto.fechaIngreso) : dto.fechaIngreso,
           datosFijosJson,
           ...(dto.activo === false && objetivo.activo ? { tokenVersion: { increment: 1 } } : {}),
         },
@@ -891,6 +901,17 @@ export class MiembrosService {
           );
         }
         return tx.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+      }
+
+      // Si se adelantó la fecha de ingreso, se generan las cuotas que faltan desde ese mes.
+      // Las que ya existen no se tocan (si se atrasa la fecha, se anulan a mano).
+      if (camposModificados.includes('fechaIngreso') && actualizado.fechaIngreso && actualizado.activo && this.tesoreria) {
+        const ciclo = anioActual();
+        const mesDesde = mesInicioCuotas(actualizado.fechaIngreso, ciclo);
+        if (mesDesde !== null) {
+          await this.tesoreria.sincronizarCuotasMiembroActivoEnTx(tx, id, mesDesde, ciclo);
+          return tx.usuario.findUniqueOrThrow({ where: { id }, select: MIEMBRO_SELECT });
+        }
       }
 
       return actualizado;

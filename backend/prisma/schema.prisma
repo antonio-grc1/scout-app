@@ -105,7 +105,9 @@ model Usuario {
   nombre              String              @db.VarChar(100)
   apellido            String              @db.VarChar(100)
   fechaNacimiento     DateTime            @map("fecha_nacimiento") @db.Date
-  emailContacto       String?             @map("email_contacto") @db.VarChar(150) // NO UNIQUE!
+  /// Fecha de ingreso al grupo: las cuotas mensuales se cobran desde ese mes. Null = sin restricción.
+  fechaIngreso        DateTime?           @map("fecha_ingreso") @db.Date
+  emailContacto      String?             @map("email_contacto") @db.VarChar(150) // NO UNIQUE!
   telefonoContacto    String?             @map("telefono_contacto") @db.VarChar(50)
   tipoMiembro         String              @default("PROTAGONISTA") @map("tipo_miembro") @db.VarChar(30)
   grupoFamiliarId     Int?                @map("grupo_familiar_id")

@@ -234,6 +234,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
     apellido: '',
     dni: '',
     fechaNacimiento: '',
+    fechaIngreso: '',
     tipoMiembro: 'PROTAGONISTA',
     emailContacto: '',
     telefonoContacto: '',
@@ -503,6 +504,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
           apellido: m.apellido || '',
           dni: m.dni || '',
           fechaNacimiento: fechaNac,
+          fechaIngreso: m.fechaIngreso ? String(m.fechaIngreso).slice(0, 10) : '',
           tipoMiembro:
             m.tipoMiembro === 'EDUCADOR' || (m.tipoMiembro == null && miembroEsEducador(m))
               ? 'EDUCADOR'
@@ -664,6 +666,7 @@ export const ExpedienteMiembro360: React.FC<ExpedienteMiembro360Props> = ({
         payload.apellido = formData.apellido.trim();
         payload.dni = formData.dni.trim();
         payload.fechaNacimiento = formData.fechaNacimiento || undefined;
+        payload.fechaIngreso = formData.fechaIngreso || null;
         payload.tipoMiembro = formData.tipoMiembro;
       }
       if (puedeDarBaja) payload.activo = formData.activo;

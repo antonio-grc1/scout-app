@@ -15,6 +15,7 @@ export interface FormDatosMiembro {
   apellido: string;
   dni: string;
   fechaNacimiento: string;
+  fechaIngreso: string;
   tipoMiembro: 'PROTAGONISTA' | 'EDUCADOR';
   emailContacto: string;
   telefonoContacto: string;
@@ -114,6 +115,7 @@ export const PestanaDatosMiembro: React.FC<PestanaDatosMiembroProps> = ({
     { key: 'apellido', label: 'Apellido', editable: puedeEditarIdentidad, required: true },
     { key: 'dni', label: 'DNI', editable: puedeEditarIdentidad, required: true },
     { key: 'fechaNacimiento', label: 'Fecha de nacimiento', editable: puedeEditarIdentidad, type: 'date', required: true },
+    { key: 'fechaIngreso', label: 'Fecha de ingreso al grupo', editable: puedeEditarIdentidad, type: 'date' },
     { key: 'telefonoContacto', label: 'Teléfono del miembro', editable: puedeEditarContacto, type: 'tel', placeholder: 'Ej: 3511234567' },
     { key: 'emailContacto', label: 'Email', editable: puedeEditarContacto, type: 'email', placeholder: 'correo@ejemplo.com' },
     { key: 'madreNombres', label: 'Nombre y apellido madre', editable: puedeEditarContacto, placeholder: 'Nombre y apellido de la madre' },
