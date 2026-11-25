@@ -1473,8 +1473,8 @@ export const EventoWorkspacePage: React.FC = () => {
               })}
             </div>
 
-            <div className="flex items-center gap-2 w-full lg:w-auto">
-              <div className="relative flex-1 lg:w-72 lg:flex-none">
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full lg:w-auto">
+              <div className="relative w-full sm:w-auto sm:flex-1 lg:w-72 lg:flex-none">
                 <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
                 <input
                   type="text"
@@ -1513,20 +1513,28 @@ export const EventoWorkspacePage: React.FC = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead>
-                    <tr className="text-xs uppercase tracking-wider text-ink-muted border-b border-rule">
-                      <th className="py-2 pr-4 font-bold">Producto</th>
-                      <th className="py-2 px-4 font-bold text-right">Vendidas</th>
-                      <th className="py-2 px-4 font-bold text-right">Entregadas</th>
-                      <th className="py-2 pl-4 font-bold text-right">Monto</th>
+                    <tr className="text-xs uppercase sm:tracking-wider text-ink-muted border-b border-rule">
+                      <th className="py-2 pr-2 sm:pr-4 font-bold">Producto</th>
+                      <th className="py-2 px-2 sm:px-4 font-bold text-right">
+                        <span className="sm:hidden">Vend.</span>
+                        <span className="hidden sm:inline">Vendidas</span>
+                      </th>
+                      <th className="py-2 px-2 sm:px-4 font-bold text-right">
+                        <span className="sm:hidden">Entreg.</span>
+                        <span className="hidden sm:inline">Entregadas</span>
+                      </th>
+                      <th className="py-2 pl-2 sm:pl-4 font-bold text-right">Monto</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-rule s-tabular">
                     {totalesPorProducto.map((t) => (
                       <tr key={t.itemId}>
-                        <td className="py-2 pr-4 font-semibold text-ink">{t.nombre}</td>
-                        <td className="py-2 px-4 text-right font-black text-ink">{t.unidades}</td>
-                        <td className="py-2 px-4 text-right text-ink-2">{t.entregadas}</td>
-                        <td className="py-2 pl-4 text-right text-ink-2">{formatearMoneda(t.monto)}</td>
+                        <td className="py-2 pr-2 sm:pr-4 font-semibold text-ink">{t.nombre}</td>
+                        <td className="py-2 px-2 sm:px-4 text-right font-black text-ink">{t.unidades}</td>
+                        <td className="py-2 px-2 sm:px-4 text-right text-ink-2">{t.entregadas}</td>
+                        <td className="py-2 pl-2 sm:pl-4 text-right text-ink-2 whitespace-nowrap">
+                          {formatearMoneda(t.monto)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
