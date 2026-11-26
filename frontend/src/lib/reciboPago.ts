@@ -33,6 +33,13 @@ interface DatosRecibo {
     montoImputado: string | number;
     cargo: { concepto: { nombre: string } | null; usuario: PersonaRecibo | null } | null;
   }>;
+  /** Contactos del titular para enviarle el recibo */
+  contactos: { email: string | null; telefonos: TelefonoContacto[] };
+}
+
+export interface TelefonoContacto {
+  etiqueta: string;
+  numero: string;
 }
 
 const MARGEN = 50;
@@ -186,10 +193,18 @@ export async function generarReciboPagoPdf(datos: DatosRecibo): Promise<Uint8Arr
   return doc.save();
 }
 
+export async function obtenerDatosRecibo(pagoId: number): Promise<DatosRecibo> {
+  const { data } = await api.get<DatosRecibo>(`/tesoreria/pagos/${pagoId}/recibo`);
+  return data;
+}
+
+const avisarError = (err: unknown, porDefecto: string) =>
+  useToastStore.getState().mostrarToast(traducirErrorAmigable(err, porDefecto), 'error');
+
 /** Busca los datos del pago, arma el recibo y lo descarga (avisa con un toast si falla). */
 export async function descargarReciboPago(pagoId: number): Promise<void> {
   try {
-    const { data } = await api.get<DatosRecibo>(`/tesoreria/pagos/${pagoId}/recibo`);
+    const data = await obtenerDatosRecibo(pagoId);
     const bytes = await generarReciboPagoPdf(data);
     const apellido = (data.usuario?.apellido || 'Pago')
       .normalize('NFD')
@@ -197,10 +212,64 @@ export async function descargarReciboPago(pagoId: number): Promise<void> {
       .replace(/[^a-zA-Z0-9_-]/g, '_');
     descargarPdfBlob(bytes, `Recibo_${String(data.id).padStart(6, '0')}_${apellido}.pdf`);
   } catch (err) {
-    useToastStore
-      .getState()
-      .mostrarToast(traducirErrorAmigable(err, 'No se pudo generar el recibo.'), 'error');
+    avisarError(err, 'No se pudo generar el recibo.');
   }
+}
+
+/** Arma el recibo y lo envía por correo al email del titular. */
+export async function enviarReciboPorMail(pagoId: number): Promise<void> {
+  try {
+    const bytes = await generarReciboPagoPdf(await obtenerDatosRecibo(pagoId));
+    let binario = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binario += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    }
+    const { data } = await api.post<{ destinatario: string }>(
+      `/tesoreria/pagos/${pagoId}/recibo/enviar-correo`,
+      { pdfBase64: btoa(binario) },
+    );
+    useToastStore.getState().mostrarToast(`Recibo enviado a ${data.destinatario}.`);
+  } catch (err) {
+    avisarError(err, 'No se pudo enviar el recibo por correo.');
+  }
+}
+
+/**
+ * Pasa un teléfono argentino al formato de WhatsApp (549 + área + número, sin 0 ni 15).
+ * Devuelve null si no se puede interpretar con seguridad.
+ */
+export function numeroWhatsApp(telefono: string): string | null {
+  let d = telefono.replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('549') && d.length === 13) return d;
+  if (d.startsWith('54') && d.length === 12) return `549${d.slice(2)}`;
+  if (d.startsWith('0')) d = d.slice(1);
+  if (d.length === 12) {
+    // Área de 2 a 4 dígitos seguida del "15" de celular
+    for (const largoArea of [2, 3, 4]) {
+      if (d.slice(largoArea, largoArea + 2) === '15') {
+        d = d.slice(0, largoArea) + d.slice(largoArea + 2);
+        break;
+      }
+    }
+  }
+  return d.length === 10 ? `549${d}` : null;
+}
+
+/** Abre WhatsApp con el mensaje del recibo para ese teléfono (o para elegir contacto si no se entiende el número). */
+export function abrirWhatsAppRecibo(datos: DatosRecibo, telefono: TelefonoContacto): void {
+  const numero = String(datos.id).padStart(6, '0');
+  const conceptos = [
+    ...new Set(datos.imputaciones.map((i) => i.cargo?.concepto?.nombre).filter(Boolean)),
+  ].join(', ');
+  const texto = [
+    `¡Hola! Te enviamos el recibo N° ${numero} del ${NOMBRE_GRUPO} por ${formatearMoneda(Number(datos.montoTotal))}${
+      conceptos ? ` (${conceptos})` : ''
+    }, pagado el ${formatearFecha(datos.fechaPago)}.`,
+    `Podés descargar el PDF desde tu usuario, en "Mis cuotas": ${window.location.origin}/mi-espacio?vista=cuotas`,
+  ].join('\n\n');
+  const wa = numeroWhatsApp(telefono.numero);
+  window.open(`https://wa.me/${wa ?? ''}?text=${encodeURIComponent(texto)}`, '_blank', 'noopener');
 }
 
 /** Aviso de cobro registrado con el botón para descargar el recibo. */

@@ -181,6 +181,12 @@ export const RegistrarPagoSchema = z
   );
 export type RegistrarPagoDto = z.infer<typeof RegistrarPagoSchema>;
 
+/** PDF del recibo en base64 (máx. ~2 MB), generado en el navegador. */
+export const EnviarReciboCorreoSchema = z.object({
+  pdfBase64: z.string().min(10).max(3_000_000),
+});
+export type EnviarReciboCorreoDto = z.infer<typeof EnviarReciboCorreoSchema>;
+
 export const EditarPagoSchema = z.object({
   metodoPago: z.enum(MetodoPago).optional(),
   referenciaComprobante: z.string().trim().max(100).nullable().optional(),

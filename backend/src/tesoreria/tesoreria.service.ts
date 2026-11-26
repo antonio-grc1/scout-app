@@ -205,6 +205,10 @@ export class TesoreriaService {
     return this.cuotas.obtenerReciboPago(alcance, id);
   }
 
+  enviarReciboPorCorreo(alcance: AlcanceAcceso, id: number, pdfBase64: string) {
+    return this.cuotas.enviarReciboPorCorreo(alcance, id, pdfBase64);
+  }
+
   listarPagos(alcance: AlcanceAcceso, usuarioId?: number) {
     return this.cuotas.listarPagos(alcance, usuarioId);
   }

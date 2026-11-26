@@ -14,6 +14,7 @@ import {
   FileDown,
 } from 'lucide-react';
 import { descargarReciboPago } from '../../lib/reciboPago';
+import { BotonesEnvioRecibo } from '../BotonesEnvioRecibo';
 import {
   formatearFecha,
   formatearMoneda,
@@ -615,7 +616,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                   key={p.id}
                   className="p-3.5 rounded-xl bg-paper-2 border border-rule space-y-2"
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-extrabold text-brand text-[15px]">
@@ -636,7 +637,7 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                       <button
                         type="button"
                         onClick={() => void descargarReciboPago(p.id)}
@@ -646,6 +647,9 @@ export const PestanaCuotasTesoreria: React.FC<PestanaCuotasTesoreriaProps> = ({
                         <FileDown className="w-3.5 h-3.5" />
                         <span>Recibo</span>
                       </button>
+                      {(puedeCobrarCuotas || puedeGestionarTesoreria) && (
+                        <BotonesEnvioRecibo pagoId={p.id} />
+                      )}
                     {habilitarAjustes && (
                       <>
                         <button

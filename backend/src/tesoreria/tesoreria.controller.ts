@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   ParseBoolPipe,
   ParseEnumPipe,
@@ -91,6 +92,8 @@ import {
   type RegistrarIngresoDto,
   type ActualizarIngresoDto,
   type RegistrarPagoDto,
+  EnviarReciboCorreoSchema,
+  type EnviarReciboCorreoDto,
   type SincronizarMesesPlanDto,
   type ValidarTicketQrDto,
   type VincularHermanoDto,
@@ -291,6 +294,17 @@ export class TesoreriaController {
   @Get('pagos/:id/recibo')
   obtenerReciboPago(@Alcance() a: AlcanceAcceso, @Param('id', ParseIntPipe) id: number) {
     return this.tesoreria.obtenerReciboPago(a, id);
+  }
+
+  @RequireAnyPermission(CUOTAS_COBRAR, TESORERIA_GESTIONAR)
+  @Post('pagos/:id/recibo/enviar-correo')
+  @HttpCode(200)
+  enviarReciboPorCorreo(
+    @Alcance() a: AlcanceAcceso,
+    @Param('id', ParseIntPipe) id: number,
+    @Body(new ZodValidationPipe(EnviarReciboCorreoSchema)) dto: EnviarReciboCorreoDto,
+  ) {
+    return this.tesoreria.enviarReciboPorCorreo(a, id, dto.pdfBase64);
   }
 
   @RequireAnyPermission(CUOTAS_VER, TESORERIA_CAJA)
