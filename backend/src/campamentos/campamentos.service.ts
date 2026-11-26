@@ -383,6 +383,7 @@ export class CampamentosService {
         camp.fechaLimiteConfirmacion && camp.fechaLimiteConfirmacion < ahora,
       );
       const montoPagado = Number(cargoActivo?.montoPagado ?? 0);
+      const bajaPorEducador = ins.estado === 'CANCELADO';
 
       return {
         inscripcionId: ins.id,
@@ -392,8 +393,9 @@ export class CampamentosService {
         fichaValidada,
         estadoFicha,
         limiteVencido,
-        puedeConfirmar: camp.estado === 'PUBLICADO' && !limiteVencido,
-        puedeCancelar: camp.estado === 'PUBLICADO' && !limiteVencido && montoPagado === 0,
+        puedeConfirmar: camp.estado === 'PUBLICADO' && !limiteVencido && !bajaPorEducador,
+        puedeCancelar:
+          camp.estado === 'PUBLICADO' && !limiteVencido && !bajaPorEducador && montoPagado === 0,
         montoEstimado,
         cargo: cargoActivo
           ? {
@@ -450,6 +452,11 @@ export class CampamentosService {
       const camp = inscripcion.campamento;
       if (camp.estado !== 'PUBLICADO') {
         throw new BadRequestException('Este campamento ya no acepta cambios de asistencia.');
+      }
+      if (inscripcion.estado === 'CANCELADO') {
+        throw new ForbiddenException(
+          'Tu educador registró tu baja en este campamento. Hablá con tu educador si querés volver a anotarte.',
+        );
       }
       if (camp.fechaLimiteConfirmacion && camp.fechaLimiteConfirmacion < ahora) {
         throw new BadRequestException(
@@ -1181,7 +1188,8 @@ export class CampamentosService {
         const cargosPendientes = await tx.cargoMiembro.findMany({
           where: {
             conceptoId: conceptoCuotaId,
-            estado: EstadoCargo.PENDIENTE,
+            // PAGADO sin pagos = cargo de $0 (campamento gratis o 100% de descuento).
+            estado: { in: [EstadoCargo.PENDIENTE, EstadoCargo.PAGADO] },
             montoPagado: 0,
           },
           include: {
@@ -1204,6 +1212,53 @@ export class CampamentosService {
               estado: Number(montoFinal) > 0 ? EstadoCargo.PENDIENTE : EstadoCargo.PAGADO,
             },
           });
+        }
+      }
+
+      // Si el campamento pasa de gratis a tener costo, los que ya confirmaron (sin cargo) deben recibirlo.
+      if (
+        Number(actual.costoBase) <= 0 &&
+        nuevoCostoBase > 0 &&
+        conceptoCuotaId &&
+        !pasaACancelado &&
+        actual.estado !== 'CANCELADO'
+      ) {
+        const vigentesIds = new Set(nuevosInvitadosIds);
+        const confirmadosSinCargo = actual.inscripciones.filter(
+          (i) => vigentesIds.has(i.usuarioId) && i.estado === 'CONFIRMADO' && !i.cargo,
+        );
+        if (confirmadosSinCargo.length > 0) {
+          const usuarios = await tx.usuario.findMany({
+            where: { id: { in: confirmadosSinCargo.map((i) => i.usuarioId) } },
+            select: {
+              id: true,
+              grupoFamiliar: { select: { porcentajeDescuentoHermanos: true } },
+            },
+          });
+          const grupoPorUsuario = new Map(usuarios.map((u) => [u.id, u.grupoFamiliar]));
+          for (const ins of confirmadosSinCargo) {
+            const { montoOriginal, montoDescuento, montoFinal } = calcularMontosCargo(
+              nuevoCostoBase,
+              nuevoPermiteDto,
+              nuevoPorcentajeDto,
+              grupoPorUsuario.get(ins.usuarioId),
+            );
+            const cargo = await tx.cargoMiembro.create({
+              data: {
+                usuarioId: ins.usuarioId,
+                conceptoId: conceptoCuotaId,
+                montoOriginal,
+                montoDescuento,
+                montoFinal,
+                montoPagado: 0,
+                estado: Number(montoFinal) > 0 ? EstadoCargo.PENDIENTE : EstadoCargo.PAGADO,
+              },
+            });
+            await tx.campamentoInscripcion.update({
+              where: { id: ins.id },
+              data: { cargoId: cargo.id },
+            });
+          }
         }
       }
 

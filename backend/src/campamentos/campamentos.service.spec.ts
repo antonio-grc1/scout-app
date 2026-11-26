@@ -580,6 +580,84 @@ describe('CampamentosService', () => {
     expect(Number(prisma.usuario.update.mock.calls[0][0].data.saldoAFavor.increment)).toBe(4000);
   });
 
+  it('si el costo pasa de 0 a más de 0, genera el cargo a quienes ya confirmaron', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamento.findUnique.mockResolvedValueOnce({
+      id: 10,
+      titulo: 'Salida',
+      lugar: 'Sierras',
+      fechaInicio: new Date('2026-11-28T00:00:00.000Z'),
+      fechaFin: new Date('2026-11-29T00:00:00.000Z'),
+      fechaLimiteConfirmacion: null,
+      estado: 'PUBLICADO',
+      destinatarioTipo: 'PROTAGONISTAS',
+      unidadId: 2,
+      cicloAnio: 2026,
+      costoBase: 0,
+      permiteDescuentoHermanos: true,
+      porcentajeDescuentoHermanos: null,
+      rubroId: null,
+      conceptoCuotaId: null,
+      creadoPorUsuarioId: 1,
+      unidades: [{ unidadId: 2 }],
+      inscripciones: [
+        { id: 100, usuarioId: 10, estado: 'CONFIRMADO', cargoId: null, cargo: null },
+        { id: 101, usuarioId: 11, estado: 'PENDIENTE', cargoId: null, cargo: null },
+        { id: 102, usuarioId: 12, estado: 'NO_ASISTE', cargoId: null, cargo: null },
+      ],
+    });
+    prisma.conceptoCuota.create.mockResolvedValueOnce({ id: 60 });
+    prisma.cargoMiembro.findMany.mockResolvedValueOnce([]);
+    prisma.usuario.findMany.mockResolvedValueOnce([
+      { id: 10, grupoFamiliar: { porcentajeDescuentoHermanos: new Prisma.Decimal(10) } },
+    ]);
+    prisma.cargoMiembro.create.mockResolvedValueOnce({ id: 400 });
+    prisma.campamento.update.mockResolvedValueOnce({ id: 10, titulo: 'Salida', estado: 'PUBLICADO' });
+
+    await service.editar({ tipo: 'GLOBAL' }, actorGlobal, 10, { costoBase: 8000 });
+
+    expect(prisma.cargoMiembro.create).toHaveBeenCalledTimes(1);
+    const dataCargo = prisma.cargoMiembro.create.mock.calls[0][0].data;
+    expect(dataCargo.usuarioId).toBe(10);
+    expect(dataCargo.conceptoId).toBe(60);
+    expect(Number(dataCargo.montoFinal)).toBe(7200);
+    expect(dataCargo.estado).toBe(EstadoCargo.PENDIENTE);
+    expect(prisma.campamentoInscripcion.update).toHaveBeenCalledWith({
+      where: { id: 100 },
+      data: { cargoId: 400 },
+    });
+  });
+
+  it('el miembro no puede revertir una baja registrada por su educador', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamentoInscripcion.findUnique.mockResolvedValue({
+      id: 100,
+      estado: 'CANCELADO',
+      campamento: {
+        id: 7,
+        estado: 'PUBLICADO',
+        fechaLimiteConfirmacion: null,
+        costoBase: 10000,
+        conceptoCuotaId: 50,
+        cicloAnio: 2026,
+      },
+      cargo: null,
+    });
+
+    await expect(service.responder(10, 7, { accion: 'CONFIRMAR' })).rejects.toThrow(
+      ForbiddenException,
+    );
+    await expect(service.responder(10, 7, { accion: 'NO_ASISTE' })).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(prisma.cargoMiembro.create).not.toHaveBeenCalled();
+    expect(prisma.campamentoInscripcion.update).not.toHaveBeenCalled();
+  });
+
   it('no permite reactivar un campamento cancelado', async () => {
     const prisma = crearMockPrisma();
     const service = new CampamentosService(prisma);
