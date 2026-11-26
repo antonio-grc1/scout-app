@@ -989,13 +989,6 @@ export class CampamentosService {
         ? this.parsearFechaLimite(dto.fechaLimiteConfirmacion)
         : actual.fechaLimiteConfirmacion;
 
-    const cambiaDestinatarios =
-      dto.destinatarioTipo !== undefined ||
-      dto.unidadesIds !== undefined ||
-      dto.unidadId !== undefined ||
-      dto.usuariosIds !== undefined ||
-      dto.excepcionesIds !== undefined;
-
     const nuevoDestTipo = dto.destinatarioTipo ?? actual.destinatarioTipo;
     const unidadesActuales =
       actual.unidades.length > 0
@@ -1007,6 +1000,23 @@ export class CampamentosService {
       dto.unidadesIds !== undefined || dto.unidadId !== undefined
         ? this.normalizarUnidadesIds(dto.unidadesIds, dto.unidadId)
         : unidadesActuales;
+
+    // El formulario reenvía siempre los destinatarios: solo se re-sincronizan invitados
+    // si difieren de lo guardado, para no borrar inscripciones al editar otros campos.
+    const mismosIds = (a: readonly number[], b: readonly number[]) => {
+      const sa = new Set(a);
+      const sb = new Set(b);
+      return sa.size === sb.size && [...sa].every((id) => sb.has(id));
+    };
+    const cambiaDestinatarios =
+      nuevoDestTipo !== actual.destinatarioTipo ||
+      !mismosIds(nuevasUnidadesIds, unidadesActuales) ||
+      (dto.usuariosIds !== undefined &&
+        !mismosIds(
+          dto.usuariosIds,
+          actual.inscripciones.map((i) => i.usuarioId),
+        )) ||
+      (dto.excepcionesIds?.length ?? 0) > 0;
     const nuevaUnidadPrincipalId =
       nuevasUnidadesIds.length === 1 ? nuevasUnidadesIds[0] : null;
 

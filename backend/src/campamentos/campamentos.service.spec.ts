@@ -443,6 +443,92 @@ describe('CampamentosService', () => {
     expect(editRes.totalInvitados).toBe(2);
   });
 
+  it('editar otros campos reenviando los mismos destinatarios no toca las inscripciones', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamento.findUnique.mockResolvedValueOnce({
+      id: 7,
+      titulo: 'Camp',
+      lugar: 'Tandil',
+      fechaInicio: new Date('2026-11-28T00:00:00.000Z'),
+      fechaFin: new Date('2026-11-30T00:00:00.000Z'),
+      fechaLimiteConfirmacion: null,
+      estado: 'PUBLICADO',
+      destinatarioTipo: 'PROTAGONISTAS',
+      unidadId: null,
+      cicloAnio: 2026,
+      costoBase: 10000,
+      permiteDescuentoHermanos: true,
+      porcentajeDescuentoHermanos: null,
+      rubroId: null,
+      conceptoCuotaId: 50,
+      creadoPorUsuarioId: 1,
+      unidades: [{ unidadId: 2 }, { unidadId: 3 }],
+      inscripciones: [
+        // Usuario 10 se pasó de rama: no debe perder su inscripción confirmada y pagada.
+        { id: 100, usuarioId: 10, estado: 'CONFIRMADO', cargoId: 300, cargo: { id: 300, montoPagado: 5000, estado: EstadoCargo.PARCIAL } },
+      ],
+    });
+    prisma.cargoMiembro.findMany.mockResolvedValueOnce([]);
+    prisma.campamento.update.mockResolvedValueOnce({ id: 7, titulo: 'Camp corregido', estado: 'PUBLICADO' });
+
+    const res = await service.editar({ tipo: 'GLOBAL' }, actorGlobal, 7, {
+      titulo: 'Camp corregido',
+      destinatarioTipo: 'PROTAGONISTAS',
+      unidadesIds: [3, 2],
+      costoBase: 10000,
+    });
+
+    expect(prisma.usuario.findMany).not.toHaveBeenCalled();
+    expect(prisma.campamentoInscripcion.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.campamentoInscripcion.createMany).not.toHaveBeenCalled();
+    expect(prisma.campamentoUnidad.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.cargoMiembro.updateMany).not.toHaveBeenCalled();
+    expect(res.totalInvitados).toBe(1);
+  });
+
+  it('editar con los mismos invitados en modo USUARIOS no re-sincroniza', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamento.findUnique.mockResolvedValueOnce({
+      id: 8,
+      titulo: 'Salida',
+      lugar: 'Sierras',
+      fechaInicio: new Date('2026-11-28T00:00:00.000Z'),
+      fechaFin: new Date('2026-11-29T00:00:00.000Z'),
+      fechaLimiteConfirmacion: null,
+      estado: 'PUBLICADO',
+      destinatarioTipo: 'USUARIOS',
+      unidadId: null,
+      cicloAnio: 2026,
+      costoBase: 0,
+      permiteDescuentoHermanos: true,
+      porcentajeDescuentoHermanos: null,
+      rubroId: null,
+      conceptoCuotaId: null,
+      creadoPorUsuarioId: 1,
+      unidades: [],
+      inscripciones: [
+        { id: 200, usuarioId: 10, estado: 'PENDIENTE', cargoId: null, cargo: null },
+        { id: 201, usuarioId: 11, estado: 'CONFIRMADO', cargoId: null, cargo: null },
+      ],
+    });
+    prisma.campamento.update.mockResolvedValueOnce({ id: 8, titulo: 'Salida', estado: 'PUBLICADO' });
+
+    await service.editar({ tipo: 'GLOBAL' }, actorGlobal, 8, {
+      lugar: 'Sierras Chicas',
+      destinatarioTipo: 'USUARIOS',
+      unidadesIds: [],
+      usuariosIds: [11, 10],
+    });
+
+    expect(prisma.usuario.findMany).not.toHaveBeenCalled();
+    expect(prisma.campamentoInscripcion.deleteMany).not.toHaveBeenCalled();
+    expect(prisma.campamentoInscripcion.createMany).not.toHaveBeenCalled();
+  });
+
   it('al eliminar un campamento elimina también las alertas vinculadas y el concepto si no tiene cargos', async () => {
     const prisma = crearMockPrisma();
     const service = new CampamentosService(prisma);
