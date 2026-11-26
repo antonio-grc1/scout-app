@@ -32,6 +32,15 @@ export function validarFechaCalendarioIso(fechaStr: string): { anio: number; mes
   return { anio, mes, dia };
 }
 
+/**
+ * Último instante (23:59:59.999) del día YYYY-MM-DD en hora de Argentina (UTC-3, sin horario
+ * de verano). Para vencimientos que valen "hasta el final del día".
+ */
+export function finDelDiaArgentina(fechaIso: string): Date {
+  validarFechaCalendarioIso(fechaIso);
+  return new Date(`${fechaIso}T23:59:59.999-03:00`);
+}
+
 /** Fecha de hoy (calendario Argentina GMT-3) como medianoche UTC, igual que las columnas @db.Date. */
 export function hoyUtc(): Date {
   const [anio, mes, dia] = fechaIsoArgentinaHoy().split('-').map(Number);

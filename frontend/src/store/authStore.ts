@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { api, setOnAuthError, setOnRequirePasswordChange } from '../api/client';
 import { limpiarCacheApi } from '../lib/offlineCache';
+import { desactivarPushEnDispositivo } from '../lib/webPush';
+import { desuscribirPushAviso } from '../services/avisos.service';
 import type { TipoUnidad } from '../types/miembro';
 
 // localStorage puede estar bloqueado (Safari privado, cookies deshabilitadas): nunca debe romper la app.
@@ -246,7 +248,17 @@ export const useAuthStore = create<AuthState>((set, get) => {
       const estabaAutenticado = get().autenticado;
       get().limpiarSesionLocal();
       if (estabaAutenticado) {
-        void api.post('/auth/logout').catch(() => {});
+        void (async () => {
+          // Primero se quita la suscripción push (la cookie de sesión aún es válida),
+          // para que el dispositivo no siga recibiendo avisos de este usuario.
+          try {
+            const endpoint = await desactivarPushEnDispositivo();
+            if (endpoint) await desuscribirPushAviso(endpoint);
+          } catch {
+            // Best effort: una suscripción huérfana se limpia sola al fallar el próximo envío.
+          }
+          await api.post('/auth/logout').catch(() => {});
+        })();
       }
     },
 

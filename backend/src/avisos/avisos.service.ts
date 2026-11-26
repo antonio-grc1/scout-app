@@ -12,7 +12,7 @@ import {
   filtroUsuariosPorAlcance,
 } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
-import { validarFechaCalendarioIso } from '../common/utils/fechas.util.js';
+import { finDelDiaArgentina } from '../common/utils/fechas.util.js';
 import { MailerService } from '../mailer/mailer.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type {
@@ -320,8 +320,7 @@ export class AvisosService {
     const ahora = new Date();
     let fechaExpiracion: Date | null = null;
     if (dto.fechaExpiracion) {
-      validarFechaCalendarioIso(dto.fechaExpiracion);
-      fechaExpiracion = new Date(`${dto.fechaExpiracion}T23:59:59.999-03:00`);
+      fechaExpiracion = finDelDiaArgentina(dto.fechaExpiracion);
       if (fechaExpiracion < ahora) {
         throw new BadRequestException('La fecha de vencimiento debe ser hoy o posterior');
       }

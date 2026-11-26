@@ -61,6 +61,47 @@ describe('TesoreriaService - Flujo Completo Reversible y Modificable', () => {
     await expect(service.eliminarConcepto(alcanceGlobal, 999)).rejects.toThrow(NotFoundException);
   });
 
+  it('eliminarConcepto: rechaza eliminar desde Tesorería un concepto de campamento', async () => {
+    const mockPrisma = {
+      conceptoCuota: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 7,
+          unidadId: null,
+          destinatarioTipo: 'POR_CONFIRMACION',
+          _count: { cargos: 3 },
+        }),
+        delete: vi.fn(),
+      },
+      cargoMiembro: { deleteMany: vi.fn() },
+    } as any;
+    const service = new TesoreriaService(mockPrisma);
+
+    await expect(service.eliminarConcepto(alcanceGlobal, 7)).rejects.toThrow(ConflictException);
+    expect(mockPrisma.conceptoCuota.delete).not.toHaveBeenCalled();
+    expect(mockPrisma.cargoMiembro.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('editarConcepto: rechaza editar desde Tesorería un concepto de campamento', async () => {
+    const mockPrisma = {
+      conceptoCuota: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 7,
+          unidadId: null,
+          destinatarioTipo: 'POR_CONFIRMACION',
+        }),
+        update: vi.fn(),
+      },
+      $transaction: vi.fn(),
+    } as any;
+    const service = new TesoreriaService(mockPrisma);
+
+    await expect(
+      service.editarConcepto(alcanceGlobal, 7, { destinatarioTipo: 'PROTAGONISTAS' } as any),
+    ).rejects.toThrow(ConflictException);
+    expect(mockPrisma.conceptoCuota.update).not.toHaveBeenCalled();
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('eliminarConcepto: elimina directamente si no tiene cargos asociados', async () => {
     const mockPrisma = {
       conceptoCuota: {

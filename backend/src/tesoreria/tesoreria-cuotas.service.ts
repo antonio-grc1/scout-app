@@ -1125,10 +1125,23 @@ export class TesoreriaCuotasService {
     return serializarConceptoCompat(creado);
   }
 
+  /**
+   * Los conceptos `POR_CONFIRMACION` pertenecen a un campamento: sus cargos se generan al
+   * confirmar asistencia. Editarlos o eliminarlos desde Tesorería rompería ese vínculo.
+   */
+  private assertNoEsConceptoDeCampamento(concepto: { destinatarioTipo?: string | null }) {
+    if (concepto.destinatarioTipo === 'POR_CONFIRMACION') {
+      throw new ConflictException(
+        'Este cobro pertenece a un campamento. Editalo o eliminalo desde la sección Campamentos.',
+      );
+    }
+  }
+
   async editarConcepto(alcance: AlcanceAcceso, id: number, dto: EditarConceptoDto) {
     if (alcance.tipo === 'PROPIO') throw new ForbiddenException();
     const actual = await this.prisma.conceptoCuota.findUnique({ where: { id } });
     if (!actual) throw new NotFoundException('Concepto no encontrado');
+    this.assertNoEsConceptoDeCampamento(actual);
 
     if (actual.unidadId) {
       assertUnidadEnAlcance(alcance, actual.unidadId);
@@ -1222,6 +1235,7 @@ export class TesoreriaCuotasService {
       },
     });
     if (!actual) throw new NotFoundException('Concepto no encontrado');
+    this.assertNoEsConceptoDeCampamento(actual);
 
     if (actual.unidadId) {
       assertUnidadEnAlcance(alcance, actual.unidadId);

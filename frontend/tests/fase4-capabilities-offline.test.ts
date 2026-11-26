@@ -546,6 +546,65 @@ describe('Fase 4: campamentoSync.ts y bloqueo de mutaciones offline en api/clien
     assert.equal(offlineCache.obtenerTamanoMemoriaCache(), 0);
   });
 
+  it('logout() quita la suscripción push del dispositivo antes de cerrar la sesión en el servidor', async () => {
+    const { api } = await vite.ssrLoadModule('/src/api/client.ts');
+    const { useAuthStore } = await vite.ssrLoadModule('/src/store/authStore.ts');
+
+    const g = globalThis as any;
+    const prevWindow = g.window;
+    const navDesc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    let desuscripto = false;
+    g.window = { PushManager: class {}, Notification: class {} };
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: {
+        serviceWorker: {
+          getRegistration: async () => ({
+            pushManager: {
+              getSubscription: async () => ({
+                endpoint: 'https://push.example/abc',
+                unsubscribe: async () => {
+                  desuscripto = true;
+                  return true;
+                },
+              }),
+            },
+          }),
+        },
+      },
+    });
+
+    const prevAdapter = api.defaults.adapter;
+    const llamadas: Array<{ url: string; data: unknown }> = [];
+    api.defaults.adapter = async (config: any) => {
+      llamadas.push({ url: config.url, data: config.data ? JSON.parse(config.data) : null });
+      return { data: { ok: true }, status: 200, statusText: 'OK', headers: {}, config };
+    };
+
+    try {
+      useAuthStore.getState().setSesion({
+        accessToken: 'tok-push',
+        usuario: { id: 91, dni: '91', nombre: 'Leo', apellido: 'Scout' },
+        requiereCambioClave: false,
+        asignaciones: [],
+      });
+      useAuthStore.getState().logout();
+      await new Promise((r) => setTimeout(r, 20));
+
+      assert.equal(desuscripto, true);
+      assert.deepEqual(
+        llamadas.map((l) => l.url),
+        ['/avisos/push/desuscribir', '/auth/logout'],
+      );
+      assert.deepEqual(llamadas[0].data, { endpoint: 'https://push.example/abc' });
+    } finally {
+      api.defaults.adapter = prevAdapter;
+      g.window = prevWindow;
+      if (navDesc) Object.defineProperty(globalThis, 'navigator', navDesc);
+      else delete g.navigator;
+    }
+  });
+
   it('api bloquea mutaciones de servidor cuando !isOnline y muestra aviso claro sin disparar red', async () => {
     const { api } = await vite.ssrLoadModule('/src/api/client.ts');
     const { useOfflineStore } = await vite.ssrLoadModule('/src/store/offlineStore.ts');

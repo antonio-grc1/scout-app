@@ -1209,7 +1209,9 @@ export const TesoreriaPage: React.FC = () => {
                 const excepciones: number[] = Array.isArray(con.excepcionesJson)
                   ? con.excepcionesJson
                   : [];
+                const esDeCampamento = con.destinatarioTipo === 'POR_CONFIRMACION';
                 const puedeEditarConcepto =
+                  !esDeCampamento &&
                   puedeCrearConceptosYPlanes &&
                   puedeModificarPorAlcanceUnidad(con.unidadId, {
                     esGlobal: esGlobalPlanes,
@@ -1231,11 +1233,13 @@ export const TesoreriaPage: React.FC = () => {
                             </span>
                             <span>•</span>
                             <span>
-                              {con.destinatarioTipo === 'EDUCADORES'
-                                ? 'Educadores'
-                                : con.destinatarioTipo === 'PROTAGONISTAS'
-                                  ? 'Protagonistas'
-                                  : 'Todos'}
+                              {esDeCampamento
+                                ? 'Por confirmación de asistencia'
+                                : con.destinatarioTipo === 'EDUCADORES'
+                                  ? 'Educadores'
+                                  : con.destinatarioTipo === 'PROTAGONISTAS'
+                                    ? 'Protagonistas'
+                                    : 'Todos'}
                             </span>
                             {excepciones.length > 0 && (
                               <>
@@ -1290,6 +1294,12 @@ export const TesoreriaPage: React.FC = () => {
                         </div>
                       )}
                     </div>
+
+                    {esDeCampamento && (
+                      <p className="pt-3 border-t border-rule text-xs text-ink-muted">
+                        Cobro de campamento: se edita o elimina desde la sección Campamentos.
+                      </p>
+                    )}
 
                     {puedeEditarConcepto && (
                       <div className="pt-3 border-t border-rule flex items-center justify-between gap-2">
