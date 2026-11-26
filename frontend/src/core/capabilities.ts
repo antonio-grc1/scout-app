@@ -80,6 +80,18 @@ export interface Capabilities {
   canEditRoles: boolean;
   canEditCorreo: boolean;
 
+  // Avisos y Comunicados
+  canViewAvisos: boolean;
+  canViewAvisosEnviados: boolean;
+  canSendAvisos: boolean;
+  canSendAvisosGlobales: boolean;
+
+  // Campamentos y Salidas
+  canViewCampamentos: boolean;
+  canManageCampamentos: boolean;
+  canEditCampamentos: boolean;
+  canCreateGlobalCampamentos: boolean;
+
   // Atajos transversales
   canUseQrScanner: boolean;
 }
@@ -247,6 +259,38 @@ export function computeCapabilities(asignaciones: readonly AsignacionUsuario[]):
   const canEditRoles = tienePermisoConAlcance(asignaciones, ['roles.editar'], 'GLOBAL');
   const canEditCorreo = panelGlobal.puedeVerCorreo;
 
+  // 11. Panel Avisos y Comunicados
+  const canViewAvisos = asignaciones.length > 0;
+  const canViewAvisosEnviados = tienePermisoConAlcance(
+    asignaciones,
+    ['avisos.ver', 'avisos.editar'],
+    'UNIDAD',
+  );
+  const canSendAvisos = tienePermisoConAlcance(asignaciones, ['avisos.editar'], 'UNIDAD');
+  const canSendAvisosGlobales = tienePermisoConAlcance(
+    asignaciones,
+    ['avisos.editar'],
+    'GLOBAL',
+  );
+
+  // 12. Panel Campamentos y Salidas
+  const canViewCampamentos = asignaciones.length > 0;
+  const canManageCampamentos = tienePermisoConAlcance(
+    asignaciones,
+    ['campamentos.ver', 'campamentos.editar'],
+    'UNIDAD',
+  );
+  const canEditCampamentos = tienePermisoConAlcance(
+    asignaciones,
+    ['campamentos.editar'],
+    'UNIDAD',
+  );
+  const canCreateGlobalCampamentos = tienePermisoConAlcance(
+    asignaciones,
+    ['campamentos.editar'],
+    'GLOBAL',
+  );
+
   const canUseQrScanner = canValidateQr || canSellEventos;
 
   return {
@@ -295,6 +339,14 @@ export function computeCapabilities(asignaciones: readonly AsignacionUsuario[]):
     canViewRoles,
     canEditRoles,
     canEditCorreo,
+    canViewAvisos,
+    canViewAvisosEnviados,
+    canSendAvisos,
+    canSendAvisosGlobales,
+    canViewCampamentos,
+    canManageCampamentos,
+    canEditCampamentos,
+    canCreateGlobalCampamentos,
     canUseQrScanner,
   };
 }

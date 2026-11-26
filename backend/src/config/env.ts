@@ -30,6 +30,9 @@ const EnvSchema = z.object({
     z.string().min(1).optional(),
   ),
   SMTP_FROM: optionalNonEmpty,
+  VAPID_PUBLIC_KEY: optionalNonEmpty,
+  VAPID_PRIVATE_KEY: optionalNonEmpty,
+  VAPID_SUBJECT: optionalNonEmpty,
 });
 
 export const env = EnvSchema.parse(process.env);

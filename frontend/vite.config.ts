@@ -10,8 +10,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['favicon.ico', 'favicon.svg', 'pwa-icon.svg', 'pwa-icon-192.png', 'pwa-icon-512.png', 'apple-touch-icon.png', 'pdf-templates/*_acroform.pdf'],
+      includeAssets: ['favicon.ico', 'favicon.svg', 'pwa-icon.svg', 'pwa-icon-192.png', 'pwa-icon-512.png', 'apple-touch-icon.png', 'push-sw.js', 'pdf-templates/*_acroform.pdf'],
       workbox: {
+        importScripts: ['/push-sw.js'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,pdf,woff2}'],
         globIgnores: ['**/pdf-templates/*original*.pdf', '**/pdf-templates/Papeles*.pdf'],

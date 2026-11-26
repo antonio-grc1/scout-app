@@ -169,6 +169,28 @@ export const PANELES_SISTEMA: readonly DefinicionPanelRol[] = [
     alcanceMinimoVer: 'UNIDAD',
     alcanceMinimoEditar: 'GLOBAL',
   },
+  {
+    id: 'avisos',
+    titulo: 'Avisos y comunicados',
+    pestanas: 'Campana superior + menú avisos (Recibidos y Enviados)',
+    detalle:
+      'Solo lectura lee avisos recibidos y consulta el historial enviado de su sección o grupo; Edición redacta, envía y elimina avisos.',
+    permisoVer: 'avisos.ver',
+    permisoEditar: 'avisos.editar',
+    alcanceMinimoVer: 'PROPIO',
+    alcanceMinimoEditar: 'UNIDAD',
+  },
+  {
+    id: 'campamentos',
+    titulo: 'Campamentos y salidas',
+    pestanas: 'Menú campamentos (Mis campamentos y Gestión)',
+    detalle:
+      'Solo lectura ve sus invitaciones, confirma asistencia y consulta campamentos de su sección o grupo; Edición crea, edita y gestiona inscriptos.',
+    permisoVer: 'campamentos.ver',
+    permisoEditar: 'campamentos.editar',
+    alcanceMinimoVer: 'PROPIO',
+    alcanceMinimoEditar: 'UNIDAD',
+  },
 ];
 
 const ALCANCE_INFO: Record<

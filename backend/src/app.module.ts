@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './auth/auth.module.js';
+import { AvisosModule } from './avisos/avisos.module.js';
+import { CampamentosModule } from './campamentos/campamentos.module.js';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard.js';
 import { ScopedRbacGuard } from './common/guards/scoped-rbac.guard.js';
 import { LegajosModule } from './legajos/legajos.module.js';
@@ -21,6 +23,8 @@ import { TesoreriaModule } from './tesoreria/tesoreria.module.js';
     PasesModule,
     LegajosModule,
     TesoreriaModule,
+    AvisosModule,
+    CampamentosModule,
   ],
   providers: [
     // El orden importa: primero autenticación, luego RBAC con alcance.

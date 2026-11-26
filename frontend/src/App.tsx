@@ -55,6 +55,12 @@ const TesoreriaPage = lazy(() =>
 const OrganizacionPage = lazy(() =>
   import('./pages/organizacion/OrganizacionPage').then((m) => ({ default: m.OrganizacionPage })),
 );
+const AvisosPage = lazy(() =>
+  import('./pages/avisos/AvisosPage').then((m) => ({ default: m.AvisosPage })),
+);
+const CampamentosPage = lazy(() =>
+  import('./pages/campamentos/CampamentosPage').then((m) => ({ default: m.CampamentosPage })),
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -223,6 +229,26 @@ const RaizApp: React.FC = () => {
               <RutaProtegida>
                 <AppShell title="Mi espacio">
                   <MiEspacioPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/avisos"
+            element={
+              <RutaProtegida allow={(c) => c.canViewAvisos}>
+                <AppShell title="Avisos">
+                  <AvisosPage />
+                </AppShell>
+              </RutaProtegida>
+            }
+          />
+          <Route
+            path="/campamentos"
+            element={
+              <RutaProtegida allow={(c) => c.canViewCampamentos}>
+                <AppShell title="Campamentos">
+                  <CampamentosPage />
                 </AppShell>
               </RutaProtegida>
             }

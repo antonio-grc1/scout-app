@@ -14,6 +14,9 @@ import {
   Palette,
   ArrowRight,
   Users,
+  Bell,
+  Plus,
+  Tent,
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useCapabilities, useActiveUnitStore } from '../../core/capabilities';
@@ -220,6 +223,58 @@ export const CommandPaletteModal: React.FC<CommandPaletteModalProps> = ({
         navigate('/mi-espacio');
       },
     });
+
+    if (caps.canViewAvisos) {
+      items.push({
+        id: 'avisos',
+        label: 'Ir a avisos y comunicados',
+        hint: 'Bandeja de avisos recibidos y enviados',
+        icon: <Bell className="w-4 h-4 text-brand shrink-0" />,
+        onSelect: () => {
+          onCerrar();
+          navigate('/avisos');
+        },
+      });
+    }
+
+    if (caps.canSendAvisos) {
+      items.push({
+        id: 'avisos-nuevo',
+        label: 'Enviar nuevo aviso',
+        hint: 'Redactar comunicado para tu sección o todo el grupo',
+        icon: <Plus className="w-4 h-4 text-brand shrink-0" />,
+        onSelect: () => {
+          onCerrar();
+          navigate('/avisos?nuevo=1');
+        },
+      });
+    }
+
+    if (caps.canViewCampamentos) {
+      items.push({
+        id: 'campamentos',
+        label: 'Ir a campamentos',
+        hint: 'Ver invitaciones, confirmar asistencia y gestionar salidas',
+        icon: <Tent className="w-4 h-4 text-brand shrink-0" />,
+        onSelect: () => {
+          onCerrar();
+          navigate('/campamentos');
+        },
+      });
+    }
+
+    if (caps.canEditCampamentos) {
+      items.push({
+        id: 'campamentos-nuevo',
+        label: 'Crear nuevo campamento',
+        hint: 'Publicar salida con fecha, lugar, costo e invitados',
+        icon: <Plus className="w-4 h-4 text-brand shrink-0" />,
+        onSelect: () => {
+          onCerrar();
+          navigate('/campamentos?nuevo=1');
+        },
+      });
+    }
 
     items.push({
       id: 'tema',

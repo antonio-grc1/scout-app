@@ -85,6 +85,9 @@ model UnidadOrganizativa {
   cuentasFinancieras     CuentaFinanciera[]
   solicitudesPaseOrigen  SolicitudPase[] @relation("SolicitudesPaseOrigen")
   solicitudesPaseDestino SolicitudPase[] @relation("SolicitudesPaseDestino")
+  avisos                 Aviso[]
+  campamentos            Campamento[]
+  campamentosUnidades    CampamentoUnidad[]
 
   @@map("unidades_organizativas")
 }
@@ -137,6 +140,12 @@ model Usuario {
   solicitudesPaseMiembro     SolicitudPase[] @relation("SolicitudesPaseMiembro")
   solicitudesPaseSolicitadas SolicitudPase[] @relation("SolicitudesPaseSolicitadas")
   solicitudesPaseResueltas   SolicitudPase[] @relation("SolicitudesPaseResueltas")
+  avisosCreados              Aviso[]         @relation("AvisosCreados")
+  avisosRecibidos            AvisoDestinatario[] @relation("AvisosRecibidos")
+  suscripcionesPush          SuscripcionPush[]
+  campamentosCreados                 Campamento[]            @relation("CampamentosCreados")
+  inscripcionesCampamento            CampamentoInscripcion[] @relation("CampamentoInscripcionesMiembro")
+  inscripcionesCampamentoConfirmadas CampamentoInscripcion[] @relation("CampamentoInscripcionesConfirmador")
 
   @@index([grupoFamiliarId])
   @@map("usuarios")
@@ -285,6 +294,7 @@ model ConceptoCuota {
   planCuotaMensual            PlanCuotaMensual?   @relation(fields: [planCuotaMensualId], references: [id], onDelete: Cascade)
   cargos                      CargoMiembro[]
   excepciones                 ConceptoExcepcion[]
+  campamento                  Campamento?
 
   @@index([planCuotaMensualId, mes])
   @@index([cicloAnio])
@@ -316,6 +326,7 @@ model CargoMiembro {
   usuario        Usuario          @relation(fields: [usuarioId], references: [id])
   concepto       ConceptoCuota    @relation(fields: [conceptoId], references: [id])
   imputaciones   PagoImputacion[]
+  inscripcionCampamento CampamentoInscripcion?
 
   @@index([usuarioId, estado])
   @@index([conceptoId, estado])
@@ -463,6 +474,7 @@ model RubroContable {
   gastos                  Gasto[]
   movimientos             MovimientoFinanciero[]
   eventos                 Evento[]
+  campamentos             Campamento[]
 
   @@unique([nombre, tipo])
   @@map("rubros_contables")
@@ -648,4 +660,166 @@ model ConfiguracionCorreo {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   @@map("configuracion_correo")
+}
+
+// -------------------------------------------------------------
+// AVISOS Y COMUNICADOS IN-APP
+// -------------------------------------------------------------
+
+enum PrioridadAviso {
+  NORMAL
+  IMPORTANTE
+  URGENTE
+}
+
+enum DestinatarioAvisoTipo {
+  TODOS
+  PROTAGONISTAS
+  EDUCADORES
+  USUARIOS
+}
+
+model Aviso {
+  id                 Int                   @id @default(autoincrement())
+  titulo             String                @db.VarChar(150)
+  mensaje            String                @db.Text
+  prioridad          PrioridadAviso        @default(NORMAL)
+  destinatarioTipo   DestinatarioAvisoTipo @default(TODOS) @map("destinatario_tipo")
+  unidadId           Int?                  @map("unidad_id")
+  creadoPorUsuarioId Int                   @map("creado_por_usuario_id")
+  fechaExpiracion    DateTime?             @map("fecha_expiracion")
+  enviarPush         Boolean               @default(false) @map("enviar_push")
+  enviarEmail        Boolean               @default(false) @map("enviar_email")
+  pushEnviados       Int                   @default(0) @map("push_enviados")
+  emailsEnviados     Int                   @default(0) @map("emails_enviados")
+  campamentoId       Int?                  @map("campamento_id")
+  createdAt          DateTime              @default(now()) @map("created_at")
+
+  unidad        UnidadOrganizativa? @relation(fields: [unidadId], references: [id], onDelete: SetNull)
+  creadoPor     Usuario             @relation("AvisosCreados", fields: [creadoPorUsuarioId], references: [id])
+  campamento    Campamento?         @relation(fields: [campamentoId], references: [id], onDelete: Cascade)
+  destinatarios AvisoDestinatario[]
+
+  @@index([unidadId, createdAt])
+  @@index([creadoPorUsuarioId, createdAt])
+  @@index([campamentoId])
+  @@index([createdAt])
+  @@map("avisos")
+}
+
+model AvisoDestinatario {
+  avisoId   Int       @map("aviso_id")
+  usuarioId Int       @map("usuario_id")
+  leidoAt   DateTime? @map("leido_at")
+
+  aviso   Aviso   @relation(fields: [avisoId], references: [id], onDelete: Cascade)
+  usuario Usuario @relation("AvisosRecibidos", fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([avisoId, usuarioId])
+  @@index([usuarioId, leidoAt])
+  @@map("aviso_destinatarios")
+}
+
+model SuscripcionPush {
+  id        Int      @id @default(autoincrement())
+  usuarioId Int      @map("usuario_id")
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  userAgent String?  @map("user_agent") @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("suscripciones_push")
+}
+
+// -------------------------------------------------------------
+// CAMPAMENTOS Y CONFIRMACIÓN DE ASISTENCIA
+// -------------------------------------------------------------
+
+enum EstadoCampamento {
+  BORRADOR
+  PUBLICADO
+  CERRADO
+  FINALIZADO
+  CANCELADO
+}
+
+enum EstadoInscripcionCampamento {
+  PENDIENTE
+  CONFIRMADO
+  NO_ASISTE
+  CANCELADO
+}
+
+model Campamento {
+  id                          Int                   @id @default(autoincrement())
+  titulo                      String                @db.VarChar(150)
+  descripcion                 String?               @db.Text
+  lugar                       String                @db.VarChar(200)
+  fechaInicio                 DateTime              @map("fecha_inicio") @db.Date
+  fechaFin                    DateTime              @map("fecha_fin") @db.Date
+  fechaLimiteConfirmacion     DateTime?             @map("fecha_limite_confirmacion")
+  estado                      EstadoCampamento      @default(PUBLICADO)
+  destinatarioTipo            DestinatarioAvisoTipo @default(PROTAGONISTAS) @map("destinatario_tipo")
+  unidadId                    Int?                  @map("unidad_id")
+  cicloAnio                   Int                   @map("ciclo_anio")
+  costoBase                   Decimal               @default(0.00) @map("costo_base") @db.Decimal(12, 2)
+  permiteDescuentoHermanos    Boolean               @default(true) @map("permite_descuento_hermanos")
+  porcentajeDescuentoHermanos Decimal?              @map("porcentaje_descuento_hermanos") @db.Decimal(5, 2)
+  rubroId                     Int?                  @map("rubro_id")
+  conceptoCuotaId             Int?                  @unique @map("concepto_cuota_id")
+  creadoPorUsuarioId          Int                   @map("creado_por_usuario_id")
+  createdAt                   DateTime              @default(now()) @map("created_at")
+  updatedAt                   DateTime              @updatedAt @map("updated_at")
+
+  unidad        UnidadOrganizativa?     @relation(fields: [unidadId], references: [id], onDelete: SetNull)
+  rubro         RubroContable?          @relation(fields: [rubroId], references: [id], onDelete: SetNull)
+  conceptoCuota ConceptoCuota?          @relation(fields: [conceptoCuotaId], references: [id], onDelete: SetNull)
+  creadoPor     Usuario                 @relation("CampamentosCreados", fields: [creadoPorUsuarioId], references: [id])
+  inscripciones CampamentoInscripcion[]
+  unidades      CampamentoUnidad[]
+  avisos        Aviso[]
+
+  @@index([estado, fechaInicio])
+  @@index([unidadId, cicloAnio])
+  @@map("campamentos")
+}
+
+model CampamentoUnidad {
+  campamentoId Int @map("campamento_id")
+  unidadId     Int @map("unidad_id")
+
+  campamento Campamento         @relation(fields: [campamentoId], references: [id], onDelete: Cascade)
+  unidad     UnidadOrganizativa @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+
+  @@id([campamentoId, unidadId])
+  @@index([unidadId])
+  @@map("campamento_unidades")
+}
+
+model CampamentoInscripcion {
+  id                     Int                         @id @default(autoincrement())
+  campamentoId           Int                         @map("campamento_id")
+  usuarioId              Int                         @map("usuario_id")
+  estado                 EstadoInscripcionCampamento @default(PENDIENTE)
+  observaciones          String?                     @db.VarChar(500)
+  confirmadoAt           DateTime?                   @map("confirmado_at")
+  confirmadoPorUsuarioId Int?                        @map("confirmado_por_usuario_id")
+  cargoId                Int?                        @unique @map("cargo_id")
+  createdAt              DateTime                    @default(now()) @map("created_at")
+  updatedAt              DateTime                    @updatedAt @map("updated_at")
+
+  campamento    Campamento    @relation(fields: [campamentoId], references: [id], onDelete: Cascade)
+  usuario       Usuario       @relation("CampamentoInscripcionesMiembro", fields: [usuarioId], references: [id], onDelete: Cascade)
+  confirmadoPor Usuario?      @relation("CampamentoInscripcionesConfirmador", fields: [confirmadoPorUsuarioId], references: [id], onDelete: SetNull)
+  cargo         CargoMiembro? @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+
+  @@unique([campamentoId, usuarioId])
+  @@index([usuarioId, estado])
+  @@index([campamentoId, estado])
+  @@map("campamento_inscripciones")
 }

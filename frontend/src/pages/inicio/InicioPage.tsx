@@ -24,6 +24,10 @@ import {
   UploadCloud,
   Loader2,
   ArrowLeft,
+  Bell,
+  Tent,
+  MapPin,
+  Calendar,
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
@@ -36,6 +40,10 @@ import {
 } from '../../core/capabilities';
 import { useQrModalStore } from '../../core/qrModalStore';
 import { useConfirmar } from '../../hooks/useConfirmar';
+import { invalidarAvisosQueries } from '../../hooks/useAvisos';
+import { useMisCampamentos } from '../../hooks/useCampamentos';
+import { marcarAvisoLeido, obtenerBandejaAvisos } from '../../services/avisos.service';
+import { PRIORIDAD_AVISO_CONFIG } from '../../components/avisos/avisosUi';
 import { limpiarCacheApi } from '../../lib/offlineCache';
 import {
   limpiarSyncCampamento,
@@ -48,6 +56,8 @@ import {
 } from '../../core/offline/campamentoSync';
 import {
   ESTADO_FICHA_CONFIG,
+  formatearFechaHora,
+  formatearFechaLargaUTC,
   formatearMoneda,
   obtenerCicloAnioActual,
   obtenerRolPrincipal,
@@ -217,6 +227,40 @@ export const InicioPage: React.FC = () => {
   const unidadesOrg = useMemo(() => unidadesQuery.data ?? [], [unidadesQuery.data]);
   const balanceData = balanceQuery.data ?? null;
 
+  const avisosNoLeidosQuery = useQuery({
+    queryKey: ['avisos-bandeja', usuarioId, 'inicio-no-leidos'],
+    enabled: Boolean(usuarioId) && caps.canViewAvisos,
+    ...opcionesInicio,
+    queryFn: () => obtenerBandejaAvisos({ soloNoLeidos: true, porPagina: 3 }),
+  });
+  const avisosNoLeidosItems = avisosNoLeidosQuery.data?.items ?? [];
+  const totalAvisosNoLeidos = avisosNoLeidosQuery.data?.noLeidos ?? avisosNoLeidosItems.length;
+  const [marcandoAvisoId, setMarcandoAvisoId] = useState<number | null>(null);
+
+  const misCampamentosQuery = useMisCampamentos();
+  const campamentosPendientes = useMemo(
+    () =>
+      (misCampamentosQuery.data ?? []).filter(
+        (c) =>
+          c.estadoInscripcion === 'PENDIENTE' &&
+          c.campamento.estado === 'PUBLICADO' &&
+          !c.limiteVencido,
+      ),
+    [misCampamentosQuery.data],
+  );
+
+  const handleMarcarAvisoLeidoInicio = async (avisoId: number) => {
+    setMarcandoAvisoId(avisoId);
+    try {
+      await marcarAvisoLeido(avisoId);
+      await invalidarAvisosQueries(queryClient);
+    } catch (err) {
+      mostrarToast(traducirErrorAmigable(err, 'No se pudo marcar el aviso como leído.'), 'error');
+    } finally {
+      setMarcandoAvisoId(null);
+    }
+  };
+
   const consultasGestion = [
     { nombre: 'miembros', q: miembrosQuery },
     { nombre: 'legajos', q: entregasQuery },
@@ -236,6 +280,9 @@ export const InicioPage: React.FC = () => {
       'pases-candidatos',
       'pases-solicitudes',
       'tesoreria-cuadro-resultados',
+      'avisos-bandeja',
+      'avisos-no-leidos',
+      'campamentos-mios',
     ];
     return queryClient.invalidateQueries({
       predicate: (query) => prefijos.includes(String(query.queryKey[0])),
@@ -472,6 +519,13 @@ export const InicioPage: React.FC = () => {
       show: true,
     },
     {
+      to: '/avisos',
+      title: 'Avisos y comunicados',
+      desc: 'Bandeja de avisos recibidos, lecturas y comunicados.',
+      icon: <Bell className="w-5 h-5 text-brand" />,
+      show: caps.canViewAvisos,
+    },
+    {
       to: '/miembros',
       title: 'Padrón de miembros',
       desc: 'Listado operativo, filtros, ficha y altas.',
@@ -498,6 +552,13 @@ export const InicioPage: React.FC = () => {
       desc: 'Campañas del grupo, ventas y control en puerta.',
       icon: <Ticket className="w-5 h-5 text-brand" />,
       show: caps.canViewEventos,
+    },
+    {
+      to: '/campamentos',
+      title: 'Campamentos y salidas',
+      desc: 'Confirmar asistencia, ver información y estado de pago.',
+      icon: <Tent className="w-5 h-5 text-brand" />,
+      show: caps.canViewCampamentos,
     },
     {
       to: '/tesoreria',
@@ -738,6 +799,129 @@ export const InicioPage: React.FC = () => {
             </button>
           )}
         </div>
+      )}
+
+      {/* Campamentos pendientes de confirmar */}
+      {campamentosPendientes.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2 px-0.5">
+            <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+              <Tent className="w-4 h-4 text-brand" />
+              <span>Campamentos por confirmar ({campamentosPendientes.length})</span>
+            </h2>
+            <Link
+              to="/campamentos"
+              className="text-sm font-bold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
+            >
+              <span>Ver campamentos</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {campamentosPendientes.slice(0, 2).map((item) => (
+              <Link
+                key={item.inscripcionId}
+                to="/campamentos"
+                className="s-card s-card-hover rounded-2xl p-4 ring-1 ring-brand/40 flex flex-col justify-between gap-2.5"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold s-badge-warn">
+                      Pendiente de confirmar
+                    </span>
+                    <span className="text-xs font-extrabold s-tabular text-ink">
+                      {item.montoEstimado.montoFinal > 0
+                        ? formatearMoneda(item.montoEstimado.montoFinal)
+                        : 'Gratuito'}
+                    </span>
+                  </div>
+                  <h3 className="text-base font-extrabold text-ink">{item.campamento.titulo}</h3>
+                  <div className="text-xs text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-brand" />
+                      <span>{item.campamento.lugar}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-brand" />
+                      <span>
+                        {formatearFechaLargaUTC(item.campamento.fechaInicio)} al{' '}
+                        {formatearFechaLargaUTC(item.campamento.fechaFin)}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs font-extrabold text-brand inline-flex items-center gap-1">
+                  <span>Ver detalle y confirmar</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Avisos sin leer (solo visible cuando hay pendientes) */}
+      {avisosNoLeidosItems.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between gap-2 px-0.5">
+            <h2 className="text-[13px] font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+              <Bell className="w-4 h-4 text-brand" />
+              <span>Avisos sin leer ({totalAvisosNoLeidos})</span>
+            </h2>
+            <Link
+              to="/avisos"
+              className="text-sm font-bold text-brand hover:underline inline-flex items-center gap-1 shrink-0"
+            >
+              <span>Ver todos</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+            {avisosNoLeidosItems.map((aviso) => {
+              const prio = PRIORIDAD_AVISO_CONFIG[aviso.prioridad] ?? PRIORIDAD_AVISO_CONFIG.NORMAL;
+              return (
+                <div
+                  key={aviso.id}
+                  className={`s-card rounded-2xl p-4 flex flex-col justify-between gap-3 ring-1 ring-brand/35 ${prio.borderClass}`}
+                >
+                  <div className="space-y-2 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {aviso.prioridad !== 'NORMAL' && (
+                        <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${prio.badgeClass}`}>
+                          {prio.label}
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-ink-muted truncate">
+                        {aviso.unidadNombre ?? 'Todo el grupo'}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-extrabold text-ink leading-snug line-clamp-1">
+                      {aviso.titulo}
+                    </h3>
+                    <p className="text-sm text-ink-2 line-clamp-2 whitespace-pre-line">
+                      {aviso.mensaje}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-rule text-xs text-ink-muted">
+                    <span className="truncate">{formatearFechaHora(aviso.createdAt)}</span>
+                    <button
+                      type="button"
+                      disabled={marcandoAvisoId === aviso.id}
+                      onClick={() => void handleMarcarAvisoLeidoInicio(aviso.id)}
+                      className="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-60"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>{marcandoAvisoId === aviso.id ? 'Marcando…' : 'Marcar leído'}</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {/* Checklist personal destacado para perfiles PROPIO y para quienes no ven el padrón */}

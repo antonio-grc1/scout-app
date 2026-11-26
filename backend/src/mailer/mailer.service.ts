@@ -23,6 +23,14 @@ export interface DatosEmailNuevaClave {
   claveTemporal: string;
 }
 
+export interface DatosEmailAviso {
+  titulo: string;
+  mensaje: string;
+  prioridad: 'NORMAL' | 'IMPORTANTE' | 'URGENTE';
+  unidadNombre?: string | null;
+  remitenteNombre: string;
+}
+
 export interface ConfiguracionCorreoPublica {
   habilitado: boolean;
   host: string;
@@ -450,5 +458,108 @@ export class MailerService {
           </div>
         `),
     });
+  }
+
+  /**
+   * Envía copia de un aviso institucional a una lista de emails deduplicados
+   * (si hermanos comparten correo, se envía un único mensaje).
+   */
+  async enviarAvisoMasivo(
+    emails: readonly (string | null | undefined)[],
+    datos: DatosEmailAviso,
+  ): Promise<{ enviados: number; fallidos: number; destinatariosUnicos: number }> {
+    const unicos = [
+      ...new Set(
+        emails
+          .map((e) => (typeof e === 'string' ? e.trim().toLowerCase() : ''))
+          .filter((e) => e.length > 3 && e.includes('@')),
+      ),
+    ];
+
+    if (unicos.length === 0) {
+      return { enviados: 0, fallidos: 0, destinatariosUnicos: 0 };
+    }
+
+    const config = await this.resolverConfiguracionActiva();
+    if (!config.habilitado) {
+      this.logger.log('[Correo deshabilitado] Se omitió envío masivo de aviso.');
+      return { enviados: 0, fallidos: 0, destinatariosUnicos: unicos.length };
+    }
+
+    const transporter = this.obtenerTransporter(config);
+    if (!transporter) {
+      this.logger.log('[SMTP no configurado] Se omitió envío masivo de aviso.');
+      return { enviados: 0, fallidos: 0, destinatariosUnicos: unicos.length };
+    }
+
+    const remitente =
+      config.from?.trim() ||
+      `"Grupo Scout Juan XXIII" <${config.user ?? 'no-reply@scoutjuanxxiii.org'}>`;
+    const prefijo =
+      datos.prioridad === 'URGENTE'
+        ? '[URGENTE] '
+        : datos.prioridad === 'IMPORTANTE'
+          ? '[IMPORTANTE] '
+          : '';
+    const asunto = `${prefijo}Grupo Scout Juan XXIII - ${sanitizarAsuntoTextoPlano(datos.titulo)}`;
+    const appUrlSafe = escapeHtml(config.appUrl.replace(/\/$/, ''));
+    const safeTitulo = escapeHtml(datos.titulo);
+    const safeMensaje = escapeHtml(datos.mensaje).replace(/\r?\n/g, '<br />');
+    const safeUnidad = escapeHtml(datos.unidadNombre?.trim() || 'Todo el grupo');
+    const safeRemitente = escapeHtml(datos.remitenteNombre);
+
+    const badgeStyle =
+      datos.prioridad === 'URGENTE'
+        ? 'background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca;'
+        : datos.prioridad === 'IMPORTANTE'
+          ? 'background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a;'
+          : 'background-color: #f1f5f9; color: #334155; border: 1px solid #cbd5e1;';
+    const prioridadLabel =
+      datos.prioridad === 'URGENTE'
+        ? 'Urgente'
+        : datos.prioridad === 'IMPORTANTE'
+          ? 'Importante'
+          : 'Aviso';
+
+    const html = this.renderizarPlantillaHtml(`
+      <div style="margin-bottom: 14px;">
+        <span style="display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; ${badgeStyle}">${prioridadLabel}</span>
+        <span style="display: inline-block; margin-left: 6px; font-size: 12px; color: #64748b; font-weight: 600;">${safeUnidad}</span>
+      </div>
+      <h2 style="margin: 0 0 12px; font-size: 18px; color: #0f172a; line-height: 1.3;">${safeTitulo}</h2>
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+        ${safeMensaje}
+      </div>
+      <p style="margin: 14px 0 0; font-size: 12px; color: #64748b;">Enviado por <strong>${safeRemitente}</strong></p>
+      <div style="text-align: center; margin: 22px 0 8px;">
+        <a href="${appUrlSafe}/avisos" style="display: inline-block; background-color: #eab308; color: #09090b; font-weight: 800; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-size: 14px;">Ver aviso en la plataforma</a>
+      </div>
+    `);
+
+    let enviados = 0;
+    let fallidos = 0;
+    const LOTE = 5;
+    for (let i = 0; i < unicos.length; i += LOTE) {
+      const bloque = unicos.slice(i, i + LOTE);
+      const resultados = await Promise.allSettled(
+        bloque.map((to) =>
+          transporter.sendMail({
+            from: remitente,
+            to,
+            subject: asunto,
+            html,
+          }),
+        ),
+      );
+      for (const r of resultados) {
+        if (r.status === 'fulfilled') enviados += 1;
+        else fallidos += 1;
+      }
+    }
+
+    this.logger.log(
+      `Aviso masivo "${sanitizarAsuntoTextoPlano(datos.titulo)}": ${enviados} enviados, ${fallidos} fallidos (${unicos.length} únicos).`,
+    );
+    return { enviados, fallidos, destinatariosUnicos: unicos.length };
   }
 }

@@ -17,6 +17,8 @@ import {
   Menu,
   WifiOff,
   Palette,
+  Bell,
+  Tent,
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuthStore } from '../../store/authStore';
@@ -32,9 +34,12 @@ import { BrandLogo } from '../ui/BrandLogo';
 import { Drawer } from '../ui/Drawer';
 import { ThemeToggle } from '../ThemeToggle';
 import { BotonInstalarPwa } from '../BotonInstalarPwa';
+import { CampanaAvisos } from '../CampanaAvisos';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { QrScannerUniversalModal } from '../qr/QrScannerUniversalModal';
 import { useQrModalStore } from '../../core/qrModalStore';
+import { useAvisosNoLeidosCount } from '../../hooks/useAvisos';
+import { useCampamentosPendientesCount } from '../../hooks/useCampamentos';
 import { confirmarSalidaSiHayCambios } from '../../store/cambiosSinGuardarStore';
 
 export const InsideAppShellContext = React.createContext(false);
@@ -54,6 +59,7 @@ interface NavItem {
   icon: React.ReactNode;
   group: NavGroup;
   show: boolean;
+  badge?: number;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
@@ -62,6 +68,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
   const openCustomizer = useThemeStore((s) => s.openCustomizer);
   const caps = useCapabilities();
   const { activeUnitId, setActiveUnitId } = useActiveUnitStore();
+  const { data: avisosNoLeidos = 0 } = useAvisosNoLeidosCount();
+  const campamentosPendientes = useCampamentosPendientesCount();
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -145,6 +153,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       show: true,
     },
     {
+      id: 'avisos',
+      to: '/avisos',
+      label: 'Avisos',
+      icon: <Bell className="w-[18px] h-[18px] shrink-0" />,
+      group: 'Personal',
+      show: caps.canViewAvisos,
+      badge: avisosNoLeidos > 0 ? avisosNoLeidos : undefined,
+    },
+    {
       id: 'miembros',
       to: '/miembros',
       label: 'Miembros',
@@ -175,6 +192,15 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
       icon: <Ticket className="w-[18px] h-[18px] shrink-0" />,
       group: 'Operación scout',
       show: caps.canViewEventos,
+    },
+    {
+      id: 'campamentos',
+      to: '/campamentos',
+      label: 'Campamentos',
+      icon: <Tent className="w-[18px] h-[18px] shrink-0" />,
+      group: 'Operación scout',
+      show: caps.canViewCampamentos,
+      badge: campamentosPendientes > 0 ? campamentosPendientes : undefined,
     },
     {
       id: 'tesoreria',
@@ -282,7 +308,16 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
                       }`}
                     >
                       {it.icon}
-                      <span className="truncate">{it.label}</span>
+                      <span className="truncate flex-1">{it.label}</span>
+                      {it.badge !== undefined && it.badge > 0 && (
+                        <span
+                          className={`px-1.5 py-0.5 rounded-full text-[11px] font-extrabold s-tabular leading-none ${
+                            active ? 'bg-black/15 text-inherit' : 'bg-rose-600 text-white'
+                          }`}
+                        >
+                          {it.badge > 99 ? '99+' : it.badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
@@ -401,6 +436,8 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
             <div className="hidden sm:block">
               <BotonInstalarPwa variante="navbar" />
             </div>
+
+            <CampanaAvisos />
 
             <ThemeToggle variant="dropdown" />
 

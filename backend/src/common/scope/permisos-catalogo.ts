@@ -171,6 +171,38 @@ export const CATALOGO_PERMISOS = [
     alcanceMinimo: AlcanceRol.GLOBAL,
     requiere: ['roles.ver'],
   },
+  {
+    clave: 'avisos.ver',
+    modulo: 'Avisos y Comunicados',
+    nombre: 'Avisos: Solo lectura',
+    descripcion: 'Avisos y Comunicados: Leer avisos recibidos y consultar historial enviado de su alcance',
+    alcanceMinimo: AlcanceRol.PROPIO,
+    requiere: [],
+  },
+  {
+    clave: 'avisos.editar',
+    modulo: 'Avisos y Comunicados',
+    nombre: 'Avisos: Enviar y gestionar',
+    descripcion: 'Avisos y Comunicados: Redactar, enviar y eliminar avisos para su sección o todo el grupo',
+    alcanceMinimo: AlcanceRol.UNIDAD,
+    requiere: ['avisos.ver'],
+  },
+  {
+    clave: 'campamentos.ver',
+    modulo: 'Campamentos y Salidas',
+    nombre: 'Campamentos: Solo lectura y confirmación propia',
+    descripcion: 'Campamentos: Ver invitaciones propias, confirmar asistencia y consultar listado de su alcance',
+    alcanceMinimo: AlcanceRol.PROPIO,
+    requiere: [],
+  },
+  {
+    clave: 'campamentos.editar',
+    modulo: 'Campamentos y Salidas',
+    nombre: 'Campamentos: Gestión completa',
+    descripcion: 'Campamentos: Crear, editar, eliminar campamentos y gestionar asistencias',
+    alcanceMinimo: AlcanceRol.UNIDAD,
+    requiere: ['campamentos.ver'],
+  },
 ] as const satisfies readonly PermisoCatalogoItem[];
 
 export type PermisoSistema = (typeof CATALOGO_PERMISOS)[number]['clave'];

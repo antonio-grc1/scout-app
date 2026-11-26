@@ -97,6 +97,121 @@ describe('Fase 4: capabilities.ts (multi-rol, alcance UNIDAD y cero hardcoding p
     assert.equal(capsSinPermisos.canEditOrganizacion, false);
     assert.equal(capsSinPermisos.canViewInicio, true);
     assert.equal(capsSinPermisos.canViewMiEspacio, true);
+    assert.equal(capsSinPermisos.canViewAvisos, true);
+    assert.equal(capsSinPermisos.canViewAvisosEnviados, false);
+    assert.equal(capsSinPermisos.canSendAvisos, false);
+    assert.equal(capsSinPermisos.canSendAvisosGlobales, false);
+  });
+
+  it('calcula capacidades de avisos según permiso y alcance (PROPIO, UNIDAD, GLOBAL)', async () => {
+    const { computeCapabilities } = await vite.ssrLoadModule('/src/core/capabilities.ts');
+
+    const capsPropio = computeCapabilities([
+      {
+        unidadId: 2,
+        unidadNombre: 'Manada',
+        rol: 'Protagonista',
+        tipoMiembro: 'PROTAGONISTA',
+        alcance: 'PROPIO',
+        permisos: ['avisos.ver'],
+      },
+    ]);
+    assert.equal(capsPropio.canViewAvisos, true);
+    assert.equal(capsPropio.canViewAvisosEnviados, false);
+    assert.equal(capsPropio.canSendAvisos, false);
+    assert.equal(capsPropio.canSendAvisosGlobales, false);
+
+    const capsUnidadSoloLectura = computeCapabilities([
+      {
+        unidadId: 3,
+        unidadNombre: 'Rama Scout',
+        rol: 'Colaborador',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'UNIDAD',
+        permisos: ['avisos.ver'],
+      },
+    ]);
+    assert.equal(capsUnidadSoloLectura.canViewAvisos, true);
+    assert.equal(capsUnidadSoloLectura.canViewAvisosEnviados, true);
+    assert.equal(capsUnidadSoloLectura.canSendAvisos, false);
+    assert.equal(capsUnidadSoloLectura.canSendAvisosGlobales, false);
+
+    const capsUnidadEdicion = computeCapabilities([
+      {
+        unidadId: 3,
+        unidadNombre: 'Rama Scout',
+        rol: 'Educador',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'UNIDAD',
+        permisos: ['avisos.ver', 'avisos.editar'],
+      },
+    ]);
+    assert.equal(capsUnidadEdicion.canViewAvisosEnviados, true);
+    assert.equal(capsUnidadEdicion.canSendAvisos, true);
+    assert.equal(capsUnidadEdicion.canSendAvisosGlobales, false);
+
+    const capsGlobalEdicion = computeCapabilities([
+      {
+        unidadId: 1,
+        unidadNombre: 'Jefatura',
+        rol: 'Jefe de Grupo',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'GLOBAL',
+        permisos: ['avisos.editar'],
+      },
+    ]);
+    assert.equal(capsGlobalEdicion.canViewAvisos, true);
+    assert.equal(capsGlobalEdicion.canViewAvisosEnviados, true);
+    assert.equal(capsGlobalEdicion.canSendAvisos, true);
+    assert.equal(capsGlobalEdicion.canSendAvisosGlobales, true);
+  });
+
+  it('calcula capacidades de campamentos según permiso y alcance (PROPIO, UNIDAD, GLOBAL)', async () => {
+    const { computeCapabilities } = await vite.ssrLoadModule('/src/core/capabilities.ts');
+
+    const capsPropio = computeCapabilities([
+      {
+        unidadId: 2,
+        unidadNombre: 'Manada',
+        rol: 'Protagonista',
+        tipoMiembro: 'PROTAGONISTA',
+        alcance: 'PROPIO',
+        permisos: ['campamentos.ver'],
+      },
+    ]);
+    assert.equal(capsPropio.canViewCampamentos, true);
+    assert.equal(capsPropio.canManageCampamentos, false);
+    assert.equal(capsPropio.canEditCampamentos, false);
+    assert.equal(capsPropio.canCreateGlobalCampamentos, false);
+
+    const capsUnidadEdicion = computeCapabilities([
+      {
+        unidadId: 3,
+        unidadNombre: 'Rama Scout',
+        rol: 'Educador',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'UNIDAD',
+        permisos: ['campamentos.ver', 'campamentos.editar'],
+      },
+    ]);
+    assert.equal(capsUnidadEdicion.canViewCampamentos, true);
+    assert.equal(capsUnidadEdicion.canManageCampamentos, true);
+    assert.equal(capsUnidadEdicion.canEditCampamentos, true);
+    assert.equal(capsUnidadEdicion.canCreateGlobalCampamentos, false);
+
+    const capsGlobalEdicion = computeCapabilities([
+      {
+        unidadId: 1,
+        unidadNombre: 'Jefatura',
+        rol: 'Jefe de Grupo',
+        tipoMiembro: 'EDUCADOR',
+        alcance: 'GLOBAL',
+        permisos: ['campamentos.editar'],
+      },
+    ]);
+    assert.equal(capsGlobalEdicion.canManageCampamentos, true);
+    assert.equal(capsGlobalEdicion.canEditCampamentos, true);
+    assert.equal(capsGlobalEdicion.canCreateGlobalCampamentos, true);
   });
 
   it('aisla capacidades GLOBAL-only en perfiles multi-rol UNIDAD + PROPIO y habilita al combinar GLOBAL', async () => {

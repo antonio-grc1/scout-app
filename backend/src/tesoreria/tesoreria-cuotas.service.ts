@@ -225,7 +225,13 @@ export class TesoreriaCuotasService {
    * - Crea cargos para los nuevos miembros alcanzados.
    */
   async sincronizarCargosDeConceptoEnTx(tx: Prisma.TransactionClient, concepto: any) {
-    if (!concepto || concepto.destinatarioTipo === 'INDIVIDUAL') return;
+    if (
+      !concepto ||
+      concepto.destinatarioTipo === 'INDIVIDUAL' ||
+      concepto.destinatarioTipo === 'POR_CONFIRMACION'
+    ) {
+      return;
+    }
 
     let excepciones = extraerExcepcionIds(concepto);
     if (
@@ -491,7 +497,7 @@ export class TesoreriaCuotasService {
     const conceptosVigentes = await tx.conceptoCuota.findMany({
       where: {
         cicloAnio: cicloEfectivo,
-        destinatarioTipo: { not: 'INDIVIDUAL' },
+        destinatarioTipo: { notIn: ['INDIVIDUAL', 'POR_CONFIRMACION'] },
       },
       include: {
         excepciones: { select: { usuarioId: true } },
@@ -505,7 +511,13 @@ export class TesoreriaCuotasService {
       for (const c of usuario.cargos) {
         if (c.estado !== EstadoCargo.PENDIENTE || Number(c.montoPagado) > 0) continue;
         const concepto = conceptosPorId.get(c.conceptoId);
-        if (!concepto || concepto.destinatarioTipo === 'INDIVIDUAL') continue;
+        if (
+          !concepto ||
+          concepto.destinatarioTipo === 'INDIVIDUAL' ||
+          concepto.destinatarioTipo === 'POR_CONFIRMACION'
+        ) {
+          continue;
+        }
         const tipoDestCargo =
           concepto.destinatarioTipo || (concepto.esParaEducadores ? 'EDUCADORES' : 'TODOS');
         const fueraDeUnidad = Boolean(concepto.unidadId && !unidadesMiembro.has(concepto.unidadId));

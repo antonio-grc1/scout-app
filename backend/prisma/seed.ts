@@ -66,7 +66,7 @@ const ROLES: {
     requiereRama: true,
     tipoUnidad: TipoUnidad.SECCION_RAMA,
     esSistema: true,
-    permisos: ['padron.ver', 'padron.editar', 'legajos.ver', 'legajos.editar', 'cobranzas.ver', 'eventos.ver'],
+    permisos: ['padron.ver', 'padron.editar', 'legajos.ver', 'legajos.editar', 'cobranzas.ver', 'eventos.ver', 'avisos.ver', 'campamentos.ver'],
   },
   {
     nombre: 'Educador de Rama',
@@ -92,6 +92,10 @@ const ROLES: {
       'caja.editar',
       'eventos.ver',
       'eventos.editar',
+      'avisos.ver',
+      'avisos.editar',
+      'campamentos.ver',
+      'campamentos.editar',
     ],
   },
   {
@@ -119,6 +123,8 @@ const ROLES: {
       'legajos.editar',
       'cobranzas.ver',
       'eventos.ver',
+      'avisos.ver',
+      'campamentos.ver',
     ],
   },
   {
@@ -140,6 +146,10 @@ const ROLES: {
       'caja.editar',
       'eventos.ver',
       'eventos.editar',
+      'avisos.ver',
+      'avisos.editar',
+      'campamentos.ver',
+      'campamentos.editar',
     ],
   },
   {
@@ -161,6 +171,10 @@ const ROLES: {
       'legajos.editar',
       'plantillas.ver',
       'plantillas.editar',
+      'avisos.ver',
+      'avisos.editar',
+      'campamentos.ver',
+      'campamentos.editar',
     ],
   },
   {
@@ -178,6 +192,10 @@ const ROLES: {
       'eventos.editar',
       'cobranzas.ver',
       'cobranzas.editar',
+      'avisos.ver',
+      'avisos.editar',
+      'campamentos.ver',
+      'campamentos.editar',
     ],
   },
 ];

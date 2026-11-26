@@ -66,6 +66,12 @@ const PERMISOS_EDICION: Record<string, Record<string, string[]>> = {
     vender: ['eventos.editar', 'caja.editar'],
     gestionar: ['eventos.editar', 'caja.editar'],
   },
+  avisos: {
+    enviar: ['avisos.editar'],
+  },
+  campamentos: {
+    gestionar: ['campamentos.editar'],
+  },
 };
 
 const PERMISOS_LECTURA: Record<string, string[]> = {
@@ -81,6 +87,8 @@ const PERMISOS_LECTURA: Record<string, string[]> = {
   roles: ['roles.ver', 'roles.editar', 'organizacion.ver', 'organizacion.editar'],
   tesoreria: ['cobranzas.ver', 'cobranzas.editar', 'planes.ver', 'planes.editar', 'caja.ver', 'caja.editar'],
   eventos: ['eventos.ver', 'eventos.editar', 'caja.editar'],
+  avisos: ['avisos.ver', 'avisos.editar'],
+  campamentos: ['campamentos.ver', 'campamentos.editar'],
 };
 
 export interface AsignacionScopeLike {
