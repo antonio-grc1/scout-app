@@ -420,7 +420,10 @@ export const MiembrosPage: React.FC = () => {
 
   useEffect(() => {
     const guardarScroll = () => {
-      if (cachePadron) cachePadron.scrollY = window.scrollY;
+      // Solo el scroll del padrón: el de /miembros/:id (misma ventana) no debe pisarlo.
+      if (cachePadron && window.location.pathname === '/miembros') {
+        cachePadron.scrollY = window.scrollY;
+      }
     };
     window.addEventListener('scroll', guardarScroll, { passive: true });
     return () => window.removeEventListener('scroll', guardarScroll);

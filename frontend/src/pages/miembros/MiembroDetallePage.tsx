@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useLayoutEffect, useMemo } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useToastStore } from '../../store/toastStore';
@@ -22,6 +22,11 @@ export const MiembroDetallePage: React.FC = () => {
     const parsed = Number(id);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }, [id]);
+
+  // La ventana comparte el scroll con el padrón: el miembro siempre abre arriba.
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+  }, [usuarioId]);
 
   const tabInicial = useMemo<TabExpediente360>(() => {
     const t = searchParams.get('tab') as TabExpediente360 | null;
