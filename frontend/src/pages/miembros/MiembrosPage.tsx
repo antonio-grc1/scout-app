@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useNavigate, useNavigationType, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowDown,
@@ -125,10 +125,29 @@ const obtenerTextoDireccion = (campo: CampoOrden, dir: DireccionOrden): string =
   }
 };
 
+// Última carga del padrón (por usuario), búsqueda y scroll: al volver desde /miembros/:id
+// (móvil) se pinta al instante en la misma posición y se refresca en segundo plano.
+type DatosPadron = {
+  miembros: any[];
+  candidatosPase: any[];
+  solicitudesPase: any[];
+  entregas: any[];
+  unidadesRaw: any[];
+  rolesRaw: any[];
+  ramas: any[];
+};
+let cachePadron: { usuarioId: number; datos: DatosPadron; busqueda: string; scrollY: number } | null =
+  null;
+
 export const MiembrosPage: React.FC = () => {
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
   const [searchParams, setSearchParams] = useSearchParams();
   const { usuario: usuarioActual, asignaciones, tienePermisoGlobal } = useAuthStore();
+  const usuarioId = usuarioActual?.id;
+  const [cacheInicial] = useState(() =>
+    cachePadron && cachePadron.usuarioId === usuarioId ? cachePadron : null,
+  );
   const caps = useCapabilities();
   const activeUnitId = useActiveUnitStore((s) => s.activeUnitId);
   const lastValidationAt = useQrModalStore((s) => s.lastValidationAt);
@@ -155,13 +174,17 @@ export const MiembrosPage: React.FC = () => {
 
   const cicloAnio = useMemo(() => obtenerCicloAnioActual(), []);
 
-  const [miembros, setMiembros] = useState<any[]>([]);
-  const [candidatosPase, setCandidatosPase] = useState<any[]>([]);
-  const [solicitudesPase, setSolicitudesPase] = useState<any[]>([]);
-  const [entregas, setEntregas] = useState<any[]>([]);
-  const [unidadesRaw, setUnidadesRaw] = useState<any[]>([]);
-  const [rolesRaw, setRolesRaw] = useState<any[]>([]);
-  const [ramas, setRamas] = useState<any[]>([]);
+  const [miembros, setMiembros] = useState<any[]>(() => cacheInicial?.datos.miembros ?? []);
+  const [candidatosPase, setCandidatosPase] = useState<any[]>(
+    () => cacheInicial?.datos.candidatosPase ?? [],
+  );
+  const [solicitudesPase, setSolicitudesPase] = useState<any[]>(
+    () => cacheInicial?.datos.solicitudesPase ?? [],
+  );
+  const [entregas, setEntregas] = useState<any[]>(() => cacheInicial?.datos.entregas ?? []);
+  const [unidadesRaw, setUnidadesRaw] = useState<any[]>(() => cacheInicial?.datos.unidadesRaw ?? []);
+  const [rolesRaw, setRolesRaw] = useState<any[]>(() => cacheInicial?.datos.rolesRaw ?? []);
+  const [ramas, setRamas] = useState<any[]>(() => cacheInicial?.datos.ramas ?? []);
   const [cargando, setCargando] = useState(false);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [validandoId, setValidandoId] = useState<number | null>(null);
@@ -178,7 +201,7 @@ export const MiembrosPage: React.FC = () => {
   const [cargandoVoluntarias, setCargandoVoluntarias] = useState(false);
 
   // Filtros y estado de URL
-  const [busqueda, setBusqueda] = useState('');
+  const [busqueda, setBusqueda] = useState(() => cacheInicial?.busqueda ?? '');
   const [seccionesFiltro, setSeccionesFiltro] = useState<number[]>(() =>
     typeof activeUnitId === 'number' ? [activeUnitId] : [],
   );
@@ -331,6 +354,23 @@ export const MiembrosPage: React.FC = () => {
         setRolesRaw(resRoles.data || []);
         setRamas(resRamas.data || []);
         setErrorCarga(null);
+        if (usuarioId !== undefined) {
+          const previo = cachePadron?.usuarioId === usuarioId ? cachePadron : null;
+          cachePadron = {
+            usuarioId: usuarioId,
+            datos: {
+              miembros: miembrosLista,
+              candidatosPase: resCandidatos.data || [],
+              solicitudesPase: resSolicitudes.data || [],
+              entregas: resEntregas.data || [],
+              unidadesRaw: resUnidades.data || [],
+              rolesRaw: resRoles.data || [],
+              ramas: resRamas.data || [],
+            },
+            busqueda: previo?.busqueda ?? '',
+            scrollY: previo?.scrollY ?? 0,
+          };
+        }
       } catch (err) {
         const mensaje = traducirErrorAmigable(err, 'No se pudo cargar el padrón.');
         const offline =
@@ -361,12 +401,34 @@ export const MiembrosPage: React.FC = () => {
       mostrarToast,
       caps.canViewOrganizacion,
       caps.canViewRoles,
+      usuarioId,
     ],
   );
 
   useEffect(() => {
-    void cargarDatos(false);
-  }, [cargarDatos]);
+    // Con datos en caché se refresca sin esqueleto, para no perder la posición.
+    void cargarDatos(cacheInicial !== null);
+  }, [cargarDatos, cacheInicial]);
+
+  // Solo al volver atrás (POP) se restaura el scroll guardado.
+  useLayoutEffect(() => {
+    if (cacheInicial && navigationType === 'POP') {
+      window.scrollTo(0, cacheInicial.scrollY);
+    }
+    // Solo al montar.
+  }, []);
+
+  useEffect(() => {
+    const guardarScroll = () => {
+      if (cachePadron) cachePadron.scrollY = window.scrollY;
+    };
+    window.addEventListener('scroll', guardarScroll, { passive: true });
+    return () => window.removeEventListener('scroll', guardarScroll);
+  }, []);
+
+  useEffect(() => {
+    if (cachePadron) cachePadron.busqueda = busqueda;
+  }, [busqueda]);
 
   // Refresco automático tras validar QR desde el modal universal
   useEffect(() => {
