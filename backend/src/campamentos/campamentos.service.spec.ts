@@ -39,7 +39,14 @@ const crearMockPrisma = () => {
     unidadOrganizativa: { findUnique: vi.fn(), findMany: vi.fn() },
     usuario: { findMany: vi.fn(), findUnique: vi.fn(), count: vi.fn() },
     conceptoCuota: { create: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
-    cargoMiembro: { create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
+    cargoMiembro: {
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      findMany: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn().mockResolvedValue(0),
+    },
     entregaFormulario: { findFirst: vi.fn(), findMany: vi.fn() },
     pagoImputacion: { findMany: vi.fn(), delete: vi.fn(), update: vi.fn() },
     pago: { deleteMany: vi.fn(), delete: vi.fn(), update: vi.fn() },
@@ -59,6 +66,7 @@ const crearMockPrisma = () => {
       findMany: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       createMany: vi.fn(),
       deleteMany: vi.fn(),
     },
@@ -658,6 +666,99 @@ describe('CampamentosService', () => {
     expect(prisma.campamentoInscripcion.update).not.toHaveBeenCalled();
   });
 
+  it('si dos confirmaciones llegan a la vez, la segunda falla y no deja un cargo vinculado de más', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamentoInscripcion.findUnique.mockResolvedValueOnce({
+      id: 100,
+      usuarioId: 10,
+      estado: 'PENDIENTE',
+      cargoId: null,
+      cargo: null,
+      campamento: {
+        id: 7,
+        estado: 'PUBLICADO',
+        fechaLimiteConfirmacion: null,
+        costoBase: 10000,
+        conceptoCuotaId: 50,
+        permiteDescuentoHermanos: false,
+        porcentajeDescuentoHermanos: null,
+        cicloAnio: 2026,
+      },
+    });
+    prisma.entregaFormulario.findFirst.mockResolvedValueOnce(null);
+    prisma.usuario.findUnique.mockResolvedValueOnce({ grupoFamiliar: null });
+    prisma.cargoMiembro.create.mockResolvedValueOnce({ id: 500 });
+    // Otra solicitud ya vinculó un cargo: el vínculo condicional no afecta filas.
+    prisma.campamentoInscripcion.updateMany.mockResolvedValueOnce({ count: 0 });
+
+    await expect(service.responder(10, 7, { accion: 'CONFIRMAR' })).rejects.toThrow(
+      ConflictException,
+    );
+    expect(prisma.campamentoInscripcion.updateMany).toHaveBeenCalledWith({
+      where: { id: 100, cargoId: null },
+      data: { cargoId: 500 },
+    });
+    expect(prisma.campamentoInscripcion.update).not.toHaveBeenCalled();
+  });
+
+  it('no elimina un campamento si un cargo desvinculado de su concepto tiene pagos', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamento.findUnique.mockResolvedValueOnce({
+      id: 7,
+      unidadId: 3,
+      conceptoCuotaId: 50,
+      creadoPorUsuarioId: 1,
+      unidades: [{ unidadId: 3 }],
+      inscripciones: [{ cargo: null }],
+    });
+    prisma.cargoMiembro.count.mockResolvedValueOnce(1);
+
+    await expect(service.eliminar({ tipo: 'GLOBAL' }, 1, 7)).rejects.toThrow(ConflictException);
+    expect(prisma.cargoMiembro.count).toHaveBeenCalledWith({
+      where: { conceptoId: 50, montoPagado: { gt: 0 } },
+    });
+    expect(prisma.campamento.delete).not.toHaveBeenCalled();
+  });
+
+  it('no envía el aviso automático si el usuario no tiene permiso de avisos', async () => {
+    const prisma = crearMockPrisma();
+    const avisos = { crear: vi.fn() } as any;
+    const service = new CampamentosService(prisma, avisos);
+
+    prisma.unidadOrganizativa.findMany.mockResolvedValueOnce([{ id: 3 }]);
+    prisma.usuario.findMany.mockResolvedValueOnce([{ id: 30 }]);
+    prisma.campamento.create.mockResolvedValueOnce({
+      id: 11,
+      titulo: 'Camp rama',
+      lugar: 'Tandil',
+      fechaInicio: new Date('2026-12-05T00:00:00.000Z'),
+      fechaFin: new Date('2026-12-07T00:00:00.000Z'),
+      costoBase: 0,
+      unidadId: 3,
+      estado: 'PUBLICADO',
+    });
+
+    // actorUnidad tiene campamentos.editar pero no avisos.editar
+    await service.crear(
+      { tipo: 'UNIDAD', unidadIds: [3], usuarioIdPropio: 20 },
+      actorUnidad,
+      {
+        titulo: 'Camp rama',
+        lugar: 'Tandil',
+        fechaInicio: '2026-12-05',
+        fechaFin: '2026-12-07',
+        unidadesIds: [3],
+        notificarAviso: true,
+      },
+    );
+
+    expect(avisos.crear).not.toHaveBeenCalled();
+  });
+
   it('no permite reactivar un campamento cancelado', async () => {
     const prisma = crearMockPrisma();
     const service = new CampamentosService(prisma);
@@ -694,7 +795,7 @@ describe('CampamentosService', () => {
     const res = await service.eliminar({ tipo: 'GLOBAL' }, 1, 7);
 
     expect(prisma.cargoMiembro.deleteMany).toHaveBeenCalledWith({
-      where: { id: { in: [300] }, montoPagado: 0 },
+      where: { conceptoId: 50, montoPagado: 0 },
     });
     expect(prisma.aviso.deleteMany).toHaveBeenCalledWith({
       where: { campamentoId: 7 },

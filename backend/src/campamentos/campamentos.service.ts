@@ -7,14 +7,15 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { EstadoCargo, type Prisma } from '@prisma/client';
+import { EstadoCargo, type CargoMiembro, type Prisma } from '@prisma/client';
 import { AvisosService } from '../avisos/avisos.service.js';
 import {
   assertUnidadEnAlcance,
   filtroUsuariosPorAlcance,
+  resolverAlcance,
 } from '../common/scope/alcance.util.js';
 import type { AlcanceAcceso, AuthUser } from '../common/types/auth.types.js';
-import { validarFechaCalendarioIso } from '../common/utils/fechas.util.js';
+import { finDelDiaArgentina, validarFechaCalendarioIso } from '../common/utils/fechas.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import {
   aCentavos,
@@ -146,8 +147,7 @@ export class CampamentosService {
 
   private parsearFechaLimite(fechaIso?: string | null): Date | null {
     if (!fechaIso) return null;
-    validarFechaCalendarioIso(fechaIso);
-    return new Date(`${fechaIso}T23:59:59.999-03:00`);
+    return finDelDiaArgentina(fechaIso);
   }
 
   private formatearFechaCorta(fecha: Date): string {
@@ -259,7 +259,6 @@ export class CampamentosService {
   }
 
   private async notificarCampamentoPublicado(
-    alcance: AlcanceAcceso,
     actor: AuthUser,
     camp: {
       id: number;
@@ -275,6 +274,14 @@ export class CampamentosService {
     notificarEmail: boolean,
   ) {
     if (!this.avisos || usuariosIds.length === 0) return;
+    // El aviso se envía con el permiso y alcance de avisos del usuario, no con el de campamentos.
+    const alcanceAvisos = resolverAlcance(actor, 'avisos.editar');
+    if (!alcanceAvisos || alcanceAvisos.tipo === 'PROPIO') {
+      this.logger.warn(
+        `Se omitió el aviso del campamento "${camp.titulo}": el usuario #${actor.sub} no tiene permiso para enviar avisos.`,
+      );
+      return;
+    }
     const costo = Number(camp.costoBase);
     const textoCosto = costo > 0 ? `$${costo.toLocaleString('es-AR')}` : 'Sin costo';
     const mensaje = [
@@ -286,7 +293,7 @@ export class CampamentosService {
     ].join('\n');
 
     try {
-      await this.avisos.crear(alcance, actor, {
+      await this.avisos.crear(alcanceAvisos, actor, {
         titulo: `Campamento: ${camp.titulo}`.slice(0, 150),
         mensaje,
         prioridad: 'IMPORTANTE',
@@ -302,6 +309,67 @@ export class CampamentosService {
         `No se pudo enviar aviso del campamento "${camp.titulo}": ${String((err as Error | undefined)?.message ?? err)}`,
       );
     }
+  }
+
+  /**
+   * Devuelve el cargo vigente de la inscripción o, si el campamento tiene costo, crea uno nuevo
+   * y lo vincula. El vínculo solo se aplica si `cargoId` sigue igual al leído: si dos
+   * confirmaciones llegan a la vez, la segunda falla y su transacción descarta el cargo duplicado.
+   */
+  private async asegurarCargoDeConfirmacionEnTx(
+    tx: Prisma.TransactionClient,
+    inscripcion: {
+      id: number;
+      usuarioId: number;
+      cargoId: number | null;
+      cargo: CargoMiembro | null;
+    },
+    camp: {
+      costoBase: Prisma.Decimal | number | string;
+      conceptoCuotaId: number | null;
+      permiteDescuentoHermanos: boolean;
+      porcentajeDescuentoHermanos: Prisma.Decimal | number | null;
+    },
+  ) {
+    if (inscripcion.cargo && inscripcion.cargo.estado !== EstadoCargo.ANULADO) {
+      return inscripcion.cargo;
+    }
+    if (!(Number(camp.costoBase) > 0) || !camp.conceptoCuotaId) {
+      return null;
+    }
+
+    const usuario = await tx.usuario.findUnique({
+      where: { id: inscripcion.usuarioId },
+      select: { grupoFamiliar: { select: { porcentajeDescuentoHermanos: true } } },
+    });
+    const { montoOriginal, montoDescuento, montoFinal } = calcularMontosCargo(
+      camp.costoBase,
+      camp.permiteDescuentoHermanos,
+      camp.porcentajeDescuentoHermanos,
+      usuario?.grupoFamiliar,
+    );
+    const creado = await tx.cargoMiembro.create({
+      data: {
+        usuarioId: inscripcion.usuarioId,
+        conceptoId: camp.conceptoCuotaId,
+        montoOriginal,
+        montoDescuento,
+        montoFinal,
+        montoPagado: 0,
+        estado: Number(montoFinal) > 0 ? EstadoCargo.PENDIENTE : EstadoCargo.PAGADO,
+      },
+    });
+
+    const vinculo = await tx.campamentoInscripcion.updateMany({
+      where: { id: inscripcion.id, cargoId: inscripcion.cargoId },
+      data: { cargoId: creado.id },
+    });
+    if (vinculo.count !== 1) {
+      throw new ConflictException(
+        'La asistencia ya se estaba registrando en otra solicitud. Actualizá la página.',
+      );
+    }
+    return creado;
   }
 
   async listarMios(usuarioId: number) {
@@ -471,40 +539,7 @@ export class CampamentosService {
       const fichaValidada = Boolean(entregaValidada);
 
       if (dto.accion === 'CONFIRMAR') {
-        let cargoId =
-          inscripcion.cargo && inscripcion.cargo.estado !== EstadoCargo.ANULADO
-            ? inscripcion.cargo.id
-            : null;
-        let cargoResultado =
-          inscripcion.cargo && inscripcion.cargo.estado !== EstadoCargo.ANULADO
-            ? inscripcion.cargo
-            : null;
-
-        if (!cargoId && Number(camp.costoBase) > 0 && camp.conceptoCuotaId) {
-          const usuario = await tx.usuario.findUnique({
-            where: { id: usuarioId },
-            select: { grupoFamiliar: { select: { porcentajeDescuentoHermanos: true } } },
-          });
-          const { montoOriginal, montoDescuento, montoFinal } = calcularMontosCargo(
-            camp.costoBase,
-            camp.permiteDescuentoHermanos,
-            camp.porcentajeDescuentoHermanos,
-            usuario?.grupoFamiliar,
-          );
-          const creadoCargo = await tx.cargoMiembro.create({
-            data: {
-              usuarioId,
-              conceptoId: camp.conceptoCuotaId,
-              montoOriginal,
-              montoDescuento,
-              montoFinal,
-              montoPagado: 0,
-              estado: Number(montoFinal) > 0 ? EstadoCargo.PENDIENTE : EstadoCargo.PAGADO,
-            },
-          });
-          cargoId = creadoCargo.id;
-          cargoResultado = creadoCargo;
-        }
+        const cargoResultado = await this.asegurarCargoDeConfirmacionEnTx(tx, inscripcion, camp);
 
         const act = await tx.campamentoInscripcion.update({
           where: { id: inscripcion.id },
@@ -512,7 +547,7 @@ export class CampamentosService {
             estado: 'CONFIRMADO',
             confirmadoAt: ahora,
             confirmadoPorUsuarioId: usuarioId,
-            cargoId,
+            cargoId: cargoResultado?.id ?? null,
             ...(dto.observaciones !== undefined ? { observaciones: dto.observaciones } : {}),
           },
         });
@@ -937,7 +972,6 @@ export class CampamentosService {
 
     if (dto.notificarAviso && estado === 'PUBLICADO') {
       await this.notificarCampamentoPublicado(
-        alcance,
         actor,
         creado,
         idsInvitados,
@@ -1292,7 +1326,6 @@ export class CampamentosService {
       dto.notificarAviso
     ) {
       await this.notificarCampamentoPublicado(
-        alcance,
         actor,
         actualizado,
         nuevosInvitadosIds,
@@ -1336,34 +1369,7 @@ export class CampamentosService {
       this.assertAccesoCampamento(alcance, actor.sub, camp);
 
       if (dto.estado === 'CONFIRMADO') {
-        let cargoId =
-          inscripcion.cargo && inscripcion.cargo.estado !== EstadoCargo.ANULADO
-            ? inscripcion.cargo.id
-            : null;
-        if (!cargoId && Number(camp.costoBase) > 0 && camp.conceptoCuotaId) {
-          const usuario = await tx.usuario.findUnique({
-            where: { id: usuarioId },
-            select: { grupoFamiliar: { select: { porcentajeDescuentoHermanos: true } } },
-          });
-          const { montoOriginal, montoDescuento, montoFinal } = calcularMontosCargo(
-            camp.costoBase,
-            camp.permiteDescuentoHermanos,
-            camp.porcentajeDescuentoHermanos,
-            usuario?.grupoFamiliar,
-          );
-          const creadoCargo = await tx.cargoMiembro.create({
-            data: {
-              usuarioId,
-              conceptoId: camp.conceptoCuotaId,
-              montoOriginal,
-              montoDescuento,
-              montoFinal,
-              montoPagado: 0,
-              estado: Number(montoFinal) > 0 ? EstadoCargo.PENDIENTE : EstadoCargo.PAGADO,
-            },
-          });
-          cargoId = creadoCargo.id;
-        }
+        const cargo = await this.asegurarCargoDeConfirmacionEnTx(tx, inscripcion, camp);
 
         const act = await tx.campamentoInscripcion.update({
           where: { id: inscripcion.id },
@@ -1371,7 +1377,7 @@ export class CampamentosService {
             estado: 'CONFIRMADO',
             confirmadoAt: inscripcion.confirmadoAt ?? new Date(),
             confirmadoPorUsuarioId: actor.sub,
-            cargoId,
+            cargoId: cargo?.id ?? null,
             ...(dto.observaciones !== undefined ? { observaciones: dto.observaciones } : {}),
           },
         });
@@ -1423,9 +1429,16 @@ export class CampamentosService {
 
     this.assertAccesoCampamento(alcance, actorId, camp);
 
-    const tienePagos = camp.inscripciones.some(
-      (i) => i.cargo && i.cargo.estado !== EstadoCargo.ANULADO && Number(i.cargo.montoPagado) > 0,
-    );
+    // Se revisan todos los cargos del concepto, no solo los vinculados: tras una baja o un
+    // "No asisto" el cargo anulado queda desvinculado de la inscripción.
+    const tienePagos =
+      camp.inscripciones.some(
+        (i) => i.cargo && i.cargo.estado !== EstadoCargo.ANULADO && Number(i.cargo.montoPagado) > 0,
+      ) ||
+      (camp.conceptoCuotaId != null &&
+        (await this.prisma.cargoMiembro.count({
+          where: { conceptoId: camp.conceptoCuotaId, montoPagado: { gt: 0 } },
+        })) > 0);
     if (tienePagos) {
       throw new ConflictException(
         'No se puede eliminar un campamento que ya tiene pagos registrados. Cambiá su estado a CANCELADO.',
@@ -1433,12 +1446,9 @@ export class CampamentosService {
     }
 
     await this.runInTx(async (tx) => {
-      const cargoIdsSinPagos = camp.inscripciones
-        .map((i) => i.cargo?.id)
-        .filter((id): id is number => typeof id === 'number');
-      if (cargoIdsSinPagos.length > 0 && tx.cargoMiembro?.deleteMany) {
+      if (camp.conceptoCuotaId != null && tx.cargoMiembro?.deleteMany) {
         await tx.cargoMiembro.deleteMany({
-          where: { id: { in: cargoIdsSinPagos }, montoPagado: 0 },
+          where: { conceptoId: camp.conceptoCuotaId, montoPagado: 0 },
         });
       }
 

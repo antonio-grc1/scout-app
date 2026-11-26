@@ -783,7 +783,9 @@ export const ModalCampamento: React.FC<ModalCampamentoProps> = ({
           )}
         </div>
 
-        {estado === 'PUBLICADO' && (!esEdicion || campamentoAEditar?.estado === 'BORRADOR') && (
+        {caps.canSendAvisos &&
+          estado === 'PUBLICADO' &&
+          (!esEdicion || campamentoAEditar?.estado === 'BORRADOR') && (
           <div className="rounded-2xl border border-rule bg-paper-2 p-4 space-y-2.5">
             <label className="flex items-center gap-2.5 cursor-pointer text-sm font-bold text-ink">
               <input
