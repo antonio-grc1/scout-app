@@ -529,6 +529,77 @@ describe('CampamentosService', () => {
     expect(prisma.campamentoInscripcion.createMany).not.toHaveBeenCalled();
   });
 
+  it('al cancelar un campamento anula sus deudas y pasa lo pagado a Saldo a favor', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamento.findUnique.mockResolvedValueOnce({
+      id: 9,
+      titulo: 'Camp',
+      lugar: 'Tandil',
+      fechaInicio: new Date('2026-11-28T00:00:00.000Z'),
+      fechaFin: new Date('2026-11-30T00:00:00.000Z'),
+      fechaLimiteConfirmacion: null,
+      estado: 'PUBLICADO',
+      destinatarioTipo: 'PROTAGONISTAS',
+      unidadId: 2,
+      cicloAnio: 2026,
+      costoBase: 10000,
+      permiteDescuentoHermanos: true,
+      porcentajeDescuentoHermanos: null,
+      rubroId: null,
+      conceptoCuotaId: 50,
+      creadoPorUsuarioId: 1,
+      unidades: [{ unidadId: 2 }],
+      inscripciones: [
+        { id: 100, usuarioId: 10, estado: 'CONFIRMADO', cargoId: 300, cargo: { id: 300, montoPagado: 0, estado: EstadoCargo.PENDIENTE } },
+        { id: 101, usuarioId: 11, estado: 'CONFIRMADO', cargoId: 301, cargo: { id: 301, montoPagado: 4000, estado: EstadoCargo.PARCIAL } },
+        { id: 102, usuarioId: 12, estado: 'NO_ASISTE', cargoId: 302, cargo: { id: 302, montoPagado: 0, estado: EstadoCargo.ANULADO } },
+        { id: 103, usuarioId: 13, estado: 'PENDIENTE', cargoId: null, cargo: null },
+      ],
+    });
+    prisma.pagoImputacion.findMany.mockResolvedValueOnce([]);
+    prisma.usuario.update = vi.fn();
+    prisma.campamento.update.mockResolvedValueOnce({ id: 9, titulo: 'Camp', estado: 'CANCELADO' });
+
+    await service.editar({ tipo: 'GLOBAL' }, actorGlobal, 9, { estado: 'CANCELADO' });
+
+    expect(prisma.cargoMiembro.update).toHaveBeenCalledTimes(2);
+    expect(prisma.cargoMiembro.update).toHaveBeenCalledWith({
+      where: { id: 300 },
+      data: { montoPagado: 0, estado: EstadoCargo.ANULADO },
+    });
+    expect(prisma.cargoMiembro.update).toHaveBeenCalledWith({
+      where: { id: 301 },
+      data: { montoPagado: 0, estado: EstadoCargo.ANULADO },
+    });
+    expect(prisma.usuario.update).toHaveBeenCalledWith({
+      where: { id: 11 },
+      data: { saldoAFavor: { increment: expect.anything() } },
+    });
+    expect(Number(prisma.usuario.update.mock.calls[0][0].data.saldoAFavor.increment)).toBe(4000);
+  });
+
+  it('no permite reactivar un campamento cancelado', async () => {
+    const prisma = crearMockPrisma();
+    const service = new CampamentosService(prisma);
+
+    prisma.campamento.findUnique.mockResolvedValueOnce({
+      id: 9,
+      estado: 'CANCELADO',
+      destinatarioTipo: 'PROTAGONISTAS',
+      unidadId: 2,
+      creadoPorUsuarioId: 1,
+      unidades: [{ unidadId: 2 }],
+      inscripciones: [],
+    });
+
+    await expect(
+      service.editar({ tipo: 'GLOBAL' }, actorGlobal, 9, { estado: 'PUBLICADO' }),
+    ).rejects.toThrow(ConflictException);
+    expect(prisma.campamento.update).not.toHaveBeenCalled();
+  });
+
   it('al eliminar un campamento elimina también las alertas vinculadas y el concepto si no tiene cargos', async () => {
     const prisma = crearMockPrisma();
     const service = new CampamentosService(prisma);

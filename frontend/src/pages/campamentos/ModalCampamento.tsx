@@ -504,6 +504,7 @@ export const ModalCampamento: React.FC<ModalCampamentoProps> = ({
           <Select
             label="Estado"
             value={estado}
+            disabled={campamentoAEditar?.estado === 'CANCELADO'}
             onChange={(e) => setEstado(e.target.value as EstadoCampamento)}
           >
             <option value="PUBLICADO">Publicado (visible e invitable)</option>
@@ -513,6 +514,13 @@ export const ModalCampamento: React.FC<ModalCampamentoProps> = ({
             {esEdicion && <option value="CANCELADO">Cancelado</option>}
           </Select>
         </div>
+
+        {esEdicion && estado === 'CANCELADO' && campamentoAEditar?.estado !== 'CANCELADO' && (
+          <p className="rounded-xl border border-rule bg-paper-2 p-3 text-xs text-ink-2">
+            Al cancelar se anulan las deudas del campamento y lo que ya se pagó pasa al Saldo a favor
+            de cada familia. Un campamento cancelado no se puede reactivar.
+          </p>
+        )}
 
         {Number(costoBase || 0) > 0 && (
           <div className="rounded-2xl border border-rule bg-paper-2 p-4 space-y-2.5">

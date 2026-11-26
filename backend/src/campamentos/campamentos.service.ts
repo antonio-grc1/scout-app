@@ -976,6 +976,13 @@ export class CampamentosService {
 
     this.assertAccesoCampamento(alcance, actor.sub, actual);
 
+    if (actual.estado === 'CANCELADO' && dto.estado !== undefined && dto.estado !== 'CANCELADO') {
+      throw new ConflictException(
+        'Un campamento cancelado no se puede reactivar porque sus deudas ya fueron anuladas. Creá un campamento nuevo.',
+      );
+    }
+    const pasaACancelado = dto.estado === 'CANCELADO' && actual.estado !== 'CANCELADO';
+
     const nuevaFechaInicio = dto.fechaInicio
       ? this.parsearFechaDate(dto.fechaInicio)
       : actual.fechaInicio;
@@ -1144,6 +1151,23 @@ export class CampamentosService {
           await tx.campamentoUnidad.createMany({
             data: nuevasUnidadesIds.map((unidadId) => ({ campamentoId, unidadId })),
             skipDuplicates: true,
+          });
+        }
+      }
+
+      if (pasaACancelado) {
+        // Al cancelar: se anulan las deudas vigentes y lo pagado pasa a Saldo a favor.
+        const vigentesIds = new Set(nuevosInvitadosIds);
+        for (const ins of actual.inscripciones) {
+          if (!vigentesIds.has(ins.usuarioId)) continue;
+          if (!ins.cargo || ins.cargo.estado === EstadoCargo.ANULADO) continue;
+          const pagado = Number(ins.cargo.montoPagado);
+          if (pagado > 0) {
+            await liberarMontoPagadoDeCargoEnTx(tx, ins.cargo.id, ins.usuarioId, pagado);
+          }
+          await tx.cargoMiembro.update({
+            where: { id: ins.cargo.id },
+            data: { montoPagado: 0, estado: EstadoCargo.ANULADO },
           });
         }
       }
