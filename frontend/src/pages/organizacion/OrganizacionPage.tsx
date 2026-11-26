@@ -73,12 +73,12 @@ export const OrganizacionPage: React.FC = () => {
     resolverTabUrl(searchParams.get('tab')),
   );
 
+  // Sincroniza solo cuando cambia la URL: el router la actualiza de forma asíncrona y, si dependiera
+  // de `tab`, volvería a la pestaña anterior un instante tras cada clic (parpadeo).
+  const rawTabUrl = searchParams.get('tab');
   useEffect(() => {
-    const target = resolverTabUrl(searchParams.get('tab'));
-    if (target !== tab) {
-      setTab(target);
-    }
-  }, [searchParams, resolverTabUrl, tab]);
+    setTab(resolverTabUrl(rawTabUrl));
+  }, [rawTabUrl, resolverTabUrl]);
 
   const cambiarTab = (nueva: TabOrganizacion) => {
     setTab(nueva);

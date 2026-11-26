@@ -118,12 +118,11 @@ export const MiEspacioPage: React.FC = () => {
     resolverTabPermitida(searchParams),
   );
 
+  // Sincroniza solo cuando cambia la URL: el router la actualiza de forma asíncrona y, si dependiera
+  // de tabActiva, volvería a la pestaña anterior un instante tras cada clic (parpadeo).
   useEffect(() => {
-    const resuelta = resolverTabPermitida(searchParams);
-    if (resuelta !== tabActiva) {
-      setTabActiva(resuelta);
-    }
-  }, [searchParams, tabActiva, puedeVerPedidos]);
+    setTabActiva(resolverTabPermitida(searchParams));
+  }, [searchParams, puedeVerPedidos]);
 
   const cambiarTab = async (nuevoTab: TabMiEspacio) => {
     if (nuevoTab === tabActiva) return;
