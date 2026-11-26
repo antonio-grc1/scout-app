@@ -157,18 +157,18 @@ export const TesoreriaPage: React.FC = () => {
     return caps.canSeeCajaContabilidad ? 'caja' : 'gastos';
   });
 
+  // Sincroniza solo cuando cambia la URL (atrás/adelante, enlaces). No depende de subTab: el router
+  // actualiza la URL de forma asíncrona y, si lo hiciera, volvería a la pestaña anterior un instante
+  // tras cada clic (parpadeo).
+  const rawSubUrl = searchParams.get('sub');
   useEffect(() => {
-    const rawSub = searchParams.get('sub');
-    if (rawSub === 'gastos' && caps.canRegistrarGastos) {
+    if (rawSubUrl === 'gastos' && caps.canRegistrarGastos) {
       setVistaCajaGastos('gastos');
-    } else if (rawSub === 'caja-banco' && caps.canSeeCajaContabilidad) {
+    } else if (rawSubUrl === 'caja-banco' && caps.canSeeCajaContabilidad) {
       setVistaCajaGastos('caja');
     }
-    const target = resolverSubTab(rawSub);
-    if (target !== subTab) {
-      setSubTab(target);
-    }
-  }, [searchParams, resolverSubTab, subTab, caps.canRegistrarGastos, caps.canSeeCajaContabilidad]);
+    setSubTab(resolverSubTab(rawSubUrl));
+  }, [rawSubUrl, resolverSubTab, caps.canRegistrarGastos, caps.canSeeCajaContabilidad]);
 
   const cambiarSubTab = (nueva: SubTabTesoreria) => {
     setSubTab(nueva);
