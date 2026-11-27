@@ -35,6 +35,7 @@ import { Drawer } from '../ui/Drawer';
 import { ThemeToggle } from '../ThemeToggle';
 import { BotonInstalarPwa } from '../BotonInstalarPwa';
 import { CampanaAvisos } from '../CampanaAvisos';
+import { InvitacionAlertasPush } from '../avisos/InvitacionAlertasPush';
 import { CommandPaletteModal } from './CommandPaletteModal';
 import { QrScannerUniversalModal } from '../qr/QrScannerUniversalModal';
 import { useQrModalStore } from '../../core/qrModalStore';
@@ -602,6 +603,9 @@ export const AppShell: React.FC<AppShellProps> = ({ children, title }) => {
 
       {/* Escáner QR Universal (Legajos + Eventos) */}
       <QrScannerUniversalModal />
+
+      {/* Invitación a activar las alertas push al entrar */}
+      <InvitacionAlertasPush />
 
       {/* Buscador Global Ctrl+K */}
       <CommandPaletteModal
