@@ -100,20 +100,6 @@ export const TesoreriaPage: React.FC = () => {
 
   const tabsDisponibles = useMemo<SegmentedTabItem<SubTabTesoreria>[]>(() => {
     const items: SegmentedTabItem<SubTabTesoreria>[] = [];
-    if (puedeVerCobranzas) {
-      items.push({
-        id: 'cobranzas',
-        label: 'Cobranzas y familias',
-        icon: <Users className="w-3.5 h-3.5" />,
-      });
-    }
-    if (puedeVerPlanesYConceptos) {
-      items.push({
-        id: 'planes',
-        label: 'Planes y conceptos',
-        icon: <Layers className="w-3.5 h-3.5" />,
-      });
-    }
     if (puedeVerCajaOGastos) {
       items.push({
         id: 'caja-gastos',
@@ -126,6 +112,20 @@ export const TesoreriaPage: React.FC = () => {
         id: 'balance',
         label: 'Cuadro de resultados',
         icon: <Scale className="w-3.5 h-3.5" />,
+      });
+    }
+    if (puedeVerPlanesYConceptos) {
+      items.push({
+        id: 'planes',
+        label: 'Planes y conceptos',
+        icon: <Layers className="w-3.5 h-3.5" />,
+      });
+    }
+    if (puedeVerCobranzas) {
+      items.push({
+        id: 'cobranzas',
+        label: 'Cobranzas y familias',
+        icon: <Users className="w-3.5 h-3.5" />,
       });
     }
     return items;
