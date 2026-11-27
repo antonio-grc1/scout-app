@@ -16,10 +16,13 @@ import { useToastStore } from '../../store/toastStore';
 
 interface BannerActivarPushProps {
   variante?: 'banner' | 'compacto';
+  /** Solo en Mi perfil: muestra el botón para desactivar las alertas ya activas. */
+  permitirDesactivar?: boolean;
 }
 
 export const BannerActivarPush: React.FC<BannerActivarPushProps> = ({
   variante = 'banner',
+  permitirDesactivar = false,
 }) => {
   const caps = useCapabilities();
   const queryClient = useQueryClient();
@@ -147,6 +150,7 @@ export const BannerActivarPush: React.FC<BannerActivarPushProps> = ({
   }
 
   if (suscriptoLocal) {
+    if (!permitirDesactivar) return null;
     return (
       <div
         className={`s-panel rounded-2xl ${variante === 'compacto' ? 'px-3 py-2.5' : 'px-4 py-3'} flex items-center justify-between gap-3 flex-wrap`}

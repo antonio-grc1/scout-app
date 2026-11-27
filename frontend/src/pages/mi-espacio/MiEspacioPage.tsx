@@ -53,6 +53,7 @@ import { ModalTicketQR } from '../../components/ModalTicketQR';
 import { agruparValesPorQr, tieneRetiro } from '../../lib/valesQr';
 import { descargarReciboPago } from '../../lib/reciboPago';
 import { BotonInstalarPwa } from '../../components/BotonInstalarPwa';
+import { BannerActivarPush } from '../../components/avisos/BannerActivarPush';
 import { Drawer, KpiCard, SegmentedTabs, type SegmentedTabItem, Input } from '../../components/ui';
 import { obtenerConfigRama } from '../../lib/ramaColors';
 import {
@@ -1817,6 +1818,8 @@ export const MiEspacioPage: React.FC = () => {
               </div>
 
               <BotonInstalarPwa variante="card" />
+
+              <BannerActivarPush permitirDesactivar />
 
               {/* Formulario de Contacto y Teléfonos (11 campos) */}
               <form onSubmit={handleGuardarContacto} className="s-card rounded-2xl p-5 sm:p-6 space-y-5">
