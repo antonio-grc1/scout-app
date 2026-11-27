@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   EstadoCargo,
@@ -47,6 +48,7 @@ import type {
   VincularHermanoDto,
 } from './tesoreria.dto.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { MailerService } from '../mailer/mailer.service.js';
 import {
   NOMBRES_MESES,
   aCentavos,
@@ -67,6 +69,33 @@ import {
   serializarPlanCompat,
 } from './tesoreria-shared.js';
 
+/** Teléfonos del miembro y de su familia (madre, padre, tutor) sin repetir, para enviarle el recibo. */
+function telefonosDeContacto(
+  telefonoMiembro: string | null,
+  datosFijosJson: Prisma.JsonValue,
+): { etiqueta: string; numero: string }[] {
+  const datos =
+    datosFijosJson && typeof datosFijosJson === 'object' && !Array.isArray(datosFijosJson)
+      ? (datosFijosJson as Record<string, unknown>)
+      : {};
+  const texto = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  const candidatos = [
+    { etiqueta: 'Miembro', numero: texto(telefonoMiembro) },
+    { etiqueta: 'Madre', nombre: texto(datos.madre_nombres), numero: texto(datos.madre_telefono) },
+    { etiqueta: 'Padre', nombre: texto(datos.padre_nombres), numero: texto(datos.padre_telefono) },
+    { etiqueta: 'Tutor/a', nombre: texto(datos.tutor_nombres), numero: texto(datos.tutor_telefono) },
+  ];
+  const vistos = new Set<string>();
+  const telefonos: { etiqueta: string; numero: string }[] = [];
+  for (const c of candidatos) {
+    const digitos = c.numero.replace(/\D/g, '');
+    if (digitos.length < 6 || vistos.has(digitos)) continue;
+    vistos.add(digitos);
+    telefonos.push({ etiqueta: 'nombre' in c && c.nombre ? `${c.etiqueta} (${c.nombre})` : c.etiqueta, numero: c.numero });
+  }
+  return telefonos;
+}
+
 /** True si el concepto es una cuota mensual de un mes anterior al ingreso del miembro al grupo. */
 function esCuotaAnteriorAlIngreso(
   concepto: { planCuotaMensualId?: number | null; mes?: number | null; cicloAnio: number },
@@ -79,7 +108,10 @@ function esCuotaAnteriorAlIngreso(
 
 @Injectable()
 export class TesoreriaCuotasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly mailer?: MailerService,
+  ) {}
 
   private normalizarIdsExcepcion(ids?: number[]): number[] {
     if (!Array.isArray(ids)) return [];
@@ -3214,7 +3246,10 @@ export class TesoreriaCuotasService {
     });
   }
 
-  /** Datos para emitir el recibo de un pago (lo ve quien cobra y también la familia del miembro). */
+  /**
+   * Datos para emitir el recibo de un pago (lo ve quien cobra y también la familia del miembro),
+   * con los contactos del titular para enviárselo (solo teléfonos y email, no el resto de la ficha).
+   */
   async obtenerReciboPago(alcance: AlcanceAcceso, id: number) {
     const pago = await this.prisma.pago.findFirst({
       where: { AND: [{ id }, ...this.condicionesAlcancePagos(alcance)] },
@@ -3225,7 +3260,16 @@ export class TesoreriaCuotasService {
         metodoPago: true,
         referenciaComprobante: true,
         observaciones: true,
-        usuario: { select: { nombre: true, apellido: true, dni: true } },
+        usuario: {
+          select: {
+            nombre: true,
+            apellido: true,
+            dni: true,
+            emailContacto: true,
+            telefonoContacto: true,
+            datosFijosJson: true,
+          },
+        },
         registradoPor: { select: { nombre: true, apellido: true } },
         imputaciones: {
           orderBy: { id: 'asc' },
@@ -3242,7 +3286,55 @@ export class TesoreriaCuotasService {
       },
     });
     if (!pago) throw new NotFoundException('Pago no encontrado');
-    return pago;
+    const { usuario, ...resto } = pago;
+    if (!usuario) return { ...resto, usuario: null, contactos: { email: null, telefonos: [] } };
+    const { emailContacto, telefonoContacto, datosFijosJson, ...titular } = usuario;
+    return {
+      ...resto,
+      usuario: titular,
+      contactos: {
+        email: emailContacto?.trim() || null,
+        telefonos: telefonosDeContacto(telefonoContacto, datosFijosJson),
+      },
+    };
+  }
+
+  /** Envía por correo el recibo (PDF generado en el navegador) al email del titular del pago. */
+  async enviarReciboPorCorreo(alcance: AlcanceAcceso, id: number, pdfBase64: string) {
+    const recibo = await this.obtenerReciboPago(alcance, id);
+    const email = recibo.contactos.email;
+    if (!recibo.usuario || !email) {
+      throw new BadRequestException('El miembro no tiene un email de contacto cargado en su ficha.');
+    }
+    const pdf = Buffer.from(pdfBase64, 'base64');
+    if (pdf.length === 0 || pdf.length > 2 * 1024 * 1024 || pdf.subarray(0, 5).toString('latin1') !== '%PDF-') {
+      throw new BadRequestException('El archivo del recibo no es un PDF válido.');
+    }
+    if (!this.mailer || !(await this.mailer.estaDisponibleParaEnvio())) {
+      throw new BadRequestException(
+        'El envío de correos no está configurado o está deshabilitado. Configuralo en Organización → Correo institucional.',
+      );
+    }
+
+    const numero = String(recibo.id).padStart(6, '0');
+    const conceptos = [
+      ...new Set(recibo.imputaciones.map((i) => i.cargo?.concepto?.nombre).filter(Boolean)),
+    ].join(', ');
+    const enviado = await this.mailer.enviarReciboPago({
+      destinatario: email,
+      nombre: `${recibo.usuario.nombre} ${recibo.usuario.apellido}`,
+      numero,
+      monto: new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(
+        Number(recibo.montoTotal),
+      ),
+      conceptos,
+      nombreArchivo: `Recibo_${numero}.pdf`,
+      pdf,
+    });
+    if (!enviado) {
+      throw new BadRequestException('No se pudo enviar el correo. Revisá la configuración de correo e intentá de nuevo.');
+    }
+    return { enviado: true, destinatario: email };
   }
 
   /** Filtro de pagos visibles según el alcance (unidad: de sus miembros; propio: los suyos). */

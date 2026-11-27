@@ -23,6 +23,16 @@ export interface DatosEmailNuevaClave {
   claveTemporal: string;
 }
 
+export interface DatosEmailRecibo {
+  destinatario: string;
+  nombre: string;
+  numero: string;
+  monto: string;
+  conceptos: string;
+  nombreArchivo: string;
+  pdf: Buffer;
+}
+
 export interface DatosEmailAviso {
   titulo: string;
   mensaje: string;
@@ -347,6 +357,7 @@ export class MailerService {
     asunto: string;
     buildHtml: (appUrl: string) => string;
     contextoLog: string;
+    adjuntos?: { filename: string; content: Buffer; contentType: string }[];
   }): Promise<boolean> {
     const destinatario = params.destinatario?.trim();
     if (!destinatario) return false;
@@ -376,6 +387,7 @@ export class MailerService {
         to: destinatario,
         subject: params.asunto,
         html,
+        ...(params.adjuntos?.length ? { attachments: params.adjuntos } : {}),
       });
       this.logger.log(`${params.contextoLog} enviado a ${destinatario}`);
       return true;
@@ -420,6 +432,32 @@ export class MailerService {
 
           <p style="font-size: 13px; color: #475569;">Al ingresar por primera vez, el sistema te solicitará elegir una contraseña personal segura. Desde la aplicación podrás completar tu ficha médica anual y consultar el estado de tus cuotas.</p>
 
+          <div style="text-align: center; margin: 24px 0 12px;">
+            <a href="${appUrl}" style="display: inline-block; background-color: #eab308; color: #09090b; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-size: 14px;">Ingresar a la Plataforma</a>
+          </div>
+        `),
+    });
+  }
+
+  /** Envía el recibo de un pago en PDF adjunto. */
+  async enviarReciboPago(datos: DatosEmailRecibo): Promise<boolean> {
+    const safeNombre = escapeHtml(datos.nombre);
+    const safeNumero = escapeHtml(datos.numero);
+    const safeMonto = escapeHtml(datos.monto);
+    const safeConceptos = escapeHtml(datos.conceptos);
+
+    return this.enviarCorreoHtml({
+      destinatario: datos.destinatario,
+      asunto: `Grupo Scout Juan XXIII - Recibo N° ${sanitizarAsuntoTextoPlano(datos.numero)}`,
+      contextoLog: `Recibo N° ${datos.numero}`,
+      adjuntos: [{ filename: datos.nombreArchivo, content: datos.pdf, contentType: 'application/pdf' }],
+      buildHtml: (appUrl) =>
+        this.renderizarPlantillaHtml(`
+          <p style="margin-top: 0;">¡Hola <strong>${safeNombre}</strong>!</p>
+          <p>Te enviamos el recibo <strong>N° ${safeNumero}</strong> por <strong>${safeMonto}</strong>${
+            safeConceptos ? ` (${safeConceptos})` : ''
+          }. Lo encontrás adjunto en PDF.</p>
+          <p style="font-size: 13px; color: #475569;">También podés ver todos tus pagos y descargar los recibos desde tu usuario, en "Mis cuotas".</p>
           <div style="text-align: center; margin: 24px 0 12px;">
             <a href="${appUrl}" style="display: inline-block; background-color: #eab308; color: #09090b; font-weight: 800; text-decoration: none; padding: 12px 24px; border-radius: 10px; font-size: 14px;">Ingresar a la Plataforma</a>
           </div>

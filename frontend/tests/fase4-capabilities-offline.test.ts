@@ -546,29 +546,33 @@ describe('Fase 4: campamentoSync.ts y bloqueo de mutaciones offline en api/clien
     assert.equal(offlineCache.obtenerTamanoMemoriaCache(), 0);
   });
 
-  it('logout() quita la suscripción push del dispositivo antes de cerrar la sesión en el servidor', async () => {
+  it('logout() borra la suscripción push en el servidor pero la conserva en el navegador; al volver a entrar se re-asocia sola', async () => {
     const { api } = await vite.ssrLoadModule('/src/api/client.ts');
     const { useAuthStore } = await vite.ssrLoadModule('/src/store/authStore.ts');
 
     const g = globalThis as any;
     const prevWindow = g.window;
     const navDesc = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
-    let desuscripto = false;
+    let desuscriptoEnNavegador = false;
+    const sub = {
+      endpoint: 'https://push.example/abc',
+      toJSON: () => ({
+        endpoint: 'https://push.example/abc',
+        keys: { p256dh: 'p256dh-de-prueba', auth: 'auth-de-prueba' },
+      }),
+      getKey: () => null,
+      unsubscribe: async () => {
+        desuscriptoEnNavegador = true;
+        return true;
+      },
+    };
     g.window = { PushManager: class {}, Notification: class {} };
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
       value: {
         serviceWorker: {
           getRegistration: async () => ({
-            pushManager: {
-              getSubscription: async () => ({
-                endpoint: 'https://push.example/abc',
-                unsubscribe: async () => {
-                  desuscripto = true;
-                  return true;
-                },
-              }),
-            },
+            pushManager: { getSubscription: async () => sub },
           }),
         },
       },
@@ -581,22 +585,45 @@ describe('Fase 4: campamentoSync.ts y bloqueo de mutaciones offline en api/clien
       return { data: { ok: true }, status: 200, statusText: 'OK', headers: {}, config };
     };
 
+    const sesion = (id: number) => ({
+      accessToken: 'tok-push',
+      usuario: { id, dni: String(id), nombre: 'Leo', apellido: 'Scout' },
+      requiereCambioClave: false,
+      asignaciones: [],
+    });
+
     try {
-      useAuthStore.getState().setSesion({
-        accessToken: 'tok-push',
-        usuario: { id: 91, dni: '91', nombre: 'Leo', apellido: 'Scout' },
-        requiereCambioClave: false,
-        asignaciones: [],
-      });
       useAuthStore.getState().logout();
       await new Promise((r) => setTimeout(r, 20));
+      llamadas.length = 0;
 
-      assert.equal(desuscripto, true);
+      // Entrar: la suscripción que ya tenía el dispositivo se asocia al usuario.
+      useAuthStore.getState().setSesion(sesion(91));
+      await new Promise((r) => setTimeout(r, 20));
+      assert.deepEqual(llamadas.map((l) => l.url), ['/avisos/push/suscribir']);
+      assert.deepEqual(llamadas[0].data, sub.toJSON());
+
+      // Refrescar la sesión del mismo usuario no vuelve a enviarla.
+      llamadas.length = 0;
+      useAuthStore.getState().setSesion({ ...sesion(91), asignaciones: [] });
+      await new Promise((r) => setTimeout(r, 20));
+      assert.deepEqual(llamadas, []);
+
+      // Salir: se borra en el servidor (antes de /auth/logout), no en el navegador.
+      useAuthStore.getState().logout();
+      await new Promise((r) => setTimeout(r, 20));
+      assert.equal(desuscriptoEnNavegador, false);
       assert.deepEqual(
         llamadas.map((l) => l.url),
         ['/avisos/push/desuscribir', '/auth/logout'],
       );
       assert.deepEqual(llamadas[0].data, { endpoint: 'https://push.example/abc' });
+
+      // Entra otra persona en el mismo dispositivo: la suscripción pasa a ser suya.
+      llamadas.length = 0;
+      useAuthStore.getState().setSesion(sesion(92));
+      await new Promise((r) => setTimeout(r, 20));
+      assert.deepEqual(llamadas.map((l) => l.url), ['/avisos/push/suscribir']);
     } finally {
       api.defaults.adapter = prevAdapter;
       g.window = prevWindow;
