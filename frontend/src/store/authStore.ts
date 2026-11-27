@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { api, setOnAuthError, setOnRequirePasswordChange } from '../api/client';
 import { limpiarCacheApi } from '../lib/offlineCache';
-import { desactivarPushEnDispositivo } from '../lib/webPush';
-import { desuscribirPushAviso } from '../services/avisos.service';
+import { obtenerSuscripcionPushActual, leerSuscripcionPushActual } from '../lib/webPush';
+import { desuscribirPushAviso, suscribirPushAviso } from '../services/avisos.service';
 import type { TipoUnidad } from '../types/miembro';
 
 // localStorage puede estar bloqueado (Safari privado, cookies deshabilitadas): nunca debe romper la app.
@@ -175,9 +175,24 @@ export const useAuthStore = create<AuthState>((set, get) => {
     asignaciones: safeJsonParse<AsignacionUsuario[]>(savedAsignaciones, []),
 
     setSesion: ({ usuario, requiereCambioClave, asignaciones }) => {
-      const prevUsuario = get().usuario;
+      const prev = get();
+      const prevUsuario = prev.usuario;
       if (prevUsuario && prevUsuario.id !== usuario.id) {
         limpiarCacheApi();
+      }
+      // Recién entra (o terminó de cambiar la clave): si el dispositivo ya tenía las alertas
+      // activadas, se asocian a este usuario sin que tenga que volver a activarlas.
+      const entraAhora =
+        !prev.autenticado || prevUsuario?.id !== usuario.id || prev.requiereCambioClave;
+      if (entraAhora && !requiereCambioClave) {
+        void (async () => {
+          try {
+            const suscripcion = await leerSuscripcionPushActual();
+            if (suscripcion) await suscribirPushAviso(suscripcion);
+          } catch {
+            // Best effort: si falla, la persona puede activarlas desde la app.
+          }
+        })();
       }
       almacen.removeItem('scout_token');
       almacen.setItem('scout_user', JSON.stringify(usuario));
@@ -249,11 +264,12 @@ export const useAuthStore = create<AuthState>((set, get) => {
       get().limpiarSesionLocal();
       if (estabaAutenticado) {
         void (async () => {
-          // Primero se quita la suscripción push (la cookie de sesión aún es válida),
-          // para que el dispositivo no siga recibiendo avisos de este usuario.
+          // Primero se borra la suscripción en el servidor (la cookie de sesión aún es válida),
+          // para que el dispositivo no siga recibiendo avisos de este usuario. La del navegador
+          // se conserva: al volver a entrar se asocia sola a quien inicie sesión (ver setSesion).
           try {
-            const endpoint = await desactivarPushEnDispositivo();
-            if (endpoint) await desuscribirPushAviso(endpoint);
+            const sub = await obtenerSuscripcionPushActual();
+            if (sub) await desuscribirPushAviso(sub.endpoint);
           } catch {
             // Best effort: una suscripción huérfana se limpia sola al fallar el próximo envío.
           }

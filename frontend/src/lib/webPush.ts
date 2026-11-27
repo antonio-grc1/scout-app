@@ -50,10 +50,35 @@ function arrayBufferToBase64Url(buf: ArrayBuffer | null): string {
   return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export async function activarPushEnDispositivo(vapidPublicKey: string): Promise<{
+export interface SuscripcionPushSerializada {
   endpoint: string;
   keys: { p256dh: string; auth: string };
-}> {
+}
+
+function serializarSuscripcion(subscription: PushSubscription): SuscripcionPushSerializada {
+  const json = subscription.toJSON();
+  const p256dh = json.keys?.p256dh || arrayBufferToBase64Url(subscription.getKey('p256dh'));
+  const auth = json.keys?.auth || arrayBufferToBase64Url(subscription.getKey('auth'));
+
+  if (!subscription.endpoint || !p256dh || !auth) {
+    throw new Error('No se pudo obtener una suscripción push válida del navegador.');
+  }
+
+  return {
+    endpoint: subscription.endpoint,
+    keys: { p256dh, auth },
+  };
+}
+
+/** Suscripción que este dispositivo ya tiene (sin pedir permiso), lista para enviar al servidor. */
+export async function leerSuscripcionPushActual(): Promise<SuscripcionPushSerializada | null> {
+  const sub = await obtenerSuscripcionPushActual();
+  return sub ? serializarSuscripcion(sub) : null;
+}
+
+export async function activarPushEnDispositivo(
+  vapidPublicKey: string,
+): Promise<SuscripcionPushSerializada> {
   if (!soportaWebPush()) {
     throw new Error('Este navegador no soporta notificaciones push.');
   }
@@ -72,18 +97,7 @@ export async function activarPushEnDispositivo(vapidPublicKey: string): Promise<
     });
   }
 
-  const json = subscription.toJSON();
-  const p256dh = json.keys?.p256dh || arrayBufferToBase64Url(subscription.getKey('p256dh'));
-  const auth = json.keys?.auth || arrayBufferToBase64Url(subscription.getKey('auth'));
-
-  if (!subscription.endpoint || !p256dh || !auth) {
-    throw new Error('No se pudo obtener una suscripción push válida del navegador.');
-  }
-
-  return {
-    endpoint: subscription.endpoint,
-    keys: { p256dh, auth },
-  };
+  return serializarSuscripcion(subscription);
 }
 
 export async function desactivarPushEnDispositivo(): Promise<string | null> {
